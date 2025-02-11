@@ -29,50 +29,73 @@ import {
 // This is sample data.
 const data = {
   user: {
-    name: "shadcn",
-    email: "m@example.com",
+    name: "Biprodas Roy",
+    email: "biprodas.cse@gmail.com",
     avatar: "/avatars/shadcn.jpg",
   },
   teams: [
     {
-      name: "Acme Inc",
+      name: "Student & Academic",
       logo: GalleryVerticalEnd,
       plan: "Enterprise",
     },
     {
-      name: "Acme Corp.",
+      name: "Finance & Administration",
       logo: AudioWaveform,
       plan: "Startup",
     },
     {
-      name: "Evil Corp.",
+      name: "Campus & Facility Management",
+      logo: Command,
+      plan: "Free",
+    },
+    {
+      name: "Communication & Engagement",
+      logo: Command,
+      plan: "Free",
+    },
+    {
+      name: "Technology & Learning",
+      logo: Command,
+      plan: "Free",
+    },
+    {
+      name: "Security & Reports",
       logo: Command,
       plan: "Free",
     },
   ],
   navMain: [
     {
-      title: "Playground",
+      title: "Student Management",
       url: "#",
       icon: SquareTerminal,
       isActive: true,
       items: [
         {
-          title: "History",
+          title: "Admission & Enrollment",
           url: "#",
         },
         {
-          title: "Starred",
+          title: "Student Profile",
           url: "#",
         },
         {
-          title: "Settings",
+          title: "Manage Students",
+          url: "#",
+        },
+        {
+          title: "ID Card Generation",
+          url: "#",
+        },
+        {
+          title: "Health Records",
           url: "#",
         },
       ],
     },
     {
-      title: "Models",
+      title: "Class & Section",
       url: "#",
       icon: Bot,
       items: [
@@ -91,47 +114,47 @@ const data = {
       ],
     },
     {
-      title: "Documentation",
+      title: "Attendance & Leave",
       url: "#",
       icon: BookOpen,
       items: [
         {
-          title: "Introduction",
+          title: "Attendance Tracking",
           url: "#",
         },
         {
-          title: "Get Started",
+          title: "Leave Requests",
           url: "#",
         },
         {
-          title: "Tutorials",
-          url: "#",
-        },
-        {
-          title: "Changelog",
+          title: "Automated Notifications",
           url: "#",
         },
       ],
     },
     {
-      title: "Settings",
+      title: "Academics & Exams",
       url: "#",
       icon: Settings2,
       items: [
         {
-          title: "General",
+          title: "Timetable & Scheduling",
           url: "#",
         },
         {
-          title: "Team",
+          title: "Assignments & Homework",
           url: "#",
         },
         {
-          title: "Billing",
+          title: "Examination & Grading",
           url: "#",
         },
         {
-          title: "Limits",
+          title: "Student Progress Reports",
+          url: "#",
+        },
+        {
+          title: "Performance Analytics",
           url: "#",
         },
       ],
