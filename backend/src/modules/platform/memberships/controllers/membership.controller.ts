@@ -6,22 +6,35 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards
 } from '@nestjs/common';
 import { RequestContext } from '~/common/decorators/request-context.decorator';
-import { Roles } from '~/common/decorators/roles.decorator';
 import { RequestContextDto } from '~/common/dto/request-context.dto';
 import { PlatformJwtAuthGuard } from '~/common/guards/platform-jwt-auth.guard';
-import { RolesGuard } from '~/common/guards/roles.guard';
-import { PlatformRole } from 'src/modules/platform/users/enums/platform-role.enum';
 import { CreateMembershipDto } from '../dto/create-membership.dto';
 import { UpdateMembershipRoleDto } from '../dto/update-membership-role.dto';
 import { MembershipService } from '../services/membership.service';
+import { FilterMembershipDto } from '../dto/filter-membership.dto';
 
 @Controller('memberships')
 @UseGuards(PlatformJwtAuthGuard)
 export class MembershipController {
   constructor(private readonly membershipService: MembershipService) {}
+
+  @Get()
+  async findAll(
+    @RequestContext() ctx: RequestContextDto,
+    @Query() dto: FilterMembershipDto,
+  ) {
+    const memberships = await this.membershipService.findAll(ctx, dto);
+    return {
+      success: true,
+      statusCode: 200,
+      message: `List of memberships`,
+      data: memberships,
+    };
+  }
 
   @Get('tenant/:tenantId')
   async findByTenant(
@@ -77,8 +90,6 @@ export class MembershipController {
   }
 
   @Post()
-  @UseGuards(RolesGuard)
-  @Roles(PlatformRole.SUPER_ADMIN)
   async create(
     @RequestContext() ctx: RequestContextDto,
     @Body() dto: CreateMembershipDto,
@@ -93,8 +104,6 @@ export class MembershipController {
   }
 
   @Patch(':id')
-  @UseGuards(RolesGuard)
-  @Roles(PlatformRole.SUPER_ADMIN)
   async updateRole(
     @RequestContext() ctx: RequestContextDto,
     @Param('id') id: string,
@@ -110,8 +119,6 @@ export class MembershipController {
   }
 
   @Delete(':id')
-  @UseGuards(RolesGuard)
-  @Roles(PlatformRole.SUPER_ADMIN)
   async remove(
     @RequestContext() ctx: RequestContextDto,
     @Param('id') id: string,

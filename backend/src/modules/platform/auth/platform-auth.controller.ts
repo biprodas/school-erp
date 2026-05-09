@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Post, UseGuards } from '@nestjs/common';
 import { RequestContext } from '~/common/decorators/request-context.decorator';
 import { RequestContextDto } from '~/common/dto/request-context.dto';
 import { PlatformJwtAuthGuard } from '~/common/guards/platform-jwt-auth.guard';
@@ -22,6 +22,7 @@ export class PlatformAuthController {
   }
 
   @Post('login')
+  @HttpCode(200)
   async login(@Body() dto: PlatformLoginDto) {
     const result = await this.platformAuthService.login(dto);
     return {

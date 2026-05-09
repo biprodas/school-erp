@@ -84,7 +84,8 @@
       "^~/utils/(.*)$": "<rootDir>/utils/$1",
       "^~/tenancy/(.*)$": "<rootDir>/tenancy/$1",
       "^~/platform/(.*)$": "<rootDir>/modules/platform/$1",
-      "^~/tenanted/(.*)$": "<rootDir>/modules/tenanted/$1"
+      "^~/tenanted/(.*)$": "<rootDir>/modules/tenanted/$1",
+      "^src/(.*)$": "<rootDir>/$1"
     },
     "collectCoverageFrom": [
       "**/*.(t|j)s"

@@ -77,9 +77,8 @@ export class UserService {
     }
 
     // Only super admin can change role or status
-    if (!isSuperAdmin) {
-      delete dto.role;
-      delete dto.status;
+    if (!isSuperAdmin && (dto.role || dto.status)) {
+      throw new ForbiddenException('Only super admin can change role or status');
     }
 
     const user = await this.findById(ctx, targetId);
