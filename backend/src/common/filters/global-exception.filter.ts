@@ -7,6 +7,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Response } from 'express';
+import { Key } from '~/common/enums/keys.enum';
 
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
@@ -16,8 +17,6 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     const ctx = host.switchToHttp();
     const res = ctx.getResponse<Response>();
     const req = ctx.getRequest();
-
-    console.log("EXCEPTION: ", exception);
 
     const status =
       exception instanceof HttpException
@@ -32,6 +31,8 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     const body =
       typeof baseBody === 'string' ? { message: baseBody } : (baseBody as any);
 
+    const requestId = req.headers?.[Key.RequestIdTokenHeader] as string | undefined;
+
     if (status >= 500) {
       this.logger.error(
         `${req.method} ${req.url} -> ${status}`,
@@ -43,6 +44,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       statusCode: status,
       path: req.url,
       timestamp: new Date().toISOString(),
+      ...(requestId && { requestId }),
       ...body,
     });
   }

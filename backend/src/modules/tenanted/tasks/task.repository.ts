@@ -1,34 +1,12 @@
-import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Inject, Injectable } from '@nestjs/common';
+import { TENANT_DATASOURCE } from '~/tenancy/tenancy.constants';
+import { TenantDataSourceProxy } from '~/tenancy/tenant-datasource.proxy';
+import { BaseTenantRepository } from '~/tenancy/base-tenant.repository';
 import { Task } from './entities/task.entity';
 
 @Injectable()
-export class TaskRepository {
-  constructor(
-    @InjectRepository(Task)
-    private readonly repo: Repository<Task>,
-  ) {}
-
-  async findById(id: string): Promise<Task | null> {
-    return this.repo.findOne({ where: { id } });
-  }
-
-  async findAllOrdered(): Promise<Task[]> {
-    return this.repo.find({
-      order: { createdAt: 'DESC' },
-    });
-  }
-
-  async save(entity: Task): Promise<Task> {
-    return this.repo.save(entity);
-  }
-
-  async remove(entity: Task): Promise<void> {
-    await this.repo.remove(entity);
-  }
-
-  create(partial: Partial<Task>): Task {
-    return this.repo.create(partial);
+export class TaskRepository extends BaseTenantRepository<Task> {
+  constructor(@Inject(TENANT_DATASOURCE) ds: TenantDataSourceProxy) {
+    super(ds, Task, 'Task');
   }
 }

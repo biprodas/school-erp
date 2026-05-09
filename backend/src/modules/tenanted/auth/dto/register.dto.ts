@@ -4,7 +4,12 @@ export class RegisterDto {
   @IsDefined()
   @IsString()
   @IsNotEmpty()
-  name: string;
+  firstName: string;
+
+  @IsDefined()
+  @IsString()
+  @IsNotEmpty()
+  lastName: string;
 
   @IsDefined()
   @IsEmail()

@@ -1,4 +1,5 @@
 import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -6,15 +7,17 @@ import { configLoaders, envValidationSchema } from './config';
 import { CatModule } from './modules/tenanted/cats/cat.module';
 import { HealthModule } from './shared/health/health.module';
 import { TaskModule } from './modules/tenanted/tasks/task.module';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { getMasterDbConfig } from './database/database.config';
-import { ProductModule } from './modules/tenanted/products/product.module';
-import { MembershipModule } from './modules/public/memberships/membership.module';
+import { DatabaseModule } from './database/database.module';
+import { TenancyModule } from './tenancy/tenancy.module';
 import { AuthModule } from './modules/tenanted/auth/auth.module';
-import { PlatformAuthModule } from './modules/public/auth/platform-auth.module';
-import { UserModule } from './modules/public/users/user.module';
-import { TenantMiddleware } from './tenancy/tenant.middleware';
-import { TenantModule } from './modules/public/tenants/tenant.module';
+import { PlatformAuthModule } from 'src/modules/platform/auth/platform-auth.module';
+import { TenantMiddleware } from '~/tenancy/tenant.middleware';
+import { TenantCleanupInterceptor } from '~/tenancy/tenant-cleanup.interceptor';
+import { MembershipModule } from 'src/modules/platform/memberships/membership.module';
+import { UserModule } from 'src/modules/platform/users/user.module';
+import { ProductModule } from '~/tenanted/products/product.module';
+import { TenantUserModule } from '~/tenanted/users/user.module';
+import { TenantModule } from 'src/modules/platform/tenants/tenant.module';
 
 const nodeEnv = process.env.NODE_ENV ?? 'development';
 const envFilePath = ['.env', `.env.${nodeEnv}`];
@@ -27,7 +30,8 @@ const envFilePath = ['.env', `.env.${nodeEnv}`];
       validationSchema: envValidationSchema,
       load: configLoaders,
     }),
-    TypeOrmModule.forRoot(getMasterDbConfig()),
+    DatabaseModule,
+    TenancyModule,
     HealthModule,
     TenantModule,
     PlatformAuthModule,
@@ -36,10 +40,17 @@ const envFilePath = ['.env', `.env.${nodeEnv}`];
     CatModule,
     TaskModule,
     ProductModule,
+    TenantUserModule,
     MembershipModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: TenantCleanupInterceptor,
+    },
+  ],
 })
 export class AppModule {
   configure(consumer: MiddlewareConsumer) {

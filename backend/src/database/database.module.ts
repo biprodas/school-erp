@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import type { DbConfig } from '../config/db.config';
+import { PUBLIC_SCHEMA } from './public.datasource';
 
 @Module({
   imports: [
@@ -14,8 +15,7 @@ import type { DbConfig } from '../config/db.config';
           throw new Error('Database configuration (db) is incomplete');
         }
 
-        const nodeEnv = configService.get('NODE_ENV');
-        const isProduction = nodeEnv === 'production';
+        const isProduction = configService.get<string>('NODE_ENV') === 'production';
 
         return {
           type: 'postgres' as const,
@@ -24,10 +24,16 @@ import type { DbConfig } from '../config/db.config';
           username: db.username,
           password: db.password,
           database: db.database,
+          schema: PUBLIC_SCHEMA,
           autoLoadEntities: true,
-          // entities: ['src/**/*.entity.ts'],
-          // migrations: ['src/migrations/*.ts'],
-          synchronize: !isProduction,
+          synchronize: db.sync && !isProduction,
+          logging: db.logging,
+          ...(db.ssl ? { ssl: { rejectUnauthorized: false } } : {}),
+          extra: {
+            max: 10,
+            connectionTimeoutMillis: db.connectionTimeout,
+            idleTimeoutMillis: db.idleTimeout,
+          },
         };
       },
     }),

@@ -39,7 +39,7 @@ Database table: `public.users`
 | `firstName` | varchar | Not Null | |
 | `lastName` | varchar | Not Null | |
 | `fullName` | varchar | | Synced automatically via `@AfterLoad`, `@AfterInsert`, `@AfterUpdate` hooks |
-| `platformRole` | enum | Not Null, default `user` | `super_admin` \| `user` |
+| `role` | enum | Not Null, default `user` | `super_admin` \| `user` |
 | `isActive` | boolean | Not Null, default `true` | Soft-disable without deletion |
 | `createdAt` | timestamp | Not Null | Auto-set |
 | `updatedAt` | timestamp | Not Null | Auto-updated |
@@ -69,18 +69,18 @@ enum PlatformRole {
 | `lastName` | string | Yes |
 | `email` | IsEmail | Yes |
 | `password` | string, MinLength(6) | Yes |
-| `platformRole` | IsEnum(PlatformRole) | No — defaults to `user` |
+| `role` | IsEnum(PlatformRole) | No — defaults to `user` |
 | `isActive` | IsBoolean | No — defaults to `true` |
 
 **`UpdateUserDto`**
 
-All fields optional. Non-admin callers have `platformRole` and `isActive` stripped server-side regardless of what is sent.
+All fields optional. Non-admin callers have `role` and `isActive` stripped server-side regardless of what is sent.
 
 | Field | Validation |
 |---|---|
 | `firstName` | string |
 | `lastName` | string |
-| `platformRole` | IsEnum(PlatformRole) |
+| `role` | IsEnum(PlatformRole) |
 | `isActive` | IsBoolean |
 
 ### 1.4 Service — `UserService`
@@ -90,7 +90,7 @@ All fields optional. Non-admin callers have `platformRole` and `isActive` stripp
 | `findAll` | `(): Promise<User[]>` | Returns all users |
 | `createPlatformUser` | `(dto): Promise<User>` | Hashes password; throws `ConflictException` on duplicate email |
 | `findById` | `(id: string): Promise<User>` | Throws `NotFoundException` if absent |
-| `update` | `(requesterId, requesterRole, targetId, dto)` | Self-update allowed; only `SUPER_ADMIN` can change `platformRole`/`isActive` |
+| `update` | `(requesterId, requesterRole, targetId, dto)` | Self-update allowed; only `SUPER_ADMIN` can change `role`/`isActive` |
 | `remove` | `(id: string): Promise<void>` | Hard delete |
 
 ### 1.5 Controller — `UserController`
@@ -313,7 +313,7 @@ Route prefix: `platform/auth`
     "firstName": "Jane",
     "lastName": "Doe",
     "fullName": "Jane Doe",
-    "platformRole": "user"
+    "role": "user"
   }
 }
 ```
@@ -323,7 +323,7 @@ Route prefix: `platform/auth`
 {
   "sub": "<userId>",
   "email": "user@example.com",
-  "platformRole": "user"
+  "role": "user"
 }
 ```
 
@@ -336,7 +336,7 @@ JWT expiry defaults to `24h` (configurable via `jwt.expiresIn` in config).
 | Artifact | File | Purpose |
 |---|---|---|
 | `PlatformJwtAuthGuard` | `guards/platform-jwt-auth.guard.ts` | Validates Bearer token using `platform-jwt` strategy; applied to all protected routes |
-| `RolesGuard` | `guards/roles.guard.ts` | Reads `@Roles()` metadata; compares `request.user.platformRole`; returns 403 on mismatch |
+| `RolesGuard` | `guards/roles.guard.ts` | Reads `@Roles()` metadata; compares `request.user.role`; returns 403 on mismatch |
 | `@Roles(...roles)` | `decorators/roles.decorator.ts` | Sets `ROLES_KEY` metadata on handler; used alongside `RolesGuard` |
 | `@CurrentUser()` | `decorators/current-user.decorator.ts` | Param decorator that extracts `request.user` injected by Passport |
 

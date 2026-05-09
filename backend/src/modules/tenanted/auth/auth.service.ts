@@ -1,47 +1,47 @@
-import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  UnauthorizedException,
+  ConflictException,
+} from '@nestjs/common';
+import { REQUEST } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { TenantConnectionService } from '../../../tenancy/tenant-connection.service';
-import { User } from './entities/user.entity';
+import type { RequestWithTenant } from '~/tenancy/tenant.middleware';
+import { UserRepository } from '../users/user.repository';
+import { User } from '../users/entities/user.entity';
+import { RegisterDto } from './dto/register.dto';
+import { LoginDto } from './dto/login.dto';
 
 @Injectable()
 export class AuthService {
   constructor(
-    private jwtService: JwtService,
-    private tenantConnectionService: TenantConnectionService,
+    private readonly userRepo: UserRepository,
+    @Inject(REQUEST) private readonly request: RequestWithTenant,
+    private readonly jwtService: JwtService,
   ) {}
 
-  async register(
-    schemaName: string,
-    tenantId: string,
-    email: string,
-    password: string,
-    name: string,
-  ) {
-    const connection = await this.tenantConnectionService.getTenantConnection(schemaName);
-    const userRepo = connection.getRepository(User);
-
-    const existing = await userRepo.findOne({ where: { email } });
+  async register(dto: RegisterDto) {
+    const { email, password, firstName, lastName } = dto;
+    const existing = await this.userRepo.findByEmail(email);
     if (existing) {
       throw new ConflictException('User already exists');
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const user = userRepo.create({
+    const user = await this.userRepo.saveNew({
       email,
       password: hashedPassword,
-      name,
+      firstName,
+      lastName,
     });
 
-    await userRepo.save(user);
-    return this.generateToken(user, tenantId, schemaName);
+    return this.generateToken(user);
   }
 
-  async login(schemaName: string, tenantId: string, email: string, password: string) {
-    const connection = await this.tenantConnectionService.getTenantConnection(schemaName);
-    const userRepo = connection.getRepository(User);
-
-    const user = await userRepo.findOne({ where: { email } });
+  async login(dto: LoginDto) {
+    const { email, password } = dto;
+    const user = await this.userRepo.findByEmailWithPassword(email);
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
     }
@@ -51,37 +51,44 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    return this.generateToken(user, tenantId, schemaName);
+    return this.generateToken(user);
   }
 
-  private generateToken(user: User, tenantId: string, schemaName: string) {
-    const payload = { 
-      sub: user.id, 
-      email: user.email, 
-      tenantId,
-      schemaName 
-    };
-    
-    return {
-      access_token: this.jwtService.sign(payload),
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-      },
-    };
-  }
-
-  async getUserProfile(schemaName: string, userId: string) {
-    const connection = await this.tenantConnectionService.getTenantConnection(schemaName);
-    const userRepo = connection.getRepository(User);
-
-    const user = await userRepo.findOne({ where: { id: userId } });
+  async getMe(userId: string) {
+    const user = await this.userRepo.findById(userId);
     if (!user) {
       throw new UnauthorizedException('User not found');
     }
 
     const { password, ...result } = user;
     return result;
+  }
+
+  private generateToken(user: User) {
+    const payload = {
+      sub: user.id,
+      email: user.email,
+      tenantId: this.request.tenantId,
+      schemaName: this.request.tenantSchema,
+    };
+
+    return {
+      access_token: this.jwtService.sign(payload),
+      token_type: 'Bearer',
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        fullName: user.fullName,
+        role: user.role,
+        status: user.status,
+      },
+      tenant: {
+        id: this.request.tenantId,
+        slug: this.request.tenantSlug,
+        schema: this.request.tenantSchema,
+      },
+    };
   }
 }

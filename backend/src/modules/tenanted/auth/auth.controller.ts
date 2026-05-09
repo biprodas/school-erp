@@ -1,38 +1,49 @@
-import { Controller, Post, Get, Body, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { RequestContext } from '~/common/decorators/request-context.decorator';
+import { RequestContextDto } from '~/common/dto/request-context.dto';
 import { AuthService } from './auth.service';
-import type { RequestWithTenant } from '../../../tenancy/tenant.middleware';
-import { JwtAuthGuard } from './jwt-auth.guard';
-import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { RegisterDto } from './dto/register.dto';
+import { JwtAuthGuard } from './jwt-auth.guard';
 
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
 
   @Post('register')
-  async register(@Req() req: RequestWithTenant, @Body() dto: RegisterDto) {
-    return this.authService.register(
-      req.tenantSchema!,
-      req.tenantId!,
-      dto.email,
-      dto.password,
-      dto.name,
-    );
+  async register(@Body() dto: RegisterDto) {
+    const result = await this.authService.register(dto);
+
+    return {
+      success: true,
+      statusCode: 201,
+      message: `User created.`,
+      data: result,
+    };
   }
 
-  @Post('login')
-  async login(@Req() req: RequestWithTenant, @Body() dto: LoginDto) {
-    return this.authService.login(
-      req.tenantSchema!,
-      req.tenantId!,
-      dto.email,
-      dto.password
-    );
+  @Post('login') 
+  async login(@Body() dto: LoginDto) {
+    const result = await this.authService.login(dto);
+
+    return {
+      success: true,
+      statusCode: 200,
+      message: `User logged in.`,
+      data: result,
+    };
   }
 
-  @Get('profile')
+  @Get('me')
   @UseGuards(JwtAuthGuard)
-  async getProfile(@Req() req: any) {
-    return this.authService.getUserProfile(req.user.schemaName, req.user.userId);
+  async getMe(@RequestContext() ctx: RequestContextDto) {
+    const user = await this.authService.getMe(ctx.userId!);
+
+    return {
+      success: true,
+      statusCode: 200,
+      message: `User found.`,
+      data: user,
+    };
   }
 }

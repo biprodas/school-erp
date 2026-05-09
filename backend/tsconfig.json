@@ -1,4 +1,7 @@
 {
+  "ts-node": {
+    "require": ["tsconfig-paths/register"]
+  },
   "compilerOptions": {
     "module": "nodenext",
     "moduleResolution": "nodenext",
@@ -14,6 +17,15 @@
     "sourceMap": true,
     "outDir": "./dist",
     "baseUrl": "./",
+    "paths": {
+      "~/common/*":["src/common/*"],
+      "~/config":["src/config"],
+      "~/utils/*":["src/utils/*"],
+      "~/tenancy/*":["src/tenancy/*"],
+      // "~/modules/*":["src/modules/*"],
+      "~/platform/*":["src/modules/platform/*"],
+      "~/tenanted/*":["src/modules/tenanted/*"],
+    },
     "incremental": true,
     "skipLibCheck": true,
     "strictNullChecks": true,

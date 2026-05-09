@@ -4,15 +4,15 @@ import { JwtModule, JwtModuleOptions } from '@nestjs/jwt';
 import type { SignOptions } from 'jsonwebtoken';
 import type { StringValue } from 'ms';
 import { PassportModule } from '@nestjs/passport';
+import { TenantUserModule } from '../users/user.module';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './jwt.strategy';
-import { TenantModule } from '../../public/tenants/tenant.module';
 
 @Module({
   imports: [
-    TenantModule,
     PassportModule,
+    TenantUserModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

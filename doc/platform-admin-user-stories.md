@@ -115,7 +115,7 @@ Acceptance criteria:
 > so that I can manage who has elevated access or revoke platform access without deleting the account.
 
 Acceptance criteria:
-- I can set another user's `platformRole` to `super_admin` or `user`.
+- I can set another user's `role` to `super_admin` or `user`.
 - I can set `isActive` to `false` to prevent login without deleting their data.
 - Regular users cannot perform these actions on anyone, including themselves.
 
@@ -406,7 +406,7 @@ Acceptance criteria:
 
 Acceptance criteria:
 - I can filter by partial name or email (case-insensitive).
-- I can filter by `platformRole` and/or `isActive`.
+- I can filter by `role` and/or `isActive`.
 - Results are paginated.
 
 ---

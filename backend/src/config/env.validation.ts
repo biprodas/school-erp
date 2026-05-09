@@ -37,11 +37,17 @@ export const envValidationSchema = Joi.object({
   }),
   DB_SYNC: Joi.boolean().default(false),
   DB_LOGGING: Joi.boolean().default(false),
-  JWT_SECRET: Joi.string().min(8).required().messages({
-    'string.min': 'JWT_SECRET must be at least 8 characters',
+  DB_SSL: Joi.boolean().default(false),
+  DB_TENANT_POOL_SIZE: Joi.number().integer().min(2).max(200).default(20),
+  DB_CONNECTION_TIMEOUT: Joi.number().integer().min(1000).max(30000).default(5000),
+  DB_IDLE_TIMEOUT: Joi.number().integer().min(1000).max(60000).default(10000),
+  DB_MAX_LIFETIME: Joi.number().integer().min(60000).max(3600000).default(1800000),
+  JWT_SECRET: Joi.string().min(32).required().messages({
+    'string.min': 'JWT_SECRET must be at least 32 characters',
     'any.required': 'JWT_SECRET is required',
   }),
-  JWT_EXPIRES_IN: Joi.string(),
+  JWT_EXPIRES_IN: Joi.string().default('1d'),
+  CORS_ORIGIN: Joi.string().optional(),
 })
   .unknown(true)
   .prefs({ abortEarly: false });
