@@ -1,33 +1,43 @@
-import {
-  ConflictException,
-  Injectable,
-  Logger,
-} from '@nestjs/common';
+import { ConflictException, Injectable, Logger } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
+import { RoleRepository } from '../rbac/role.repository';
+import { UserRoleRepository } from '../rbac/user-role.repository';
 import { UserRepository } from './user.repository';
 import { CreateUserDto } from './dto/create-user.dto';
 import { FilterUserDto } from './dto/filter-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from './entities/user.entity';
-import { UserRole } from './enums/user-role.enum';
 import { UserStatus } from './enums/user-status.enum';
 
 @Injectable()
 export class UserService {
   private readonly logger = new Logger(UserService.name);
 
-  constructor(private readonly userRepo: UserRepository) {}
+  constructor(
+    private readonly userRepo: UserRepository,
+    private readonly roleRepo: RoleRepository,
+    private readonly userRoleRepo: UserRoleRepository,
+  ) {}
 
   async findFiltered(filterUserDto: FilterUserDto): Promise<User[]> {
     this.logger.log(`${this.findFiltered.name} Service Called`);
 
-    const { id, firstName, lastName, email, role } = filterUserDto;
-    const where: any = {};
+    const { id, firstName, lastName, email, roleId } = filterUserDto;
+
+    if (roleId) {
+      return this.userRepo.findByRoleId(roleId, {
+        id,
+        firstName,
+        lastName,
+        email,
+      });
+    }
+
+    const where: Record<string, any> = {};
     if (id) where.id = id;
     if (firstName) where.firstName = firstName;
     if (lastName) where.lastName = lastName;
     if (email) where.email = email;
-    if (role) where.role = role;
 
     return this.userRepo.findFiltered(where);
   }
@@ -44,15 +54,25 @@ export class UserService {
       throw new ConflictException('Email already registered');
     }
 
+    // Validate the requested roles up front so we never create a user
+    // and then fail half-way through assigning roles.
+    const roleIds = [...new Set(dto.roleIds ?? [])];
+    for (const roleId of roleIds) {
+      await this.roleRepo.findByIdOrFail(roleId);
+    }
+
     const hashedPassword = await bcrypt.hash(dto.password, 10);
     const user = await this.userRepo.saveNew({
       firstName: dto.firstName,
       lastName: dto.lastName,
       email: dto.email,
       password: hashedPassword,
-      role: dto.role ?? UserRole.USER,
       status: dto.status ?? UserStatus.ACTIVE,
     });
+
+    for (const roleId of roleIds) {
+      await this.userRoleRepo.assign(user.id, roleId);
+    }
 
     return this.findById(user.id);
   }

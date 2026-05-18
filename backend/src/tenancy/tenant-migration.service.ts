@@ -40,9 +40,7 @@ export class TenantMigrationService {
       database: db.database,
       schema: schemaName,
       entities: [],
-      migrations: [
-        __dirname + '/../migrations/tenant/*{.ts,.js}',
-      ],
+      migrations: [__dirname + '/../migrations/tenant/*{.ts,.js}'],
       migrationsTableName: '_migrations',
     });
 
@@ -80,9 +78,7 @@ export class TenantMigrationService {
       where: { status: TenantStatus.ACTIVE },
     });
 
-    this.logger.log(
-      `Running migrations for ${tenants.length} active tenants`,
-    );
+    this.logger.log(`Running migrations for ${tenants.length} active tenants`);
 
     const results: MigrationResult[] = [];
     for (const tenant of tenants) {

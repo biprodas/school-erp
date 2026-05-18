@@ -17,6 +17,7 @@ import { MembershipModule } from 'src/modules/platform/memberships/membership.mo
 import { UserModule } from 'src/modules/platform/users/user.module';
 import { ProductModule } from '~/tenanted/products/product.module';
 import { TenantUserModule } from '~/tenanted/users/user.module';
+import { RbacModule } from '~/tenanted/rbac/rbac.module';
 import { TenantModule } from 'src/modules/platform/tenants/tenant.module';
 
 const nodeEnv = process.env.NODE_ENV ?? 'development';
@@ -41,6 +42,7 @@ const envFilePath = ['.env', `.env.${nodeEnv}`];
     TaskModule,
     ProductModule,
     TenantUserModule,
+    RbacModule,
     MembershipModule,
   ],
   controllers: [AppController],

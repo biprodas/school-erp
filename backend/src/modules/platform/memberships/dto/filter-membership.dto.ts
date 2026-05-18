@@ -1,4 +1,4 @@
-import { IsOptional, IsString } from "class-validator";
+import { IsOptional, IsString } from 'class-validator';
 
 export class FilterMembershipDto {
   @IsOptional()
@@ -8,4 +8,4 @@ export class FilterMembershipDto {
   @IsOptional()
   @IsString()
   tenantId?: string;
-}   
+}

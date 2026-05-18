@@ -13,40 +13,45 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { PermissionsGuard } from '../rbac/permissions.guard';
+import { RequirePermissions } from '../rbac/require-permissions.decorator';
+import { PERMISSIONS } from '../rbac/permissions.catalog';
 import { CatService } from './cat.service';
 import { CreateCatDto } from './dto/create-cat.dto';
 import { UpdateCatDto } from './dto/update-cat.dto';
 import { FilterCatDto } from './dto/filter-cat.dto';
 
 @Controller('cats')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 export class CatController {
   constructor(private readonly catService: CatService) {}
 
   @Post()
+  @RequirePermissions(PERMISSIONS.CATS_CREATE)
   create(@Body() dto: CreateCatDto) {
     return this.catService.create(dto);
   }
 
   @Get()
+  @RequirePermissions(PERMISSIONS.CATS_READ)
   findAll(@Query() filterCatDto: FilterCatDto) {
     return this.catService.findAll(filterCatDto);
   }
 
   @Get(':id')
+  @RequirePermissions(PERMISSIONS.CATS_READ)
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.catService.findOne(id);
   }
 
   @Patch(':id')
-  update(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() dto: UpdateCatDto,
-  ) {
+  @RequirePermissions(PERMISSIONS.CATS_UPDATE)
+  update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateCatDto) {
     return this.catService.update(id, dto);
   }
 
   @Delete(':id')
+  @RequirePermissions(PERMISSIONS.CATS_DELETE)
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(@Param('id', ParseUUIDPipe) id: string) {
     await this.catService.remove(id);

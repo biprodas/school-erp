@@ -14,6 +14,7 @@ import { PlatformRole } from 'src/modules/platform/users/enums/platform-role.enu
 import { UserStatus } from 'src/modules/platform/users/enums/user-status.enum';
 import { TenantConnectionService } from '~/tenancy/tenant-connection.service';
 import { TenantMigrationService } from '~/tenancy/tenant-migration.service';
+import { RbacSeederService } from '~/tenanted/rbac/rbac-seeder.service';
 import { ConfigService } from '@nestjs/config';
 
 const JWT_SECRET = 'test-secret-key-for-e2e-testing-32chars!';
@@ -43,10 +44,20 @@ describe('Tenant E2E', () => {
   let membershipRepo: Record<string, jest.Mock>;
 
   const adminToken = () =>
-    jwtService.sign({ sub: ADMIN_ID, email: 'admin@test.com', role: PlatformRole.SUPER_ADMIN, status: UserStatus.ACTIVE });
+    jwtService.sign({
+      sub: ADMIN_ID,
+      email: 'admin@test.com',
+      role: PlatformRole.SUPER_ADMIN,
+      status: UserStatus.ACTIVE,
+    });
 
   const userToken = (id = USER_ID) =>
-    jwtService.sign({ sub: id, email: 'user@test.com', role: PlatformRole.USER, status: UserStatus.ACTIVE });
+    jwtService.sign({
+      sub: id,
+      email: 'user@test.com',
+      role: PlatformRole.USER,
+      status: UserStatus.ACTIVE,
+    });
 
   beforeEach(async () => {
     tenantRepo = {
@@ -80,7 +91,10 @@ describe('Tenant E2E', () => {
     const module: TestingModule = await Test.createTestingModule({
       imports: [
         PassportModule,
-        JwtModule.register({ secret: JWT_SECRET, signOptions: { expiresIn: '1h' } }),
+        JwtModule.register({
+          secret: JWT_SECRET,
+          signOptions: { expiresIn: '1h' },
+        }),
       ],
       controllers: [TenantController],
       providers: [
@@ -88,9 +102,24 @@ describe('Tenant E2E', () => {
         PlatformJwtStrategy,
         { provide: getRepositoryToken(Tenant), useValue: tenantRepo },
         { provide: getRepositoryToken(Membership), useValue: membershipRepo },
-        { provide: getDataSourceToken(), useValue: { createQueryRunner: jest.fn().mockReturnValue(mockQueryRunner) } },
-        { provide: TenantConnectionService, useValue: { synchronizeSchema: jest.fn() } },
-        { provide: TenantMigrationService, useValue: { runMigrationsForSchema: jest.fn() } },
+        {
+          provide: getDataSourceToken(),
+          useValue: {
+            createQueryRunner: jest.fn().mockReturnValue(mockQueryRunner),
+          },
+        },
+        {
+          provide: TenantConnectionService,
+          useValue: { synchronizeSchema: jest.fn() },
+        },
+        {
+          provide: TenantMigrationService,
+          useValue: { runMigrationsForSchema: jest.fn() },
+        },
+        {
+          provide: RbacSeederService,
+          useValue: { seedSystemRoles: jest.fn() },
+        },
         {
           provide: ConfigService,
           useValue: {
@@ -105,7 +134,9 @@ describe('Tenant E2E', () => {
     }).compile();
 
     app = module.createNestApplication();
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+    app.useGlobalPipes(
+      new ValidationPipe({ whitelist: true, transform: true }),
+    );
     await app.init();
 
     jwtService = module.get<JwtService>(JwtService);
@@ -127,7 +158,10 @@ describe('Tenant E2E', () => {
 
   describe('GET /tenants', () => {
     it('SUPER_ADMIN sees all tenants', async () => {
-      tenantRepo.find.mockResolvedValue([makeTenant(), makeTenant({ id: '00000000-0000-0000-0000-000000000011' })]);
+      tenantRepo.find.mockResolvedValue([
+        makeTenant(),
+        makeTenant({ id: '00000000-0000-0000-0000-000000000011' }),
+      ]);
 
       const res = await request(app.getHttpServer())
         .get('/tenants')
@@ -164,7 +198,10 @@ describe('Tenant E2E', () => {
 
     it('User with membership can view tenant', async () => {
       tenantRepo.findOne.mockResolvedValue(makeTenant());
-      membershipRepo.findOne.mockResolvedValue({ tenantId: TENANT_ID, userId: USER_ID });
+      membershipRepo.findOne.mockResolvedValue({
+        tenantId: TENANT_ID,
+        userId: USER_ID,
+      });
 
       await request(app.getHttpServer())
         .get(`/tenants/${TENANT_ID}`)
@@ -222,7 +259,10 @@ describe('Tenant E2E', () => {
 
     it('Tenant OWNER can update their tenant', async () => {
       tenantRepo.findOne.mockResolvedValue(makeTenant());
-      membershipRepo.findOne.mockResolvedValue({ userId: OWNER_ID, role: MembershipRole.OWNER });
+      membershipRepo.findOne.mockResolvedValue({
+        userId: OWNER_ID,
+        role: MembershipRole.OWNER,
+      });
       tenantRepo.save.mockImplementation((entity) => Promise.resolve(entity));
 
       await request(app.getHttpServer())

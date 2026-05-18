@@ -15,7 +15,7 @@ export class AppService {
       stack: ['NestJS', 'TypeORM', 'PostgreSQL', 'TypeScript'],
       author: {
         name: 'Biprodas Roy',
-        email: 'biprodas.cse@gmail.com'
+        email: 'biprodas.cse@gmail.com',
       },
     };
   }

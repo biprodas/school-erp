@@ -15,6 +15,7 @@ import { Key } from '~/common/enums/keys.enum';
 import { TenantConnectionService } from '~/tenancy/tenant-connection.service';
 import { TenantMigrationService } from '~/tenancy/tenant-migration.service';
 import { TenantMiddleware } from '~/tenancy/tenant.middleware';
+import { RbacSeederService } from '~/tenanted/rbac/rbac-seeder.service';
 import { CreateTenantDto } from '../dto/create-tenant.dto';
 import { UpdateTenantDto } from '../dto/update-tenant.dto';
 import { PlatformRole } from 'src/modules/platform/users/enums/platform-role.enum';
@@ -33,6 +34,7 @@ export class TenantService {
     private dataSource: DataSource,
     private tenantConnectionService: TenantConnectionService,
     private tenantMigrationService: TenantMigrationService,
+    private rbacSeederService: RbacSeederService,
     private configService: ConfigService,
   ) {}
 
@@ -49,7 +51,7 @@ export class TenantService {
   ): Promise<Tenant> {
     const { user } = ctx;
     const ownerId =
-      user?.role === PlatformRole.SUPER_ADMIN ? undefined : user?.id ?? '';
+      user?.role === PlatformRole.SUPER_ADMIN ? undefined : (user?.id ?? '');
 
     // Two-phase flow:
     // 1) Create tenant record + schema and COMMIT (so other connections can see it)
@@ -85,7 +87,9 @@ export class TenantService {
       await queryRunner.commitTransaction();
     } catch (error) {
       await queryRunner.rollbackTransaction();
-      this.logger.error(`Failed to create tenant "${dto.slug}": ${error.message}`);
+      this.logger.error(
+        `Failed to create tenant "${dto.slug}": ${error.message}`,
+      );
       throw error;
     } finally {
       await queryRunner.release();
@@ -93,6 +97,9 @@ export class TenantService {
 
     try {
       await this.runTenantMigrations(schemaName);
+
+      // Seed the standard school roles into the freshly-created schema.
+      await this.rbacSeederService.seedSystemRoles(schemaName);
 
       if (ownerId && tenant) {
         await this.membershipRepository.save(
@@ -105,7 +112,7 @@ export class TenantService {
       }
 
       // tenant is always set if we got here, but keep types safe
-      return tenant as Tenant;
+      return tenant;
     } catch (error) {
       // Compensating rollback: best-effort cleanup to avoid orphaned tenants/schemas.
       try {
@@ -151,7 +158,10 @@ export class TenantService {
   }
 
   /** Returns only tenants where the user has any membership. */
-  async getTenantsByUser(_ctx: RequestContextDto, userId: string): Promise<Tenant[]> {
+  async getTenantsByUser(
+    _ctx: RequestContextDto,
+    userId: string,
+  ): Promise<Tenant[]> {
     const memberships = await this.membershipRepository.find({
       where: { userId },
     });
@@ -172,10 +182,7 @@ export class TenantService {
    * Returns a tenant only if the requester is a SUPER_ADMIN or has any
    * membership in that tenant.
    */
-  async findByIdForUser(
-    ctx: RequestContextDto,
-    id: string,
-  ): Promise<Tenant> {
+  async findByIdForUser(ctx: RequestContextDto, id: string): Promise<Tenant> {
     const tenant = await this.findById(ctx, id);
     if (!tenant) {
       throw new NotFoundException('Tenant not found');
@@ -204,10 +211,16 @@ export class TenantService {
 
     if (user?.role !== PlatformRole.SUPER_ADMIN) {
       const membership = await this.membershipRepository.findOne({
-        where: { tenantId: id, userId: user?.id ?? '', role: MembershipRole.OWNER },
+        where: {
+          tenantId: id,
+          userId: user?.id ?? '',
+          role: MembershipRole.OWNER,
+        },
       });
       if (!membership) {
-        throw new ForbiddenException('Only the tenant owner or a super admin can update this tenant');
+        throw new ForbiddenException(
+          'Only the tenant owner or a super admin can update this tenant',
+        );
       }
     }
 
@@ -233,10 +246,14 @@ export class TenantService {
       await queryRunner.manager.delete(Tenant, id);
       await queryRunner.commitTransaction();
       TenantMiddleware.invalidateCache(tenant.slug);
-      this.logger.log(`Tenant "${tenant.slug}" and schema ${tenant.schemaName} deleted`);
+      this.logger.log(
+        `Tenant "${tenant.slug}" and schema ${tenant.schemaName} deleted`,
+      );
     } catch (error) {
       await queryRunner.rollbackTransaction();
-      this.logger.error(`Failed to delete tenant "${tenant.slug}": ${error.message}`);
+      this.logger.error(
+        `Failed to delete tenant "${tenant.slug}": ${error.message}`,
+      );
       throw error;
     } finally {
       await queryRunner.release();

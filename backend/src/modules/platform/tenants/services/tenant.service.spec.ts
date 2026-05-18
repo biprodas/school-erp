@@ -10,11 +10,14 @@ import { PlatformRole } from 'src/modules/platform/users/enums/platform-role.enu
 import { UserStatus } from 'src/modules/platform/users/enums/user-status.enum';
 import { TenantConnectionService } from '~/tenancy/tenant-connection.service';
 import { TenantMigrationService } from '~/tenancy/tenant-migration.service';
+import { RbacSeederService } from '~/tenanted/rbac/rbac-seeder.service';
 import { RequestContextDto } from '~/common/dto/request-context.dto';
 
 // --- Helpers ---
 
-const makeCtx = (overrides: Partial<RequestContextDto> = {}): RequestContextDto =>
+const makeCtx = (
+  overrides: Partial<RequestContextDto> = {},
+): RequestContextDto =>
   Object.assign(
     {
       requestId: 'test',
@@ -32,13 +35,23 @@ const makeCtx = (overrides: Partial<RequestContextDto> = {}): RequestContextDto 
 const superAdminCtx = () =>
   makeCtx({
     userId: 'admin-id',
-    user: { id: 'admin-id', email: 'admin@test.com', role: PlatformRole.SUPER_ADMIN, status: UserStatus.ACTIVE },
+    user: {
+      id: 'admin-id',
+      email: 'admin@test.com',
+      role: PlatformRole.SUPER_ADMIN,
+      status: UserStatus.ACTIVE,
+    },
   });
 
 const userCtx = (id = 'user-id') =>
   makeCtx({
     userId: id,
-    user: { id, email: 'user@test.com', role: PlatformRole.USER, status: UserStatus.ACTIVE },
+    user: {
+      id,
+      email: 'user@test.com',
+      role: PlatformRole.USER,
+      status: UserStatus.ACTIVE,
+    },
   });
 
 const TENANT_ID = 'tenant-1';
@@ -112,9 +125,22 @@ describe('TenantService', () => {
         { provide: getRepositoryToken(Tenant), useValue: tenantRepo },
         { provide: getRepositoryToken(Membership), useValue: membershipRepo },
         { provide: getDataSourceToken(), useValue: mockDataSource },
-        { provide: TenantConnectionService, useValue: { synchronizeSchema: jest.fn() } },
-        { provide: TenantMigrationService, useValue: { runMigrationsForSchema: jest.fn() } },
-        { provide: ConfigService, useValue: { get: jest.fn().mockReturnValue('development') } },
+        {
+          provide: TenantConnectionService,
+          useValue: { synchronizeSchema: jest.fn() },
+        },
+        {
+          provide: TenantMigrationService,
+          useValue: { runMigrationsForSchema: jest.fn() },
+        },
+        {
+          provide: RbacSeederService,
+          useValue: { seedSystemRoles: jest.fn() },
+        },
+        {
+          provide: ConfigService,
+          useValue: { get: jest.fn().mockReturnValue('development') },
+        },
       ],
     }).compile();
 
@@ -135,12 +161,16 @@ describe('TenantService', () => {
 
     it('Regular USER sees only tenants with membership', async () => {
       const ctx = userCtx('user-id');
-      membershipRepo.find.mockResolvedValue([makeMembership({ tenantId: TENANT_ID })]);
+      membershipRepo.find.mockResolvedValue([
+        makeMembership({ tenantId: TENANT_ID }),
+      ]);
       tenantRepo.find.mockResolvedValue([makeTenant()]);
 
       const result = await service.getAllTenants(ctx);
       expect(result).toHaveLength(1);
-      expect(membershipRepo.find).toHaveBeenCalledWith({ where: { userId: 'user-id' } });
+      expect(membershipRepo.find).toHaveBeenCalledWith({
+        where: { userId: 'user-id' },
+      });
     });
 
     it('Regular USER with no memberships sees empty list', async () => {
@@ -165,7 +195,9 @@ describe('TenantService', () => {
     it('User with membership can view tenant', async () => {
       const ctx = userCtx('user-id');
       tenantRepo.findOne.mockResolvedValue(makeTenant());
-      membershipRepo.findOne.mockResolvedValue(makeMembership({ userId: 'user-id' }));
+      membershipRepo.findOne.mockResolvedValue(
+        makeMembership({ userId: 'user-id' }),
+      );
 
       const result = await service.findByIdForUser(ctx, TENANT_ID);
       expect(result.id).toBe(TENANT_ID);
@@ -176,7 +208,9 @@ describe('TenantService', () => {
       tenantRepo.findOne.mockResolvedValue(makeTenant());
       membershipRepo.findOne.mockResolvedValue(null);
 
-      await expect(service.findByIdForUser(ctx, TENANT_ID)).rejects.toThrow(ForbiddenException);
+      await expect(service.findByIdForUser(ctx, TENANT_ID)).rejects.toThrow(
+        ForbiddenException,
+      );
     });
 
     it('throws NotFoundException for non-existent tenant', async () => {
@@ -197,7 +231,11 @@ describe('TenantService', () => {
       tenantRepo.findOne.mockResolvedValue(makeTenant());
       tenantRepo.save.mockImplementation((entity) => Promise.resolve(entity));
 
-      const result = await service.updateTenant(superAdminCtx(), TENANT_ID, dto);
+      const result = await service.updateTenant(
+        superAdminCtx(),
+        TENANT_ID,
+        dto,
+      );
       expect(result.name).toBe('Updated Name');
     });
 
@@ -218,9 +256,9 @@ describe('TenantService', () => {
       tenantRepo.findOne.mockResolvedValue(makeTenant());
       membershipRepo.findOne.mockResolvedValue(null); // no OWNER membership
 
-      await expect(
-        service.updateTenant(ctx, TENANT_ID, dto),
-      ).rejects.toThrow(ForbiddenException);
+      await expect(service.updateTenant(ctx, TENANT_ID, dto)).rejects.toThrow(
+        ForbiddenException,
+      );
     });
 
     it('throws NotFoundException for non-existent tenant', async () => {
@@ -250,7 +288,10 @@ describe('TenantService', () => {
       expect(result).toBeDefined();
       expect(membershipRepo.save).toHaveBeenCalled();
       expect(membershipRepo.create).toHaveBeenCalledWith(
-        expect.objectContaining({ userId: 'user-id', role: MembershipRole.OWNER }),
+        expect.objectContaining({
+          userId: 'user-id',
+          role: MembershipRole.OWNER,
+        }),
       );
     });
   });

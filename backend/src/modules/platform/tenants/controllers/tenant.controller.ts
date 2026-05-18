@@ -33,7 +33,7 @@ export class TenantController {
       statusCode: 200,
       message: `List of tenants`,
       data: tenants,
-    }
+    };
   }
 
   @Get(':id')
@@ -48,14 +48,14 @@ export class TenantController {
       statusCode: 200,
       message: `Tenant found`,
       data: tenant,
-    }
+    };
   }
 
   @Post()
   async create(
     @RequestContext() ctx: RequestContextDto,
     @Body() createTenantDto: CreateTenantDto,
-  ) {    
+  ) {
     const tenant = await this.tenantService.createTenant(ctx, createTenantDto);
 
     return {
@@ -63,7 +63,7 @@ export class TenantController {
       statusCode: 201,
       message: `Tenant created successfully`,
       data: tenant,
-    }
+    };
   }
 
   @Patch(':id')
@@ -72,15 +72,18 @@ export class TenantController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateTenantDto: UpdateTenantDto,
   ) {
-
-    const tenant = await this.tenantService.updateTenant(ctx, id, updateTenantDto);
+    const tenant = await this.tenantService.updateTenant(
+      ctx,
+      id,
+      updateTenantDto,
+    );
 
     return {
       success: true,
       statusCode: 200,
       message: `Tenant updated successfully`,
       data: tenant,
-    }
+    };
   }
 
   @Delete(':id')
@@ -96,6 +99,6 @@ export class TenantController {
       success: true,
       statusCode: 200,
       message: `Tenant deleted successfully`,
-    }
+    };
   }
 }

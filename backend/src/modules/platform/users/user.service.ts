@@ -18,21 +18,23 @@ import { UserStatus } from './enums/user-status.enum';
 
 @Injectable()
 export class UserService {
-  private logger = new Logger(UserService.name)
-
+  private logger = new Logger(UserService.name);
 
   constructor(
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
   ) {}
 
-  async findAll(ctx: RequestContextDto, filterUserDto: FilterUserDto): Promise<User[]> {
-    this.logger.log(`${this.findAll.name} Service Called`)
+  async findAll(
+    ctx: RequestContextDto,
+    filterUserDto: FilterUserDto,
+  ): Promise<User[]> {
+    this.logger.log(`${this.findAll.name} Service Called`);
 
-    const { id, firstName, lastName, email, role } = filterUserDto
-    const reqQuery: any = { id, firstName, lastName, email, role }
+    const { id, firstName, lastName, email, role } = filterUserDto;
+    const reqQuery: any = { id, firstName, lastName, email, role };
 
-    return this.userRepo.find({ where: reqQuery })
+    return this.userRepo.find({ where: reqQuery });
   }
 
   async findById(_ctx: RequestContextDto, id: string): Promise<User> {
@@ -43,8 +45,11 @@ export class UserService {
     return user;
   }
 
-  async createPlatformUser(ctx: RequestContextDto, dto: CreateUserDto): Promise<User> {
-    this.logger.log(`${this.createPlatformUser.name} Service Called`)
+  async createPlatformUser(
+    ctx: RequestContextDto,
+    dto: CreateUserDto,
+  ): Promise<User> {
+    this.logger.log(`${this.createPlatformUser.name} Service Called`);
 
     const existing = await this.userRepo.findOne({
       where: { email: dto.email },
@@ -66,8 +71,12 @@ export class UserService {
     return this.findById(ctx, user.id);
   }
 
-  async update(ctx: RequestContextDto, targetId: string, dto: UpdateUserDto): Promise<User> {
-    this.logger.log(`${this.update.name} Service Called`)
+  async update(
+    ctx: RequestContextDto,
+    targetId: string,
+    dto: UpdateUserDto,
+  ): Promise<User> {
+    this.logger.log(`${this.update.name} Service Called`);
 
     const isSelf = ctx.user?.id === targetId;
     const isSuperAdmin = ctx.user?.role === PlatformRole.SUPER_ADMIN;
@@ -78,7 +87,9 @@ export class UserService {
 
     // Only super admin can change role or status
     if (!isSuperAdmin && (dto.role || dto.status)) {
-      throw new ForbiddenException('Only super admin can change role or status');
+      throw new ForbiddenException(
+        'Only super admin can change role or status',
+      );
     }
 
     const user = await this.findById(ctx, targetId);
@@ -87,10 +98,9 @@ export class UserService {
   }
 
   async remove(ctx: RequestContextDto, targetId: string): Promise<void> {
-    this.logger.log(`${this.remove.name} Service Called`)
+    this.logger.log(`${this.remove.name} Service Called`);
 
     await this.findById(ctx, targetId);
     await this.userRepo.delete(targetId);
   }
 }
-

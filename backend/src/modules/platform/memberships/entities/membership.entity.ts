@@ -28,11 +28,17 @@ export class Membership {
   @Column({ type: 'uuid' })
   tenantId: string;
 
-  @ManyToOne(() => Tenant, (tenant) => tenant.memberships, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Tenant, (tenant) => tenant.memberships, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'tenantId' })
   tenant: Tenant;
 
-  @Column({ type: 'enum', enum: MembershipRole, default: MembershipRole.MEMBER })
+  @Column({
+    type: 'enum',
+    enum: MembershipRole,
+    default: MembershipRole.MEMBER,
+  })
   role: MembershipRole;
 
   @CreateDateColumn()

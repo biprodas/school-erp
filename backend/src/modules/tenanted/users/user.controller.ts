@@ -11,17 +11,21 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { PermissionsGuard } from '../rbac/permissions.guard';
+import { RequirePermissions } from '../rbac/require-permissions.decorator';
+import { PERMISSIONS } from '../rbac/permissions.catalog';
 import { CreateUserDto } from './dto/create-user.dto';
 import { FilterUserDto } from './dto/filter-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserService } from './user.service';
 
 @Controller('users')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
   @Get()
+  @RequirePermissions(PERMISSIONS.USERS_READ)
   async findAll(@Query() filterUserDto: FilterUserDto) {
     const users = await this.userService.findFiltered(filterUserDto);
 
@@ -34,6 +38,7 @@ export class UserController {
   }
 
   @Post()
+  @RequirePermissions(PERMISSIONS.USERS_CREATE)
   async create(@Body() createUserDto: CreateUserDto) {
     const user = await this.userService.create(createUserDto);
 
@@ -46,6 +51,7 @@ export class UserController {
   }
 
   @Get(':id')
+  @RequirePermissions(PERMISSIONS.USERS_READ)
   async findOne(@Param('id', ParseUUIDPipe) id: string) {
     const user = await this.userService.findById(id);
 
@@ -58,6 +64,7 @@ export class UserController {
   }
 
   @Patch(':id')
+  @RequirePermissions(PERMISSIONS.USERS_UPDATE)
   async update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateUserDto: UpdateUserDto,
@@ -73,6 +80,7 @@ export class UserController {
   }
 
   @Delete(':id')
+  @RequirePermissions(PERMISSIONS.USERS_DELETE)
   async remove(@Param('id', ParseUUIDPipe) id: string) {
     await this.userService.remove(id);
 

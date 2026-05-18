@@ -5,6 +5,7 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   DeleteDateColumn,
+  OneToMany,
   BeforeInsert,
   BeforeUpdate,
   AfterLoad,
@@ -12,8 +13,8 @@ import {
   AfterUpdate,
   AfterRemove,
 } from 'typeorm';
-import { UserRole } from '../enums/user-role.enum';
 import { UserStatus } from '../enums/user-status.enum';
+import { UserRole } from '../../rbac/entities/user-role.entity';
 
 @Entity('users')
 export class User {
@@ -35,11 +36,11 @@ export class User {
   // virtual column
   fullName: string;
 
-  @Column({ type: 'varchar', default: UserRole.USER })
-  role: string;
-
   @Column({ type: 'varchar', default: UserStatus.ACTIVE })
   status: string;
+
+  @OneToMany(() => UserRole, (userRole) => userRole.user)
+  userRoles: UserRole[];
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
@@ -60,19 +61,18 @@ export class User {
     this.fullName = parts.join(' ');
   }
 
-  
   @AfterInsert()
   logInsert() {
-    console.log(`User Inserted #ID: ${this.id}`)
+    console.log(`User Inserted #ID: ${this.id}`);
   }
 
   @AfterUpdate()
   logUpdate() {
-    console.log(`User Updated #ID: ${this.id}`)
+    console.log(`User Updated #ID: ${this.id}`);
   }
 
   @AfterRemove()
   logRemove() {
-    console.log(`User Removed`)
+    console.log(`User Removed`);
   }
 }

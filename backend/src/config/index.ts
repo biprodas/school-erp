@@ -6,11 +6,12 @@ import jwtConfig from './jwt.config';
 /**
  * Single place to register config namespaces. Add new `*.config.ts` files and append here.
  */
-export const configLoaders: ConfigFactory[] = [
-  appConfig,
-  dbConfig,
-  jwtConfig,
-];
+export const configLoaders: ConfigFactory[] = [appConfig, dbConfig, jwtConfig];
 
-export type { RootConfig, AppConfig, DbConfig, JwtConfig } from './config.types';
+export type {
+  RootConfig,
+  AppConfig,
+  DbConfig,
+  JwtConfig,
+} from './config.types';
 export { validateEnv, envValidationSchema } from './env.validation';

@@ -38,10 +38,20 @@ describe('User E2E', () => {
   let userRepo: Record<string, jest.Mock>;
 
   const adminToken = () =>
-    jwtService.sign({ sub: ADMIN_ID, email: 'admin@test.com', role: PlatformRole.SUPER_ADMIN, status: UserStatus.ACTIVE });
+    jwtService.sign({
+      sub: ADMIN_ID,
+      email: 'admin@test.com',
+      role: PlatformRole.SUPER_ADMIN,
+      status: UserStatus.ACTIVE,
+    });
 
   const userToken = (id = USER_ID) =>
-    jwtService.sign({ sub: id, email: 'user@test.com', role: PlatformRole.USER, status: UserStatus.ACTIVE });
+    jwtService.sign({
+      sub: id,
+      email: 'user@test.com',
+      role: PlatformRole.USER,
+      status: UserStatus.ACTIVE,
+    });
 
   beforeEach(async () => {
     userRepo = {
@@ -55,19 +65,29 @@ describe('User E2E', () => {
     const module: TestingModule = await Test.createTestingModule({
       imports: [
         PassportModule,
-        JwtModule.register({ secret: JWT_SECRET, signOptions: { expiresIn: '1h' } }),
+        JwtModule.register({
+          secret: JWT_SECRET,
+          signOptions: { expiresIn: '1h' },
+        }),
       ],
       controllers: [UserController],
       providers: [
         UserService,
         PlatformJwtStrategy,
         { provide: getRepositoryToken(User), useValue: userRepo },
-        { provide: ConfigService, useValue: { get: (key: string) => key === 'jwt.secret' ? JWT_SECRET : null } },
+        {
+          provide: ConfigService,
+          useValue: {
+            get: (key: string) => (key === 'jwt.secret' ? JWT_SECRET : null),
+          },
+        },
       ],
     }).compile();
 
     app = module.createNestApplication();
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+    app.useGlobalPipes(
+      new ValidationPipe({ whitelist: true, transform: true }),
+    );
     await app.init();
 
     jwtService = module.get<JwtService>(JwtService);
@@ -149,7 +169,9 @@ describe('User E2E', () => {
     it('SUPER_ADMIN can create user', async () => {
       userRepo.findOne
         .mockResolvedValueOnce(null) // email check
-        .mockResolvedValueOnce(makeUser({ id: OTHER_USER_ID, email: 'new@test.com' })); // findById after save
+        .mockResolvedValueOnce(
+          makeUser({ id: OTHER_USER_ID, email: 'new@test.com' }),
+        ); // findById after save
 
       await request(app.getHttpServer())
         .post('/platform/users')

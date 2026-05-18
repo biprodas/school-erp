@@ -1,8 +1,7 @@
-import { IsEnum, IsOptional } from "class-validator";
-import { PlatformRole } from "../enums/platform-role.enum";
+import { IsEnum, IsOptional } from 'class-validator';
+import { PlatformRole } from '../enums/platform-role.enum';
 
 export class FilterUserDto {
-
   @IsOptional()
   id: string;
 

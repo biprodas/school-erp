@@ -29,7 +29,9 @@ export class TenantConnectionService implements OnApplicationShutdown {
    * The caller (or TenantCleanupInterceptor) MUST call `proxy.release()`
    * to return the connection to the pool.
    */
-  async getScopedConnection(schemaName: string): Promise<TenantDataSourceProxy> {
+  async getScopedConnection(
+    schemaName: string,
+  ): Promise<TenantDataSourceProxy> {
     const queryRunner = this.tenantPool.createQueryRunner();
     await queryRunner.connect();
 

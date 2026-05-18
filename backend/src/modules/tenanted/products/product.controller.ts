@@ -12,36 +12,44 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { PermissionsGuard } from '../rbac/permissions.guard';
+import { RequirePermissions } from '../rbac/require-permissions.decorator';
+import { PERMISSIONS } from '../rbac/permissions.catalog';
 import { ProductService } from './product.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 
 @Controller('products')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 export class ProductController {
   constructor(private productService: ProductService) {}
 
   @Get()
+  @RequirePermissions(PERMISSIONS.PRODUCTS_READ)
   findAll() {
     return this.productService.findAll();
   }
 
   @Get('stats')
+  @RequirePermissions(PERMISSIONS.PRODUCTS_READ)
   getStats() {
     return this.productService.getProductStats();
   }
 
   @Get(':id')
+  @RequirePermissions(PERMISSIONS.PRODUCTS_READ)
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.productService.findOne(id);
   }
 
   @Post()
+  @RequirePermissions(PERMISSIONS.PRODUCTS_CREATE)
   create(@Body() dto: CreateProductDto) {
     return this.productService.create(dto);
   }
 
   @Patch(':id')
+  @RequirePermissions(PERMISSIONS.PRODUCTS_UPDATE)
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateProductDto,
@@ -50,6 +58,7 @@ export class ProductController {
   }
 
   @Delete(':id')
+  @RequirePermissions(PERMISSIONS.PRODUCTS_DELETE)
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(@Param('id', ParseUUIDPipe) id: string) {
     await this.productService.remove(id);
