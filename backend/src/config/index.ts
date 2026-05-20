@@ -22,3 +22,4 @@ export type {
   SwaggerConfig,
 } from './config.types';
 export { validateEnv, envValidationSchema } from './env.validation';
+export { setupSwagger } from './swagger.setup';
