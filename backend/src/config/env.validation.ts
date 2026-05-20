@@ -55,6 +55,16 @@ export const envValidationSchema = Joi.object({
   SWAGGER_PATH: Joi.string().default('api/docs'),
   SWAGGER_TITLE: Joi.string().optional(),
   SWAGGER_DESCRIPTION: Joi.string().optional(),
+  HEALTH_DISK_PATH: Joi.string().default('/'),
+  HEALTH_DISK_THRESHOLD: Joi.number().min(0).max(1).default(0.9),
+  HEALTH_MEMORY_HEAP_BYTES: Joi.number()
+    .integer()
+    .min(1)
+    .default(300 * 1024 * 1024),
+  HEALTH_MEMORY_RSS_BYTES: Joi.number()
+    .integer()
+    .min(1)
+    .default(500 * 1024 * 1024),
 })
   .unknown(true)
   .prefs({ abortEarly: false });
