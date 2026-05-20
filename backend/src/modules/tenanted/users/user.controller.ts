@@ -10,6 +10,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiHeader, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PermissionsGuard } from '../rbac/permissions.guard';
 import { RequirePermissions } from '../rbac/require-permissions.decorator';
@@ -19,6 +20,13 @@ import { FilterUserDto } from './dto/filter-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserService } from './user.service';
 
+@ApiTags('Tenant / Users')
+@ApiBearerAuth('tenant-jwt')
+@ApiHeader({
+  name: 'x-tenant-id',
+  required: true,
+  description: 'Tenant identifier',
+})
 @Controller('users')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 export class UserController {

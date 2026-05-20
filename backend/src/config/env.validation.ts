@@ -51,6 +51,10 @@ export const envValidationSchema = Joi.object({
   }),
   JWT_EXPIRES_IN: Joi.string().default('1d'),
   CORS_ORIGIN: Joi.string().optional(),
+  SWAGGER_ENABLED: Joi.boolean().default(true),
+  SWAGGER_PATH: Joi.string().default('api/docs'),
+  SWAGGER_TITLE: Joi.string().optional(),
+  SWAGGER_DESCRIPTION: Joi.string().optional(),
 })
   .unknown(true)
   .prefs({ abortEarly: false });

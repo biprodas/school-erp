@@ -11,6 +11,7 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiHeader, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PermissionsGuard } from '../rbac/permissions.guard';
 import { RequirePermissions } from '../rbac/require-permissions.decorator';
@@ -19,6 +20,13 @@ import { ProductService } from './product.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 
+@ApiTags('Tenant / Products')
+@ApiBearerAuth('tenant-jwt')
+@ApiHeader({
+  name: 'x-tenant-id',
+  required: true,
+  description: 'Tenant identifier',
+})
 @Controller('products')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 export class ProductController {

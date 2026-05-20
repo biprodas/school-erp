@@ -9,6 +9,7 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { PlatformRole } from 'src/modules/platform/users/enums/platform-role.enum';
 import { RequestContext } from '~/common/decorators/request-context.decorator';
 import { Roles } from '~/common/decorators/roles.decorator';
@@ -19,6 +20,8 @@ import { CreateTenantDto } from '../dto/create-tenant.dto';
 import { UpdateTenantDto } from '../dto/update-tenant.dto';
 import { TenantService } from '../services/tenant.service';
 
+@ApiTags('Platform / Tenants')
+@ApiBearerAuth('platform-jwt')
 @Controller('tenants')
 @UseGuards(PlatformJwtAuthGuard)
 export class TenantController {

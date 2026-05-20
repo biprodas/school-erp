@@ -12,6 +12,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiHeader, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PermissionsGuard } from '../rbac/permissions.guard';
 import { RequirePermissions } from '../rbac/require-permissions.decorator';
@@ -21,6 +22,13 @@ import { CreateCatDto } from './dto/create-cat.dto';
 import { UpdateCatDto } from './dto/update-cat.dto';
 import { FilterCatDto } from './dto/filter-cat.dto';
 
+@ApiTags('Tenant / Cats')
+@ApiBearerAuth('tenant-jwt')
+@ApiHeader({
+  name: 'x-tenant-id',
+  required: true,
+  description: 'Tenant identifier',
+})
 @Controller('cats')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 export class CatController {

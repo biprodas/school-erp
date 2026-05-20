@@ -16,12 +16,15 @@ import { Roles } from '~/common/decorators/roles.decorator';
 import { RequestContextDto } from '~/common/dto/request-context.dto';
 import { PlatformJwtAuthGuard } from '~/common/guards/platform-jwt-auth.guard';
 import { RolesGuard } from '~/common/guards/roles.guard';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CreateUserDto } from './dto/create-user.dto';
 import { FilterUserDto } from './dto/filter-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { PlatformRole } from './enums/platform-role.enum';
 import { UserService } from './user.service';
 
+@ApiTags('Platform / Users')
+@ApiBearerAuth('platform-jwt')
 @Controller('platform/users')
 @UseGuards(PlatformJwtAuthGuard)
 export class UserController {

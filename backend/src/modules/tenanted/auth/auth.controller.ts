@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiHeader, ApiTags } from '@nestjs/swagger';
 import { RequestContext } from '~/common/decorators/request-context.decorator';
 import { RequestContextDto } from '~/common/dto/request-context.dto';
 import { AuthService } from './auth.service';
@@ -6,6 +7,13 @@ import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
 
+@ApiTags('Tenant / Auth')
+@ApiBearerAuth('tenant-jwt')
+@ApiHeader({
+  name: 'x-tenant-id',
+  required: true,
+  description: 'Tenant identifier',
+})
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}

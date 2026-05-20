@@ -10,6 +10,7 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiHeader, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PermissionsGuard } from './permissions.guard';
 import { RequirePermissions } from './require-permissions.decorator';
@@ -18,6 +19,13 @@ import { RoleService } from './role.service';
 import { AssignRoleDto } from './dto/assign-role.dto';
 
 /** Manages the role assignments of a specific tenant user. */
+@ApiTags('Tenant / User Roles')
+@ApiBearerAuth('tenant-jwt')
+@ApiHeader({
+  name: 'x-tenant-id',
+  required: true,
+  description: 'Tenant identifier',
+})
 @Controller('users/:userId/roles')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 export class UserRoleController {

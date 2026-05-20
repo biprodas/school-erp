@@ -9,6 +9,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { RequestContext } from '~/common/decorators/request-context.decorator';
 import { RequestContextDto } from '~/common/dto/request-context.dto';
 import { PlatformJwtAuthGuard } from '~/common/guards/platform-jwt-auth.guard';
@@ -17,6 +18,8 @@ import { UpdateMembershipRoleDto } from '../dto/update-membership-role.dto';
 import { MembershipService } from '../services/membership.service';
 import { FilterMembershipDto } from '../dto/filter-membership.dto';
 
+@ApiTags('Platform / Memberships')
+@ApiBearerAuth('platform-jwt')
 @Controller('memberships')
 @UseGuards(PlatformJwtAuthGuard)
 export class MembershipController {
