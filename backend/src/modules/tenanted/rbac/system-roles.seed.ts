@@ -31,6 +31,10 @@ export const SYSTEM_ROLES: SystemRoleSeed[] = [
     description: 'General school staff',
     permissions: [
       P.USERS_READ,
+      P.STUDENTS_READ,
+      P.STUDENTS_CREATE,
+      P.STUDENTS_UPDATE,
+      P.STUDENTS_DELETE,
       P.CATS_READ,
       P.CATS_CREATE,
       P.CATS_UPDATE,
@@ -47,6 +51,7 @@ export const SYSTEM_ROLES: SystemRoleSeed[] = [
     description: 'Teaching staff',
     permissions: [
       P.USERS_READ,
+      P.STUDENTS_READ,
       P.TASKS_READ,
       P.TASKS_CREATE,
       P.TASKS_UPDATE,
@@ -59,6 +64,7 @@ export const SYSTEM_ROLES: SystemRoleSeed[] = [
     description: 'Finance and inventory',
     permissions: [
       P.USERS_READ,
+      P.STUDENTS_READ,
       P.PRODUCTS_READ,
       P.PRODUCTS_CREATE,
       P.PRODUCTS_UPDATE,
@@ -70,6 +76,7 @@ export const SYSTEM_ROLES: SystemRoleSeed[] = [
     description: 'Library management',
     permissions: [
       P.USERS_READ,
+      P.STUDENTS_READ,
       P.CATS_READ,
       P.CATS_CREATE,
       P.CATS_UPDATE,
@@ -80,7 +87,7 @@ export const SYSTEM_ROLES: SystemRoleSeed[] = [
   {
     name: 'parent',
     description: 'Parent or guardian',
-    permissions: [P.TASKS_READ, P.PRODUCTS_READ],
+    permissions: [P.STUDENTS_READ, P.TASKS_READ, P.PRODUCTS_READ],
   },
   {
     name: 'student',

@@ -16,6 +16,7 @@ import { TenantCleanupInterceptor } from '~/tenancy/tenant-cleanup.interceptor';
 import { MembershipModule } from 'src/modules/platform/memberships/membership.module';
 import { UserModule } from 'src/modules/platform/users/user.module';
 import { ProductModule } from '~/tenanted/products/product.module';
+import { StudentModule } from '~/tenanted/students/student.module';
 import { TenantUserModule } from '~/tenanted/users/user.module';
 import { RbacModule } from '~/tenanted/rbac/rbac.module';
 import { TenantModule } from 'src/modules/platform/tenants/tenant.module';
@@ -43,6 +44,7 @@ const envFilePath = ['.env', `.env.${nodeEnv}`];
     TaskModule,
     ProductModule,
     TenantUserModule,
+    StudentModule,
     RbacModule,
   ],
   controllers: [AppController],

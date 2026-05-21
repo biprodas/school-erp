@@ -32,9 +32,7 @@ export class CatService {
 
   async update(id: string, dto: UpdateCatDto): Promise<Cat> {
     const cat = await this.catRepo.findByIdOrFail(id);
-    if (dto.name !== undefined) cat.name = dto.name;
-    if (dto.breed !== undefined) cat.breed = dto.breed || null;
-    if (dto.age !== undefined) cat.age = dto.age ?? null;
+    Object.assign(cat, dto);
     return this.catRepo.save(cat);
   }
 

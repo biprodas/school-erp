@@ -12,6 +12,12 @@ export const PERMISSIONS = {
   USERS_UPDATE: 'users:update',
   USERS_DELETE: 'users:delete',
 
+  // Students
+  STUDENTS_READ: 'students:read',
+  STUDENTS_CREATE: 'students:create',
+  STUDENTS_UPDATE: 'students:update',
+  STUDENTS_DELETE: 'students:delete',
+
   // Cats
   CATS_READ: 'cats:read',
   CATS_CREATE: 'cats:create',
