@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Not, Repository } from 'typeorm';
 import { RequestContextDto } from '~/common/dto/request-context.dto';
 import { PlatformRole } from 'src/modules/platform/users/enums/platform-role.enum';
 import { TenantService } from 'src/modules/platform/tenants/services/tenant.service';
@@ -57,6 +57,17 @@ export class MembershipService {
       throw new ConflictException(
         'Membership already exists for this user and tenant',
       );
+    }
+
+    if (dto.role === MembershipRole.OWNER) {
+      const currentOwner = await this.membershipRepository.findOne({
+        where: { tenantId: dto.tenantId, role: MembershipRole.OWNER },
+      });
+      if (currentOwner) {
+        throw new ConflictException(
+          'Tenant already has an owner; use the transfer-ownership endpoint instead',
+        );
+      }
     }
 
     const membership = this.membershipRepository.create({
@@ -170,6 +181,24 @@ export class MembershipService {
       if (dto.role === MembershipRole.OWNER) {
         throw new ForbiddenException(
           'Only super admins can assign the owner role',
+        );
+      }
+    }
+
+    if (
+      dto.role === MembershipRole.OWNER &&
+      membership.role !== MembershipRole.OWNER
+    ) {
+      const otherOwner = await this.membershipRepository.findOne({
+        where: {
+          tenantId: membership.tenantId,
+          role: MembershipRole.OWNER,
+          id: Not(membership.id),
+        },
+      });
+      if (otherOwner) {
+        throw new ConflictException(
+          'Tenant already has an owner; use the transfer-ownership endpoint instead',
         );
       }
     }

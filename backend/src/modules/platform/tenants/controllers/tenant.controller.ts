@@ -17,6 +17,7 @@ import { RequestContextDto } from '~/common/dto/request-context.dto';
 import { PlatformJwtAuthGuard } from '~/common/guards/platform-jwt-auth.guard';
 import { RolesGuard } from '~/common/guards/roles.guard';
 import { CreateTenantDto } from '../dto/create-tenant.dto';
+import { TransferOwnershipDto } from '../dto/transfer-ownership.dto';
 import { UpdateTenantDto } from '../dto/update-tenant.dto';
 import { TenantService } from '../services/tenant.service';
 
@@ -86,6 +87,24 @@ export class TenantController {
       statusCode: 200,
       message: `Tenant updated successfully`,
       data: tenant,
+    };
+  }
+
+  @Post(':id/transfer-ownership')
+  @UseGuards(RolesGuard)
+  @Roles(PlatformRole.SUPER_ADMIN)
+  async transferOwnership(
+    @RequestContext() ctx: RequestContextDto,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: TransferOwnershipDto,
+  ) {
+    const membership = await this.tenantService.transferOwnership(ctx, id, dto);
+
+    return {
+      success: true,
+      statusCode: 200,
+      message: 'Tenant ownership transferred',
+      data: membership,
     };
   }
 

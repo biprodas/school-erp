@@ -190,6 +190,23 @@ describe('MembershipService', () => {
         NotFoundException,
       );
     });
+
+    it('rejects OWNER role when tenant already has an OWNER', async () => {
+      // duplicate check returns null, then OWNER guard finds an existing owner
+      membershipRepo.findOne
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(
+          makeMembership({ userId: 'existing-owner', role: MembershipRole.OWNER }),
+        );
+
+      await expect(
+        service.create(superAdminCtx(), {
+          ...dto,
+          role: MembershipRole.OWNER,
+        }),
+      ).rejects.toThrow(ConflictException);
+      expect(membershipRepo.save).not.toHaveBeenCalled();
+    });
   });
 
   // ===================== findById =====================
@@ -377,9 +394,10 @@ describe('MembershipService', () => {
 
   describe('updateRole', () => {
     it('SUPER_ADMIN can change any role including to OWNER', async () => {
-      membershipRepo.findOne.mockResolvedValue(
-        makeMembership({ role: MembershipRole.MEMBER }),
-      );
+      membershipRepo.findOne
+        .mockResolvedValueOnce(makeMembership({ role: MembershipRole.MEMBER }))
+        // No other OWNER on the tenant.
+        .mockResolvedValueOnce(null);
       membershipRepo.save.mockImplementation((entity) =>
         Promise.resolve(entity),
       );
@@ -472,6 +490,64 @@ describe('MembershipService', () => {
           role: MembershipRole.ADMIN,
         }),
       ).rejects.toThrow(NotFoundException);
+    });
+
+    it('rejects promotion to OWNER when another OWNER exists', async () => {
+      membershipRepo.findOne
+        // initial: membership being updated is currently MEMBER
+        .mockResolvedValueOnce(
+          makeMembership({ role: MembershipRole.MEMBER, tenantId: TENANT_ID }),
+        )
+        // OWNER guard: another OWNER exists for this tenant
+        .mockResolvedValueOnce(
+          makeMembership({
+            id: 'mem-owner',
+            userId: 'other-owner',
+            role: MembershipRole.OWNER,
+            tenantId: TENANT_ID,
+          }),
+        );
+
+      await expect(
+        service.updateRole(superAdminCtx(), 'mem-1', {
+          role: MembershipRole.OWNER,
+        }),
+      ).rejects.toThrow(ConflictException);
+      expect(membershipRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('allows promotion to OWNER when there is no current OWNER', async () => {
+      membershipRepo.findOne
+        .mockResolvedValueOnce(
+          makeMembership({ role: MembershipRole.MEMBER, tenantId: TENANT_ID }),
+        )
+        .mockResolvedValueOnce(null);
+      membershipRepo.save.mockImplementation((entity) =>
+        Promise.resolve(entity),
+      );
+
+      const result = await service.updateRole(superAdminCtx(), 'mem-1', {
+        role: MembershipRole.OWNER,
+      });
+      expect(result.role).toBe(MembershipRole.OWNER);
+    });
+
+    it('allows a no-op OWNER -> OWNER on the same membership', async () => {
+      // membership being updated is already OWNER — OWNER guard should not run
+      // (so we do NOT set up a second findOne mock).
+      membershipRepo.findOne.mockResolvedValueOnce(
+        makeMembership({ role: MembershipRole.OWNER, tenantId: TENANT_ID }),
+      );
+      membershipRepo.save.mockImplementation((entity) =>
+        Promise.resolve(entity),
+      );
+
+      const result = await service.updateRole(superAdminCtx(), 'mem-1', {
+        role: MembershipRole.OWNER,
+      });
+      expect(result.role).toBe(MembershipRole.OWNER);
+      // Verify the guard query was NOT issued (only 1 findOne call total).
+      expect(membershipRepo.findOne).toHaveBeenCalledTimes(1);
     });
   });
 

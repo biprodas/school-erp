@@ -8,6 +8,7 @@ import {
   IsOptional,
   IsFQDN,
   IsDefined,
+  IsUUID,
 } from 'class-validator';
 
 export class CreateTenantDto {
@@ -35,4 +36,12 @@ export class CreateTenantDto {
   })
   @IsOptional()
   domain: string;
+
+  /**
+   * Only honored when the caller is a SUPER_ADMIN. If provided, an OWNER
+   * membership is created for this user atomically with the tenant.
+   */
+  @IsOptional()
+  @IsUUID('4')
+  ownerUserId?: string;
 }
