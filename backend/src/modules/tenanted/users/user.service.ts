@@ -98,4 +98,22 @@ export class UserService {
     const { password, ...result } = user;
     return result;
   }
+
+  async grantAdmin(id: string): Promise<User> {
+    return this.setAdmin(id, true);
+  }
+
+  async revokeAdmin(id: string): Promise<User> {
+    return this.setAdmin(id, false);
+  }
+
+  private async setAdmin(id: string, value: boolean): Promise<User> {
+    const user = await this.findById(id);
+    if (user.isAdmin === value) {
+      return user;
+    }
+    user.isAdmin = value;
+    await this.userRepo.save(user);
+    return this.findById(id);
+  }
 }

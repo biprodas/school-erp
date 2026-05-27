@@ -39,6 +39,9 @@ export class User {
   @Column({ type: 'varchar', default: UserStatus.ACTIVE })
   status: string;
 
+  @Column({ name: 'is_admin', default: false })
+  isAdmin: boolean;
+
   @OneToMany(() => UserRole, (userRole) => userRole.user)
   userRoles: UserRole[];
 

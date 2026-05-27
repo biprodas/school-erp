@@ -16,7 +16,7 @@ import { UserService } from 'src/modules/platform/users/user.service';
 import { Key } from '~/common/enums/keys.enum';
 import { TenantConnectionService } from '~/tenancy/tenant-connection.service';
 import { TenantMigrationService } from '~/tenancy/tenant-migration.service';
-import { TenantMiddleware } from '~/tenancy/tenant.middleware';
+import { tenantSlugCache } from '~/tenancy/tenant-slug.cache';
 import { RbacSeederService } from '~/tenanted/rbac/rbac-seeder.service';
 import { CreateTenantDto } from '../dto/create-tenant.dto';
 import {
@@ -335,7 +335,7 @@ export class TenantService {
 
     Object.assign(tenant, dto);
     const saved = await this.tenantRepository.save(tenant);
-    TenantMiddleware.invalidateCache(tenant.slug);
+    tenantSlugCache.invalidate(tenant.slug);
     return saved;
   }
 
@@ -354,7 +354,7 @@ export class TenantService {
       await queryRunner.query(`DROP SCHEMA IF EXISTS ${quoted} CASCADE`);
       await queryRunner.manager.delete(Tenant, id);
       await queryRunner.commitTransaction();
-      TenantMiddleware.invalidateCache(tenant.slug);
+      tenantSlugCache.invalidate(tenant.slug);
       this.logger.log(
         `Tenant "${tenant.slug}" and schema ${tenant.schemaName} deleted`,
       );

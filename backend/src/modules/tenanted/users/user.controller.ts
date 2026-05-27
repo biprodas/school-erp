@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiHeader, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { IsAdminGuard } from '../rbac/is-admin.guard';
 import { PermissionsGuard } from '../rbac/permissions.guard';
 import { RequirePermissions } from '../rbac/require-permissions.decorator';
 import { PERMISSIONS } from '../rbac/permissions.catalog';
@@ -96,6 +97,30 @@ export class UserController {
       success: true,
       statusCode: 200,
       message: `User deleted. ID: ${id}`,
+    };
+  }
+
+  @Post(':id/grant-admin')
+  @UseGuards(IsAdminGuard)
+  async grantAdmin(@Param('id', ParseUUIDPipe) id: string) {
+    const user = await this.userService.grantAdmin(id);
+    return {
+      success: true,
+      statusCode: 200,
+      message: `Admin granted. ID: ${user.id}`,
+      data: user,
+    };
+  }
+
+  @Post(':id/revoke-admin')
+  @UseGuards(IsAdminGuard)
+  async revokeAdmin(@Param('id', ParseUUIDPipe) id: string) {
+    const user = await this.userService.revokeAdmin(id);
+    return {
+      success: true,
+      statusCode: 200,
+      message: `Admin revoked. ID: ${user.id}`,
+      data: user,
     };
   }
 }

@@ -3,8 +3,6 @@ import {
   Controller,
   Delete,
   Get,
-  HttpCode,
-  HttpStatus,
   Param,
   ParseUUIDPipe,
   Post,
@@ -33,27 +31,41 @@ export class UserRoleController {
 
   @Get()
   @RequirePermissions(PERMISSIONS.ROLES_READ)
-  list(@Param('userId', ParseUUIDPipe) userId: string) {
-    return this.roleService.getUserRoles(userId);
+  async list(@Param('userId', ParseUUIDPipe) userId: string) {
+    const roles = await this.roleService.getUserRoles(userId);
+    return {
+      success: true,
+      statusCode: 200,
+      message: 'List of user roles',
+      data: roles,
+    };
   }
 
   @Post()
   @RequirePermissions(PERMISSIONS.ROLES_ASSIGN)
-  @HttpCode(HttpStatus.NO_CONTENT)
   async assign(
     @Param('userId', ParseUUIDPipe) userId: string,
     @Body() dto: AssignRoleDto,
   ) {
     await this.roleService.assignRole(userId, dto.roleId);
+    return {
+      success: true,
+      statusCode: 201,
+      message: `Role assigned. ID: ${dto.roleId}`,
+    };
   }
 
   @Delete(':roleId')
   @RequirePermissions(PERMISSIONS.ROLES_ASSIGN)
-  @HttpCode(HttpStatus.NO_CONTENT)
   async unassign(
     @Param('userId', ParseUUIDPipe) userId: string,
     @Param('roleId', ParseUUIDPipe) roleId: string,
   ) {
     await this.roleService.unassignRole(userId, roleId);
+    return {
+      success: true,
+      statusCode: 200,
+      message: `Role unassigned. ID: ${roleId}`,
+    };
   }
 }

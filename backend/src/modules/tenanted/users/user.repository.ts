@@ -31,6 +31,7 @@ export class UserRepository extends BaseTenantRepository<User> {
         firstName: true,
         lastName: true,
         status: true,
+        isAdmin: true,
       },
     });
   }

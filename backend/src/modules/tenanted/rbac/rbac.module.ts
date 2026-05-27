@@ -5,6 +5,7 @@ import { PermissionController } from './permission.controller';
 import { RoleService } from './role.service';
 import { RoleRepository } from './role.repository';
 import { UserRoleRepository } from './user-role.repository';
+import { IsAdminGuard } from './is-admin.guard';
 import { PermissionResolverService } from './permission-resolver.service';
 import { PermissionsGuard } from './permissions.guard';
 import { RbacSeederService } from './rbac-seeder.service';
@@ -22,6 +23,7 @@ import { RbacSeederService } from './rbac-seeder.service';
     UserRoleRepository,
     PermissionResolverService,
     PermissionsGuard,
+    IsAdminGuard,
     RbacSeederService,
   ],
   exports: [
@@ -30,6 +32,7 @@ import { RbacSeederService } from './rbac-seeder.service';
     UserRoleRepository,
     PermissionResolverService,
     PermissionsGuard,
+    IsAdminGuard,
     RbacSeederService,
   ],
 })

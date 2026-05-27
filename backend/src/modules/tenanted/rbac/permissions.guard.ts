@@ -34,10 +34,15 @@ export class PermissionsGuard implements CanActivate {
 
     const request = context
       .switchToHttp()
-      .getRequest<{ user?: { userId?: string } }>();
+      .getRequest<{ user?: { userId?: string; isAdmin?: boolean } }>();
     const userId = request.user?.userId;
     if (!userId) {
       throw new UnauthorizedException('Authentication required');
+    }
+
+    // Tenant-scoped admins bypass RBAC entirely within their tenant.
+    if (request.user?.isAdmin) {
+      return true;
     }
 
     const effective = await this.resolver.getEffectivePermissions(userId);

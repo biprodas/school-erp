@@ -8,9 +8,7 @@ import { REQUEST } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import type { RequestWithTenant } from '~/tenancy/tenant.middleware';
-import { RoleRepository } from '../rbac/role.repository';
 import { UserRoleRepository } from '../rbac/user-role.repository';
-import { ADMIN_ROLE_NAME } from '../rbac/system-roles.seed';
 import { UserRepository } from '../users/user.repository';
 import { User } from '../users/entities/user.entity';
 import { RegisterDto } from './dto/register.dto';
@@ -20,7 +18,6 @@ import { LoginDto } from './dto/login.dto';
 export class AuthService {
   constructor(
     private readonly userRepo: UserRepository,
-    private readonly roleRepo: RoleRepository,
     private readonly userRoleRepo: UserRoleRepository,
     @Inject(REQUEST) private readonly request: RequestWithTenant,
     private readonly jwtService: JwtService,
@@ -33,8 +30,8 @@ export class AuthService {
       throw new ConflictException('User already exists');
     }
 
-    // The very first user registered in a tenant bootstraps administration:
-    // they receive the seeded `admin` role so they can manage everyone else.
+    // The very first user registered in a tenant becomes a tenant admin:
+    // `isAdmin` bypasses RBAC, so they can bootstrap the rest of the tenant.
     const isFirstUser = (await this.userRepo.count()) === 0;
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -43,14 +40,8 @@ export class AuthService {
       password: hashedPassword,
       firstName,
       lastName,
+      isAdmin: isFirstUser,
     });
-
-    if (isFirstUser) {
-      const adminRole = await this.roleRepo.findByName(ADMIN_ROLE_NAME);
-      if (adminRole) {
-        await this.userRoleRepo.assign(user.id, adminRole.id);
-      }
-    }
 
     return this.generateToken(user);
   }
@@ -94,6 +85,7 @@ export class AuthService {
       email: user.email,
       tenantId: this.request.tenantId,
       schemaName: this.request.tenantSchema,
+      isAdmin: user.isAdmin === true,
     };
 
     const roles = await this.getRoleNames(user.id);
@@ -109,6 +101,7 @@ export class AuthService {
         fullName: user.fullName,
         roles,
         status: user.status,
+        isAdmin: user.isAdmin === true,
       },
       tenant: {
         id: this.request.tenantId,
