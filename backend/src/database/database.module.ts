@@ -15,7 +15,8 @@ import { PUBLIC_SCHEMA } from './public.datasource';
           throw new Error('Database configuration (db) is incomplete');
         }
 
-        const isProduction = configService.get<string>('NODE_ENV') === 'production';
+        const isProduction =
+          configService.get<string>('NODE_ENV') === 'production';
 
         return {
           type: 'postgres' as const,

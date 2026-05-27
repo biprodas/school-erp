@@ -4,7 +4,10 @@ import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 
 @Injectable()
-export class PlatformJwtStrategy extends PassportStrategy(Strategy, 'platform-jwt') {
+export class PlatformJwtStrategy extends PassportStrategy(
+  Strategy,
+  'platform-jwt',
+) {
   constructor(config: ConfigService) {
     const secret = config.get<string>('jwt.secret');
     if (!secret) {

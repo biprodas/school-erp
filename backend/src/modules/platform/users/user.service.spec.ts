@@ -1,6 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { UserService } from './user.service';
 import { User } from './entities/user.entity';
 import { PlatformRole } from './enums/platform-role.enum';
@@ -9,7 +13,9 @@ import { RequestContextDto } from '~/common/dto/request-context.dto';
 
 // --- Helpers ---
 
-const makeCtx = (overrides: Partial<RequestContextDto> = {}): RequestContextDto =>
+const makeCtx = (
+  overrides: Partial<RequestContextDto> = {},
+): RequestContextDto =>
   Object.assign(
     {
       requestId: 'test',
@@ -27,13 +33,23 @@ const makeCtx = (overrides: Partial<RequestContextDto> = {}): RequestContextDto 
 const superAdminCtx = () =>
   makeCtx({
     userId: 'admin-id',
-    user: { id: 'admin-id', email: 'admin@test.com', role: PlatformRole.SUPER_ADMIN, status: UserStatus.ACTIVE },
+    user: {
+      id: 'admin-id',
+      email: 'admin@test.com',
+      role: PlatformRole.SUPER_ADMIN,
+      status: UserStatus.ACTIVE,
+    },
   });
 
 const userCtx = (id = 'user-id') =>
   makeCtx({
     userId: id,
-    user: { id, email: 'user@test.com', role: PlatformRole.USER, status: UserStatus.ACTIVE },
+    user: {
+      id,
+      email: 'user@test.com',
+      role: PlatformRole.USER,
+      status: UserStatus.ACTIVE,
+    },
   });
 
 const makeUser = (overrides: Partial<User> = {}): User =>
@@ -89,7 +105,9 @@ describe('UserService', () => {
     it('throws NotFoundException when user does not exist', async () => {
       userRepo.findOne.mockResolvedValue(null);
 
-      await expect(service.findById(superAdminCtx(), 'bad-id')).rejects.toThrow(NotFoundException);
+      await expect(service.findById(superAdminCtx(), 'bad-id')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -106,7 +124,9 @@ describe('UserService', () => {
     it('creates user with hashed password', async () => {
       userRepo.findOne
         .mockResolvedValueOnce(null) // email check
-        .mockResolvedValueOnce(makeUser({ id: 'new-user-id', email: 'new@test.com' })); // findById after save
+        .mockResolvedValueOnce(
+          makeUser({ id: 'new-user-id', email: 'new@test.com' }),
+        ); // findById after save
 
       const result = await service.createPlatformUser(superAdminCtx(), dto);
       expect(result).toBeDefined();
@@ -145,7 +165,9 @@ describe('UserService', () => {
       userRepo.findOne.mockResolvedValue(makeUser({ id: 'other-user' }));
       userRepo.save.mockImplementation((entity) => Promise.resolve(entity));
 
-      const result = await service.update(superAdminCtx(), 'other-user', { firstName: 'Updated' });
+      const result = await service.update(superAdminCtx(), 'other-user', {
+        firstName: 'Updated',
+      });
       expect(result.firstName).toBe('Updated');
     });
 
@@ -166,7 +188,9 @@ describe('UserService', () => {
       userRepo.findOne.mockResolvedValue(makeUser({ id: 'user-id' }));
       userRepo.save.mockImplementation((entity) => Promise.resolve(entity));
 
-      const result = await service.update(ctx, 'user-id', { firstName: 'Updated' });
+      const result = await service.update(ctx, 'user-id', {
+        firstName: 'Updated',
+      });
       expect(result.firstName).toBe('Updated');
     });
 
@@ -208,7 +232,9 @@ describe('UserService', () => {
     it('throws NotFoundException for non-existent user', async () => {
       userRepo.findOne.mockResolvedValue(null);
 
-      await expect(service.remove(superAdminCtx(), 'bad-id')).rejects.toThrow(NotFoundException);
+      await expect(service.remove(superAdminCtx(), 'bad-id')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });

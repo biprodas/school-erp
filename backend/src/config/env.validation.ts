@@ -10,12 +10,7 @@ const optionalTcpPort = Joi.any().custom((value, helpers) => {
 });
 
 export const envValidationSchema = Joi.object({
-  NODE_ENV: Joi.string().valid(
-    'development',
-    'staging',
-    'production',
-    'test',
-  ),
+  NODE_ENV: Joi.string().valid('development', 'staging', 'production', 'test'),
   HOST: Joi.string(),
   VERSION: Joi.string(),
   NAME: Joi.string(),
@@ -39,20 +34,44 @@ export const envValidationSchema = Joi.object({
   DB_LOGGING: Joi.boolean().default(false),
   DB_SSL: Joi.boolean().default(false),
   DB_TENANT_POOL_SIZE: Joi.number().integer().min(2).max(200).default(20),
-  DB_CONNECTION_TIMEOUT: Joi.number().integer().min(1000).max(30000).default(5000),
+  DB_CONNECTION_TIMEOUT: Joi.number()
+    .integer()
+    .min(1000)
+    .max(30000)
+    .default(5000),
   DB_IDLE_TIMEOUT: Joi.number().integer().min(1000).max(60000).default(10000),
-  DB_MAX_LIFETIME: Joi.number().integer().min(60000).max(3600000).default(1800000),
+  DB_MAX_LIFETIME: Joi.number()
+    .integer()
+    .min(60000)
+    .max(3600000)
+    .default(1800000),
   JWT_SECRET: Joi.string().min(32).required().messages({
     'string.min': 'JWT_SECRET must be at least 32 characters',
     'any.required': 'JWT_SECRET is required',
   }),
   JWT_EXPIRES_IN: Joi.string().default('1d'),
   CORS_ORIGIN: Joi.string().optional(),
+  SWAGGER_ENABLED: Joi.boolean().default(true),
+  SWAGGER_PATH: Joi.string().default('api/docs'),
+  SWAGGER_TITLE: Joi.string().optional(),
+  SWAGGER_DESCRIPTION: Joi.string().optional(),
+  HEALTH_DISK_PATH: Joi.string().default('/'),
+  HEALTH_DISK_THRESHOLD: Joi.number().min(0).max(1).default(0.9),
+  HEALTH_MEMORY_HEAP_BYTES: Joi.number()
+    .integer()
+    .min(1)
+    .default(300 * 1024 * 1024),
+  HEALTH_MEMORY_RSS_BYTES: Joi.number()
+    .integer()
+    .min(1)
+    .default(500 * 1024 * 1024),
 })
   .unknown(true)
   .prefs({ abortEarly: false });
 
-export function validateEnv(config: Record<string, unknown>): Record<string, unknown> {
+export function validateEnv(
+  config: Record<string, unknown>,
+): Record<string, unknown> {
   const { error, value } = envValidationSchema.validate(config, {
     abortEarly: false,
     convert: true,

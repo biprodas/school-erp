@@ -8,6 +8,7 @@ import { REQUEST } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import type { RequestWithTenant } from '~/tenancy/tenant.middleware';
+import { UserRoleRepository } from '../rbac/user-role.repository';
 import { UserRepository } from '../users/user.repository';
 import { User } from '../users/entities/user.entity';
 import { RegisterDto } from './dto/register.dto';
@@ -17,6 +18,7 @@ import { LoginDto } from './dto/login.dto';
 export class AuthService {
   constructor(
     private readonly userRepo: UserRepository,
+    private readonly userRoleRepo: UserRoleRepository,
     @Inject(REQUEST) private readonly request: RequestWithTenant,
     private readonly jwtService: JwtService,
   ) {}
@@ -28,12 +30,17 @@ export class AuthService {
       throw new ConflictException('User already exists');
     }
 
+    // The very first user registered in a tenant becomes a tenant admin:
+    // `isAdmin` bypasses RBAC, so they can bootstrap the rest of the tenant.
+    const isFirstUser = (await this.userRepo.count()) === 0;
+
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = await this.userRepo.saveNew({
       email,
       password: hashedPassword,
       firstName,
       lastName,
+      isAdmin: isFirstUser,
     });
 
     return this.generateToken(user);
@@ -61,16 +68,27 @@ export class AuthService {
     }
 
     const { password, ...result } = user;
-    return result;
+    const roles = await this.getRoleNames(userId);
+    return { ...result, roles };
   }
 
-  private generateToken(user: User) {
+  private async getRoleNames(userId: string): Promise<string[]> {
+    const assignments = await this.userRoleRepo.findByUserId(userId);
+    return assignments
+      .map((assignment) => assignment.role?.name)
+      .filter((name): name is string => !!name);
+  }
+
+  private async generateToken(user: User) {
     const payload = {
       sub: user.id,
       email: user.email,
       tenantId: this.request.tenantId,
       schemaName: this.request.tenantSchema,
+      isAdmin: user.isAdmin === true,
     };
+
+    const roles = await this.getRoleNames(user.id);
 
     return {
       access_token: this.jwtService.sign(payload),
@@ -81,8 +99,9 @@ export class AuthService {
         firstName: user.firstName,
         lastName: user.lastName,
         fullName: user.fullName,
-        role: user.role,
+        roles,
         status: user.status,
+        isAdmin: user.isAdmin === true,
       },
       tenant: {
         id: this.request.tenantId,

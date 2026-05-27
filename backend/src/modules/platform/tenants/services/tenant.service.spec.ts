@@ -1,20 +1,29 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken, getDataSourceToken } from '@nestjs/typeorm';
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { TenantService } from './tenant.service';
 import { Tenant } from '../entities/tenant.entity';
 import { Membership } from 'src/modules/platform/memberships/entities/membership.entity';
 import { MembershipRole } from 'src/modules/platform/memberships/enums/membership-role.enum';
+import { DemoteOldOwnerTo } from '../dto/transfer-ownership.dto';
+import { UserService } from 'src/modules/platform/users/user.service';
 import { PlatformRole } from 'src/modules/platform/users/enums/platform-role.enum';
 import { UserStatus } from 'src/modules/platform/users/enums/user-status.enum';
 import { TenantConnectionService } from '~/tenancy/tenant-connection.service';
 import { TenantMigrationService } from '~/tenancy/tenant-migration.service';
+import { RbacSeederService } from '~/tenanted/rbac/rbac-seeder.service';
 import { RequestContextDto } from '~/common/dto/request-context.dto';
 
 // --- Helpers ---
 
-const makeCtx = (overrides: Partial<RequestContextDto> = {}): RequestContextDto =>
+const makeCtx = (
+  overrides: Partial<RequestContextDto> = {},
+): RequestContextDto =>
   Object.assign(
     {
       requestId: 'test',
@@ -32,13 +41,23 @@ const makeCtx = (overrides: Partial<RequestContextDto> = {}): RequestContextDto 
 const superAdminCtx = () =>
   makeCtx({
     userId: 'admin-id',
-    user: { id: 'admin-id', email: 'admin@test.com', role: PlatformRole.SUPER_ADMIN, status: UserStatus.ACTIVE },
+    user: {
+      id: 'admin-id',
+      email: 'admin@test.com',
+      role: PlatformRole.SUPER_ADMIN,
+      status: UserStatus.ACTIVE,
+    },
   });
 
 const userCtx = (id = 'user-id') =>
   makeCtx({
     userId: id,
-    user: { id, email: 'user@test.com', role: PlatformRole.USER, status: UserStatus.ACTIVE },
+    user: {
+      id,
+      email: 'user@test.com',
+      role: PlatformRole.USER,
+      status: UserStatus.ACTIVE,
+    },
   });
 
 const TENANT_ID = 'tenant-1';
@@ -72,6 +91,8 @@ describe('TenantService', () => {
   let service: TenantService;
   let tenantRepo: Record<string, jest.Mock>;
   let membershipRepo: Record<string, jest.Mock>;
+  let userService: Record<string, jest.Mock>;
+  let txMembershipRepo: Record<string, jest.Mock>;
 
   beforeEach(async () => {
     tenantRepo = {
@@ -85,6 +106,21 @@ describe('TenantService', () => {
       find: jest.fn(),
       create: jest.fn((data) => ({ ...data })),
       save: jest.fn((entity) => Promise.resolve(entity)),
+    };
+
+    userService = {
+      findById: jest.fn().mockResolvedValue({ id: 'any-user' }),
+    };
+
+    // Transactional repository used inside dataSource.transaction(...)
+    txMembershipRepo = {
+      find: jest.fn().mockResolvedValue([]),
+      findOne: jest.fn().mockResolvedValue(null),
+      create: jest.fn((data) => ({ id: 'tx-mem-id', ...data })),
+      save: jest.fn((entity) =>
+        Promise.resolve({ id: entity.id ?? 'tx-mem-id', ...entity }),
+      ),
+      delete: jest.fn(),
     };
 
     const mockQueryRunner = {
@@ -104,6 +140,11 @@ describe('TenantService', () => {
 
     const mockDataSource = {
       createQueryRunner: jest.fn().mockReturnValue(mockQueryRunner),
+      transaction: jest.fn(async (cb: any) =>
+        cb({
+          getRepository: () => txMembershipRepo,
+        }),
+      ),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -112,9 +153,23 @@ describe('TenantService', () => {
         { provide: getRepositoryToken(Tenant), useValue: tenantRepo },
         { provide: getRepositoryToken(Membership), useValue: membershipRepo },
         { provide: getDataSourceToken(), useValue: mockDataSource },
-        { provide: TenantConnectionService, useValue: { synchronizeSchema: jest.fn() } },
-        { provide: TenantMigrationService, useValue: { runMigrationsForSchema: jest.fn() } },
-        { provide: ConfigService, useValue: { get: jest.fn().mockReturnValue('development') } },
+        {
+          provide: TenantConnectionService,
+          useValue: { synchronizeSchema: jest.fn() },
+        },
+        {
+          provide: TenantMigrationService,
+          useValue: { runMigrationsForSchema: jest.fn() },
+        },
+        {
+          provide: RbacSeederService,
+          useValue: { seedSystemRoles: jest.fn() },
+        },
+        {
+          provide: ConfigService,
+          useValue: { get: jest.fn().mockReturnValue('development') },
+        },
+        { provide: UserService, useValue: userService },
       ],
     }).compile();
 
@@ -135,12 +190,16 @@ describe('TenantService', () => {
 
     it('Regular USER sees only tenants with membership', async () => {
       const ctx = userCtx('user-id');
-      membershipRepo.find.mockResolvedValue([makeMembership({ tenantId: TENANT_ID })]);
+      membershipRepo.find.mockResolvedValue([
+        makeMembership({ tenantId: TENANT_ID }),
+      ]);
       tenantRepo.find.mockResolvedValue([makeTenant()]);
 
       const result = await service.getAllTenants(ctx);
       expect(result).toHaveLength(1);
-      expect(membershipRepo.find).toHaveBeenCalledWith({ where: { userId: 'user-id' } });
+      expect(membershipRepo.find).toHaveBeenCalledWith({
+        where: { userId: 'user-id' },
+      });
     });
 
     it('Regular USER with no memberships sees empty list', async () => {
@@ -165,7 +224,9 @@ describe('TenantService', () => {
     it('User with membership can view tenant', async () => {
       const ctx = userCtx('user-id');
       tenantRepo.findOne.mockResolvedValue(makeTenant());
-      membershipRepo.findOne.mockResolvedValue(makeMembership({ userId: 'user-id' }));
+      membershipRepo.findOne.mockResolvedValue(
+        makeMembership({ userId: 'user-id' }),
+      );
 
       const result = await service.findByIdForUser(ctx, TENANT_ID);
       expect(result.id).toBe(TENANT_ID);
@@ -176,7 +237,9 @@ describe('TenantService', () => {
       tenantRepo.findOne.mockResolvedValue(makeTenant());
       membershipRepo.findOne.mockResolvedValue(null);
 
-      await expect(service.findByIdForUser(ctx, TENANT_ID)).rejects.toThrow(ForbiddenException);
+      await expect(service.findByIdForUser(ctx, TENANT_ID)).rejects.toThrow(
+        ForbiddenException,
+      );
     });
 
     it('throws NotFoundException for non-existent tenant', async () => {
@@ -197,7 +260,11 @@ describe('TenantService', () => {
       tenantRepo.findOne.mockResolvedValue(makeTenant());
       tenantRepo.save.mockImplementation((entity) => Promise.resolve(entity));
 
-      const result = await service.updateTenant(superAdminCtx(), TENANT_ID, dto);
+      const result = await service.updateTenant(
+        superAdminCtx(),
+        TENANT_ID,
+        dto,
+      );
       expect(result.name).toBe('Updated Name');
     });
 
@@ -218,9 +285,9 @@ describe('TenantService', () => {
       tenantRepo.findOne.mockResolvedValue(makeTenant());
       membershipRepo.findOne.mockResolvedValue(null); // no OWNER membership
 
-      await expect(
-        service.updateTenant(ctx, TENANT_ID, dto),
-      ).rejects.toThrow(ForbiddenException);
+      await expect(service.updateTenant(ctx, TENANT_ID, dto)).rejects.toThrow(
+        ForbiddenException,
+      );
     });
 
     it('throws NotFoundException for non-existent tenant', async () => {
@@ -250,8 +317,210 @@ describe('TenantService', () => {
       expect(result).toBeDefined();
       expect(membershipRepo.save).toHaveBeenCalled();
       expect(membershipRepo.create).toHaveBeenCalledWith(
-        expect.objectContaining({ userId: 'user-id', role: MembershipRole.OWNER }),
+        expect.objectContaining({
+          userId: 'user-id',
+          role: MembershipRole.OWNER,
+        }),
       );
+    });
+
+    it('SUPER_ADMIN with ownerUserId creates OWNER membership for that user', async () => {
+      userService.findById.mockResolvedValue({ id: 'target-owner' });
+
+      await service.createTenant(superAdminCtx(), {
+        ...dto,
+        ownerUserId: 'target-owner',
+      });
+
+      expect(userService.findById).toHaveBeenCalledWith(
+        expect.anything(),
+        'target-owner',
+      );
+      expect(membershipRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 'target-owner',
+          role: MembershipRole.OWNER,
+        }),
+      );
+      expect(membershipRepo.save).toHaveBeenCalled();
+    });
+
+    it('SUPER_ADMIN with non-existent ownerUserId throws NotFoundException before tenant write', async () => {
+      userService.findById.mockRejectedValue(
+        new NotFoundException('User not found'),
+      );
+
+      await expect(
+        service.createTenant(superAdminCtx(), {
+          ...dto,
+          ownerUserId: 'bad-user',
+        }),
+      ).rejects.toThrow(NotFoundException);
+      expect(membershipRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('Non-SUPER_ADMIN with ownerUserId in payload — ownerUserId is ignored; caller still becomes OWNER', async () => {
+      const ctx = userCtx('user-id');
+      await service.createTenant(ctx, {
+        ...dto,
+        ownerUserId: 'someone-else',
+      });
+
+      expect(membershipRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 'user-id',
+          role: MembershipRole.OWNER,
+        }),
+      );
+    });
+  });
+
+  // ===================== transferOwnership =====================
+
+  describe('transferOwnership', () => {
+    const TENANT = makeTenant();
+
+    beforeEach(() => {
+      tenantRepo.findOne.mockResolvedValue(TENANT);
+      userService.findById.mockResolvedValue({ id: 'new-owner' });
+    });
+
+    it('Non-SUPER_ADMIN caller -> ForbiddenException', async () => {
+      await expect(
+        service.transferOwnership(userCtx('user-id'), TENANT_ID, {
+          newOwnerUserId: 'new-owner',
+        }),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('Missing tenant -> NotFoundException', async () => {
+      tenantRepo.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.transferOwnership(superAdminCtx(), 'bad-tenant', {
+          newOwnerUserId: 'new-owner',
+        }),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('Missing target user -> NotFoundException', async () => {
+      userService.findById.mockRejectedValue(
+        new NotFoundException('User not found'),
+      );
+
+      await expect(
+        service.transferOwnership(superAdminCtx(), TENANT_ID, {
+          newOwnerUserId: 'ghost',
+        }),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('Target user is already the OWNER -> BadRequestException', async () => {
+      txMembershipRepo.find.mockResolvedValue([
+        makeMembership({
+          id: 'mem-current',
+          userId: 'new-owner',
+          role: MembershipRole.OWNER,
+        }),
+      ]);
+
+      await expect(
+        service.transferOwnership(superAdminCtx(), TENANT_ID, {
+          newOwnerUserId: 'new-owner',
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('Existing OWNER + demoteOldOwnerTo=admin -> old OWNER becomes ADMIN, new OWNER inserted', async () => {
+      const currentOwner = makeMembership({
+        id: 'mem-current',
+        userId: 'old-owner',
+        role: MembershipRole.OWNER,
+      });
+      txMembershipRepo.find.mockResolvedValue([currentOwner]);
+      // No existing membership for the target user.
+      txMembershipRepo.findOne.mockResolvedValue(null);
+
+      const result = await service.transferOwnership(
+        superAdminCtx(),
+        TENANT_ID,
+        {
+          newOwnerUserId: 'new-owner',
+          demoteOldOwnerTo: DemoteOldOwnerTo.ADMIN,
+        },
+      );
+
+      expect(result.role).toBe(MembershipRole.OWNER);
+      expect(result.userId).toBe('new-owner');
+      // New OWNER membership created.
+      expect(txMembershipRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 'new-owner',
+          role: MembershipRole.OWNER,
+        }),
+      );
+      // Old OWNER demoted to ADMIN (mutated then saved).
+      expect(currentOwner.role).toBe(MembershipRole.ADMIN);
+      expect(txMembershipRepo.save).toHaveBeenCalledWith(currentOwner);
+      expect(txMembershipRepo.delete).not.toHaveBeenCalled();
+    });
+
+    it('Existing OWNER + demoteOldOwnerTo=remove -> old OWNER deleted', async () => {
+      const currentOwner = makeMembership({
+        id: 'mem-current',
+        userId: 'old-owner',
+        role: MembershipRole.OWNER,
+      });
+      txMembershipRepo.find.mockResolvedValue([currentOwner]);
+      txMembershipRepo.findOne.mockResolvedValue(null);
+
+      await service.transferOwnership(superAdminCtx(), TENANT_ID, {
+        newOwnerUserId: 'new-owner',
+        demoteOldOwnerTo: DemoteOldOwnerTo.REMOVE,
+      });
+
+      expect(txMembershipRepo.delete).toHaveBeenCalledWith('mem-current');
+    });
+
+    it('Existing OWNER + target already has a non-OWNER membership -> promotes that row instead of inserting', async () => {
+      const currentOwner = makeMembership({
+        id: 'mem-current',
+        userId: 'old-owner',
+        role: MembershipRole.OWNER,
+      });
+      const targetExisting = makeMembership({
+        id: 'mem-target',
+        userId: 'new-owner',
+        role: MembershipRole.MEMBER,
+      });
+      txMembershipRepo.find.mockResolvedValue([currentOwner]);
+      txMembershipRepo.findOne.mockResolvedValue(targetExisting);
+
+      await service.transferOwnership(superAdminCtx(), TENANT_ID, {
+        newOwnerUserId: 'new-owner',
+      });
+
+      expect(targetExisting.role).toBe(MembershipRole.OWNER);
+      expect(txMembershipRepo.save).toHaveBeenCalledWith(targetExisting);
+      expect(txMembershipRepo.create).not.toHaveBeenCalled();
+    });
+
+    it('Tenant has no existing OWNER -> just inserts new OWNER, no demotion', async () => {
+      txMembershipRepo.find.mockResolvedValue([]);
+      txMembershipRepo.findOne.mockResolvedValue(null);
+
+      const result = await service.transferOwnership(
+        superAdminCtx(),
+        TENANT_ID,
+        {
+          newOwnerUserId: 'new-owner',
+          demoteOldOwnerTo: DemoteOldOwnerTo.REMOVE, // ignored
+        },
+      );
+
+      expect(result.userId).toBe('new-owner');
+      expect(result.role).toBe(MembershipRole.OWNER);
+      expect(txMembershipRepo.delete).not.toHaveBeenCalled();
     });
   });
 

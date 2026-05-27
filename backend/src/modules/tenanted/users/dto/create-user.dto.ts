@@ -1,13 +1,14 @@
 import {
+  IsArray,
   IsDefined,
   IsEmail,
   IsEnum,
   IsNotEmpty,
   IsOptional,
   IsString,
+  IsUUID,
   MinLength,
 } from 'class-validator';
-import { UserRole } from '../enums/user-role.enum';
 import { UserStatus } from '../enums/user-status.enum';
 
 export class CreateUserDto {
@@ -31,9 +32,11 @@ export class CreateUserDto {
   @IsDefined()
   password: string;
 
-  @IsEnum(UserRole)
+  /** Roles to assign to the new user. */
+  @IsArray()
+  @IsUUID('4', { each: true })
   @IsOptional()
-  role?: UserRole;
+  roleIds?: string[];
 
   @IsEnum(UserStatus)
   @IsOptional()

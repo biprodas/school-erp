@@ -70,7 +70,7 @@ export class User {
   updatedAt: Date;
 
   @DeleteDateColumn({ name: 'deleted_at' })
-  deletedAt?: Date
+  deletedAt?: Date;
 
   @OneToMany(() => Membership, (membership) => membership.user)
   memberships: Membership[];
@@ -87,16 +87,16 @@ export class User {
 
   @AfterInsert()
   logInsert() {
-    console.log(`User Inserted #ID: ${this.id}`)
+    console.log(`User Inserted #ID: ${this.id}`);
   }
 
   @AfterUpdate()
   logUpdate() {
-    console.log(`User Updated #ID: ${this.id}`)
+    console.log(`User Updated #ID: ${this.id}`);
   }
 
   @AfterRemove()
   logRemove() {
-    console.log(`User Removed`)
+    console.log(`User Removed`);
   }
 }

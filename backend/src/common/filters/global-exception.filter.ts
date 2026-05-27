@@ -31,7 +31,9 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     const body =
       typeof baseBody === 'string' ? { message: baseBody } : (baseBody as any);
 
-    const requestId = req.headers?.[Key.RequestIdTokenHeader] as string | undefined;
+    const requestId = req.headers?.[Key.RequestIdTokenHeader] as
+      | string
+      | undefined;
 
     if (status >= 500) {
       this.logger.error(

@@ -16,33 +16,35 @@ import { Roles } from '~/common/decorators/roles.decorator';
 import { RequestContextDto } from '~/common/dto/request-context.dto';
 import { PlatformJwtAuthGuard } from '~/common/guards/platform-jwt-auth.guard';
 import { RolesGuard } from '~/common/guards/roles.guard';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CreateUserDto } from './dto/create-user.dto';
 import { FilterUserDto } from './dto/filter-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { PlatformRole } from './enums/platform-role.enum';
 import { UserService } from './user.service';
 
-
+@ApiTags('Platform / Users')
+@ApiBearerAuth('platform-jwt')
 @Controller('platform/users')
 @UseGuards(PlatformJwtAuthGuard)
 export class UserController {
-  constructor(private readonly userService: UserService) { }
+  constructor(private readonly userService: UserService) {}
 
   @Get()
   @UseGuards(RolesGuard)
   @Roles(PlatformRole.SUPER_ADMIN)
   async findAll(
     @RequestContext() ctx: RequestContextDto,
-    @Query() filterUserDto: FilterUserDto
+    @Query() filterUserDto: FilterUserDto,
   ) {
-    const users = await this.userService.findAll(ctx, filterUserDto)
+    const users = await this.userService.findAll(ctx, filterUserDto);
 
     return {
       success: true,
       statusCode: 200,
       message: `List of users`,
       data: users,
-    }
+    };
   }
 
   @Post()
@@ -50,7 +52,7 @@ export class UserController {
   @Roles(PlatformRole.SUPER_ADMIN)
   async create(
     @RequestContext() ctx: RequestContextDto,
-    @Body() createUserDto: CreateUserDto
+    @Body() createUserDto: CreateUserDto,
   ) {
     const user = await this.userService.createPlatformUser(ctx, createUserDto);
 
@@ -59,7 +61,7 @@ export class UserController {
       statusCode: 201,
       message: `User created. ID: ${user.id}`,
       data: user,
-    }
+    };
   }
 
   @Get(':id')
@@ -77,7 +79,7 @@ export class UserController {
       statusCode: 200,
       message: `User found. ID: ${user.id}`,
       data: user,
-    }
+    };
   }
 
   @Patch(':id')
@@ -93,7 +95,7 @@ export class UserController {
       statusCode: 200,
       message: `User updated. ID: ${user.id}`,
       data: user,
-    }
+    };
   }
 
   @Delete(':id')
@@ -109,7 +111,6 @@ export class UserController {
       success: true,
       statusCode: 200,
       message: `User deleted. ID: ${targetId}`,
-    }
+    };
   }
 }
-

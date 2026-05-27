@@ -7,8 +7,9 @@ import {
   Patch,
   Post,
   Query,
-  UseGuards
+  UseGuards,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { RequestContext } from '~/common/decorators/request-context.decorator';
 import { RequestContextDto } from '~/common/dto/request-context.dto';
 import { PlatformJwtAuthGuard } from '~/common/guards/platform-jwt-auth.guard';
@@ -17,6 +18,8 @@ import { UpdateMembershipRoleDto } from '../dto/update-membership-role.dto';
 import { MembershipService } from '../services/membership.service';
 import { FilterMembershipDto } from '../dto/filter-membership.dto';
 
+@ApiTags('Platform / Memberships')
+@ApiBearerAuth('platform-jwt')
 @Controller('memberships')
 @UseGuards(PlatformJwtAuthGuard)
 export class MembershipController {
@@ -41,13 +44,16 @@ export class MembershipController {
     @RequestContext() ctx: RequestContextDto,
     @Param('tenantId') tenantId: string,
   ) {
-    const memberships = await this.membershipService.findByTenantId(ctx, tenantId);
+    const memberships = await this.membershipService.findByTenantId(
+      ctx,
+      tenantId,
+    );
     return {
       success: true,
       statusCode: 200,
       message: `List of memberships`,
       data: memberships,
-    }
+    };
   }
 
   @Get('user/:userId')
@@ -61,18 +67,21 @@ export class MembershipController {
       statusCode: 200,
       message: `List of memberships`,
       data: memberships,
-    }
+    };
   }
 
   @Get('me')
   async findMine(@RequestContext() ctx: RequestContextDto) {
-    const memberships = await this.membershipService.findByUserId(ctx, ctx.user?.id ?? '');
+    const memberships = await this.membershipService.findByUserId(
+      ctx,
+      ctx.user?.id ?? '',
+    );
     return {
       success: true,
       statusCode: 200,
       message: `List of memberships`,
       data: memberships,
-    }
+    };
   }
 
   @Get(':id')
@@ -86,7 +95,7 @@ export class MembershipController {
       statusCode: 200,
       message: `Membership found`,
       data: membership,
-    }
+    };
   }
 
   @Post()
@@ -100,7 +109,7 @@ export class MembershipController {
       statusCode: 201,
       message: `Membership created successfully`,
       data: membership,
-    }
+    };
   }
 
   @Patch(':id')
@@ -115,7 +124,7 @@ export class MembershipController {
       statusCode: 200,
       message: `Membership updated successfully`,
       data: membership,
-    }
+    };
   }
 
   @Delete(':id')
@@ -128,6 +137,6 @@ export class MembershipController {
       success: true,
       statusCode: 200,
       message: `Membership removed successfully`,
-    }
+    };
   }
 }

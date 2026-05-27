@@ -1,4 +1,15 @@
-import { IsString, IsNotEmpty, Length, MinLength, MaxLength, Matches, IsOptional, IsFQDN, IsDefined } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  Length,
+  MinLength,
+  MaxLength,
+  Matches,
+  IsOptional,
+  IsFQDN,
+  IsDefined,
+  IsUUID,
+} from 'class-validator';
 
 export class CreateTenantDto {
   @IsDefined()
@@ -12,7 +23,8 @@ export class CreateTenantDto {
   @IsNotEmpty()
   @Length(3, 63)
   @Matches(/^[a-z0-9_]+$/, {
-    message: 'Slug must contain only lowercase letters, numbers, and underscores'
+    message:
+      'Slug must contain only lowercase letters, numbers, and underscores',
   })
   slug: string;
 
@@ -24,4 +36,12 @@ export class CreateTenantDto {
   })
   @IsOptional()
   domain: string;
+
+  /**
+   * Only honored when the caller is a SUPER_ADMIN. If provided, an OWNER
+   * membership is created for this user atomically with the tenant.
+   */
+  @IsOptional()
+  @IsUUID('4')
+  ownerUserId?: string;
 }

@@ -43,7 +43,15 @@ export class PlatformAuthService {
   async login(dto: PlatformLoginDto) {
     const user = await this.userRepository.findOne({
       where: { email: dto.email },
-      select: ['id', 'email', 'password', 'firstName', 'lastName', 'role', 'status'],
+      select: [
+        'id',
+        'email',
+        'password',
+        'firstName',
+        'lastName',
+        'role',
+        'status',
+      ],
     });
 
     if (!user) {

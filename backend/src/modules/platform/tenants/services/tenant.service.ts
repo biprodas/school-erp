@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Injectable,
   Logger,
   ConflictException,
@@ -11,11 +12,17 @@ import { Repository, DataSource, In } from 'typeorm';
 import { Tenant } from '../entities/tenant.entity';
 import { Membership } from 'src/modules/platform/memberships/entities/membership.entity';
 import { MembershipRole } from 'src/modules/platform/memberships/enums/membership-role.enum';
+import { UserService } from 'src/modules/platform/users/user.service';
 import { Key } from '~/common/enums/keys.enum';
 import { TenantConnectionService } from '~/tenancy/tenant-connection.service';
 import { TenantMigrationService } from '~/tenancy/tenant-migration.service';
-import { TenantMiddleware } from '~/tenancy/tenant.middleware';
+import { tenantSlugCache } from '~/tenancy/tenant-slug.cache';
+import { RbacSeederService } from '~/tenanted/rbac/rbac-seeder.service';
 import { CreateTenantDto } from '../dto/create-tenant.dto';
+import {
+  DemoteOldOwnerTo,
+  TransferOwnershipDto,
+} from '../dto/transfer-ownership.dto';
 import { UpdateTenantDto } from '../dto/update-tenant.dto';
 import { PlatformRole } from 'src/modules/platform/users/enums/platform-role.enum';
 import { RequestContextDto } from '~/common/dto/request-context.dto';
@@ -33,23 +40,41 @@ export class TenantService {
     private dataSource: DataSource,
     private tenantConnectionService: TenantConnectionService,
     private tenantMigrationService: TenantMigrationService,
+    private rbacSeederService: RbacSeederService,
     private configService: ConfigService,
+    private userService: UserService,
   ) {}
 
   /**
-   * Creates a tenant. If the requester is not a SUPER_ADMIN they
-   * automatically receive an OWNER membership for the new tenant.
+   * Creates a tenant. Ownership rules:
+   * - Non-SUPER_ADMIN caller: caller automatically becomes OWNER. Any
+   *   `dto.ownerUserId` is ignored.
+   * - SUPER_ADMIN caller with `dto.ownerUserId`: that user becomes OWNER.
+   * - SUPER_ADMIN caller without `dto.ownerUserId`: tenant is created with
+   *   no membership; assign an owner later via `transferOwnership`.
    *
-   * The entire operation (record + schema + membership) is wrapped
-   * in a transaction so partial state is rolled back on failure.
+   * Tenant record + schema commit first; if the post-commit phase (migrations,
+   * RBAC seed, membership) fails, a compensating rollback drops the schema and
+   * deletes the tenant row.
    */
   async createTenant(
     ctx: RequestContextDto,
     dto: CreateTenantDto,
   ): Promise<Tenant> {
     const { user } = ctx;
-    const ownerId =
-      user?.role === PlatformRole.SUPER_ADMIN ? undefined : user?.id ?? '';
+    const isSuperAdmin = user?.role === PlatformRole.SUPER_ADMIN;
+
+    let ownerId: string | undefined;
+    if (isSuperAdmin) {
+      if (dto.ownerUserId) {
+        // Validate up-front so we never create a tenant and then fail at
+        // membership time.
+        await this.userService.findById(ctx, dto.ownerUserId);
+        ownerId = dto.ownerUserId;
+      }
+    } else {
+      ownerId = user?.id ?? '';
+    }
 
     // Two-phase flow:
     // 1) Create tenant record + schema and COMMIT (so other connections can see it)
@@ -85,7 +110,9 @@ export class TenantService {
       await queryRunner.commitTransaction();
     } catch (error) {
       await queryRunner.rollbackTransaction();
-      this.logger.error(`Failed to create tenant "${dto.slug}": ${error.message}`);
+      this.logger.error(
+        `Failed to create tenant "${dto.slug}": ${error.message}`,
+      );
       throw error;
     } finally {
       await queryRunner.release();
@@ -93,6 +120,9 @@ export class TenantService {
 
     try {
       await this.runTenantMigrations(schemaName);
+
+      // Seed the standard school roles into the freshly-created schema.
+      await this.rbacSeederService.seedSystemRoles(schemaName);
 
       if (ownerId && tenant) {
         await this.membershipRepository.save(
@@ -105,7 +135,7 @@ export class TenantService {
       }
 
       // tenant is always set if we got here, but keep types safe
-      return tenant as Tenant;
+      return tenant;
     } catch (error) {
       // Compensating rollback: best-effort cleanup to avoid orphaned tenants/schemas.
       try {
@@ -142,6 +172,92 @@ export class TenantService {
     }
   }
 
+  /**
+   * Atomically reassigns the OWNER membership of a tenant to another user.
+   * Runs as a single DB transaction so the tenant never has zero or two
+   * OWNERs mid-flight. SUPER_ADMIN-only.
+   */
+  async transferOwnership(
+    ctx: RequestContextDto,
+    tenantId: string,
+    dto: TransferOwnershipDto,
+  ): Promise<Membership> {
+    if (ctx.user?.role !== PlatformRole.SUPER_ADMIN) {
+      throw new ForbiddenException(
+        'Only super admins can transfer tenant ownership',
+      );
+    }
+
+    const tenant = await this.tenantRepository.findOne({
+      where: { id: tenantId },
+    });
+    if (!tenant) {
+      throw new NotFoundException('Tenant not found');
+    }
+
+    // Validate the target user up-front (outside the transaction is fine).
+    await this.userService.findById(ctx, dto.newOwnerUserId);
+
+    return this.dataSource.transaction(async (manager) => {
+      const memberships = manager.getRepository(Membership);
+
+      const existingOwners = await memberships.find({
+        where: { tenantId, role: MembershipRole.OWNER },
+        order: { createdAt: 'ASC' },
+      });
+      if (existingOwners.length > 1) {
+        this.logger.warn(
+          `Tenant ${tenantId} has ${existingOwners.length} OWNER memberships; treating oldest as current`,
+        );
+      }
+      const currentOwner = existingOwners[0];
+
+      if (currentOwner && currentOwner.userId === dto.newOwnerUserId) {
+        throw new BadRequestException('User is already the owner');
+      }
+
+      // Promote/insert the new owner.
+      let newOwner = await memberships.findOne({
+        where: { tenantId, userId: dto.newOwnerUserId },
+      });
+      if (newOwner) {
+        newOwner.role = MembershipRole.OWNER;
+        newOwner = await memberships.save(newOwner);
+      } else {
+        newOwner = await memberships.save(
+          memberships.create({
+            tenantId,
+            userId: dto.newOwnerUserId,
+            role: MembershipRole.OWNER,
+          }),
+        );
+      }
+
+      // Demote / remove the previous owner.
+      if (currentOwner) {
+        const fate = dto.demoteOldOwnerTo ?? DemoteOldOwnerTo.ADMIN;
+        if (fate === DemoteOldOwnerTo.REMOVE) {
+          await memberships.delete(currentOwner.id);
+        } else {
+          currentOwner.role =
+            fate === DemoteOldOwnerTo.MEMBER
+              ? MembershipRole.MEMBER
+              : MembershipRole.ADMIN;
+          await memberships.save(currentOwner);
+        }
+      }
+
+      // Demote any extra OWNER rows above the first (defensive).
+      for (const extra of existingOwners.slice(1)) {
+        if (extra.userId === dto.newOwnerUserId) continue;
+        extra.role = MembershipRole.ADMIN;
+        await memberships.save(extra);
+      }
+
+      return newOwner;
+    });
+  }
+
   async getAllTenants(ctx: RequestContextDto): Promise<Tenant[]> {
     if (ctx.user?.role !== PlatformRole.SUPER_ADMIN) {
       return this.getTenantsByUser(ctx, ctx.user?.id ?? '');
@@ -151,7 +267,10 @@ export class TenantService {
   }
 
   /** Returns only tenants where the user has any membership. */
-  async getTenantsByUser(_ctx: RequestContextDto, userId: string): Promise<Tenant[]> {
+  async getTenantsByUser(
+    _ctx: RequestContextDto,
+    userId: string,
+  ): Promise<Tenant[]> {
     const memberships = await this.membershipRepository.find({
       where: { userId },
     });
@@ -172,10 +291,7 @@ export class TenantService {
    * Returns a tenant only if the requester is a SUPER_ADMIN or has any
    * membership in that tenant.
    */
-  async findByIdForUser(
-    ctx: RequestContextDto,
-    id: string,
-  ): Promise<Tenant> {
+  async findByIdForUser(ctx: RequestContextDto, id: string): Promise<Tenant> {
     const tenant = await this.findById(ctx, id);
     if (!tenant) {
       throw new NotFoundException('Tenant not found');
@@ -204,16 +320,22 @@ export class TenantService {
 
     if (user?.role !== PlatformRole.SUPER_ADMIN) {
       const membership = await this.membershipRepository.findOne({
-        where: { tenantId: id, userId: user?.id ?? '', role: MembershipRole.OWNER },
+        where: {
+          tenantId: id,
+          userId: user?.id ?? '',
+          role: MembershipRole.OWNER,
+        },
       });
       if (!membership) {
-        throw new ForbiddenException('Only the tenant owner or a super admin can update this tenant');
+        throw new ForbiddenException(
+          'Only the tenant owner or a super admin can update this tenant',
+        );
       }
     }
 
     Object.assign(tenant, dto);
     const saved = await this.tenantRepository.save(tenant);
-    TenantMiddleware.invalidateCache(tenant.slug);
+    tenantSlugCache.invalidate(tenant.slug);
     return saved;
   }
 
@@ -232,11 +354,15 @@ export class TenantService {
       await queryRunner.query(`DROP SCHEMA IF EXISTS ${quoted} CASCADE`);
       await queryRunner.manager.delete(Tenant, id);
       await queryRunner.commitTransaction();
-      TenantMiddleware.invalidateCache(tenant.slug);
-      this.logger.log(`Tenant "${tenant.slug}" and schema ${tenant.schemaName} deleted`);
+      tenantSlugCache.invalidate(tenant.slug);
+      this.logger.log(
+        `Tenant "${tenant.slug}" and schema ${tenant.schemaName} deleted`,
+      );
     } catch (error) {
       await queryRunner.rollbackTransaction();
-      this.logger.error(`Failed to delete tenant "${tenant.slug}": ${error.message}`);
+      this.logger.error(
+        `Failed to delete tenant "${tenant.slug}": ${error.message}`,
+      );
       throw error;
     } finally {
       await queryRunner.release();

@@ -1,4 +1,12 @@
-import { Body, Controller, Get, HttpCode, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { RequestContext } from '~/common/decorators/request-context.decorator';
 import { RequestContextDto } from '~/common/dto/request-context.dto';
 import { PlatformJwtAuthGuard } from '~/common/guards/platform-jwt-auth.guard';
@@ -6,6 +14,8 @@ import { PlatformLoginDto } from './dto/platform-login.dto';
 import { PlatformRegisterDto } from './dto/platform-register.dto';
 import { PlatformAuthService } from './platform-auth.service';
 
+@ApiTags('Platform / Auth')
+@ApiBearerAuth('platform-jwt')
 @Controller('platform/auth')
 export class PlatformAuthController {
   constructor(private readonly platformAuthService: PlatformAuthService) {}

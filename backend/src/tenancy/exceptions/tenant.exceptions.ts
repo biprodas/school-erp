@@ -17,9 +17,7 @@ export class TenantNotFoundException extends HttpException {
   constructor(slug?: string) {
     super(
       {
-        message: slug
-          ? `Tenant "${slug}" not found`
-          : 'Tenant not found',
+        message: slug ? `Tenant "${slug}" not found` : 'Tenant not found',
         error: 'Tenant Not Found',
       },
       HttpStatus.NOT_FOUND,

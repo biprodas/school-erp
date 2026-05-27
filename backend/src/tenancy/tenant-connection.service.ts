@@ -2,6 +2,7 @@ import {
   Inject,
   Injectable,
   Logger,
+  OnApplicationBootstrap,
   OnApplicationShutdown,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -12,7 +13,9 @@ import { TenantDataSourceProxy } from './tenant-datasource.proxy';
 import { createTenantSchemaSyncDataSourceOptions } from './tenant.datasource';
 
 @Injectable()
-export class TenantConnectionService implements OnApplicationShutdown {
+export class TenantConnectionService
+  implements OnApplicationBootstrap, OnApplicationShutdown
+{
   private readonly logger = new Logger(TenantConnectionService.name);
 
   constructor(
@@ -29,7 +32,9 @@ export class TenantConnectionService implements OnApplicationShutdown {
    * The caller (or TenantCleanupInterceptor) MUST call `proxy.release()`
    * to return the connection to the pool.
    */
-  async getScopedConnection(schemaName: string): Promise<TenantDataSourceProxy> {
+  async getScopedConnection(
+    schemaName: string,
+  ): Promise<TenantDataSourceProxy> {
     const queryRunner = this.tenantPool.createQueryRunner();
     await queryRunner.connect();
 
@@ -62,6 +67,48 @@ export class TenantConnectionService implements OnApplicationShutdown {
       this.logger.log(`Schema synchronized: ${schemaName}`);
     } finally {
       await tmpDs.destroy();
+    }
+  }
+
+  /**
+   * Dev-only: on boot, re-synchronize every existing tenant schema so entity
+   * changes (new columns, etc.) propagate without manual ALTERs. Skipped in
+   * production and when `db.sync` is disabled — those paths must use migrations.
+   * Per-tenant failures are logged but never abort the boot.
+   */
+  async onApplicationBootstrap(): Promise<void> {
+    const nodeEnv = this.configService.get<string>('NODE_ENV');
+    const db = this.configService.get<DbConfig>('db');
+    if (nodeEnv === 'production' || !db?.sync) {
+      return;
+    }
+
+    let schemas: string[];
+    try {
+      const rows = await this.tenantPool.query<{ schema_name: string }[]>(
+        'SELECT schema_name FROM public.tenants',
+      );
+      schemas = rows.map((r) => r.schema_name).filter(Boolean);
+    } catch (err) {
+      this.logger.warn(
+        `Skipping tenant schema re-sync: could not read public.tenants (${(err as Error).message})`,
+      );
+      return;
+    }
+
+    if (!schemas.length) {
+      return;
+    }
+
+    this.logger.log(`Re-syncing ${schemas.length} tenant schema(s) on boot`);
+    for (const schema of schemas) {
+      try {
+        await this.synchronizeSchema(schema);
+      } catch (err) {
+        this.logger.error(
+          `Failed to re-sync tenant schema "${schema}": ${(err as Error).message}`,
+        );
+      }
     }
   }
 

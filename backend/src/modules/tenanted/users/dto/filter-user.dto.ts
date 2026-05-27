@@ -1,4 +1,4 @@
-import { IsOptional, IsString } from 'class-validator';
+import { IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class FilterUserDto {
   @IsOptional()
@@ -17,7 +17,8 @@ export class FilterUserDto {
   @IsString()
   email?: string;
 
+  /** Filter users that have the given role assigned. */
   @IsOptional()
-  @IsString()
-  role?: string;
+  @IsUUID()
+  roleId?: string;
 }

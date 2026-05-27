@@ -9,6 +9,7 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { PlatformRole } from 'src/modules/platform/users/enums/platform-role.enum';
 import { RequestContext } from '~/common/decorators/request-context.decorator';
 import { Roles } from '~/common/decorators/roles.decorator';
@@ -16,9 +17,12 @@ import { RequestContextDto } from '~/common/dto/request-context.dto';
 import { PlatformJwtAuthGuard } from '~/common/guards/platform-jwt-auth.guard';
 import { RolesGuard } from '~/common/guards/roles.guard';
 import { CreateTenantDto } from '../dto/create-tenant.dto';
+import { TransferOwnershipDto } from '../dto/transfer-ownership.dto';
 import { UpdateTenantDto } from '../dto/update-tenant.dto';
 import { TenantService } from '../services/tenant.service';
 
+@ApiTags('Platform / Tenants')
+@ApiBearerAuth('platform-jwt')
 @Controller('tenants')
 @UseGuards(PlatformJwtAuthGuard)
 export class TenantController {
@@ -33,7 +37,7 @@ export class TenantController {
       statusCode: 200,
       message: `List of tenants`,
       data: tenants,
-    }
+    };
   }
 
   @Get(':id')
@@ -48,14 +52,14 @@ export class TenantController {
       statusCode: 200,
       message: `Tenant found`,
       data: tenant,
-    }
+    };
   }
 
   @Post()
   async create(
     @RequestContext() ctx: RequestContextDto,
     @Body() createTenantDto: CreateTenantDto,
-  ) {    
+  ) {
     const tenant = await this.tenantService.createTenant(ctx, createTenantDto);
 
     return {
@@ -63,7 +67,7 @@ export class TenantController {
       statusCode: 201,
       message: `Tenant created successfully`,
       data: tenant,
-    }
+    };
   }
 
   @Patch(':id')
@@ -72,15 +76,36 @@ export class TenantController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateTenantDto: UpdateTenantDto,
   ) {
-
-    const tenant = await this.tenantService.updateTenant(ctx, id, updateTenantDto);
+    const tenant = await this.tenantService.updateTenant(
+      ctx,
+      id,
+      updateTenantDto,
+    );
 
     return {
       success: true,
       statusCode: 200,
       message: `Tenant updated successfully`,
       data: tenant,
-    }
+    };
+  }
+
+  @Post(':id/transfer-ownership')
+  @UseGuards(RolesGuard)
+  @Roles(PlatformRole.SUPER_ADMIN)
+  async transferOwnership(
+    @RequestContext() ctx: RequestContextDto,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: TransferOwnershipDto,
+  ) {
+    const membership = await this.tenantService.transferOwnership(ctx, id, dto);
+
+    return {
+      success: true,
+      statusCode: 200,
+      message: 'Tenant ownership transferred',
+      data: membership,
+    };
   }
 
   @Delete(':id')
@@ -96,6 +121,6 @@ export class TenantController {
       success: true,
       statusCode: 200,
       message: `Tenant deleted successfully`,
-    }
+    };
   }
 }

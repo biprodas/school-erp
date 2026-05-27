@@ -44,10 +44,20 @@ describe('Membership E2E', () => {
   let userServiceMock: Record<string, jest.Mock>;
 
   const adminToken = () =>
-    jwtService.sign({ sub: ADMIN_ID, email: 'admin@test.com', role: PlatformRole.SUPER_ADMIN, status: UserStatus.ACTIVE });
+    jwtService.sign({
+      sub: ADMIN_ID,
+      email: 'admin@test.com',
+      role: PlatformRole.SUPER_ADMIN,
+      status: UserStatus.ACTIVE,
+    });
 
   const userToken = (id = USER_ID) =>
-    jwtService.sign({ sub: id, email: 'user@test.com', role: PlatformRole.USER, status: UserStatus.ACTIVE });
+    jwtService.sign({
+      sub: id,
+      email: 'user@test.com',
+      role: PlatformRole.USER,
+      status: UserStatus.ACTIVE,
+    });
 
   beforeEach(async () => {
     membershipRepo = {
@@ -69,7 +79,10 @@ describe('Membership E2E', () => {
     const module: TestingModule = await Test.createTestingModule({
       imports: [
         PassportModule,
-        JwtModule.register({ secret: JWT_SECRET, signOptions: { expiresIn: '1h' } }),
+        JwtModule.register({
+          secret: JWT_SECRET,
+          signOptions: { expiresIn: '1h' },
+        }),
       ],
       controllers: [MembershipController],
       providers: [
@@ -78,12 +91,19 @@ describe('Membership E2E', () => {
         { provide: getRepositoryToken(Membership), useValue: membershipRepo },
         { provide: TenantService, useValue: tenantServiceMock },
         { provide: UserService, useValue: userServiceMock },
-        { provide: ConfigService, useValue: { get: (key: string) => key === 'jwt.secret' ? JWT_SECRET : null } },
+        {
+          provide: ConfigService,
+          useValue: {
+            get: (key: string) => (key === 'jwt.secret' ? JWT_SECRET : null),
+          },
+        },
       ],
     }).compile();
 
     app = module.createNestApplication();
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+    app.useGlobalPipes(
+      new ValidationPipe({ whitelist: true, transform: true }),
+    );
     await app.init();
 
     jwtService = module.get<JwtService>(JwtService);
@@ -123,7 +143,9 @@ describe('Membership E2E', () => {
     });
 
     it('Regular USER sees only own memberships', async () => {
-      membershipRepo.find.mockResolvedValue([makeMembership({ userId: USER_ID })]);
+      membershipRepo.find.mockResolvedValue([
+        makeMembership({ userId: USER_ID }),
+      ]);
 
       const res = await request(app.getHttpServer())
         .get('/memberships')
@@ -179,7 +201,9 @@ describe('Membership E2E', () => {
 
   describe('GET /memberships/user/:userId', () => {
     it('User can query self', async () => {
-      membershipRepo.find.mockResolvedValue([makeMembership({ userId: USER_ID })]);
+      membershipRepo.find.mockResolvedValue([
+        makeMembership({ userId: USER_ID }),
+      ]);
 
       await request(app.getHttpServer())
         .get(`/memberships/user/${USER_ID}`)
@@ -208,7 +232,11 @@ describe('Membership E2E', () => {
   // ===================== POST /memberships =====================
 
   describe('POST /memberships', () => {
-    const dto = { userId: TARGET_USER_ID, tenantId: TENANT_ID, role: MembershipRole.MEMBER };
+    const dto = {
+      userId: TARGET_USER_ID,
+      tenantId: TENANT_ID,
+      role: MembershipRole.MEMBER,
+    };
 
     it('SUPER_ADMIN can create membership', async () => {
       membershipRepo.findOne.mockResolvedValue(null);
@@ -222,7 +250,9 @@ describe('Membership E2E', () => {
 
     it('Tenant OWNER can create membership for their tenant', async () => {
       membershipRepo.findOne
-        .mockResolvedValueOnce(makeMembership({ userId: OWNER_ID, role: MembershipRole.OWNER }))
+        .mockResolvedValueOnce(
+          makeMembership({ userId: OWNER_ID, role: MembershipRole.OWNER }),
+        )
         .mockResolvedValueOnce(null);
 
       await request(app.getHttpServer())
@@ -259,8 +289,12 @@ describe('Membership E2E', () => {
 
   describe('PATCH /memberships/:id', () => {
     it('SUPER_ADMIN can update role to OWNER', async () => {
-      membershipRepo.findOne.mockResolvedValue(makeMembership({ role: MembershipRole.MEMBER }));
-      membershipRepo.save.mockImplementation((entity) => Promise.resolve(entity));
+      membershipRepo.findOne.mockResolvedValue(
+        makeMembership({ role: MembershipRole.MEMBER }),
+      );
+      membershipRepo.save.mockImplementation((entity) =>
+        Promise.resolve(entity),
+      );
 
       await request(app.getHttpServer())
         .patch(`/memberships/${MEMBERSHIP_ID}`)
@@ -271,8 +305,16 @@ describe('Membership E2E', () => {
 
     it('Tenant OWNER cannot promote to OWNER', async () => {
       membershipRepo.findOne
-        .mockResolvedValueOnce(makeMembership({ role: MembershipRole.MEMBER, tenantId: TENANT_ID }))
-        .mockResolvedValueOnce(makeMembership({ userId: OWNER_ID, role: MembershipRole.OWNER, tenantId: TENANT_ID }));
+        .mockResolvedValueOnce(
+          makeMembership({ role: MembershipRole.MEMBER, tenantId: TENANT_ID }),
+        )
+        .mockResolvedValueOnce(
+          makeMembership({
+            userId: OWNER_ID,
+            role: MembershipRole.OWNER,
+            tenantId: TENANT_ID,
+          }),
+        );
 
       await request(app.getHttpServer())
         .patch(`/memberships/${MEMBERSHIP_ID}`)
@@ -308,8 +350,16 @@ describe('Membership E2E', () => {
 
     it('Tenant OWNER cannot delete OWNER membership', async () => {
       membershipRepo.findOne
-        .mockResolvedValueOnce(makeMembership({ role: MembershipRole.OWNER, tenantId: TENANT_ID }))
-        .mockResolvedValueOnce(makeMembership({ userId: OWNER_ID, role: MembershipRole.OWNER, tenantId: TENANT_ID }));
+        .mockResolvedValueOnce(
+          makeMembership({ role: MembershipRole.OWNER, tenantId: TENANT_ID }),
+        )
+        .mockResolvedValueOnce(
+          makeMembership({
+            userId: OWNER_ID,
+            role: MembershipRole.OWNER,
+            tenantId: TENANT_ID,
+          }),
+        );
 
       await request(app.getHttpServer())
         .delete(`/memberships/${MEMBERSHIP_ID}`)
