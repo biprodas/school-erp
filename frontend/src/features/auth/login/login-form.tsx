@@ -3,10 +3,18 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { EyeIcon, EyeOffIcon, Loader2Icon } from "lucide-react"
 import Link from "next/link"
-import { useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { useEffect, useState } from "react"
 import { Controller, useForm } from "react-hook-form"
 import { toast } from "sonner"
 import { z } from "zod"
+import {
+  DEFAULT_LOGIN_REDIRECT,
+  PLATFORM_LOGIN_REDIRECT,
+} from "~/constants/routes"
+import { signInWithCredentials } from "~/features/auth/hooks"
+import { getClientTenantSlug } from "~/lib/tenant"
+import type { AuthKind } from "~/types/user"
 import { Button } from "~/components/ui/button"
 import {
   Card,
@@ -26,6 +34,7 @@ import { Input } from "~/components/ui/input"
 import { cn } from "~/lib/utils"
 
 const loginSchema = z.object({
+  tenantSlug: z.string().optional(),
   email: z
     .string()
     .min(1, "Email is required")
@@ -37,19 +46,57 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>
 
-export const LoginForm = () => {
+interface LoginFormProps {
+  authKind?: AuthKind
+}
+
+export const LoginForm = ({ authKind = "tenant" }: LoginFormProps) => {
   const [showPassword, setShowPassword] = useState(false)
+  const router = useRouter()
+  const searchParams = useSearchParams()
+
+  // Resolve tenant from the subdomain after mount (avoids SSR/host mismatch).
+  const [detectedSlug, setDetectedSlug] = useState<string | null>(null)
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => {
+    setDetectedSlug(getClientTenantSlug())
+    setMounted(true)
+  }, [])
+  const needsSlug = mounted && authKind === "tenant" && !detectedSlug
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: "", password: "" },
+    defaultValues: { tenantSlug: "", email: "", password: "" },
   })
 
   const onSubmit = async (values: LoginFormValues) => {
-    console.log(values)
-    await new Promise((resolve) => setTimeout(resolve, 600))
-    toast.success(`Logged in as ${values.email}`)
-    form.reset()
+    const effectiveSlug = detectedSlug || values.tenantSlug?.trim() || ""
+
+    if (authKind === "tenant" && !effectiveSlug) {
+      form.setError("tenantSlug", {
+        message: "Enter your workspace",
+      })
+      return
+    }
+
+    const result = await signInWithCredentials(
+      authKind,
+      { email: values.email, password: values.password },
+      effectiveSlug,
+    )
+
+    if (!result || result.error) {
+      toast.error("Invalid email or password")
+      return
+    }
+
+    const fallback =
+      authKind === "platform" ? PLATFORM_LOGIN_REDIRECT : DEFAULT_LOGIN_REDIRECT
+    const callbackUrl = searchParams.get("callbackUrl") || fallback
+
+    toast.success("Welcome back")
+    router.push(callbackUrl)
+    router.refresh()
   }
 
   return (
@@ -63,6 +110,36 @@ export const LoginForm = () => {
       <CardContent>
         <form onSubmit={form.handleSubmit(onSubmit)} noValidate>
           <FieldGroup>
+            {needsSlug && (
+              <Controller
+                name="tenantSlug"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field className="gap-1">
+                    <FieldLabel htmlFor={field.name}>Workspace</FieldLabel>
+                    <div className="relative">
+                      <Input
+                        {...field}
+                        id={field.name}
+                        placeholder="your-school"
+                        autoComplete="off"
+                        autoCapitalize="none"
+                        spellCheck={false}
+                      />
+                      <FieldError
+                        id="tenantSlug-error"
+                        errors={[fieldState.error]}
+                        className="absolute left-0 -bottom-4.5 text-xs"
+                      />
+                    </div>
+                    <FieldDescription className="text-xs">
+                      Your school&apos;s workspace (e.g. acme.lvh.me → acme)
+                    </FieldDescription>
+                  </Field>
+                )}
+              />
+            )}
+
             <Controller
               name="email"
               control={form.control}
