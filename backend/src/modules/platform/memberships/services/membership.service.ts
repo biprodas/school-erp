@@ -29,14 +29,14 @@ export class MembershipService {
     ctx: RequestContextDto,
     dto: CreateMembershipDto,
   ): Promise<Membership> {
-    await this.assertOwnerOrSuperAdmin(ctx, dto.tenantId);
+    await this.assertOwnerOrAdmin(ctx, dto.tenantId);
 
     if (
-      ctx.user?.role !== PlatformRole.SUPER_ADMIN &&
+      ctx.user?.role !== PlatformRole.ADMIN &&
       dto.role === MembershipRole.OWNER
     ) {
       throw new ForbiddenException(
-        'Only super admins can create owner memberships',
+        'Only admins can create owner memberships',
       );
     }
 
@@ -84,10 +84,10 @@ export class MembershipService {
       throw new NotFoundException('Membership not found');
     }
 
-    if (ctx.user?.role !== PlatformRole.SUPER_ADMIN) {
+    if (ctx.user?.role !== PlatformRole.ADMIN) {
       const isOwnMembership = m.userId === ctx.user?.id;
       if (!isOwnMembership) {
-        await this.assertOwnerOrSuperAdmin(ctx, m.tenantId);
+        await this.assertOwnerOrAdmin(ctx, m.tenantId);
       }
     }
 
@@ -104,7 +104,7 @@ export class MembershipService {
     if (userId) reqQuery.userId = userId;
     if (tenantId) reqQuery.tenantId = tenantId;
 
-    if (ctx.user?.role === PlatformRole.SUPER_ADMIN) {
+    if (ctx.user?.role === PlatformRole.ADMIN) {
       return this.membershipRepository.find({
         where: reqQuery,
         order: { createdAt: 'ASC' },
@@ -131,7 +131,7 @@ export class MembershipService {
       throw new NotFoundException('Tenant not found');
     }
 
-    await this.assertOwnerOrSuperAdmin(ctx, tenantId);
+    await this.assertOwnerOrAdmin(ctx, tenantId);
 
     return this.membershipRepository.find({
       where: { tenantId },
@@ -144,7 +144,7 @@ export class MembershipService {
     userId: string,
   ): Promise<Membership[]> {
     if (
-      ctx.user?.role !== PlatformRole.SUPER_ADMIN &&
+      ctx.user?.role !== PlatformRole.ADMIN &&
       userId !== ctx.user?.id
     ) {
       throw new ForbiddenException('You can only view your own memberships');
@@ -172,15 +172,15 @@ export class MembershipService {
       throw new NotFoundException('Membership not found');
     }
 
-    await this.assertOwnerOrSuperAdmin(ctx, membership.tenantId);
+    await this.assertOwnerOrAdmin(ctx, membership.tenantId);
 
-    if (ctx.user?.role !== PlatformRole.SUPER_ADMIN) {
+    if (ctx.user?.role !== PlatformRole.ADMIN) {
       if (membership.role === MembershipRole.OWNER) {
         throw new ForbiddenException('Cannot modify an owner membership');
       }
       if (dto.role === MembershipRole.OWNER) {
         throw new ForbiddenException(
-          'Only super admins can assign the owner role',
+          'Only admins can assign the owner role',
         );
       }
     }
@@ -215,10 +215,10 @@ export class MembershipService {
       throw new NotFoundException('Membership not found');
     }
 
-    await this.assertOwnerOrSuperAdmin(ctx, membership.tenantId);
+    await this.assertOwnerOrAdmin(ctx, membership.tenantId);
 
     if (
-      ctx.user?.role !== PlatformRole.SUPER_ADMIN &&
+      ctx.user?.role !== PlatformRole.ADMIN &&
       membership.role === MembershipRole.OWNER
     ) {
       throw new ForbiddenException('Cannot remove an owner membership');
@@ -227,11 +227,11 @@ export class MembershipService {
     await this.membershipRepository.delete(id);
   }
 
-  private async assertOwnerOrSuperAdmin(
+  private async assertOwnerOrAdmin(
     ctx: RequestContextDto,
     tenantId: string,
   ): Promise<void> {
-    if (ctx.user?.role === PlatformRole.SUPER_ADMIN) return;
+    if (ctx.user?.role === PlatformRole.ADMIN) return;
 
     const ownership = await this.membershipRepository.findOne({
       where: {

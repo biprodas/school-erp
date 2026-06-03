@@ -74,8 +74,7 @@ export class StudentService {
         );
       }
       const newUser = await this.userService.create({
-        firstName: dto.firstName,
-        lastName: dto.lastName,
+        name: [dto.firstName, dto.lastName].filter(Boolean).join(' '),
         email: dto.createUser.email,
         password: dto.createUser.password,
         roleIds: [studentRole.id],

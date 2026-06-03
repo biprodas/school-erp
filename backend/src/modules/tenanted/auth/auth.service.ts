@@ -24,7 +24,7 @@ export class AuthService {
   ) {}
 
   async register(dto: RegisterDto) {
-    const { email, password, firstName, lastName } = dto;
+    const { email, password, name } = dto;
     const existing = await this.userRepo.findByEmail(email);
     if (existing) {
       throw new ConflictException('User already exists');
@@ -38,8 +38,7 @@ export class AuthService {
     const user = await this.userRepo.saveNew({
       email,
       password: hashedPassword,
-      firstName,
-      lastName,
+      name,
       isAdmin: isFirstUser,
     });
 
@@ -96,9 +95,7 @@ export class AuthService {
       user: {
         id: user.id,
         email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        fullName: user.fullName,
+        name: user.name,
         roles,
         status: user.status,
         isAdmin: user.isAdmin === true,

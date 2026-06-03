@@ -22,11 +22,10 @@ const makeUser = (overrides: Partial<User> = {}): User =>
   ({
     id: USER_ID,
     email: 'user@test.com',
-    firstName: 'Test',
-    lastName: 'User',
-    fullName: 'Test User',
+    name: 'Test User',
     role: PlatformRole.USER,
     status: UserStatus.ACTIVE,
+    isAdmin: false,
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,
@@ -41,8 +40,9 @@ describe('User E2E', () => {
     jwtService.sign({
       sub: ADMIN_ID,
       email: 'admin@test.com',
-      role: PlatformRole.SUPER_ADMIN,
+      role: PlatformRole.ADMIN,
       status: UserStatus.ACTIVE,
+      isAdmin: true,
     });
 
   const userToken = (id = USER_ID) =>
@@ -51,6 +51,7 @@ describe('User E2E', () => {
       email: 'user@test.com',
       role: PlatformRole.USER,
       status: UserStatus.ACTIVE,
+      isAdmin: false,
     });
 
   beforeEach(async () => {
@@ -108,7 +109,7 @@ describe('User E2E', () => {
   // ===================== GET /platform/users =====================
 
   describe('GET /platform/users', () => {
-    it('SUPER_ADMIN can list all users', async () => {
+    it('ADMIN can list all users', async () => {
       userRepo.find.mockResolvedValue([makeUser()]);
 
       const res = await request(app.getHttpServer())
@@ -130,7 +131,7 @@ describe('User E2E', () => {
   // ===================== GET /platform/users/:id =====================
 
   describe('GET /platform/users/:id', () => {
-    it('SUPER_ADMIN can view any user', async () => {
+    it('ADMIN can view any user', async () => {
       userRepo.findOne.mockResolvedValue(makeUser({ id: OTHER_USER_ID }));
 
       await request(app.getHttpServer())
@@ -162,11 +163,10 @@ describe('User E2E', () => {
     const dto = {
       email: 'new@test.com',
       password: 'password123',
-      firstName: 'New',
-      lastName: 'User',
+      name: 'New User',
     };
 
-    it('SUPER_ADMIN can create user', async () => {
+    it('ADMIN can create user', async () => {
       userRepo.findOne
         .mockResolvedValueOnce(null) // email check
         .mockResolvedValueOnce(
@@ -199,7 +199,7 @@ describe('User E2E', () => {
       await request(app.getHttpServer())
         .patch(`/platform/users/${USER_ID}`)
         .set('Authorization', `Bearer ${userToken()}`)
-        .send({ firstName: 'Updated' })
+        .send({ name: 'Updated' })
         .expect(200);
     });
 
@@ -207,18 +207,18 @@ describe('User E2E', () => {
       return request(app.getHttpServer())
         .patch(`/platform/users/${OTHER_USER_ID}`)
         .set('Authorization', `Bearer ${userToken()}`)
-        .send({ firstName: 'Hacked' })
+        .send({ name: 'Hacked' })
         .expect(403);
     });
 
-    it('SUPER_ADMIN can update any user', async () => {
+    it('ADMIN can update any user', async () => {
       userRepo.findOne.mockResolvedValue(makeUser({ id: OTHER_USER_ID }));
       userRepo.save.mockImplementation((entity) => Promise.resolve(entity));
 
       await request(app.getHttpServer())
         .patch(`/platform/users/${OTHER_USER_ID}`)
         .set('Authorization', `Bearer ${adminToken()}`)
-        .send({ firstName: 'Updated' })
+        .send({ name: 'Updated' })
         .expect(200);
     });
   });
@@ -226,7 +226,7 @@ describe('User E2E', () => {
   // ===================== DELETE /platform/users/:id =====================
 
   describe('DELETE /platform/users/:id', () => {
-    it('SUPER_ADMIN can delete user', async () => {
+    it('ADMIN can delete user', async () => {
       userRepo.findOne.mockResolvedValue(makeUser());
 
       await request(app.getHttpServer())

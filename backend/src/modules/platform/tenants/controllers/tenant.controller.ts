@@ -92,7 +92,7 @@ export class TenantController {
 
   @Post(':id/transfer-ownership')
   @UseGuards(RolesGuard)
-  @Roles(PlatformRole.SUPER_ADMIN)
+  @Roles(PlatformRole.ADMIN)
   async transferOwnership(
     @RequestContext() ctx: RequestContextDto,
     @Param('id', ParseUUIDPipe) id: string,
@@ -110,7 +110,7 @@ export class TenantController {
 
   @Delete(':id')
   @UseGuards(RolesGuard)
-  @Roles(PlatformRole.SUPER_ADMIN)
+  @Roles(PlatformRole.ADMIN)
   async remove(
     @RequestContext() ctx: RequestContextDto,
     @Param('id', ParseUUIDPipe) id: string,

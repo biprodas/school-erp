@@ -10,9 +10,9 @@ export class SelfOrAdminGuard implements CanActivate {
     const targetId = request.params.id; // or from body
 
     const isSelf = user?.id === targetId;
-    const isSuperAdmin = user?.role === PlatformRole.SUPER_ADMIN;
+    const isAdmin = user?.role === PlatformRole.ADMIN;
 
-    if (!isSelf && !isSuperAdmin) {
+    if (!isSelf && !isAdmin) {
       throw new ForbiddenException('You can only update your own profile');
     }
 

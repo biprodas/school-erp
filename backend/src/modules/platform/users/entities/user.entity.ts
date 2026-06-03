@@ -1,11 +1,7 @@
-import { Expose } from 'class-transformer';
 import {
   AfterInsert,
-  AfterLoad,
   AfterRemove,
   AfterUpdate,
-  BeforeInsert,
-  BeforeUpdate,
   Column,
   CreateDateColumn,
   DeleteDateColumn,
@@ -30,22 +26,8 @@ export class User {
   @Column({ select: false })
   password: string;
 
-  @Column({ name: 'first_name' })
-  firstName: string;
-
-  @Column({ name: 'last_name' })
-  lastName: string;
-
-  /** Join of first + last name — computed, not stored */
-  fullName: string;
-
-  // for testing: will be removed later
-  @Expose()
-  get name(): string {
-    const first = this.firstName?.trim() ?? '';
-    const last = this.lastName?.trim() ?? '';
-    return [first, last].filter(Boolean).join(' ');
-  }
+  @Column()
+  name: string;
 
   @Column({
     type: 'enum',
@@ -63,6 +45,9 @@ export class User {
   })
   status: UserStatus;
 
+  @Column({ name: 'is_admin', default: false })
+  isAdmin: boolean;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
@@ -74,16 +59,6 @@ export class User {
 
   @OneToMany(() => Membership, (membership) => membership.user)
   memberships: Membership[];
-
-  @AfterLoad()
-  @BeforeInsert()
-  @BeforeUpdate()
-  syncFullName(): void {
-    const parts = [this.firstName, this.lastName].filter(
-      (p) => p != null && String(p).trim() !== '',
-    );
-    this.fullName = parts.join(' ');
-  }
 
   @AfterInsert()
   logInsert() {

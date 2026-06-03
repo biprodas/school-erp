@@ -47,10 +47,10 @@ export class TenantService {
 
   /**
    * Creates a tenant. Ownership rules:
-   * - Non-SUPER_ADMIN caller: caller automatically becomes OWNER. Any
+   * - Non-admin caller: caller automatically becomes OWNER. Any
    *   `dto.ownerUserId` is ignored.
-   * - SUPER_ADMIN caller with `dto.ownerUserId`: that user becomes OWNER.
-   * - SUPER_ADMIN caller without `dto.ownerUserId`: tenant is created with
+   * - Admin caller with `dto.ownerUserId`: that user becomes OWNER.
+   * - Admin caller without `dto.ownerUserId`: tenant is created with
    *   no membership; assign an owner later via `transferOwnership`.
    *
    * Tenant record + schema commit first; if the post-commit phase (migrations,
@@ -62,10 +62,10 @@ export class TenantService {
     dto: CreateTenantDto,
   ): Promise<Tenant> {
     const { user } = ctx;
-    const isSuperAdmin = user?.role === PlatformRole.SUPER_ADMIN;
+    const isAdmin = user?.role === PlatformRole.ADMIN;
 
     let ownerId: string | undefined;
-    if (isSuperAdmin) {
+    if (isAdmin) {
       if (dto.ownerUserId) {
         // Validate up-front so we never create a tenant and then fail at
         // membership time.
@@ -175,16 +175,16 @@ export class TenantService {
   /**
    * Atomically reassigns the OWNER membership of a tenant to another user.
    * Runs as a single DB transaction so the tenant never has zero or two
-   * OWNERs mid-flight. SUPER_ADMIN-only.
+   * OWNERs mid-flight. Admin-only.
    */
   async transferOwnership(
     ctx: RequestContextDto,
     tenantId: string,
     dto: TransferOwnershipDto,
   ): Promise<Membership> {
-    if (ctx.user?.role !== PlatformRole.SUPER_ADMIN) {
+    if (ctx.user?.role !== PlatformRole.ADMIN) {
       throw new ForbiddenException(
-        'Only super admins can transfer tenant ownership',
+        'Only admins can transfer tenant ownership',
       );
     }
 
@@ -259,7 +259,7 @@ export class TenantService {
   }
 
   async getAllTenants(ctx: RequestContextDto): Promise<Tenant[]> {
-    if (ctx.user?.role !== PlatformRole.SUPER_ADMIN) {
+    if (ctx.user?.role !== PlatformRole.ADMIN) {
       return this.getTenantsByUser(ctx, ctx.user?.id ?? '');
     }
 
@@ -288,7 +288,7 @@ export class TenantService {
   }
 
   /**
-   * Returns a tenant only if the requester is a SUPER_ADMIN or has any
+   * Returns a tenant only if the requester is an admin or has any
    * membership in that tenant.
    */
   async findByIdForUser(ctx: RequestContextDto, id: string): Promise<Tenant> {
@@ -296,7 +296,7 @@ export class TenantService {
     if (!tenant) {
       throw new NotFoundException('Tenant not found');
     }
-    if (ctx.user?.role === PlatformRole.SUPER_ADMIN) return tenant;
+    if (ctx.user?.role === PlatformRole.ADMIN) return tenant;
 
     const membership = await this.membershipRepository.findOne({
       where: { tenantId: id, userId: ctx.user?.id ?? '' },
@@ -318,7 +318,7 @@ export class TenantService {
       throw new NotFoundException('Tenant not found');
     }
 
-    if (user?.role !== PlatformRole.SUPER_ADMIN) {
+    if (user?.role !== PlatformRole.ADMIN) {
       const membership = await this.membershipRepository.findOne({
         where: {
           tenantId: id,
@@ -328,7 +328,7 @@ export class TenantService {
       });
       if (!membership) {
         throw new ForbiddenException(
-          'Only the tenant owner or a super admin can update this tenant',
+          'Only the tenant owner or an admin can update this tenant',
         );
       }
     }

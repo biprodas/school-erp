@@ -129,8 +129,7 @@ describe('StudentService', () => {
 
       expect(roleRepo.findByName).toHaveBeenCalledWith('student');
       expect(userService.create).toHaveBeenCalledWith({
-        firstName: 'Linus',
-        lastName: 'Torvalds',
+        name: 'Linus Torvalds',
         email: 'linus@example.com',
         password: 'secret123',
         roleIds: ['role-student'],

@@ -6,9 +6,6 @@ import {
   UpdateDateColumn,
   DeleteDateColumn,
   OneToMany,
-  BeforeInsert,
-  BeforeUpdate,
-  AfterLoad,
   AfterInsert,
   AfterUpdate,
   AfterRemove,
@@ -27,14 +24,8 @@ export class User {
   @Column({ select: false })
   password: string;
 
-  @Column({ name: 'first_name' })
-  firstName: string;
-
-  @Column({ name: 'last_name' })
-  lastName: string;
-
-  // virtual column
-  fullName: string;
+  @Column()
+  name: string;
 
   @Column({ type: 'varchar', default: UserStatus.ACTIVE })
   status: string;
@@ -53,16 +44,6 @@ export class User {
 
   @DeleteDateColumn({ name: 'deleted_at' })
   deletedAt?: Date;
-
-  @AfterLoad()
-  @BeforeInsert()
-  @BeforeUpdate()
-  syncFullName(): void {
-    const parts = [this.firstName, this.lastName].filter(
-      (p) => p != null && String(p).trim() !== '',
-    );
-    this.fullName = parts.join(' ');
-  }
 
   @AfterInsert()
   logInsert() {

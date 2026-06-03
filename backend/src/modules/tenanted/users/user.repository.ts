@@ -6,8 +6,7 @@ import { User } from './entities/user.entity';
 
 export interface UserFilters {
   id?: string;
-  firstName?: string;
-  lastName?: string;
+  name?: string;
   email?: string;
 }
 
@@ -28,8 +27,7 @@ export class UserRepository extends BaseTenantRepository<User> {
         id: true,
         email: true,
         password: true,
-        firstName: true,
-        lastName: true,
+        name: true,
         status: true,
         isAdmin: true,
       },
@@ -56,14 +54,9 @@ export class UserRepository extends BaseTenantRepository<User> {
     if (filters.email) {
       qb.andWhere('user.email = :email', { email: filters.email });
     }
-    if (filters.firstName) {
-      qb.andWhere('user.first_name = :firstName', {
-        firstName: filters.firstName,
-      });
-    }
-    if (filters.lastName) {
-      qb.andWhere('user.last_name = :lastName', {
-        lastName: filters.lastName,
+    if (filters.name) {
+      qb.andWhere('user.name = :name', {
+        name: filters.name,
       });
     }
 

@@ -47,8 +47,9 @@ describe('Tenant E2E', () => {
     jwtService.sign({
       sub: ADMIN_ID,
       email: 'admin@test.com',
-      role: PlatformRole.SUPER_ADMIN,
+      role: PlatformRole.ADMIN,
       status: UserStatus.ACTIVE,
+      isAdmin: true,
     });
 
   const userToken = (id = USER_ID) =>
@@ -57,6 +58,7 @@ describe('Tenant E2E', () => {
       email: 'user@test.com',
       role: PlatformRole.USER,
       status: UserStatus.ACTIVE,
+      isAdmin: false,
     });
 
   beforeEach(async () => {
@@ -157,7 +159,7 @@ describe('Tenant E2E', () => {
   // ===================== GET /tenants =====================
 
   describe('GET /tenants', () => {
-    it('SUPER_ADMIN sees all tenants', async () => {
+    it('ADMIN sees all tenants', async () => {
       tenantRepo.find.mockResolvedValue([
         makeTenant(),
         makeTenant({ id: '00000000-0000-0000-0000-000000000011' }),
@@ -187,7 +189,7 @@ describe('Tenant E2E', () => {
   // ===================== GET /tenants/:id =====================
 
   describe('GET /tenants/:id', () => {
-    it('SUPER_ADMIN can view any tenant', async () => {
+    it('ADMIN can view any tenant', async () => {
       tenantRepo.findOne.mockResolvedValue(makeTenant());
 
       await request(app.getHttpServer())
@@ -246,7 +248,7 @@ describe('Tenant E2E', () => {
   // ===================== PATCH /tenants/:id =====================
 
   describe('PATCH /tenants/:id', () => {
-    it('SUPER_ADMIN can update any tenant', async () => {
+    it('ADMIN can update any tenant', async () => {
       tenantRepo.findOne.mockResolvedValue(makeTenant());
       tenantRepo.save.mockImplementation((entity) => Promise.resolve(entity));
 
@@ -287,7 +289,7 @@ describe('Tenant E2E', () => {
   // ===================== DELETE /tenants/:id =====================
 
   describe('DELETE /tenants/:id', () => {
-    it('SUPER_ADMIN can delete tenant', async () => {
+    it('ADMIN can delete tenant', async () => {
       tenantRepo.findOne.mockResolvedValue(makeTenant());
 
       await request(app.getHttpServer())

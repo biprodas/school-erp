@@ -32,8 +32,7 @@ export class PlatformAuthService {
     const user = this.userRepository.create({
       email: dto.email,
       password: hashedPassword,
-      firstName: dto.firstName,
-      lastName: dto.lastName,
+      name: dto.name,
     });
     await this.userRepository.save(user);
 
@@ -47,10 +46,10 @@ export class PlatformAuthService {
         'id',
         'email',
         'password',
-        'firstName',
-        'lastName',
+        'name',
         'role',
         'status',
+        'isAdmin',
       ],
     });
 
@@ -86,6 +85,7 @@ export class PlatformAuthService {
       email: user.email,
       role: user.role,
       status: user.status,
+      isAdmin: user.isAdmin,
     };
     return {
       access_token: this.jwtService.sign(payload),
@@ -93,11 +93,10 @@ export class PlatformAuthService {
       user: {
         id: user.id,
         email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        fullName: user.fullName,
+        name: user.name,
         role: user.role,
         status: user.status,
+        isAdmin: user.isAdmin,
       },
     };
   }
