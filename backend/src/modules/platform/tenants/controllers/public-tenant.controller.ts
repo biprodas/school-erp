@@ -44,4 +44,27 @@ export class PublicTenantController {
       },
     };
   }
+
+  @Get('by-slug')
+  async bySlug(@Query('slug') slug?: string) {
+    if (!slug) {
+      throw new BadRequestException('slug query parameter is required');
+    }
+
+    const tenant = await this.tenantService.findBySlug(slug);
+    if (!tenant || tenant.status !== TenantStatus.ACTIVE) {
+      throw new NotFoundException('No active tenant for this slug');
+    }
+
+    return {
+      success: true,
+      statusCode: 200,
+      message: 'Tenant resolved',
+      data: {
+        slug: tenant.slug,
+        name: tenant.name,
+        status: tenant.status,
+      },
+    };
+  }
 }
