@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Inter, JetBrains_Mono  } from "next/font/google";
-import { cn } from "~/lib/utils";
+import { Geist, Geist_Mono, Inter, JetBrains_Mono } from "next/font/google";
 import { TooltipProvider } from "~/components/ui/tooltip";
-
-import "./globals.css";
+import { cn } from "~/lib/utils";
+import AuthProvider from "~/providers/auth-provider";
+import ReactQueryProvider from "~/providers/react-query-provider";
 import { ThemeProvider } from "~/providers/theme-provider";
 import { ToasterProvider } from "~/providers/toast-provider";
-import ReactQueryProvider from "~/providers/react-query-provider";
+
+import "./globals.css";
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 
@@ -61,12 +62,14 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <ReactQueryProvider>
-            <TooltipProvider>
-              {children}
-            </TooltipProvider>
-            <ToasterProvider />
-          </ReactQueryProvider>
+          <AuthProvider>
+            <ReactQueryProvider>
+              <TooltipProvider>
+                {children}
+              </TooltipProvider>
+              <ToasterProvider />
+            </ReactQueryProvider>
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

@@ -22,21 +22,19 @@ export class UserService {
   async findFiltered(filterUserDto: FilterUserDto): Promise<User[]> {
     this.logger.log(`${this.findFiltered.name} Service Called`);
 
-    const { id, firstName, lastName, email, roleId } = filterUserDto;
+    const { id, name, email, roleId } = filterUserDto;
 
     if (roleId) {
       return this.userRepo.findByRoleId(roleId, {
         id,
-        firstName,
-        lastName,
+        name,
         email,
       });
     }
 
     const where: Record<string, any> = {};
     if (id) where.id = id;
-    if (firstName) where.firstName = firstName;
-    if (lastName) where.lastName = lastName;
+    if (name) where.name = name;
     if (email) where.email = email;
 
     return this.userRepo.findFiltered(where);
@@ -63,8 +61,7 @@ export class UserService {
 
     const hashedPassword = await bcrypt.hash(dto.password, 10);
     const user = await this.userRepo.saveNew({
-      firstName: dto.firstName,
-      lastName: dto.lastName,
+      name: dto.name,
       email: dto.email,
       password: hashedPassword,
       status: dto.status ?? UserStatus.ACTIVE,

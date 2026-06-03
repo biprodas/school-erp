@@ -1,4 +1,5 @@
 import {
+  IsBoolean,
   IsDefined,
   IsEmail,
   IsEnum,
@@ -14,12 +15,7 @@ export class CreateUserDto {
   @IsString()
   @IsNotEmpty()
   @IsDefined()
-  firstName: string;
-
-  @IsString()
-  @IsNotEmpty()
-  @IsDefined()
-  lastName: string;
+  name: string;
 
   @IsEmail()
   @IsNotEmpty()
@@ -38,4 +34,8 @@ export class CreateUserDto {
   @IsOptional()
   @IsEnum(UserStatus)
   status?: UserStatus;
+
+  @IsOptional()
+  @IsBoolean()
+  isAdmin?: boolean;
 }

@@ -31,8 +31,8 @@ export class UserService {
   ): Promise<User[]> {
     this.logger.log(`${this.findAll.name} Service Called`);
 
-    const { id, firstName, lastName, email, role } = filterUserDto;
-    const reqQuery: any = { id, firstName, lastName, email, role };
+    const { id, name, email, role } = filterUserDto;
+    const reqQuery: any = { id, name, email, role };
 
     return this.userRepo.find({ where: reqQuery });
   }
@@ -62,10 +62,10 @@ export class UserService {
     const user = this.userRepo.create({
       email: dto.email,
       password: hashedPassword,
-      firstName: dto.firstName,
-      lastName: dto.lastName,
+      name: dto.name,
       role: dto.role ?? PlatformRole.USER,
       status: dto.status ?? UserStatus.ACTIVE,
+      isAdmin: dto.isAdmin ?? false,
     });
     await this.userRepo.save(user);
     return this.findById(ctx, user.id);
@@ -79,16 +79,16 @@ export class UserService {
     this.logger.log(`${this.update.name} Service Called`);
 
     const isSelf = ctx.user?.id === targetId;
-    const isSuperAdmin = ctx.user?.role === PlatformRole.SUPER_ADMIN;
+    const isAdmin = ctx.user?.role === PlatformRole.ADMIN;
 
-    if (!isSelf && !isSuperAdmin) {
+    if (!isSelf && !isAdmin) {
       throw new ForbiddenException('You can only update your own profile');
     }
 
-    // Only super admin can change role or status
-    if (!isSuperAdmin && (dto.role || dto.status)) {
+    // Only admins can change role, status, or admin flag
+    if (!isAdmin && (dto.role || dto.status || dto.isAdmin !== undefined)) {
       throw new ForbiddenException(
-        'Only super admin can change role or status',
+        'Only admin can change role, status, or admin flag',
       );
     }
 

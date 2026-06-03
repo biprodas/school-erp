@@ -25,3 +25,22 @@ export const tenantSlugCache = {
     }
   },
 };
+
+/** Separate cache for custom-domain (full host) → tenant lookups. */
+const domainCache = new Map<string, CachedTenant>();
+
+export const tenantDomainCache = {
+  get(domain: string): CachedTenant | undefined {
+    return domainCache.get(domain);
+  },
+  set(domain: string, entry: CachedTenant): void {
+    domainCache.set(domain, entry);
+  },
+  invalidate(domain?: string): void {
+    if (domain) {
+      domainCache.delete(domain);
+    } else {
+      domainCache.clear();
+    }
+  },
+};

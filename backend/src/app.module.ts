@@ -73,6 +73,8 @@ export class AppModule {
         { path: 'platform/auth/*path', method: RequestMethod.ALL },
         { path: 'platform/users', method: RequestMethod.ALL },
         { path: 'platform/users/*path', method: RequestMethod.ALL },
+        { path: 'public', method: RequestMethod.ALL },
+        { path: 'public/*path', method: RequestMethod.ALL },
       )
       .forRoutes('*');
   }

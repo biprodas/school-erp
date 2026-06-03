@@ -44,8 +44,9 @@ const superAdminCtx = () =>
     user: {
       id: 'admin-id',
       email: 'admin@test.com',
-      role: PlatformRole.SUPER_ADMIN,
+      role: PlatformRole.ADMIN,
       status: UserStatus.ACTIVE,
+      isAdmin: true,
     },
   });
 
@@ -57,6 +58,7 @@ const userCtx = (id = 'user-id') =>
       email: 'user@test.com',
       role: PlatformRole.USER,
       status: UserStatus.ACTIVE,
+      isAdmin: false,
     },
   });
 
@@ -179,7 +181,7 @@ describe('TenantService', () => {
   // ===================== getAllTenants =====================
 
   describe('getAllTenants', () => {
-    it('SUPER_ADMIN sees all tenants', async () => {
+    it('ADMIN sees all tenants', async () => {
       const tenants = [makeTenant(), makeTenant({ id: 'tenant-2' })];
       tenantRepo.find.mockResolvedValue(tenants);
 
@@ -214,7 +216,7 @@ describe('TenantService', () => {
   // ===================== findByIdForUser =====================
 
   describe('findByIdForUser', () => {
-    it('SUPER_ADMIN can view any tenant', async () => {
+    it('ADMIN can view any tenant', async () => {
       tenantRepo.findOne.mockResolvedValue(makeTenant());
 
       const result = await service.findByIdForUser(superAdminCtx(), TENANT_ID);
@@ -256,7 +258,7 @@ describe('TenantService', () => {
   describe('updateTenant', () => {
     const dto = { name: 'Updated Name' };
 
-    it('SUPER_ADMIN can update any tenant', async () => {
+    it('ADMIN can update any tenant', async () => {
       tenantRepo.findOne.mockResolvedValue(makeTenant());
       tenantRepo.save.mockImplementation((entity) => Promise.resolve(entity));
 
@@ -304,10 +306,10 @@ describe('TenantService', () => {
   describe('createTenant', () => {
     const dto = { name: 'New Tenant', slug: 'new-tenant' };
 
-    it('SUPER_ADMIN creates tenant without auto-membership', async () => {
+    it('ADMIN creates tenant without auto-membership', async () => {
       const result = await service.createTenant(superAdminCtx(), dto);
       expect(result).toBeDefined();
-      // SUPER_ADMIN should NOT get an auto-membership
+      // ADMIN should NOT get an auto-membership
       expect(membershipRepo.save).not.toHaveBeenCalled();
     });
 
@@ -324,7 +326,7 @@ describe('TenantService', () => {
       );
     });
 
-    it('SUPER_ADMIN with ownerUserId creates OWNER membership for that user', async () => {
+    it('ADMIN with ownerUserId creates OWNER membership for that user', async () => {
       userService.findById.mockResolvedValue({ id: 'target-owner' });
 
       await service.createTenant(superAdminCtx(), {
@@ -345,7 +347,7 @@ describe('TenantService', () => {
       expect(membershipRepo.save).toHaveBeenCalled();
     });
 
-    it('SUPER_ADMIN with non-existent ownerUserId throws NotFoundException before tenant write', async () => {
+    it('ADMIN with non-existent ownerUserId throws NotFoundException before tenant write', async () => {
       userService.findById.mockRejectedValue(
         new NotFoundException('User not found'),
       );
@@ -359,7 +361,7 @@ describe('TenantService', () => {
       expect(membershipRepo.save).not.toHaveBeenCalled();
     });
 
-    it('Non-SUPER_ADMIN with ownerUserId in payload — ownerUserId is ignored; caller still becomes OWNER', async () => {
+    it('Non-ADMIN with ownerUserId in payload — ownerUserId is ignored; caller still becomes OWNER', async () => {
       const ctx = userCtx('user-id');
       await service.createTenant(ctx, {
         ...dto,
@@ -385,7 +387,7 @@ describe('TenantService', () => {
       userService.findById.mockResolvedValue({ id: 'new-owner' });
     });
 
-    it('Non-SUPER_ADMIN caller -> ForbiddenException', async () => {
+    it('Non-ADMIN caller -> ForbiddenException', async () => {
       await expect(
         service.transferOwnership(userCtx('user-id'), TENANT_ID, {
           newOwnerUserId: 'new-owner',

@@ -36,8 +36,9 @@ const superAdminCtx = () =>
     user: {
       id: 'admin-id',
       email: 'admin@test.com',
-      role: PlatformRole.SUPER_ADMIN,
+      role: PlatformRole.ADMIN,
       status: UserStatus.ACTIVE,
+      isAdmin: true,
     },
   });
 
@@ -49,6 +50,7 @@ const userCtx = (id = 'user-id') =>
       email: 'user@test.com',
       role: PlatformRole.USER,
       status: UserStatus.ACTIVE,
+      isAdmin: false,
     },
   });
 
@@ -56,11 +58,10 @@ const makeUser = (overrides: Partial<User> = {}): User =>
   ({
     id: 'user-id',
     email: 'user@test.com',
-    firstName: 'Test',
-    lastName: 'User',
-    fullName: 'Test User',
+    name: 'Test User',
     role: PlatformRole.USER,
     status: UserStatus.ACTIVE,
+    isAdmin: false,
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,
@@ -117,8 +118,7 @@ describe('UserService', () => {
     const dto = {
       email: 'new@test.com',
       password: 'password123',
-      firstName: 'New',
-      lastName: 'User',
+      name: 'New User',
     };
 
     it('creates user with hashed password', async () => {
@@ -161,25 +161,25 @@ describe('UserService', () => {
   // ===================== update =====================
 
   describe('update', () => {
-    it('SUPER_ADMIN can update any user', async () => {
+    it('Admin can update any user', async () => {
       userRepo.findOne.mockResolvedValue(makeUser({ id: 'other-user' }));
       userRepo.save.mockImplementation((entity) => Promise.resolve(entity));
 
       const result = await service.update(superAdminCtx(), 'other-user', {
-        firstName: 'Updated',
+        name: 'Updated',
       });
-      expect(result.firstName).toBe('Updated');
+      expect(result.name).toBe('Updated');
     });
 
-    it('SUPER_ADMIN can change role and status', async () => {
+    it('Admin can change role and status', async () => {
       userRepo.findOne.mockResolvedValue(makeUser({ id: 'other-user' }));
       userRepo.save.mockImplementation((entity) => Promise.resolve(entity));
 
       const result = await service.update(superAdminCtx(), 'other-user', {
-        role: PlatformRole.SUPER_ADMIN,
+        role: PlatformRole.ADMIN,
         status: UserStatus.SUSPENDED,
       });
-      expect(result.role).toBe(PlatformRole.SUPER_ADMIN);
+      expect(result.role).toBe(PlatformRole.ADMIN);
       expect(result.status).toBe(UserStatus.SUSPENDED);
     });
 
@@ -189,16 +189,16 @@ describe('UserService', () => {
       userRepo.save.mockImplementation((entity) => Promise.resolve(entity));
 
       const result = await service.update(ctx, 'user-id', {
-        firstName: 'Updated',
+        name: 'Updated',
       });
-      expect(result.firstName).toBe('Updated');
+      expect(result.name).toBe('Updated');
     });
 
     it('User cannot update others', async () => {
       const ctx = userCtx('user-id');
 
       await expect(
-        service.update(ctx, 'other-user', { firstName: 'Hacked' }),
+        service.update(ctx, 'other-user', { name: 'Hacked' }),
       ).rejects.toThrow(ForbiddenException);
     });
 
@@ -206,7 +206,7 @@ describe('UserService', () => {
       const ctx = userCtx('user-id');
 
       await expect(
-        service.update(ctx, 'user-id', { role: PlatformRole.SUPER_ADMIN }),
+        service.update(ctx, 'user-id', { role: PlatformRole.ADMIN }),
       ).rejects.toThrow(ForbiddenException);
     });
 

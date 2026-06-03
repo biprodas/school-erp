@@ -39,8 +39,9 @@ const superAdminCtx = () =>
     user: {
       id: 'admin-id',
       email: 'admin@test.com',
-      role: PlatformRole.SUPER_ADMIN,
+      role: PlatformRole.ADMIN,
       status: UserStatus.ACTIVE,
+      isAdmin: true,
     },
   });
 
@@ -52,6 +53,7 @@ const userCtx = (id = 'user-id') =>
       email: 'user@test.com',
       role: PlatformRole.USER,
       status: UserStatus.ACTIVE,
+      isAdmin: false,
     },
   });
 
@@ -117,7 +119,7 @@ describe('MembershipService', () => {
       membershipRepo.findOne.mockResolvedValue(null); // no duplicate
     });
 
-    it('SUPER_ADMIN can create membership with OWNER role', async () => {
+    it('ADMIN can create membership with OWNER role', async () => {
       const result = await service.create(superAdminCtx(), {
         ...dto,
         role: MembershipRole.OWNER,
@@ -128,7 +130,7 @@ describe('MembershipService', () => {
 
     it('Tenant OWNER can create MEMBER membership for their tenant', async () => {
       const ctx = userCtx('owner-id');
-      // First findOne call: assertOwnerOrSuperAdmin check
+      // First findOne call: assertOwnerOrAdmin check
       membershipRepo.findOne
         .mockResolvedValueOnce(
           makeMembership({ userId: 'owner-id', role: MembershipRole.OWNER }),
@@ -153,7 +155,7 @@ describe('MembershipService', () => {
 
     it('Regular USER (non-owner) cannot create membership', async () => {
       const ctx = userCtx();
-      // assertOwnerOrSuperAdmin: no ownership found
+      // assertOwnerOrAdmin: no ownership found
       membershipRepo.findOne.mockResolvedValueOnce(null);
 
       await expect(service.create(ctx, dto)).rejects.toThrow(
@@ -162,7 +164,7 @@ describe('MembershipService', () => {
     });
 
     it('throws ConflictException for duplicate membership', async () => {
-      // For SUPER_ADMIN, assertOwnerOrSuperAdmin returns immediately (no findOne call),
+      // For ADMIN, assertOwnerOrAdmin returns immediately (no findOne call),
       // so the first findOne call is the duplicate check
       membershipRepo.findOne.mockResolvedValueOnce(makeMembership()); // duplicate check
 
@@ -212,7 +214,7 @@ describe('MembershipService', () => {
   // ===================== findById =====================
 
   describe('findById', () => {
-    it('SUPER_ADMIN can view any membership', async () => {
+    it('ADMIN can view any membership', async () => {
       membershipRepo.findOne.mockResolvedValue(
         makeMembership({ userId: 'other-user' }),
       );
@@ -235,7 +237,7 @@ describe('MembershipService', () => {
         .mockResolvedValueOnce(
           makeMembership({ userId: 'other-user', tenantId: TENANT_ID }),
         )
-        // second call: assertOwnerOrSuperAdmin ownership check
+        // second call: assertOwnerOrAdmin ownership check
         .mockResolvedValueOnce(
           makeMembership({
             userId: 'owner-id',
@@ -272,7 +274,7 @@ describe('MembershipService', () => {
   // ===================== findAll =====================
 
   describe('findAll', () => {
-    it('SUPER_ADMIN sees all memberships', async () => {
+    it('ADMIN sees all memberships', async () => {
       const memberships = [makeMembership(), makeMembership({ id: 'mem-2' })];
       membershipRepo.find.mockResolvedValue(memberships);
 
@@ -280,7 +282,7 @@ describe('MembershipService', () => {
       expect(result).toHaveLength(2);
     });
 
-    it('SUPER_ADMIN can filter by tenantId', async () => {
+    it('ADMIN can filter by tenantId', async () => {
       membershipRepo.find.mockResolvedValue([makeMembership()]);
 
       await service.findAll(superAdminCtx(), { tenantId: TENANT_ID });
@@ -318,7 +320,7 @@ describe('MembershipService', () => {
   // ===================== findByTenantId =====================
 
   describe('findByTenantId', () => {
-    it('SUPER_ADMIN can list any tenant memberships', async () => {
+    it('ADMIN can list any tenant memberships', async () => {
       tenantService.findById.mockResolvedValue({ id: TENANT_ID });
       membershipRepo.find.mockResolvedValue([makeMembership()]);
 
@@ -360,7 +362,7 @@ describe('MembershipService', () => {
   // ===================== findByUserId =====================
 
   describe('findByUserId', () => {
-    it('SUPER_ADMIN can query any user', async () => {
+    it('ADMIN can query any user', async () => {
       userService.findById.mockResolvedValue({ id: 'other-user' });
       membershipRepo.find.mockResolvedValue([
         makeMembership({ userId: 'other-user' }),
@@ -393,7 +395,7 @@ describe('MembershipService', () => {
   // ===================== updateRole =====================
 
   describe('updateRole', () => {
-    it('SUPER_ADMIN can change any role including to OWNER', async () => {
+    it('ADMIN can change any role including to OWNER', async () => {
       membershipRepo.findOne
         .mockResolvedValueOnce(makeMembership({ role: MembershipRole.MEMBER }))
         // No other OWNER on the tenant.
@@ -415,7 +417,7 @@ describe('MembershipService', () => {
         .mockResolvedValueOnce(
           makeMembership({ role: MembershipRole.MEMBER, tenantId: TENANT_ID }),
         )
-        // second call: assertOwnerOrSuperAdmin
+        // second call: assertOwnerOrAdmin
         .mockResolvedValueOnce(
           makeMembership({
             userId: 'owner-id',
@@ -554,7 +556,7 @@ describe('MembershipService', () => {
   // ===================== remove =====================
 
   describe('remove', () => {
-    it('SUPER_ADMIN can remove any membership', async () => {
+    it('ADMIN can remove any membership', async () => {
       membershipRepo.findOne.mockResolvedValue(makeMembership());
 
       await service.remove(superAdminCtx(), 'mem-1');

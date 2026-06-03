@@ -6,6 +6,7 @@ import { UserModule } from 'src/modules/platform/users/user.module';
 import { RbacModule } from '~/tenanted/rbac/rbac.module';
 import { TenantService } from './services/tenant.service';
 import { TenantController } from './controllers/tenant.controller';
+import { PublicTenantController } from './controllers/public-tenant.controller';
 
 @Module({
   imports: [
@@ -13,7 +14,7 @@ import { TenantController } from './controllers/tenant.controller';
     UserModule,
     RbacModule,
   ],
-  controllers: [TenantController],
+  controllers: [TenantController, PublicTenantController],
   providers: [TenantService],
   exports: [TenantService],
 })

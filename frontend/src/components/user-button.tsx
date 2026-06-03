@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
+import { signOut, useSession } from "next-auth/react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,63 +12,59 @@ import {
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
 import { Button } from "~/components/ui/button";
-import { LogOut, HomeIcon, UserIcon, LogOutIcon, CircleUserRoundIcon, CreditCardIcon, BellIcon } from "lucide-react";
+import {
+  LogOutIcon,
+  CircleUserRoundIcon,
+  CreditCardIcon,
+  BellIcon,
+} from "lucide-react";
 import { ThemeSegmentControl } from "./theme-segment-control";
-import { useRouter } from "next/navigation";
+import { TENANT_LOGIN } from "~/constants/routes";
 import {
   Avatar,
   AvatarFallback,
   AvatarImage,
 } from "~/components/ui/avatar"
 
-type User = {
-  id: string;
-  email: string;
-  name: string;
-  avatar: string;
+function getInitials(name: string): string {
+  return (
+    name
+      .split(" ")
+      .map((part) => part.charAt(0))
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "U"
+  );
 }
 
 export function UserButton() {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: session, status } = useSession();
 
-  const router = useRouter();
-
-  useEffect(() => {
-    setTimeout(() => {
-      setUser({
-        id: "1",
-        email: "biprodas.cse@gmail.com",
-        name: "Biprodas R.",
-        avatar: "/avatars/shadcn.jpg",
-      });
-      setLoading(false);
-    }, 1000);
-  }, []);
-
-  if (loading) {
+  if (status === "loading") {
     return <div className="w-8 h-8 rounded-full bg-muted animate-pulse" />;
   }
 
-  if (!user) {
+  if (!session?.user) {
     return (
-      <Link href="/login">
+      <Link href={TENANT_LOGIN}>
         <Button variant="outline" size="sm">Sign in</Button>
       </Link>
     );
   }
 
-  const initials = user.name?.split(" ").map((name) => name.charAt(0)).join("") || "U";
+  const name = session.user.name ?? "Account";
+  const email = session.user.email ?? "";
+  const avatar = session.user.image ?? "";
+  const initials = getInitials(name);
+  // Both surfaces share `/login`; the host renders the right view after logout.
+  const loginPath = TENANT_LOGIN;
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        {/* <button className="w-8 h-8 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-mono text-sm font-semibold hover:bg-primary/20 transition-colors outline-none">
-          {initials}
-        </button> */}
         <Button variant="outline" size="icon" className="rounded-lg">
           <Avatar className="size-8 rounded-lg">
-            <AvatarImage src={user.avatar} alt={user.name} className="rounded-lg"/>
+            <AvatarImage src={avatar} alt={name} className="rounded-lg" />
             <AvatarFallback className="rounded-lg bg-primary text-white font-medium">
               {initials}
             </AvatarFallback>
@@ -79,15 +75,15 @@ export function UserButton() {
         <DropdownMenuLabel className="p-0 font-normal">
           <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
             <Avatar className="size-8 rounded-lg">
-              <AvatarImage src={user.avatar} alt={user.name} />
+              <AvatarImage src={avatar} alt={name} />
               <AvatarFallback className="rounded-lg bg-primary text-white font-medium">
                 {initials}
               </AvatarFallback>
             </Avatar>
             <div className="grid flex-1 text-left text-sm leading-tight">
-              <span className="truncate font-medium">{user.name}</span>
+              <span className="truncate font-medium">{name}</span>
               <span className="truncate text-muted-foreground text-xs">
-                {user.email}
+                {email}
               </span>
             </div>
           </div>
@@ -97,9 +93,11 @@ export function UserButton() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          <DropdownMenuItem>
-            <CircleUserRoundIcon />
-            Account
+          <DropdownMenuItem asChild>
+            <Link href="/profile">
+              <CircleUserRoundIcon />
+              Account
+            </Link>
           </DropdownMenuItem>
           <DropdownMenuItem>
             <CreditCardIcon />
@@ -111,11 +109,10 @@ export function UserButton() {
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem>
+        <DropdownMenuItem onClick={() => signOut({ redirectTo: loginPath })}>
           <LogOutIcon />
           Log out
         </DropdownMenuItem>
-
       </DropdownMenuContent>
     </DropdownMenu>
   );

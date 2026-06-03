@@ -47,8 +47,9 @@ describe('Membership E2E', () => {
     jwtService.sign({
       sub: ADMIN_ID,
       email: 'admin@test.com',
-      role: PlatformRole.SUPER_ADMIN,
+      role: PlatformRole.ADMIN,
       status: UserStatus.ACTIVE,
+      isAdmin: true,
     });
 
   const userToken = (id = USER_ID) =>
@@ -57,6 +58,7 @@ describe('Membership E2E', () => {
       email: 'user@test.com',
       role: PlatformRole.USER,
       status: UserStatus.ACTIVE,
+      isAdmin: false,
     });
 
   beforeEach(async () => {
@@ -131,7 +133,7 @@ describe('Membership E2E', () => {
   // ===================== GET /memberships =====================
 
   describe('GET /memberships', () => {
-    it('SUPER_ADMIN sees all memberships', async () => {
+    it('ADMIN sees all memberships', async () => {
       membershipRepo.find.mockResolvedValue([makeMembership()]);
 
       const res = await request(app.getHttpServer())
@@ -166,7 +168,7 @@ describe('Membership E2E', () => {
   // ===================== GET /memberships/tenant/:tenantId =====================
 
   describe('GET /memberships/tenant/:tenantId', () => {
-    it('SUPER_ADMIN can list tenant memberships', async () => {
+    it('ADMIN can list tenant memberships', async () => {
       membershipRepo.find.mockResolvedValue([makeMembership()]);
 
       await request(app.getHttpServer())
@@ -218,7 +220,7 @@ describe('Membership E2E', () => {
         .expect(403);
     });
 
-    it('SUPER_ADMIN can query any user', async () => {
+    it('ADMIN can query any user', async () => {
       userServiceMock.findById.mockResolvedValue({ id: TARGET_USER_ID });
       membershipRepo.find.mockResolvedValue([]);
 
@@ -238,7 +240,7 @@ describe('Membership E2E', () => {
       role: MembershipRole.MEMBER,
     };
 
-    it('SUPER_ADMIN can create membership', async () => {
+    it('ADMIN can create membership', async () => {
       membershipRepo.findOne.mockResolvedValue(null);
 
       await request(app.getHttpServer())
@@ -288,7 +290,7 @@ describe('Membership E2E', () => {
   // ===================== PATCH /memberships/:id =====================
 
   describe('PATCH /memberships/:id', () => {
-    it('SUPER_ADMIN can update role to OWNER', async () => {
+    it('ADMIN can update role to OWNER', async () => {
       membershipRepo.findOne.mockResolvedValue(
         makeMembership({ role: MembershipRole.MEMBER }),
       );
@@ -339,7 +341,7 @@ describe('Membership E2E', () => {
   // ===================== DELETE /memberships/:id =====================
 
   describe('DELETE /memberships/:id', () => {
-    it('SUPER_ADMIN can delete any membership', async () => {
+    it('ADMIN can delete any membership', async () => {
       membershipRepo.findOne.mockResolvedValue(makeMembership());
 
       await request(app.getHttpServer())

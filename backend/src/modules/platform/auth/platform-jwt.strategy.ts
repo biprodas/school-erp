@@ -26,6 +26,7 @@ export class PlatformJwtStrategy extends PassportStrategy(
       email: payload.email,
       role: payload.role,
       status: payload.status,
+      isAdmin: payload.isAdmin === true,
     };
   }
 }

@@ -6,10 +6,7 @@ export class FilterUserDto {
   id: string;
 
   @IsOptional()
-  firstName: string;
-
-  @IsOptional()
-  lastName: string;
+  name: string;
 
   @IsOptional()
   email: string;

@@ -14,4 +14,7 @@ export class UserDto {
 
   @Expose()
   status: UserStatus;
+
+  @Expose()
+  isAdmin: boolean;
 }

@@ -13,6 +13,12 @@
       "skillPath": "skills/next-best-practices/SKILL.md",
       "computedHash": "db85045827ebeb83ac8dbc992b69188755eeb74dcf01cbf5e694d58aa494a106"
     },
+    "nextauth-authentication": {
+      "source": "mindrally/skills",
+      "sourceType": "github",
+      "skillPath": "nextauth-authentication/SKILL.md",
+      "computedHash": "d169826735a2241ac893ecc97985e8c1dd15944fd38e4ecf1ae57e85c01df2d6"
+    },
     "shadcn": {
       "source": "shadcn/ui",
       "sourceType": "github",

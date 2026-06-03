@@ -10,12 +10,7 @@ export class PlatformRegisterDto {
   @IsString()
   @IsNotEmpty()
   @IsDefined()
-  firstName: string;
-
-  @IsString()
-  @IsNotEmpty()
-  @IsDefined()
-  lastName: string;
+  name: string;
 
   @IsEmail()
   @IsNotEmpty()

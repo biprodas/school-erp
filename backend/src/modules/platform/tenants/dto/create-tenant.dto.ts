@@ -38,7 +38,7 @@ export class CreateTenantDto {
   domain: string;
 
   /**
-   * Only honored when the caller is a SUPER_ADMIN. If provided, an OWNER
+   * Only honored when the caller is an admin. If provided, an OWNER
    * membership is created for this user atomically with the tenant.
    */
   @IsOptional()

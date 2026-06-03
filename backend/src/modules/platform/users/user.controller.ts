@@ -32,7 +32,7 @@ export class UserController {
 
   @Get()
   @UseGuards(RolesGuard)
-  @Roles(PlatformRole.SUPER_ADMIN)
+  @Roles(PlatformRole.ADMIN)
   async findAll(
     @RequestContext() ctx: RequestContextDto,
     @Query() filterUserDto: FilterUserDto,
@@ -49,7 +49,7 @@ export class UserController {
 
   @Post()
   @UseGuards(RolesGuard)
-  @Roles(PlatformRole.SUPER_ADMIN)
+  @Roles(PlatformRole.ADMIN)
   async create(
     @RequestContext() ctx: RequestContextDto,
     @Body() createUserDto: CreateUserDto,
@@ -69,7 +69,7 @@ export class UserController {
     @RequestContext() ctx: RequestContextDto,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    if (ctx.user?.role !== PlatformRole.SUPER_ADMIN && ctx.user?.id !== id) {
+    if (ctx.user?.role !== PlatformRole.ADMIN && ctx.user?.id !== id) {
       throw new ForbiddenException('Access denied');
     }
     const user = await this.userService.findById(ctx, id);
@@ -100,7 +100,7 @@ export class UserController {
 
   @Delete(':id')
   @UseGuards(RolesGuard)
-  @Roles(PlatformRole.SUPER_ADMIN)
+  @Roles(PlatformRole.ADMIN)
   async remove(
     @RequestContext() ctx: RequestContextDto,
     @Param('id', ParseUUIDPipe) targetId: string,

@@ -1,31 +1,23 @@
-import { LandingPageBackground } from "./_components/landing-page-background";
-import { Navbar } from "./_components/navbar";
-import { HeroSection } from "./_components/hero-section";
-import { FeaturesSection } from "./_components/features-section";
-import { ModulesSection } from "./_components/modules-section";
-import { HowItWorksSection } from "./_components/how-it-works-section";
-import { TestimonialsSection } from "./_components/testimonials-section";
-import { PricingSection } from "./_components/pricing-section";
-import { FaqSection } from "./_components/faq-section";
-import { CtaSection } from "./_components/cta-section";
-import { Footer } from "./_components/footer";
+import { headers } from "next/headers";
+import { notFound } from "next/navigation";
 
-export default function LandingPage() {
-  return (
-    <div className="relative min-h-screen">
-      <LandingPageBackground />
-      <Navbar />
-      <main className="relative">
-        <HeroSection />
-        <FeaturesSection />
-        <ModulesSection />
-        <HowItWorksSection />
-        <TestimonialsSection />
-        <PricingSection />
-        <FaqSection />
-        <CtaSection />
-      </main>
-      <Footer />
-    </div>
-  );
+import { isPlatformHost, resolveTenantSlug } from "~/lib/tenant";
+import PlatformLandingView from "./_components/platform-landing-view";
+import TenantLandingView from "~/features/landing";
+import { getPublicTenant } from "~/features/landing/api";
+
+export default async function HomePage() {
+  const host = (await headers()).get("host");
+
+  if (isPlatformHost(host)) {
+    return <PlatformLandingView />;
+  }
+
+  const slug = await resolveTenantSlug(host);
+  if (!slug) notFound();
+
+  const tenant = await getPublicTenant(slug);
+  if (!tenant) notFound();
+
+  return <TenantLandingView tenant={tenant} />;
 }
