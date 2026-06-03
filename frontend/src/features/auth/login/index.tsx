@@ -1,13 +1,8 @@
 import { Suspense } from "react"
 import { LoginForm } from "./login-form"
 import { FaSchool } from "react-icons/fa6"
-import type { AuthKind } from "~/types/user"
 
-export default function LoginView({
-  authKind = "tenant",
-}: {
-  authKind?: AuthKind
-}) {
+export default function TenantLoginView() {
   return (
     <div className="flex min-h-svh flex-col items-center justify-center gap-6 bg-muted p-6 md:p-10">
       <div className="flex w-full max-w-sm flex-col gap-6">
@@ -15,10 +10,10 @@ export default function LoginView({
           <div className="flex size-6 items-center justify-center rounded-md bg-primary text-primary-foreground">
             <FaSchool className="size-4" />
           </div>
-          {authKind === "platform" ? "SchoolERP Platform" : "Acme School"}
+          Acme School
         </a>
         <Suspense fallback={null}>
-          <LoginForm authKind={authKind} />
+          <LoginForm />
         </Suspense>
       </div>
     </div>

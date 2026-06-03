@@ -1,24 +1,24 @@
-// Tenant (school) auth + app routes
+// Auth routes are shared `/login` `/signup`; the HOST decides which surface
+// (platform on the apex/root, tenant on subdomains + custom domains).
 export const TENANT_LOGIN = "/login";
 export const TENANT_SIGNUP = "/signup";
 export const DEFAULT_LOGIN_REDIRECT = "/dashboard";
 
-// Platform (super-admin) auth + app routes
-export const PLATFORM_LOGIN = "/platform/login";
-export const PLATFORM_SIGNUP = "/platform/signup";
+// Platform auth lives on the same `/login` `/signup` (apex host); only the
+// post-login app area differs.
+export const PLATFORM_LOGIN = "/login";
+export const PLATFORM_SIGNUP = "/signup";
 export const PLATFORM_LOGIN_REDIRECT = "/platform/dashboard";
 
 export const publicRoutes = ["/", "/faq"];
 
 /** Auth pages — visiting these while logged in redirects to the dashboard. */
 export const authRoutes = [
-  TENANT_LOGIN,
-  TENANT_SIGNUP,
+  "/login",
+  "/signup",
   "/forgot-password",
   "/reset-password",
   "/error",
-  PLATFORM_LOGIN,
-  PLATFORM_SIGNUP,
 ];
 
 /** Prefixes of areas that require an authenticated session. */

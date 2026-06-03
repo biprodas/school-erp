@@ -19,7 +19,7 @@ import {
   BellIcon,
 } from "lucide-react";
 import { ThemeSegmentControl } from "./theme-segment-control";
-import { PLATFORM_LOGIN, TENANT_LOGIN } from "~/constants/routes";
+import { TENANT_LOGIN } from "~/constants/routes";
 import {
   Avatar,
   AvatarFallback,
@@ -56,8 +56,8 @@ export function UserButton() {
   const email = session.user.email ?? "";
   const avatar = session.user.image ?? "";
   const initials = getInitials(name);
-  const loginPath =
-    session.authKind === "platform" ? PLATFORM_LOGIN : TENANT_LOGIN;
+  // Both surfaces share `/login`; the host renders the right view after logout.
+  const loginPath = TENANT_LOGIN;
 
   return (
     <DropdownMenu>

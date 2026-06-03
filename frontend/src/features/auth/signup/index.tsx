@@ -1,13 +1,9 @@
+import { Suspense } from "react"
 import { GalleryVerticalEnd } from "lucide-react"
 
 import { SignupForm } from "./signup-form"
-import type { AuthKind } from "~/types/user"
 
-export default function SignupView({
-  authKind = "tenant",
-}: {
-  authKind?: AuthKind
-}) {
+export default function TenantSignupView() {
   return (
     <div className="flex min-h-svh flex-col items-center justify-center gap-6 bg-muted p-6 md:p-10">
       <div className="flex w-full max-w-sm flex-col gap-6">
@@ -15,9 +11,11 @@ export default function SignupView({
           <div className="flex size-6 items-center justify-center rounded-md bg-primary text-primary-foreground">
             <GalleryVerticalEnd className="size-4" />
           </div>
-          {authKind === "platform" ? "SchoolERP Platform" : "Acme School"}
+          Acme School
         </a>
-        <SignupForm authKind={authKind} />
+        <Suspense fallback={null}>
+          <SignupForm />
+        </Suspense>
       </div>
     </div>
   )

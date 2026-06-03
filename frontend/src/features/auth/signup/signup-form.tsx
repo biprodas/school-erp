@@ -9,16 +9,10 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 
-import {
-  DEFAULT_LOGIN_REDIRECT,
-  PLATFORM_LOGIN,
-  PLATFORM_LOGIN_REDIRECT,
-  TENANT_LOGIN,
-} from "~/constants/routes"
+import { DEFAULT_LOGIN_REDIRECT, TENANT_LOGIN } from "~/constants/routes"
 import { useRegister } from "~/features/auth/hooks"
-import { getClientTenantSlug } from "~/lib/tenant"
+import { resolveClientTenantSlug } from "~/lib/tenant"
 import { ApiError } from "~/types/api"
-import type { AuthKind } from "~/types/user"
 import { cn } from "~/lib/utils"
 import { Button } from "~/components/ui/button"
 import {
@@ -38,7 +32,6 @@ import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
 
 const signupSchema = z.object({
-  tenantSlug: z.string().optional(),
   name: z
     .string()
     .min(2, "Name must be at least 2 characters")
@@ -54,37 +47,34 @@ const signupSchema = z.object({
 
 type SignupFormValues = z.infer<typeof signupSchema>
 
-interface SignupFormProps {
-  authKind?: AuthKind
-}
-
-export const SignupForm = ({ authKind = "tenant" }: SignupFormProps) => {
+export const SignupForm = () => {
   const [showPassword, setShowPassword] = useState(false)
   const router = useRouter()
-  const registerMutation = useRegister(authKind)
+  const registerMutation = useRegister("tenant")
 
-  const loginHref = authKind === "platform" ? PLATFORM_LOGIN : TENANT_LOGIN
-  const redirectTo =
-    authKind === "platform" ? PLATFORM_LOGIN_REDIRECT : DEFAULT_LOGIN_REDIRECT
+  const loginHref = TENANT_LOGIN
+  const redirectTo = DEFAULT_LOGIN_REDIRECT
 
-  // Resolve tenant from the subdomain after mount (avoids SSR/host mismatch).
+  // Resolve tenant from the host (subdomain parse, or custom-domain lookup).
   const [detectedSlug, setDetectedSlug] = useState<string | null>(null)
-  const [mounted, setMounted] = useState(false)
   useEffect(() => {
-    setDetectedSlug(getClientTenantSlug())
-    setMounted(true)
+    let active = true
+    resolveClientTenantSlug().then((slug) => {
+      if (!active) return
+      setDetectedSlug(slug)
+    })
+    return () => {
+      active = false
+    }
   }, [])
-  const needsSlug = mounted && authKind === "tenant" && !detectedSlug
 
   const {
     register,
     handleSubmit,
-    setError,
     formState: { errors, isSubmitting },
   } = useForm<SignupFormValues>({
     resolver: zodResolver(signupSchema),
     defaultValues: {
-      tenantSlug: "",
       name: "",
       email: "",
       password: "",
@@ -92,9 +82,9 @@ export const SignupForm = ({ authKind = "tenant" }: SignupFormProps) => {
   })
 
   const onSubmit = async (values: SignupFormValues) => {
-    const effectiveSlug = detectedSlug || values.tenantSlug?.trim() || ""
-    if (authKind === "tenant" && !effectiveSlug) {
-      setError("tenantSlug", { message: "Enter your workspace" })
+    const effectiveSlug = detectedSlug || ""
+    if (!effectiveSlug) {
+      toast.error("Could not determine your workspace")
       return
     }
 
@@ -133,28 +123,6 @@ export const SignupForm = ({ authKind = "tenant" }: SignupFormProps) => {
       <CardContent>
         <form onSubmit={handleSubmit(onSubmit)} noValidate>
           <FieldGroup className="gap-5">
-            {needsSlug && (
-              <Field className="gap-2">
-                <Label htmlFor="tenantSlug">Workspace</Label>
-                <div className="relative">
-                  <Input
-                    id="tenantSlug"
-                    type="text"
-                    placeholder="your-school"
-                    autoComplete="off"
-                    autoCapitalize="none"
-                    spellCheck={false}
-                    aria-invalid={!!errors.tenantSlug}
-                    {...register("tenantSlug")}
-                  />
-                  <FieldError
-                    id="tenantSlug-error"
-                    errors={errors.tenantSlug ? [errors.tenantSlug] : []}
-                    className="absolute left-0 -bottom-4.5 text-xs"
-                  />
-                </div>
-              </Field>
-            )}
             <Field className="gap-2">
               <Label htmlFor="name">Full name</Label>
               <div className="relative">

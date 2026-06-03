@@ -1,7 +1,7 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { authConfigForRequest } from "~/auth.config";
-import { AUTH_ENDPOINTS } from "~/config";
+import { AUTH_ENDPOINTS, TENANT_HEADER } from "~/config";
 import { backendPost } from "~/lib/api/backend";
 import type { PlatformAuthData, TenantAuthData } from "~/types/api";
 
@@ -18,10 +18,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth((request) => ({
         password: {},
         tenantSlug: {},
       },
-      async authorize(credentials) {
+      async authorize(credentials, request) {
         const email = credentials?.email as string | undefined;
         const password = credentials?.password as string | undefined;
-        const tenantSlug = credentials?.tenantSlug as string | undefined;
+        // Slug source: the form's resolved value, or an edge/proxy-injected
+        // `x-tenant-id` header (custom domains in production — no client work).
+        const tenantSlug =
+          (credentials?.tenantSlug as string | undefined)?.trim() ||
+          request?.headers?.get(TENANT_HEADER)?.trim() ||
+          undefined;
         if (!email || !password || !tenantSlug) return null;
 
         try {

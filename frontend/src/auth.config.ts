@@ -2,11 +2,9 @@ import type { NextAuthConfig } from "next-auth";
 import { NextResponse } from "next/server";
 import {
   DEFAULT_LOGIN_REDIRECT,
-  PLATFORM_LOGIN,
   PLATFORM_LOGIN_REDIRECT,
   TENANT_LOGIN,
   isAuthRoute,
-  isPlatformPath,
   isProtectedRoute,
 } from "~/constants/routes";
 
@@ -82,23 +80,23 @@ export const authConfig = {
     authorized({ request, auth }) {
       const isLoggedIn = !!auth?.user;
       const { pathname } = request.nextUrl;
-      const platform = isPlatformPath(pathname);
 
-      // Authenticated users shouldn't see auth pages.
+      // Authenticated users shouldn't see auth pages — send to their dashboard
+      // based on which surface they're signed into.
       if (isAuthRoute(pathname)) {
         if (isLoggedIn) {
-          const target = platform
-            ? PLATFORM_LOGIN_REDIRECT
-            : DEFAULT_LOGIN_REDIRECT;
+          const target =
+            auth?.authKind === "platform"
+              ? PLATFORM_LOGIN_REDIRECT
+              : DEFAULT_LOGIN_REDIRECT;
           return NextResponse.redirect(new URL(target, request.nextUrl));
         }
         return true;
       }
 
-      // Gate protected areas; send to the matching login.
+      // Gate protected areas; the host renders the right login surface.
       if (isProtectedRoute(pathname) && !isLoggedIn) {
-        const loginPath = platform ? PLATFORM_LOGIN : TENANT_LOGIN;
-        const loginUrl = new URL(loginPath, request.nextUrl);
+        const loginUrl = new URL(TENANT_LOGIN, request.nextUrl);
         loginUrl.searchParams.set("callbackUrl", pathname);
         return NextResponse.redirect(loginUrl);
       }

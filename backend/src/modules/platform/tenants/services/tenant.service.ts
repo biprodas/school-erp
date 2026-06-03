@@ -16,7 +16,10 @@ import { UserService } from 'src/modules/platform/users/user.service';
 import { Key } from '~/common/enums/keys.enum';
 import { TenantConnectionService } from '~/tenancy/tenant-connection.service';
 import { TenantMigrationService } from '~/tenancy/tenant-migration.service';
-import { tenantSlugCache } from '~/tenancy/tenant-slug.cache';
+import {
+  tenantDomainCache,
+  tenantSlugCache,
+} from '~/tenancy/tenant-slug.cache';
 import { RbacSeederService } from '~/tenanted/rbac/rbac-seeder.service';
 import { CreateTenantDto } from '../dto/create-tenant.dto';
 import {
@@ -287,6 +290,13 @@ export class TenantService {
     return this.tenantRepository.findOne({ where: { slug } });
   }
 
+  /** Look up a tenant by its custom/vanity domain (full host, lowercased). */
+  async findByDomain(domain: string): Promise<Tenant | null> {
+    const normalized = domain.split(':')[0].toLowerCase().trim();
+    if (!normalized) return null;
+    return this.tenantRepository.findOne({ where: { domain: normalized } });
+  }
+
   /**
    * Returns a tenant only if the requester is an admin or has any
    * membership in that tenant.
@@ -333,9 +343,12 @@ export class TenantService {
       }
     }
 
+    const previousDomain = tenant.domain;
     Object.assign(tenant, dto);
     const saved = await this.tenantRepository.save(tenant);
     tenantSlugCache.invalidate(tenant.slug);
+    if (previousDomain) tenantDomainCache.invalidate(previousDomain);
+    if (tenant.domain) tenantDomainCache.invalidate(tenant.domain);
     return saved;
   }
 
@@ -355,6 +368,7 @@ export class TenantService {
       await queryRunner.manager.delete(Tenant, id);
       await queryRunner.commitTransaction();
       tenantSlugCache.invalidate(tenant.slug);
+      if (tenant.domain) tenantDomainCache.invalidate(tenant.domain);
       this.logger.log(
         `Tenant "${tenant.slug}" and schema ${tenant.schemaName} deleted`,
       );

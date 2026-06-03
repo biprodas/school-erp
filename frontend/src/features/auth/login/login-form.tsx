@@ -8,13 +8,9 @@ import { useEffect, useState } from "react"
 import { Controller, useForm } from "react-hook-form"
 import { toast } from "sonner"
 import { z } from "zod"
-import {
-  DEFAULT_LOGIN_REDIRECT,
-  PLATFORM_LOGIN_REDIRECT,
-} from "~/constants/routes"
+import { DEFAULT_LOGIN_REDIRECT } from "~/constants/routes"
 import { signInWithCredentials } from "~/features/auth/hooks"
-import { getClientTenantSlug } from "~/lib/tenant"
-import type { AuthKind } from "~/types/user"
+import { resolveClientTenantSlug } from "~/lib/tenant"
 import { Button } from "~/components/ui/button"
 import {
   Card,
@@ -34,7 +30,6 @@ import { Input } from "~/components/ui/input"
 import { cn } from "~/lib/utils"
 
 const loginSchema = z.object({
-  tenantSlug: z.string().optional(),
   email: z
     .string()
     .min(1, "Email is required")
@@ -46,41 +41,39 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>
 
-interface LoginFormProps {
-  authKind?: AuthKind
-}
-
-export const LoginForm = ({ authKind = "tenant" }: LoginFormProps) => {
+export const LoginForm = () => {
   const [showPassword, setShowPassword] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
 
-  // Resolve tenant from the subdomain after mount (avoids SSR/host mismatch).
+  // Resolve tenant from the host (subdomain parse, or custom-domain lookup).
   const [detectedSlug, setDetectedSlug] = useState<string | null>(null)
-  const [mounted, setMounted] = useState(false)
   useEffect(() => {
-    setDetectedSlug(getClientTenantSlug())
-    setMounted(true)
+    let active = true
+    resolveClientTenantSlug().then((slug) => {
+      if (!active) return
+      setDetectedSlug(slug)
+    })
+    return () => {
+      active = false
+    }
   }, [])
-  const needsSlug = mounted && authKind === "tenant" && !detectedSlug
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { tenantSlug: "", email: "", password: "" },
+    defaultValues: { email: "", password: "" },
   })
 
   const onSubmit = async (values: LoginFormValues) => {
-    const effectiveSlug = detectedSlug || values.tenantSlug?.trim() || ""
+    const effectiveSlug = detectedSlug || ""
 
-    if (authKind === "tenant" && !effectiveSlug) {
-      form.setError("tenantSlug", {
-        message: "Enter your workspace",
-      })
+    if (!effectiveSlug) {
+      toast.error("Could not determine your workspace")
       return
     }
 
     const result = await signInWithCredentials(
-      authKind,
+      "tenant",
       { email: values.email, password: values.password },
       effectiveSlug,
     )
@@ -90,9 +83,8 @@ export const LoginForm = ({ authKind = "tenant" }: LoginFormProps) => {
       return
     }
 
-    const fallback =
-      authKind === "platform" ? PLATFORM_LOGIN_REDIRECT : DEFAULT_LOGIN_REDIRECT
-    const callbackUrl = searchParams.get("callbackUrl") || fallback
+    const callbackUrl =
+      searchParams.get("callbackUrl") || DEFAULT_LOGIN_REDIRECT
 
     toast.success("Welcome back")
     router.push(callbackUrl)
@@ -110,36 +102,6 @@ export const LoginForm = ({ authKind = "tenant" }: LoginFormProps) => {
       <CardContent>
         <form onSubmit={form.handleSubmit(onSubmit)} noValidate>
           <FieldGroup>
-            {needsSlug && (
-              <Controller
-                name="tenantSlug"
-                control={form.control}
-                render={({ field, fieldState }) => (
-                  <Field className="gap-1">
-                    <FieldLabel htmlFor={field.name}>Workspace</FieldLabel>
-                    <div className="relative">
-                      <Input
-                        {...field}
-                        id={field.name}
-                        placeholder="your-school"
-                        autoComplete="off"
-                        autoCapitalize="none"
-                        spellCheck={false}
-                      />
-                      <FieldError
-                        id="tenantSlug-error"
-                        errors={[fieldState.error]}
-                        className="absolute left-0 -bottom-4.5 text-xs"
-                      />
-                    </div>
-                    <FieldDescription className="text-xs">
-                      Your school&apos;s workspace (e.g. acme.lvh.me → acme)
-                    </FieldDescription>
-                  </Field>
-                )}
-              />
-            )}
-
             <Controller
               name="email"
               control={form.control}

@@ -10,6 +10,7 @@ import {
 } from './exceptions/tenant.exceptions';
 import {
   TENANT_SLUG_CACHE_TTL_MS,
+  tenantDomainCache,
   tenantSlugCache,
 } from './tenant-slug.cache';
 
@@ -19,6 +20,13 @@ export interface RequestWithTenant extends Request {
   tenantSlug?: string;
 }
 
+interface ResolvedTenant {
+  id: string;
+  slug: string;
+  schemaName: string;
+  status: string;
+}
+
 const SLUG_PATTERN = /^[a-z0-9]([a-z0-9_-]*[a-z0-9])?$/;
 
 @Injectable()
@@ -26,32 +34,64 @@ export class TenantMiddleware implements NestMiddleware {
   constructor(private tenantService: TenantService) {}
 
   async use(req: RequestWithTenant, res: Response, next: NextFunction) {
-    const slug = this.extractSlug(req);
+    const resolved = await this.resolve(req);
 
-    if (!slug) {
+    if (!resolved) {
       throw new TenantContextMissingException();
     }
 
-    if (!SLUG_PATTERN.test(slug)) {
-      throw new TenantNotFoundException(slug);
+    if (resolved.status !== TenantStatus.ACTIVE) {
+      throw new TenantInactiveException(resolved.slug);
     }
+
+    req.tenantId = resolved.id;
+    req.tenantSlug = resolved.slug;
+    req.tenantSchema = resolved.schemaName;
+    next();
+  }
+
+  /**
+   * Resolution order:
+   *  1. `x-tenant-id` header (the slug the frontend forwards) — explicit, so a
+   *     miss is a hard error.
+   *  2. Subdomain label (managed `acme.mydomain.com`) → lookup by slug.
+   *  3. Full host (custom/vanity domain `app.acmeschool.com`) → lookup by domain.
+   */
+  private async resolve(req: Request): Promise<ResolvedTenant | null> {
+    const headerSlug = (
+      req.headers[Key.TenantKeyHeader.toLowerCase()] as string | undefined
+    )?.trim();
+    if (headerSlug) {
+      const bySlug = await this.bySlug(headerSlug);
+      if (!bySlug) throw new TenantNotFoundException(headerSlug);
+      return bySlug;
+    }
+
+    const host = (req.hostname || req.headers.host || '')
+      .toString()
+      .split(':')[0]
+      .toLowerCase();
+
+    const subdomain = host.split('.')[0];
+    if (subdomain && !['www', 'api'].includes(subdomain)) {
+      const bySlug = await this.bySlug(subdomain);
+      if (bySlug) return bySlug;
+    }
+
+    return this.byDomain(host);
+  }
+
+  /** Slug lookup with cache. Returns null on invalid pattern / not found. */
+  private async bySlug(slug: string): Promise<ResolvedTenant | null> {
+    if (!SLUG_PATTERN.test(slug)) return null;
 
     const cached = tenantSlugCache.get(slug);
     if (cached && cached.expiresAt > Date.now()) {
-      if (cached.status !== TenantStatus.ACTIVE) {
-        throw new TenantInactiveException(slug);
-      }
-      req.tenantId = cached.id;
-      req.tenantSlug = cached.slug;
-      req.tenantSchema = cached.schemaName;
-      return next();
+      return cached;
     }
 
     const tenant = await this.tenantService.findBySlug(slug);
-
-    if (!tenant) {
-      throw new TenantNotFoundException(slug);
-    }
+    if (!tenant) return null;
 
     tenantSlugCache.set(slug, {
       id: tenant.id,
@@ -60,30 +100,29 @@ export class TenantMiddleware implements NestMiddleware {
       status: tenant.status,
       expiresAt: Date.now() + TENANT_SLUG_CACHE_TTL_MS,
     });
-
-    if (tenant.status !== TenantStatus.ACTIVE) {
-      throw new TenantInactiveException(slug);
-    }
-
-    req.tenantId = tenant.id;
-    req.tenantSlug = tenant.slug;
-    req.tenantSchema = tenant.schemaName;
-    next();
+    return tenant;
   }
 
-  private extractSlug(req: Request): string | null {
-    const tenantSlug = req.headers[Key.TenantKeyHeader.toLowerCase()] as string;
-    if (tenantSlug) return tenantSlug;
+  /** Custom-domain (full host) lookup with cache. */
+  private async byDomain(host: string): Promise<ResolvedTenant | null> {
+    // Only hosts that look like a domain can match the `domain` column.
+    if (!host || !host.includes('.')) return null;
 
-    // Prefer Express' parsed hostname (already strips port); fall back to host header.
-    const rawHost = (req.hostname || req.headers.host || '').toString();
-    const host = rawHost.split(':')[0]; // defensive: strip port if present
-    const subdomain = host.split('.')[0];
-
-    if (!['www', 'api'].includes(subdomain)) {
-      return subdomain;
+    const cached = tenantDomainCache.get(host);
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached;
     }
 
-    return null;
+    const tenant = await this.tenantService.findByDomain(host);
+    if (!tenant) return null;
+
+    tenantDomainCache.set(host, {
+      id: tenant.id,
+      slug: tenant.slug,
+      schemaName: tenant.schemaName,
+      status: tenant.status,
+      expiresAt: Date.now() + TENANT_SLUG_CACHE_TTL_MS,
+    });
+    return tenant;
   }
 }
