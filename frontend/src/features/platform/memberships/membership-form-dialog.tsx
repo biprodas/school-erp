@@ -22,14 +22,14 @@ import {
 import {
   useCreateMembership,
   useUpdateMembershipRole,
-} from "~/features/platform/management/hooks";
+} from "~/apis/platform/memberships/queries";
 import {
   MEMBERSHIP_ROLES,
   type Membership,
   type MembershipRole,
-  type PlatformTenant,
-  type PlatformUserRow,
-} from "~/types/platform";
+} from "~/apis/platform/memberships/types";
+import type { PlatformTenant } from "~/apis/platform/tenants/types";
+import type { PlatformUserRow } from "~/apis/platform/users/types";
 
 /** Roles a non-admin caller may assign (OWNER is admin-only on the backend). */
 function assignableRoles(isAdmin: boolean): readonly MembershipRole[] {
@@ -44,13 +44,13 @@ interface CreateDialogProps {
   isAdmin: boolean;
 }
 
-export function CreateMembershipDialog({
+export const CreateMembershipDialog = ({
   open,
   onOpenChange,
   users,
   tenants,
   isAdmin,
-}: CreateDialogProps) {
+}: CreateDialogProps) => {
   const createMembership = useCreateMembership();
   const [userId, setUserId] = useState("");
   const [tenantId, setTenantId] = useState("");
@@ -175,13 +175,13 @@ interface EditRoleDialogProps {
   isAdmin: boolean;
 }
 
-export function EditMembershipRoleDialog({
+export const EditMembershipRoleDialog = ({
   open,
   onOpenChange,
   membership,
   label,
   isAdmin,
-}: EditRoleDialogProps) {
+}: EditRoleDialogProps) => {
   const updateRole = useUpdateMembershipRole();
   // Initialized from the membership; the parent remounts via `key` per row.
   const [role, setRole] = useState<MembershipRole>(membership?.role ?? "member");

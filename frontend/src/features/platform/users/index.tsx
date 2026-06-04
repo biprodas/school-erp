@@ -14,16 +14,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
-import { ConfirmDialog } from "~/features/platform/management/confirm-dialog";
-import {
-  PageHeader,
-  PlatformGuard,
-  RoleBadge,
-  StatusBadge,
-  formatDate,
-} from "~/features/platform/management/components";
-import { useDeleteUser, usePlatformUsers } from "~/features/platform/management/hooks";
-import type { PlatformUserRow } from "~/types/platform";
+import { ConfirmDialog } from "~/components/confirm-dialog";
+import { formatDate } from "~/lib/format";
+import { RoleBadge, StatusBadge } from "~/features/platform/_components/badges";
+import { PageHeader } from "~/features/platform/_components/page-header";
+import { PlatformGuard } from "~/features/platform/_components/guard";
+import { useDeleteUser, usePlatformUsers } from "~/apis/platform/users/queries";
+import type { PlatformUserRow } from "~/apis/platform/users/types";
 import { UserFormDialog } from "./user-form-dialog";
 
 export default function PlatformUsersView() {

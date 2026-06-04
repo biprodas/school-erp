@@ -3,7 +3,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2Icon } from "lucide-react";
 import { Controller, useForm } from "react-hook-form";
-import { z } from "zod";
 import { Button } from "~/components/ui/button";
 import {
   Dialog,
@@ -23,31 +22,18 @@ import {
   SelectValue,
 } from "~/components/ui/select";
 import { Switch } from "~/components/ui/switch";
-import { useCreateUser, useUpdateUser } from "~/features/platform/management/hooks";
+import { useCreateUser, useUpdateUser } from "~/apis/platform/users/queries";
+import {
+  createUserSchema as createSchema,
+  editUserSchema as editSchema,
+  type CreateUserValues as CreateValues,
+  type EditUserValues as EditValues,
+} from "~/apis/platform/users/schema";
 import {
   PLATFORM_ROLES,
   USER_STATUSES,
   type PlatformUserRow,
-} from "~/types/platform";
-
-const createSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  email: z.string().min(1, "Email is required").email("Enter a valid email"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-  role: z.enum(PLATFORM_ROLES),
-  status: z.enum(USER_STATUSES),
-  isAdmin: z.boolean(),
-});
-
-const editSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  role: z.enum(PLATFORM_ROLES),
-  status: z.enum(USER_STATUSES),
-  isAdmin: z.boolean(),
-});
-
-type CreateValues = z.infer<typeof createSchema>;
-type EditValues = z.infer<typeof editSchema>;
+} from "~/apis/platform/users/types";
 
 interface UserFormDialogProps {
   open: boolean;
@@ -55,11 +41,11 @@ interface UserFormDialogProps {
   user?: PlatformUserRow;
 }
 
-export function UserFormDialog({
+export const UserFormDialog = ({
   open,
   onOpenChange,
   user,
-}: UserFormDialogProps) {
+}: UserFormDialogProps) => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>

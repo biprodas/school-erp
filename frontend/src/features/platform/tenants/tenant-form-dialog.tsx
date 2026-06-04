@@ -3,7 +3,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2Icon } from "lucide-react";
 import { Controller, useForm } from "react-hook-form";
-import { z } from "zod";
 import { Button } from "~/components/ui/button";
 import {
   Dialog,
@@ -28,35 +27,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
-import { useCreateTenant, useUpdateTenant } from "~/features/platform/management/hooks";
+import { useCreateTenant, useUpdateTenant } from "~/apis/platform/tenants/queries";
+import {
+  createTenantSchema as createSchema,
+  updateTenantSchema as editSchema,
+  type CreateTenantValues as CreateValues,
+  type UpdateTenantValues as EditValues,
+} from "~/apis/platform/tenants/schema";
 import {
   TENANT_STATUSES,
   type PlatformTenant,
-  type PlatformUserRow,
-} from "~/types/platform";
-
-const createSchema = z.object({
-  name: z.string().min(3, "Name must be at least 3 characters").max(100),
-  slug: z
-    .string()
-    .min(3, "Slug must be at least 3 characters")
-    .max(63)
-    .regex(
-      /^[a-z0-9_]+$/,
-      "Only lowercase letters, numbers, and underscores",
-    ),
-  domain: z.string().optional(),
-  ownerUserId: z.string().optional(),
-});
-
-const editSchema = z.object({
-  name: z.string().min(3, "Name must be at least 3 characters").max(100),
-  domain: z.string().optional(),
-  status: z.enum(TENANT_STATUSES),
-});
-
-type CreateValues = z.infer<typeof createSchema>;
-type EditValues = z.infer<typeof editSchema>;
+} from "~/apis/platform/tenants/types";
+import type { PlatformUserRow } from "~/apis/platform/users/types";
 
 interface TenantFormDialogProps {
   open: boolean;
@@ -68,13 +50,13 @@ interface TenantFormDialogProps {
   isAdmin?: boolean;
 }
 
-export function TenantFormDialog({
+export const TenantFormDialog = ({
   open,
   onOpenChange,
   tenant,
   users = [],
   isAdmin = false,
-}: TenantFormDialogProps) {
+}: TenantFormDialogProps) => {
   const isEdit = Boolean(tenant);
 
   return (

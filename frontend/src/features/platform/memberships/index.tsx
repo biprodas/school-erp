@@ -12,21 +12,19 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
-import { ConfirmDialog } from "~/features/platform/management/confirm-dialog";
-import {
-  PageHeader,
-  PlatformGuard,
-  RoleBadge,
-  formatDate,
-  useIsPlatformAdmin,
-} from "~/features/platform/management/components";
+import { ConfirmDialog } from "~/components/confirm-dialog";
+import { formatDate } from "~/lib/format";
+import { RoleBadge } from "~/features/platform/_components/badges";
+import { PageHeader } from "~/features/platform/_components/page-header";
+import { PlatformGuard } from "~/features/platform/_components/guard";
+import { useIsPlatformAdmin } from "~/features/platform/_components/hooks";
 import {
   useDeleteMembership,
   useMemberships,
-  usePlatformUsers,
-  useTenants,
-} from "~/features/platform/management/hooks";
-import type { Membership } from "~/types/platform";
+} from "~/apis/platform/memberships/queries";
+import { usePlatformUsers } from "~/apis/platform/users/queries";
+import { useTenants } from "~/apis/platform/tenants/queries";
+import type { Membership } from "~/apis/platform/memberships/types";
 import {
   CreateMembershipDialog,
   EditMembershipRoleDialog,

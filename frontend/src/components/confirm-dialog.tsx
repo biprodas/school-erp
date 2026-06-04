@@ -24,7 +24,7 @@ interface ConfirmDialogProps {
 }
 
 /** Destructive-action confirmation built on AlertDialog. */
-export function ConfirmDialog({
+export const ConfirmDialog = ({
   open,
   onOpenChange,
   title,
@@ -32,7 +32,7 @@ export function ConfirmDialog({
   confirmLabel = "Delete",
   isPending = false,
   onConfirm,
-}: ConfirmDialogProps) {
+}: ConfirmDialogProps) => {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>

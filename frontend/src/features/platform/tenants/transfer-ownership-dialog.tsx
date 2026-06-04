@@ -19,13 +19,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
-import { useTransferOwnership } from "~/features/platform/management/hooks";
+import { useTransferOwnership } from "~/apis/platform/tenants/queries";
 import {
   DEMOTE_OPTIONS,
   type DemoteOldOwnerTo,
   type PlatformTenant,
-  type PlatformUserRow,
-} from "~/types/platform";
+} from "~/apis/platform/tenants/types";
+import type { PlatformUserRow } from "~/apis/platform/users/types";
 
 const DEMOTE_LABELS: Record<DemoteOldOwnerTo, string> = {
   admin: "Demote previous owner to admin",
@@ -40,12 +40,12 @@ interface TransferOwnershipDialogProps {
   users: PlatformUserRow[];
 }
 
-export function TransferOwnershipDialog({
+export const TransferOwnershipDialog = ({
   open,
   onOpenChange,
   tenant,
   users,
-}: TransferOwnershipDialogProps) {
+}: TransferOwnershipDialogProps) => {
   const transfer = useTransferOwnership();
   const [newOwnerUserId, setNewOwnerUserId] = useState("");
   const [demoteOldOwnerTo, setDemoteOldOwnerTo] =

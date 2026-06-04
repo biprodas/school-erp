@@ -31,17 +31,13 @@ import {
   TableHeader,
   TableRow,
 } from "~/components/ui/table";
-import {
-  PlatformGuard,
-  StatusBadge,
-  formatDate,
-  useIsPlatformAdmin,
-} from "~/features/platform/management/components";
-import {
-  useMemberships,
-  usePlatformUsers,
-  useTenants,
-} from "~/features/platform/management/hooks";
+import { formatDate } from "~/lib/format";
+import { StatusBadge } from "~/features/platform/_components/badges";
+import { PlatformGuard } from "~/features/platform/_components/guard";
+import { useIsPlatformAdmin } from "~/features/platform/_components/hooks";
+import { useMemberships } from "~/apis/platform/memberships/queries";
+import { usePlatformUsers } from "~/apis/platform/users/queries";
+import { useTenants } from "~/apis/platform/tenants/queries";
 
 export default function PlatformDashboardView() {
   return (

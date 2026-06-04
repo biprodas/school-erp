@@ -18,20 +18,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
-import { ConfirmDialog } from "~/features/platform/management/confirm-dialog";
-import {
-  PageHeader,
-  PlatformGuard,
-  StatusBadge,
-  formatDate,
-  useIsPlatformAdmin,
-} from "~/features/platform/management/components";
-import {
-  useDeleteTenant,
-  usePlatformUsers,
-  useTenants,
-} from "~/features/platform/management/hooks";
-import type { PlatformTenant } from "~/types/platform";
+import { ConfirmDialog } from "~/components/confirm-dialog";
+import { formatDate } from "~/lib/format";
+import { StatusBadge } from "~/features/platform/_components/badges";
+import { PageHeader } from "~/features/platform/_components/page-header";
+import { PlatformGuard } from "~/features/platform/_components/guard";
+import { useIsPlatformAdmin } from "~/features/platform/_components/hooks";
+import { useDeleteTenant, useTenants } from "~/apis/platform/tenants/queries";
+import { usePlatformUsers } from "~/apis/platform/users/queries";
+import type { PlatformTenant } from "~/apis/platform/tenants/types";
 import { TenantFormDialog } from "./tenant-form-dialog";
 import { TransferOwnershipDialog } from "./transfer-ownership-dialog";
 
