@@ -7,7 +7,6 @@ import {
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { User } from './entities/user.entity';
-import { PlatformRole } from './enums/platform-role.enum';
 import { UserStatus } from './enums/user-status.enum';
 import { RequestContextDto } from '~/common/dto/request-context.dto';
 
@@ -36,7 +35,6 @@ const superAdminCtx = () =>
     user: {
       id: 'admin-id',
       email: 'admin@test.com',
-      role: PlatformRole.ADMIN,
       status: UserStatus.ACTIVE,
       isAdmin: true,
     },
@@ -48,7 +46,6 @@ const userCtx = (id = 'user-id') =>
     user: {
       id,
       email: 'user@test.com',
-      role: PlatformRole.USER,
       status: UserStatus.ACTIVE,
       isAdmin: false,
     },
@@ -59,7 +56,6 @@ const makeUser = (overrides: Partial<User> = {}): User =>
     id: 'user-id',
     email: 'user@test.com',
     name: 'Test User',
-    role: PlatformRole.USER,
     status: UserStatus.ACTIVE,
     isAdmin: false,
     createdAt: new Date(),
@@ -145,7 +141,7 @@ describe('UserService', () => {
       ).rejects.toThrow(ConflictException);
     });
 
-    it('defaults to USER role and ACTIVE status', async () => {
+    it('defaults to ACTIVE status', async () => {
       userRepo.findOne
         .mockResolvedValueOnce(null)
         .mockResolvedValueOnce(makeUser({ id: 'new-user-id' }));
@@ -153,7 +149,6 @@ describe('UserService', () => {
       await service.createPlatformUser(superAdminCtx(), dto);
 
       const createArg = userRepo.create.mock.calls[0][0];
-      expect(createArg.role).toBe(PlatformRole.USER);
       expect(createArg.status).toBe(UserStatus.ACTIVE);
     });
   });
@@ -171,16 +166,16 @@ describe('UserService', () => {
       expect(result.name).toBe('Updated');
     });
 
-    it('Admin can change role and status', async () => {
+    it('Admin can change status and admin flag', async () => {
       userRepo.findOne.mockResolvedValue(makeUser({ id: 'other-user' }));
       userRepo.save.mockImplementation((entity) => Promise.resolve(entity));
 
       const result = await service.update(superAdminCtx(), 'other-user', {
-        role: PlatformRole.ADMIN,
         status: UserStatus.SUSPENDED,
+        isAdmin: true,
       });
-      expect(result.role).toBe(PlatformRole.ADMIN);
       expect(result.status).toBe(UserStatus.SUSPENDED);
+      expect(result.isAdmin).toBe(true);
     });
 
     it('User can update own profile', async () => {
@@ -202,11 +197,11 @@ describe('UserService', () => {
       ).rejects.toThrow(ForbiddenException);
     });
 
-    it('Non-admin cannot change role or status', async () => {
+    it('Non-admin cannot change admin flag', async () => {
       const ctx = userCtx('user-id');
 
       await expect(
-        service.update(ctx, 'user-id', { role: PlatformRole.ADMIN }),
+        service.update(ctx, 'user-id', { isAdmin: true }),
       ).rejects.toThrow(ForbiddenException);
     });
 

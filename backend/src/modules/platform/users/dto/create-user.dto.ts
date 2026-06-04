@@ -8,7 +8,6 @@ import {
   IsString,
   MinLength,
 } from 'class-validator';
-import { PlatformRole } from '../enums/platform-role.enum';
 import { UserStatus } from '../enums/user-status.enum';
 
 export class CreateUserDto {
@@ -26,10 +25,6 @@ export class CreateUserDto {
   @MinLength(6)
   @IsDefined()
   password: string;
-
-  @IsOptional()
-  @IsEnum(PlatformRole)
-  role?: PlatformRole;
 
   @IsOptional()
   @IsEnum(UserStatus)

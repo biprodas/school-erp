@@ -13,7 +13,6 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { FilterUserDto } from './dto/filter-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from './entities/user.entity';
-import { PlatformRole } from './enums/platform-role.enum';
 import { UserStatus } from './enums/user-status.enum';
 
 @Injectable()
@@ -31,8 +30,8 @@ export class UserService {
   ): Promise<User[]> {
     this.logger.log(`${this.findAll.name} Service Called`);
 
-    const { id, name, email, role } = filterUserDto;
-    const reqQuery: any = { id, name, email, role };
+    const { id, name, email } = filterUserDto;
+    const reqQuery: any = { id, name, email };
 
     return this.userRepo.find({ where: reqQuery });
   }
@@ -63,7 +62,6 @@ export class UserService {
       email: dto.email,
       password: hashedPassword,
       name: dto.name,
-      role: dto.role ?? PlatformRole.USER,
       status: dto.status ?? UserStatus.ACTIVE,
       isAdmin: dto.isAdmin ?? false,
     });
@@ -79,16 +77,16 @@ export class UserService {
     this.logger.log(`${this.update.name} Service Called`);
 
     const isSelf = ctx.user?.id === targetId;
-    const isAdmin = ctx.user?.role === PlatformRole.ADMIN;
+    const isAdmin = ctx.user?.isAdmin === true;
 
     if (!isSelf && !isAdmin) {
       throw new ForbiddenException('You can only update your own profile');
     }
 
-    // Only admins can change role, status, or admin flag
-    if (!isAdmin && (dto.role || dto.status || dto.isAdmin !== undefined)) {
+    // Only admins can change status or the admin flag
+    if (!isAdmin && (dto.status || dto.isAdmin !== undefined)) {
       throw new ForbiddenException(
-        'Only admin can change role, status, or admin flag',
+        'Only admin can change status or the admin flag',
       );
     }
 

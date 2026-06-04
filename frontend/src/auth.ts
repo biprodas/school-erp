@@ -73,7 +73,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth((request) => ({
             email: data.user.email,
             name: data.user.name,
             isAdmin: data.user.isAdmin,
-            role: data.user.role,
             accessToken: data.access_token,
             authKind: "platform",
           };

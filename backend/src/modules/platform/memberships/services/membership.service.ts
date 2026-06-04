@@ -7,7 +7,6 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Not, Repository } from 'typeorm';
 import { RequestContextDto } from '~/common/dto/request-context.dto';
-import { PlatformRole } from 'src/modules/platform/users/enums/platform-role.enum';
 import {
   OwnerActivation,
   TenantService,
@@ -37,7 +36,7 @@ export class MembershipService {
     await this.assertOwnerOrAdmin(ctx, dto.tenantId);
 
     if (
-      ctx.user?.role !== PlatformRole.ADMIN &&
+      !ctx.user?.isAdmin &&
       dto.role === MembershipRole.OWNER
     ) {
       throw new ForbiddenException(
@@ -103,7 +102,7 @@ export class MembershipService {
       throw new NotFoundException('Membership not found');
     }
 
-    if (ctx.user?.role !== PlatformRole.ADMIN) {
+    if (!ctx.user?.isAdmin) {
       const isOwnMembership = m.userId === ctx.user?.id;
       if (!isOwnMembership) {
         await this.assertOwnerOrAdmin(ctx, m.tenantId);
@@ -123,7 +122,7 @@ export class MembershipService {
     if (userId) reqQuery.userId = userId;
     if (tenantId) reqQuery.tenantId = tenantId;
 
-    if (ctx.user?.role === PlatformRole.ADMIN) {
+    if (ctx.user?.isAdmin === true) {
       return this.membershipRepository.find({
         where: reqQuery,
         order: { createdAt: 'ASC' },
@@ -163,7 +162,7 @@ export class MembershipService {
     userId: string,
   ): Promise<Membership[]> {
     if (
-      ctx.user?.role !== PlatformRole.ADMIN &&
+      !ctx.user?.isAdmin &&
       userId !== ctx.user?.id
     ) {
       throw new ForbiddenException('You can only view your own memberships');
@@ -193,7 +192,7 @@ export class MembershipService {
 
     await this.assertOwnerOrAdmin(ctx, membership.tenantId);
 
-    if (ctx.user?.role !== PlatformRole.ADMIN) {
+    if (!ctx.user?.isAdmin) {
       if (membership.role === MembershipRole.OWNER) {
         throw new ForbiddenException('Cannot modify an owner membership');
       }
@@ -237,7 +236,7 @@ export class MembershipService {
     await this.assertOwnerOrAdmin(ctx, membership.tenantId);
 
     if (
-      ctx.user?.role !== PlatformRole.ADMIN &&
+      !ctx.user?.isAdmin &&
       membership.role === MembershipRole.OWNER
     ) {
       throw new ForbiddenException('Cannot remove an owner membership');
@@ -250,7 +249,7 @@ export class MembershipService {
     ctx: RequestContextDto,
     tenantId: string,
   ): Promise<void> {
-    if (ctx.user?.role === PlatformRole.ADMIN) return;
+    if (ctx.user?.isAdmin === true) return;
 
     const ownership = await this.membershipRepository.findOne({
       where: {

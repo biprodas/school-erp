@@ -204,16 +204,6 @@ function OverviewContent() {
                 <span className="font-medium break-all">{user.email}</span>
               </div>
               <div className="flex items-center justify-between py-3">
-                <span className="text-muted-foreground">Role</span>
-                {user.role ? (
-                  <Badge variant="outline" className="capitalize">
-                    {user.role}
-                  </Badge>
-                ) : (
-                  <span>—</span>
-                )}
-              </div>
-              <div className="flex items-center justify-between py-3">
                 <span className="text-muted-foreground">Admin</span>
                 {user.isAdmin ? (
                   <Badge>Yes</Badge>

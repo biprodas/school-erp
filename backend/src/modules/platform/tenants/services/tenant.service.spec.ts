@@ -12,7 +12,6 @@ import { Membership } from 'src/modules/platform/memberships/entities/membership
 import { MembershipRole } from 'src/modules/platform/memberships/enums/membership-role.enum';
 import { DemoteOldOwnerTo } from '../dto/transfer-ownership.dto';
 import { UserService } from 'src/modules/platform/users/user.service';
-import { PlatformRole } from 'src/modules/platform/users/enums/platform-role.enum';
 import { UserStatus } from 'src/modules/platform/users/enums/user-status.enum';
 import { TenantConnectionService } from '~/tenancy/tenant-connection.service';
 import { TenantMigrationService } from '~/tenancy/tenant-migration.service';
@@ -45,7 +44,6 @@ const superAdminCtx = () =>
     user: {
       id: 'admin-id',
       email: 'admin@test.com',
-      role: PlatformRole.ADMIN,
       status: UserStatus.ACTIVE,
       isAdmin: true,
     },
@@ -57,7 +55,6 @@ const userCtx = (id = 'user-id') =>
     user: {
       id,
       email: 'user@test.com',
-      role: PlatformRole.USER,
       status: UserStatus.ACTIVE,
       isAdmin: false,
     },

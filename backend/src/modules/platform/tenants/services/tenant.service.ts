@@ -28,7 +28,6 @@ import {
   TransferOwnershipDto,
 } from '../dto/transfer-ownership.dto';
 import { UpdateTenantDto } from '../dto/update-tenant.dto';
-import { PlatformRole } from 'src/modules/platform/users/enums/platform-role.enum';
 import { RequestContextDto } from '~/common/dto/request-context.dto';
 
 /** One-time owner activation handed back when an owner is (re)provisioned. */
@@ -78,7 +77,7 @@ export class TenantService {
     dto: CreateTenantDto,
   ): Promise<CreateTenantResult> {
     const { user } = ctx;
-    const isAdmin = user?.role === PlatformRole.ADMIN;
+    const isAdmin = user?.isAdmin === true;
 
     let ownerId: string | undefined;
     if (isAdmin) {
@@ -208,7 +207,7 @@ export class TenantService {
     tenantId: string,
     dto: TransferOwnershipDto,
   ): Promise<{ membership: Membership; ownerActivation?: OwnerActivation }> {
-    if (ctx.user?.role !== PlatformRole.ADMIN) {
+    if (!ctx.user?.isAdmin) {
       throw new ForbiddenException(
         'Only admins can transfer tenant ownership',
       );
@@ -311,7 +310,7 @@ export class TenantService {
     ctx: RequestContextDto,
     tenantId: string,
   ): Promise<OwnerActivation> {
-    if (ctx.user?.role !== PlatformRole.ADMIN) {
+    if (!ctx.user?.isAdmin) {
       throw new ForbiddenException('Only admins can issue activation links');
     }
 
@@ -339,7 +338,7 @@ export class TenantService {
   }
 
   async getAllTenants(ctx: RequestContextDto): Promise<Tenant[]> {
-    if (ctx.user?.role !== PlatformRole.ADMIN) {
+    if (!ctx.user?.isAdmin) {
       return this.getTenantsByUser(ctx, ctx.user?.id ?? '');
     }
 
@@ -383,7 +382,7 @@ export class TenantService {
     if (!tenant) {
       throw new NotFoundException('Tenant not found');
     }
-    if (ctx.user?.role === PlatformRole.ADMIN) return tenant;
+    if (ctx.user?.isAdmin === true) return tenant;
 
     const membership = await this.membershipRepository.findOne({
       where: { tenantId: id, userId: ctx.user?.id ?? '' },
@@ -405,7 +404,7 @@ export class TenantService {
       throw new NotFoundException('Tenant not found');
     }
 
-    if (user?.role !== PlatformRole.ADMIN) {
+    if (!user?.isAdmin) {
       const membership = await this.membershipRepository.findOne({
         where: {
           tenantId: id,

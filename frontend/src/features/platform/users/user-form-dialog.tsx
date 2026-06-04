@@ -29,11 +29,7 @@ import {
   type CreateUserValues as CreateValues,
   type EditUserValues as EditValues,
 } from "~/apis/platform/users/schema";
-import {
-  PLATFORM_ROLES,
-  USER_STATUSES,
-  type PlatformUserRow,
-} from "~/apis/platform/users/types";
+import { USER_STATUSES, type PlatformUserRow } from "~/apis/platform/users/types";
 
 interface UserFormDialogProps {
   open: boolean;
@@ -63,7 +59,7 @@ export const UserFormDialog = ({
   );
 }
 
-function RoleStatusFields({
+function StatusFields({
   control,
 }: {
   control: ReturnType<typeof useForm<CreateValues>>["control"] | ReturnType<typeof useForm<EditValues>>["control"];
@@ -72,50 +68,27 @@ function RoleStatusFields({
   const c = control as ReturnType<typeof useForm<CreateValues>>["control"];
   return (
     <>
-      <div className="grid grid-cols-2 gap-3">
-        <Controller
-          name="role"
-          control={c}
-          render={({ field }) => (
-            <Field className="gap-1">
-              <FieldLabel htmlFor="user-role">Role</FieldLabel>
-              <Select value={field.value} onValueChange={field.onChange}>
-                <SelectTrigger id="user-role" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {PLATFORM_ROLES.map((r) => (
-                    <SelectItem key={r} value={r} className="capitalize">
-                      {r}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
-          )}
-        />
-        <Controller
-          name="status"
-          control={c}
-          render={({ field }) => (
-            <Field className="gap-1">
-              <FieldLabel htmlFor="user-status">Status</FieldLabel>
-              <Select value={field.value} onValueChange={field.onChange}>
-                <SelectTrigger id="user-status" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {USER_STATUSES.map((s) => (
-                    <SelectItem key={s} value={s} className="capitalize">
-                      {s}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
-          )}
-        />
-      </div>
+      <Controller
+        name="status"
+        control={c}
+        render={({ field }) => (
+          <Field className="gap-1">
+            <FieldLabel htmlFor="user-status">Status</FieldLabel>
+            <Select value={field.value} onValueChange={field.onChange}>
+              <SelectTrigger id="user-status" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {USER_STATUSES.map((s) => (
+                  <SelectItem key={s} value={s} className="capitalize">
+                    {s}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+        )}
+      />
       <Controller
         name="isAdmin"
         control={c}
@@ -145,7 +118,6 @@ function CreateUserForm({ onDone }: { onDone: () => void }) {
       name: "",
       email: "",
       password: "",
-      role: "user",
       status: "active",
       isAdmin: false,
     },
@@ -209,7 +181,7 @@ function CreateUserForm({ onDone }: { onDone: () => void }) {
               </Field>
             )}
           />
-          <RoleStatusFields control={form.control} />
+          <StatusFields control={form.control} />
         </FieldGroup>
         <DialogFooter className="mt-6">
           <Button
@@ -248,7 +220,6 @@ function EditUserForm({
     resolver: zodResolver(editSchema),
     defaultValues: {
       name: user.name,
-      role: user.role,
       status: user.status,
       isAdmin: user.isAdmin,
     },
@@ -282,7 +253,7 @@ function EditUserForm({
               </Field>
             )}
           />
-          <RoleStatusFields control={form.control} />
+          <StatusFields control={form.control} />
         </FieldGroup>
         <DialogFooter className="mt-6">
           <Button

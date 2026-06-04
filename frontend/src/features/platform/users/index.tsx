@@ -16,7 +16,7 @@ import {
 } from "~/components/ui/dropdown-menu";
 import { ConfirmDialog } from "~/components/confirm-dialog";
 import { formatDate } from "~/lib/format";
-import { RoleBadge, StatusBadge } from "~/features/platform/_components/badges";
+import { StatusBadge } from "~/features/platform/_components/badges";
 import { PageHeader } from "~/features/platform/_components/page-header";
 import { PlatformGuard } from "~/features/platform/_components/guard";
 import { useDeleteUser, usePlatformUsers } from "~/apis/platform/users/queries";
@@ -56,11 +56,6 @@ function UsersContent() {
         cell: ({ row }) => (
           <span className="text-muted-foreground">{row.original.email}</span>
         ),
-      },
-      {
-        accessorKey: "role",
-        header: "Role",
-        cell: ({ row }) => <RoleBadge role={row.original.role} />,
       },
       {
         accessorKey: "status",

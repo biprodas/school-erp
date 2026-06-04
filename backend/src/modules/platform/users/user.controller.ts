@@ -12,15 +12,13 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { RequestContext } from '~/common/decorators/request-context.decorator';
-import { Roles } from '~/common/decorators/roles.decorator';
 import { RequestContextDto } from '~/common/dto/request-context.dto';
 import { PlatformJwtAuthGuard } from '~/common/guards/platform-jwt-auth.guard';
-import { RolesGuard } from '~/common/guards/roles.guard';
+import { PlatformAdminGuard } from '~/common/guards/platform-admin.guard';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CreateUserDto } from './dto/create-user.dto';
 import { FilterUserDto } from './dto/filter-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { PlatformRole } from './enums/platform-role.enum';
 import { UserService } from './user.service';
 
 @ApiTags('Platform / Users')
@@ -31,8 +29,7 @@ export class UserController {
   constructor(private readonly userService: UserService) {}
 
   @Get()
-  @UseGuards(RolesGuard)
-  @Roles(PlatformRole.ADMIN)
+  @UseGuards(PlatformAdminGuard)
   async findAll(
     @RequestContext() ctx: RequestContextDto,
     @Query() filterUserDto: FilterUserDto,
@@ -48,8 +45,7 @@ export class UserController {
   }
 
   @Post()
-  @UseGuards(RolesGuard)
-  @Roles(PlatformRole.ADMIN)
+  @UseGuards(PlatformAdminGuard)
   async create(
     @RequestContext() ctx: RequestContextDto,
     @Body() createUserDto: CreateUserDto,
@@ -69,7 +65,7 @@ export class UserController {
     @RequestContext() ctx: RequestContextDto,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    if (ctx.user?.role !== PlatformRole.ADMIN && ctx.user?.id !== id) {
+    if (!ctx.user?.isAdmin && ctx.user?.id !== id) {
       throw new ForbiddenException('Access denied');
     }
     const user = await this.userService.findById(ctx, id);
@@ -99,8 +95,7 @@ export class UserController {
   }
 
   @Delete(':id')
-  @UseGuards(RolesGuard)
-  @Roles(PlatformRole.ADMIN)
+  @UseGuards(PlatformAdminGuard)
   async remove(
     @RequestContext() ctx: RequestContextDto,
     @Param('id', ParseUUIDPipe) targetId: string,
