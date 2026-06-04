@@ -38,7 +38,7 @@ export const PlatformGuard = ({
 
   if (!session?.user || session.authKind !== "platform") {
     return (
-      <Card className="mx-auto max-w-md">
+      <Card className="mx-auto w-full max-w-md">
         <CardHeader>
           <CardTitle>Platform access required</CardTitle>
           <CardDescription>
@@ -57,7 +57,7 @@ export const PlatformGuard = ({
 
   if (requireAdmin && !session.user.isAdmin) {
     return (
-      <Card className="mx-auto max-w-md">
+      <Card className="mx-auto w-full max-w-md">
         <CardHeader>
           <CardTitle>Admin access required</CardTitle>
           <CardDescription>
