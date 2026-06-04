@@ -1,12 +1,21 @@
 "use client";
 
+import {
+  Building2,
+  CircleCheck,
+  ShieldUser,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { Building2, ShieldUser, Users } from "lucide-react";
-import type { ReactNode } from "react";
-import { PLATFORM_LOGIN } from "~/constants/routes";
+import { useMemo } from "react";
+import {
+  PLATFORM_MEMBERSHIPS,
+  PLATFORM_TENANTS,
+  PLATFORM_USERS,
+} from "~/constants/routes";
 import { Badge } from "~/components/ui/badge";
-import { Button } from "~/components/ui/button";
 import {
   Card,
   CardContent,
@@ -14,73 +23,92 @@ import {
   CardHeader,
   CardTitle,
 } from "~/components/ui/card";
-import { Skeleton } from "~/components/ui/skeleton";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "~/components/ui/table";
+import {
+  PlatformGuard,
+  StatusBadge,
+  formatDate,
+  useIsPlatformAdmin,
+} from "~/features/platform/management/components";
+import {
+  useMemberships,
+  usePlatformUsers,
+  useTenants,
+} from "~/features/platform/management/hooks";
 
-const MANAGEMENT_AREAS = [
-  {
-    title: "Tenants",
-    description: "Create and manage school workspaces.",
-    icon: Building2,
-  },
-  {
-    title: "Platform Users",
-    description: "Manage super-admin and platform accounts.",
-    icon: ShieldUser,
-  },
-  {
-    title: "Memberships",
-    description: "Assign users to tenants and roles.",
-    icon: Users,
-  },
-] as const;
-
-function DetailRow({ label, children }: { label: string; children: ReactNode }) {
+export default function PlatformDashboardView() {
   return (
-    <div className="flex items-start justify-between gap-4 py-3">
-      <span className="text-sm text-muted-foreground">{label}</span>
-      <span className="text-sm font-medium text-right break-all">
-        {children}
-      </span>
-    </div>
+    <PlatformGuard>
+      <OverviewContent />
+    </PlatformGuard>
   );
 }
 
-export default function PlatformDashboardView() {
-  const { data: session, status } = useSession();
-
-  if (status === "loading") {
-    return (
-      <div className="space-y-4">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-48 w-full max-w-2xl rounded-xl" />
-      </div>
-    );
-  }
-
-  if (!session?.user) return null;
-
-  // The route is auth-gated by the proxy, but a tenant session could still land
-  // here — keep the two surfaces separate.
-  if (session.authKind !== "platform") {
-    return (
-      <Card className="mx-auto max-w-md">
-        <CardHeader>
-          <CardTitle>Platform access required</CardTitle>
-          <CardDescription>
-            This area is for platform administrators. Please sign in with a
-            platform account.
-          </CardDescription>
+function MetricCard({
+  label,
+  value,
+  icon: Icon,
+  href,
+  loading,
+}: {
+  label: string;
+  value: number | string;
+  icon: LucideIcon;
+  href: string;
+  loading?: boolean;
+}) {
+  return (
+    <Link href={href} className="group">
+      <Card className="transition-colors group-hover:border-primary/40">
+        <CardHeader className="flex flex-row items-center justify-between gap-2">
+          <CardDescription>{label}</CardDescription>
+          <div className="flex size-9 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+            <Icon className="size-5" />
+          </div>
         </CardHeader>
         <CardContent>
-          <Button asChild>
-            <Link href={PLATFORM_LOGIN}>Sign in as a platform admin</Link>
-          </Button>
+          <p className="text-2xl font-semibold tracking-tight">
+            {loading ? "—" : value}
+          </p>
         </CardContent>
       </Card>
-    );
-  }
+    </Link>
+  );
+}
 
-  const { user } = session;
+function OverviewContent() {
+  const { data: session } = useSession();
+  const isAdmin = useIsPlatformAdmin();
+
+  const tenantsQuery = useTenants();
+  const usersQuery = usePlatformUsers({ enabled: isAdmin });
+  const membershipsQuery = useMemberships();
+
+  const tenants = tenantsQuery.data ?? [];
+  const activeTenants = useMemo(
+    () =>
+      (tenantsQuery.data ?? []).filter((t) => t.status === "active").length,
+    [tenantsQuery.data],
+  );
+  const recentTenants = useMemo(
+    () =>
+      [...(tenantsQuery.data ?? [])]
+        .sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        )
+        .slice(0, 5),
+    [tenantsQuery.data],
+  );
+
+  const user = session!.user;
 
   return (
     <div className="space-y-6">
@@ -93,53 +121,113 @@ export default function PlatformDashboardView() {
         </p>
       </div>
 
-      <Card className="max-w-2xl">
-        <CardHeader>
-          <CardTitle className="text-base">Your account</CardTitle>
-        </CardHeader>
-        <CardContent className="pt-0">
-          <div className="divide-y">
-            <DetailRow label="Email">{user.email}</DetailRow>
-            <DetailRow label="Account type">
-              <span className="capitalize">{session.authKind}</span>
-            </DetailRow>
-            <DetailRow label="Role">
-              {user.role ? (
-                <Badge variant="outline" className="capitalize">
-                  {user.role}
-                </Badge>
-              ) : (
-                "—"
-              )}
-            </DetailRow>
-            <DetailRow label="Admin">
-              {user.isAdmin ? (
-                <Badge>Yes</Badge>
-              ) : (
-                <Badge variant="secondary">No</Badge>
-              )}
-            </DetailRow>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <MetricCard
+          label="Tenants"
+          value={tenants.length}
+          icon={Building2}
+          href={PLATFORM_TENANTS}
+          loading={tenantsQuery.isLoading}
+        />
+        <MetricCard
+          label="Active tenants"
+          value={activeTenants}
+          icon={CircleCheck}
+          href={PLATFORM_TENANTS}
+          loading={tenantsQuery.isLoading}
+        />
+        <MetricCard
+          label="Memberships"
+          value={membershipsQuery.data?.length ?? 0}
+          icon={Users}
+          href={PLATFORM_MEMBERSHIPS}
+          loading={membershipsQuery.isLoading}
+        />
+        <MetricCard
+          label="Platform users"
+          value={isAdmin ? (usersQuery.data?.length ?? 0) : "—"}
+          icon={ShieldUser}
+          href={PLATFORM_USERS}
+          loading={isAdmin && usersQuery.isLoading}
+        />
+      </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {MANAGEMENT_AREAS.map(({ title, description, icon: Icon }) => (
-          <Card key={title}>
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <div className="flex size-9 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-                  <Icon className="size-5" />
-                </div>
-                <CardTitle className="text-base">{title}</CardTitle>
+      <div className="grid gap-6 lg:grid-cols-3">
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="text-base">Recent tenants</CardTitle>
+            <CardDescription>
+              Newest school workspaces on the platform.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-hidden rounded-lg border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Created</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {recentTenants.length ? (
+                    recentTenants.map((t) => (
+                      <TableRow key={t.id}>
+                        <TableCell className="font-medium">{t.name}</TableCell>
+                        <TableCell>
+                          <StatusBadge status={t.status} />
+                        </TableCell>
+                        <TableCell>{formatDate(t.createdAt)}</TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell
+                        colSpan={3}
+                        className="h-20 text-center text-muted-foreground"
+                      >
+                        {tenantsQuery.isLoading ? "Loading…" : "No tenants yet."}
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Your account</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="divide-y text-sm">
+              <div className="flex items-center justify-between py-3">
+                <span className="text-muted-foreground">Email</span>
+                <span className="font-medium break-all">{user.email}</span>
               </div>
-              <CardDescription>{description}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Badge variant="secondary">Coming soon</Badge>
-            </CardContent>
-          </Card>
-        ))}
+              <div className="flex items-center justify-between py-3">
+                <span className="text-muted-foreground">Role</span>
+                {user.role ? (
+                  <Badge variant="outline" className="capitalize">
+                    {user.role}
+                  </Badge>
+                ) : (
+                  <span>—</span>
+                )}
+              </div>
+              <div className="flex items-center justify-between py-3">
+                <span className="text-muted-foreground">Admin</span>
+                {user.isAdmin ? (
+                  <Badge>Yes</Badge>
+                ) : (
+                  <Badge variant="secondary">No</Badge>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
