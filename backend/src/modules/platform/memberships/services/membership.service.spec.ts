@@ -10,7 +10,7 @@ import { Membership } from '../entities/membership.entity';
 import { MembershipRole } from '../enums/membership-role.enum';
 import { TenantService } from 'src/modules/platform/tenants/services/tenant.service';
 import { UserService } from 'src/modules/platform/users/user.service';
-import { PlatformRole } from 'src/modules/platform/users/enums/platform-role.enum';
+import { OwnerProvisioningService } from '~/tenanted/auth/owner-provisioning.service';
 import { UserStatus } from 'src/modules/platform/users/enums/user-status.enum';
 import { RequestContextDto } from '~/common/dto/request-context.dto';
 
@@ -39,7 +39,6 @@ const superAdminCtx = () =>
     user: {
       id: 'admin-id',
       email: 'admin@test.com',
-      role: PlatformRole.ADMIN,
       status: UserStatus.ACTIVE,
       isAdmin: true,
     },
@@ -51,7 +50,6 @@ const userCtx = (id = 'user-id') =>
     user: {
       id,
       email: 'user@test.com',
-      role: PlatformRole.USER,
       status: UserStatus.ACTIVE,
       isAdmin: false,
     },
@@ -102,6 +100,14 @@ describe('MembershipService', () => {
         { provide: getRepositoryToken(Membership), useValue: membershipRepo },
         { provide: TenantService, useValue: tenantService },
         { provide: UserService, useValue: userService },
+        {
+          provide: OwnerProvisioningService,
+          useValue: {
+            provisionOwner: jest
+              .fn()
+              .mockResolvedValue({ token: 'activation-token' }),
+          },
+        },
       ],
     }).compile();
 

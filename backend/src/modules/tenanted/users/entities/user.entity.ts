@@ -33,6 +33,13 @@ export class User {
   @Column({ name: 'is_admin', default: false })
   isAdmin: boolean;
 
+  /**
+   * Links this tenant user back to the platform user it was provisioned from
+   * (e.g. when an admin assigns a tenant owner). Null for self-created users.
+   */
+  @Column({ name: 'platform_user_id', type: 'uuid', nullable: true })
+  platformUserId: string | null;
+
   @OneToMany(() => UserRole, (userRole) => userRole.user)
   userRoles: UserRole[];
 

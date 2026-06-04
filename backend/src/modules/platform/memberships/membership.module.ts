@@ -5,9 +5,15 @@ import { MembershipService } from './services/membership.service';
 import { MembershipController } from './controllers/membership.controller';
 import { TenantModule } from 'src/modules/platform/tenants/tenant.module';
 import { UserModule } from 'src/modules/platform/users/user.module';
+import { RbacModule } from '~/tenanted/rbac/rbac.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Membership]), TenantModule, UserModule],
+  imports: [
+    TypeOrmModule.forFeature([Membership]),
+    TenantModule,
+    UserModule,
+    RbacModule,
+  ],
   controllers: [MembershipController],
   providers: [MembershipService],
   exports: [MembershipService],

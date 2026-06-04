@@ -23,17 +23,14 @@ export interface TenantAuthUser extends BaseUser {
 }
 
 /** User as returned by the platform auth endpoints (`/api/platform/auth/*`). */
-export interface PlatformAuthUser extends BaseUser {
-  role: string;
-}
+export type PlatformAuthUser = BaseUser;
 
 /**
- * Normalized user stored on the NextAuth session. `roles`/`role` are both
- * optional so a single shape covers tenant and platform sessions.
+ * Normalized user stored on the NextAuth session. `roles` is optional so a
+ * single shape covers tenant (RBAC role names) and platform sessions.
  */
 export interface AuthUser extends BaseUser {
   authKind: AuthKind;
-  role?: string;
   roles?: string[];
   tenant?: Tenant;
 }

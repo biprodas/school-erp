@@ -129,6 +129,33 @@ export async function resolveTenantSlug(
   }
 }
 
+/**
+ * Root domain to use when building cross-tenant links from the platform host.
+ * Prefers the configured `NEXT_PUBLIC_ROOT_DOMAIN`; otherwise infers from the
+ * current host (localhost/IP → `lvh.me` for dev subdomains).
+ */
+function rootDomainForLinks(): string {
+  if (ROOT_DOMAIN) return ROOT_DOMAIN;
+  if (typeof window === "undefined") return "";
+  const h = hostname(window.location.host);
+  if (h === "localhost" || /^[0-9.]+$/.test(h)) return "lvh.me";
+  return h.replace(/^www\./, "");
+}
+
+/**
+ * Absolute owner-activation URL on a tenant's host, e.g.
+ * `http://acme.lvh.me:3000/activate?token=…`. Built client-side from the
+ * current origin's protocol/port and the platform root domain.
+ */
+export function buildTenantActivationUrl(slug: string, token: string): string {
+  const query = `/activate?token=${encodeURIComponent(token)}`;
+  if (typeof window === "undefined") return query;
+  const { protocol, port } = window.location;
+  const portSuffix = port ? `:${port}` : "";
+  const host = `${slug}.${rootDomainForLinks()}${portSuffix}`;
+  return `${protocol}//${host}${query}`;
+}
+
 /** Client-only, sync (Tier 1 only) — for cookie/header fallbacks. */
 export function getClientTenantSlug(): string | null {
   if (typeof window === "undefined") return null;

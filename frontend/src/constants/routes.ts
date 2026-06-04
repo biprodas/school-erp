@@ -10,6 +10,11 @@ export const PLATFORM_LOGIN = "/login";
 export const PLATFORM_SIGNUP = "/signup";
 export const PLATFORM_LOGIN_REDIRECT = "/platform/dashboard";
 
+// Platform management sections.
+export const PLATFORM_TENANTS = "/platform/tenants";
+export const PLATFORM_USERS = "/platform/users";
+export const PLATFORM_MEMBERSHIPS = "/platform/memberships";
+
 export const publicRoutes = ["/", "/faq"];
 
 /** Auth pages — visiting these while logged in redirects to the dashboard. */
@@ -26,6 +31,9 @@ export const protectedPrefixes = [
   "/dashboard",
   "/profile",
   "/platform/dashboard",
+  "/platform/tenants",
+  "/platform/users",
+  "/platform/memberships",
 ];
 
 export const apiAuthPrefix = "/api/auth";

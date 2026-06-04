@@ -21,14 +21,25 @@ import {
   tenantSlugCache,
 } from '~/tenancy/tenant-slug.cache';
 import { RbacSeederService } from '~/tenanted/rbac/rbac-seeder.service';
+import { OwnerProvisioningService } from '~/tenanted/auth/owner-provisioning.service';
 import { CreateTenantDto } from '../dto/create-tenant.dto';
 import {
   DemoteOldOwnerTo,
   TransferOwnershipDto,
 } from '../dto/transfer-ownership.dto';
 import { UpdateTenantDto } from '../dto/update-tenant.dto';
-import { PlatformRole } from 'src/modules/platform/users/enums/platform-role.enum';
 import { RequestContextDto } from '~/common/dto/request-context.dto';
+
+/** One-time owner activation handed back when an owner is (re)provisioned. */
+export interface OwnerActivation {
+  token: string;
+  tenantSlug: string;
+}
+
+export interface CreateTenantResult {
+  tenant: Tenant;
+  ownerActivation?: OwnerActivation;
+}
 
 @Injectable()
 export class TenantService {
@@ -46,6 +57,7 @@ export class TenantService {
     private rbacSeederService: RbacSeederService,
     private configService: ConfigService,
     private userService: UserService,
+    private ownerProvisioning: OwnerProvisioningService,
   ) {}
 
   /**
@@ -63,9 +75,9 @@ export class TenantService {
   async createTenant(
     ctx: RequestContextDto,
     dto: CreateTenantDto,
-  ): Promise<Tenant> {
+  ): Promise<CreateTenantResult> {
     const { user } = ctx;
-    const isAdmin = user?.role === PlatformRole.ADMIN;
+    const isAdmin = user?.isAdmin === true;
 
     let ownerId: string | undefined;
     if (isAdmin) {
@@ -127,6 +139,7 @@ export class TenantService {
       // Seed the standard school roles into the freshly-created schema.
       await this.rbacSeederService.seedSystemRoles(schemaName);
 
+      let ownerActivation: OwnerActivation | undefined;
       if (ownerId && tenant) {
         await this.membershipRepository.save(
           this.membershipRepository.create({
@@ -135,10 +148,19 @@ export class TenantService {
             role: MembershipRole.OWNER,
           }),
         );
+
+        // Provision the owner as a tenant-admin user + mint an activation link
+        // so they can set their password and log into the tenant.
+        const owner = await this.userService.findById(ctx, ownerId);
+        const { token } = await this.ownerProvisioning.provisionOwner(
+          schemaName,
+          { email: owner.email, name: owner.name, platformUserId: owner.id },
+        );
+        ownerActivation = { token, tenantSlug: tenant.slug };
       }
 
       // tenant is always set if we got here, but keep types safe
-      return tenant;
+      return { tenant: tenant!, ownerActivation };
     } catch (error) {
       // Compensating rollback: best-effort cleanup to avoid orphaned tenants/schemas.
       try {
@@ -184,8 +206,8 @@ export class TenantService {
     ctx: RequestContextDto,
     tenantId: string,
     dto: TransferOwnershipDto,
-  ): Promise<Membership> {
-    if (ctx.user?.role !== PlatformRole.ADMIN) {
+  ): Promise<{ membership: Membership; ownerActivation?: OwnerActivation }> {
+    if (!ctx.user?.isAdmin) {
       throw new ForbiddenException(
         'Only admins can transfer tenant ownership',
       );
@@ -201,7 +223,7 @@ export class TenantService {
     // Validate the target user up-front (outside the transaction is fine).
     await this.userService.findById(ctx, dto.newOwnerUserId);
 
-    return this.dataSource.transaction(async (manager) => {
+    const membership = await this.dataSource.transaction(async (manager) => {
       const memberships = manager.getRepository(Membership);
 
       const existingOwners = await memberships.find({
@@ -259,10 +281,64 @@ export class TenantService {
 
       return newOwner;
     });
+
+    // Provision the new owner's tenant user + activation link. Best-effort:
+    // the ownership transfer has already committed, so a provisioning failure
+    // is logged rather than rolled back.
+    let ownerActivation: OwnerActivation | undefined;
+    try {
+      const owner = await this.userService.findById(ctx, dto.newOwnerUserId);
+      const { token } = await this.ownerProvisioning.provisionOwner(
+        tenant.schemaName,
+        { email: owner.email, name: owner.name, platformUserId: owner.id },
+      );
+      ownerActivation = { token, tenantSlug: tenant.slug };
+    } catch (err) {
+      this.logger.warn(
+        `Ownership of "${tenant.slug}" transferred, but owner provisioning failed: ${(err as Error).message}`,
+      );
+    }
+
+    return { membership, ownerActivation };
+  }
+
+  /**
+   * (Re)issues an owner activation link for a tenant's current OWNER. Admin-only.
+   * Useful when the original link expired or was lost.
+   */
+  async reissueOwnerActivation(
+    ctx: RequestContextDto,
+    tenantId: string,
+  ): Promise<OwnerActivation> {
+    if (!ctx.user?.isAdmin) {
+      throw new ForbiddenException('Only admins can issue activation links');
+    }
+
+    const tenant = await this.tenantRepository.findOne({
+      where: { id: tenantId },
+    });
+    if (!tenant) {
+      throw new NotFoundException('Tenant not found');
+    }
+
+    const ownerMembership = await this.membershipRepository.findOne({
+      where: { tenantId, role: MembershipRole.OWNER },
+      order: { createdAt: 'ASC' },
+    });
+    if (!ownerMembership) {
+      throw new NotFoundException('Tenant has no owner to activate');
+    }
+
+    const owner = await this.userService.findById(ctx, ownerMembership.userId);
+    const { token } = await this.ownerProvisioning.provisionOwner(
+      tenant.schemaName,
+      { email: owner.email, name: owner.name, platformUserId: owner.id },
+    );
+    return { token, tenantSlug: tenant.slug };
   }
 
   async getAllTenants(ctx: RequestContextDto): Promise<Tenant[]> {
-    if (ctx.user?.role !== PlatformRole.ADMIN) {
+    if (!ctx.user?.isAdmin) {
       return this.getTenantsByUser(ctx, ctx.user?.id ?? '');
     }
 
@@ -306,7 +382,7 @@ export class TenantService {
     if (!tenant) {
       throw new NotFoundException('Tenant not found');
     }
-    if (ctx.user?.role === PlatformRole.ADMIN) return tenant;
+    if (ctx.user?.isAdmin === true) return tenant;
 
     const membership = await this.membershipRepository.findOne({
       where: { tenantId: id, userId: ctx.user?.id ?? '' },
@@ -328,7 +404,7 @@ export class TenantService {
       throw new NotFoundException('Tenant not found');
     }
 
-    if (user?.role !== PlatformRole.ADMIN) {
+    if (!user?.isAdmin) {
       const membership = await this.membershipRepository.findOne({
         where: {
           tenantId: id,

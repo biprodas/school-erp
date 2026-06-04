@@ -12,11 +12,11 @@ import { Membership } from 'src/modules/platform/memberships/entities/membership
 import { MembershipRole } from 'src/modules/platform/memberships/enums/membership-role.enum';
 import { DemoteOldOwnerTo } from '../dto/transfer-ownership.dto';
 import { UserService } from 'src/modules/platform/users/user.service';
-import { PlatformRole } from 'src/modules/platform/users/enums/platform-role.enum';
 import { UserStatus } from 'src/modules/platform/users/enums/user-status.enum';
 import { TenantConnectionService } from '~/tenancy/tenant-connection.service';
 import { TenantMigrationService } from '~/tenancy/tenant-migration.service';
 import { RbacSeederService } from '~/tenanted/rbac/rbac-seeder.service';
+import { OwnerProvisioningService } from '~/tenanted/auth/owner-provisioning.service';
 import { RequestContextDto } from '~/common/dto/request-context.dto';
 
 // --- Helpers ---
@@ -44,7 +44,6 @@ const superAdminCtx = () =>
     user: {
       id: 'admin-id',
       email: 'admin@test.com',
-      role: PlatformRole.ADMIN,
       status: UserStatus.ACTIVE,
       isAdmin: true,
     },
@@ -56,7 +55,6 @@ const userCtx = (id = 'user-id') =>
     user: {
       id,
       email: 'user@test.com',
-      role: PlatformRole.USER,
       status: UserStatus.ACTIVE,
       isAdmin: false,
     },
@@ -166,6 +164,14 @@ describe('TenantService', () => {
         {
           provide: RbacSeederService,
           useValue: { seedSystemRoles: jest.fn() },
+        },
+        {
+          provide: OwnerProvisioningService,
+          useValue: {
+            provisionOwner: jest
+              .fn()
+              .mockResolvedValue({ token: 'activation-token' }),
+          },
         },
         {
           provide: ConfigService,
@@ -452,8 +458,8 @@ describe('TenantService', () => {
         },
       );
 
-      expect(result.role).toBe(MembershipRole.OWNER);
-      expect(result.userId).toBe('new-owner');
+      expect(result.membership.role).toBe(MembershipRole.OWNER);
+      expect(result.membership.userId).toBe('new-owner');
       // New OWNER membership created.
       expect(txMembershipRepo.create).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -520,8 +526,8 @@ describe('TenantService', () => {
         },
       );
 
-      expect(result.userId).toBe('new-owner');
-      expect(result.role).toBe(MembershipRole.OWNER);
+      expect(result.membership.userId).toBe('new-owner');
+      expect(result.membership.role).toBe(MembershipRole.OWNER);
       expect(txMembershipRepo.delete).not.toHaveBeenCalled();
     });
   });

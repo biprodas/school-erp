@@ -24,7 +24,6 @@ export class PlatformJwtStrategy extends PassportStrategy(
     return {
       userId: payload.sub,
       email: payload.email,
-      role: payload.role,
       status: payload.status,
       isAdmin: payload.isAdmin === true,
     };

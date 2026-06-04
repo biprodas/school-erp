@@ -10,7 +10,6 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { PlatformRole } from '../enums/platform-role.enum';
 import { UserStatus } from '../enums/user-status.enum';
 import { Membership } from 'src/modules/platform/memberships/entities/membership.entity';
 
@@ -28,14 +27,6 @@ export class User {
 
   @Column()
   name: string;
-
-  @Column({
-    type: 'enum',
-    enum: PlatformRole,
-    default: PlatformRole.USER,
-    name: 'role',
-  })
-  role: PlatformRole;
 
   @Column({
     type: 'enum',

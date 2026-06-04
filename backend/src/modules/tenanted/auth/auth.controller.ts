@@ -1,10 +1,10 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiHeader, ApiTags } from '@nestjs/swagger';
 import { RequestContext } from '~/common/decorators/request-context.decorator';
 import { RequestContextDto } from '~/common/dto/request-context.dto';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
-import { RegisterDto } from './dto/register.dto';
+import { ActivateDto } from './dto/activate.dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
 
 @ApiTags('Tenant / Auth')
@@ -18,14 +18,26 @@ import { JwtAuthGuard } from './jwt-auth.guard';
 export class AuthController {
   constructor(private authService: AuthService) {}
 
-  @Post('register')
-  async register(@Body() dto: RegisterDto) {
-    const result = await this.authService.register(dto);
+  @Get('activate')
+  async verifyActivation(@Query('token') token: string) {
+    const result = await this.authService.verifyActivation(token);
 
     return {
       success: true,
-      statusCode: 201,
-      message: `User created.`,
+      statusCode: 200,
+      message: `Activation token valid.`,
+      data: result,
+    };
+  }
+
+  @Post('activate')
+  async activate(@Body() dto: ActivateDto) {
+    const result = await this.authService.activate(dto);
+
+    return {
+      success: true,
+      statusCode: 200,
+      message: `Account activated.`,
       data: result,
     };
   }

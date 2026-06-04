@@ -1,5 +1,4 @@
-import { IsEnum, IsOptional } from 'class-validator';
-import { PlatformRole } from '../enums/platform-role.enum';
+import { IsOptional } from 'class-validator';
 
 export class FilterUserDto {
   @IsOptional()
@@ -10,7 +9,4 @@ export class FilterUserDto {
 
   @IsOptional()
   email: string;
-
-  @IsOptional()
-  role: PlatformRole;
 }

@@ -107,7 +107,6 @@ export const authConfig = {
       if (user) {
         token.accessToken = user.accessToken;
         token.authKind = user.authKind;
-        token.role = user.role;
         token.roles = user.roles;
         token.isAdmin = user.isAdmin;
         token.tenant = user.tenant;
@@ -118,7 +117,6 @@ export const authConfig = {
       session.accessToken = token.accessToken;
       session.authKind = token.authKind;
       session.user.id = token.sub ?? session.user.id;
-      session.user.role = token.role;
       session.user.roles = token.roles;
       session.user.isAdmin = token.isAdmin;
       session.user.tenant = token.tenant;

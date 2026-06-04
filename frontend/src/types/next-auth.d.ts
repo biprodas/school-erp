@@ -11,7 +11,6 @@ declare module "next-auth" {
     authKind: AuthKind;
     user: {
       id: string;
-      role?: string;
       roles?: string[];
       isAdmin: boolean;
       tenant?: Tenant;
@@ -21,7 +20,6 @@ declare module "next-auth" {
   interface User {
     accessToken: string;
     authKind: AuthKind;
-    role?: string;
     roles?: string[];
     isAdmin: boolean;
     tenant?: Tenant;
@@ -34,7 +32,6 @@ declare module "@auth/core/jwt" {
   interface JWT {
     accessToken: string;
     authKind: AuthKind;
-    role?: string;
     roles?: string[];
     isAdmin: boolean;
     tenant?: Tenant;

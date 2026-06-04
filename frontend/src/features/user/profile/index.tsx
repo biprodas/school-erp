@@ -67,8 +67,8 @@ export default function ProfileView() {
 
   const roleList =
     authKind === "platform"
-      ? user.role
-        ? [user.role]
+      ? user.isAdmin
+        ? ["admin"]
         : []
       : (user.roles ?? []);
 

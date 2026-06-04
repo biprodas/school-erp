@@ -1,9 +1,11 @@
 import { headers } from "next/headers";
-import TenantSignupView from "~/features/auth/signup";
+import TenantSignupNotice from "~/features/auth/signup/tenant-signup-notice";
 import PlatformSignupView from "~/features/platform/auth/signup";
 import { isPlatformHost } from "~/lib/tenant";
 
 export default async function SignupPage() {
   const host = (await headers()).get("host");
-  return isPlatformHost(host) ? <PlatformSignupView /> : <TenantSignupView />;
+  // Platform self-signup stays; tenant self-registration is disabled (owners
+  // and staff are provisioned by an admin and activate via a link).
+  return isPlatformHost(host) ? <PlatformSignupView /> : <TenantSignupNotice />;
 }

@@ -10,12 +10,10 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { PlatformRole } from 'src/modules/platform/users/enums/platform-role.enum';
 import { RequestContext } from '~/common/decorators/request-context.decorator';
-import { Roles } from '~/common/decorators/roles.decorator';
 import { RequestContextDto } from '~/common/dto/request-context.dto';
 import { PlatformJwtAuthGuard } from '~/common/guards/platform-jwt-auth.guard';
-import { RolesGuard } from '~/common/guards/roles.guard';
+import { PlatformAdminGuard } from '~/common/guards/platform-admin.guard';
 import { CreateTenantDto } from '../dto/create-tenant.dto';
 import { TransferOwnershipDto } from '../dto/transfer-ownership.dto';
 import { UpdateTenantDto } from '../dto/update-tenant.dto';
@@ -60,13 +58,16 @@ export class TenantController {
     @RequestContext() ctx: RequestContextDto,
     @Body() createTenantDto: CreateTenantDto,
   ) {
-    const tenant = await this.tenantService.createTenant(ctx, createTenantDto);
+    const { tenant, ownerActivation } = await this.tenantService.createTenant(
+      ctx,
+      createTenantDto,
+    );
 
     return {
       success: true,
       statusCode: 201,
       message: `Tenant created successfully`,
-      data: tenant,
+      data: { ...tenant, activation: ownerActivation ?? null },
     };
   }
 
@@ -91,26 +92,41 @@ export class TenantController {
   }
 
   @Post(':id/transfer-ownership')
-  @UseGuards(RolesGuard)
-  @Roles(PlatformRole.ADMIN)
+  @UseGuards(PlatformAdminGuard)
   async transferOwnership(
     @RequestContext() ctx: RequestContextDto,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: TransferOwnershipDto,
   ) {
-    const membership = await this.tenantService.transferOwnership(ctx, id, dto);
+    const { membership, ownerActivation } =
+      await this.tenantService.transferOwnership(ctx, id, dto);
 
     return {
       success: true,
       statusCode: 200,
       message: 'Tenant ownership transferred',
-      data: membership,
+      data: { ...membership, activation: ownerActivation ?? null },
+    };
+  }
+
+  @Post(':id/owner/activation-link')
+  @UseGuards(PlatformAdminGuard)
+  async reissueOwnerActivation(
+    @RequestContext() ctx: RequestContextDto,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    const activation = await this.tenantService.reissueOwnerActivation(ctx, id);
+
+    return {
+      success: true,
+      statusCode: 200,
+      message: 'Owner activation link issued',
+      data: activation,
     };
   }
 
   @Delete(':id')
-  @UseGuards(RolesGuard)
-  @Roles(PlatformRole.ADMIN)
+  @UseGuards(PlatformAdminGuard)
   async remove(
     @RequestContext() ctx: RequestContextDto,
     @Param('id', ParseUUIDPipe) id: string,
