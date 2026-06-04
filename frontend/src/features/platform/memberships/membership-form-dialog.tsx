@@ -93,7 +93,13 @@ export const CreateMembershipDialog = ({
           <Field className="gap-1">
             <FieldLabel htmlFor="membership-user">User</FieldLabel>
             <Select value={userId} onValueChange={setUserId}>
-              <SelectTrigger id="membership-user" className="w-full">
+              <SelectTrigger
+                id="membership-user"
+                className="w-full"
+                clearable
+                hasValue={!!userId}
+                onClear={() => setUserId("")}
+              >
                 <SelectValue placeholder="Select a user" />
               </SelectTrigger>
               <SelectContent>
@@ -109,7 +115,13 @@ export const CreateMembershipDialog = ({
           <Field className="gap-1">
             <FieldLabel htmlFor="membership-tenant">Tenant</FieldLabel>
             <Select value={tenantId} onValueChange={setTenantId}>
-              <SelectTrigger id="membership-tenant" className="w-full">
+              <SelectTrigger
+                id="membership-tenant"
+                className="w-full"
+                clearable
+                hasValue={!!tenantId}
+                onClear={() => setTenantId("")}
+              >
                 <SelectValue placeholder="Select a tenant" />
               </SelectTrigger>
               <SelectContent>

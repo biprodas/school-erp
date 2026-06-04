@@ -187,7 +187,13 @@ function CreateTenantForm({
                     Owner (optional)
                   </FieldLabel>
                   <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger id="tenant-owner" className="w-full">
+                    <SelectTrigger
+                      id="tenant-owner"
+                      className="w-full"
+                      clearable
+                      hasValue={!!field.value}
+                      onClear={() => field.onChange("")}
+                    >
                       <SelectValue placeholder="No owner" />
                     </SelectTrigger>
                     <SelectContent>

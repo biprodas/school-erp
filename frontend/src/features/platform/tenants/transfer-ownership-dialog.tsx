@@ -89,7 +89,13 @@ export const TransferOwnershipDialog = ({
           <Field className="gap-1">
             <FieldLabel htmlFor="new-owner">New owner</FieldLabel>
             <Select value={newOwnerUserId} onValueChange={setNewOwnerUserId}>
-              <SelectTrigger id="new-owner" className="w-full">
+              <SelectTrigger
+                id="new-owner"
+                className="w-full"
+                clearable
+                hasValue={!!newOwnerUserId}
+                onClear={() => setNewOwnerUserId("")}
+              >
                 <SelectValue placeholder="Select a user" />
               </SelectTrigger>
               <SelectContent>
