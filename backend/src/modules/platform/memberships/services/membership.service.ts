@@ -8,8 +8,12 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Not, Repository } from 'typeorm';
 import { RequestContextDto } from '~/common/dto/request-context.dto';
 import { PlatformRole } from 'src/modules/platform/users/enums/platform-role.enum';
-import { TenantService } from 'src/modules/platform/tenants/services/tenant.service';
+import {
+  OwnerActivation,
+  TenantService,
+} from 'src/modules/platform/tenants/services/tenant.service';
 import { UserService } from 'src/modules/platform/users/user.service';
+import { OwnerProvisioningService } from '~/tenanted/auth/owner-provisioning.service';
 import { CreateMembershipDto } from '../dto/create-membership.dto';
 import { UpdateMembershipRoleDto } from '../dto/update-membership-role.dto';
 import { Membership } from '../entities/membership.entity';
@@ -23,12 +27,13 @@ export class MembershipService {
     private readonly membershipRepository: Repository<Membership>,
     private readonly tenantService: TenantService,
     private readonly userService: UserService,
+    private readonly ownerProvisioning: OwnerProvisioningService,
   ) {}
 
   async create(
     ctx: RequestContextDto,
     dto: CreateMembershipDto,
-  ): Promise<Membership> {
+  ): Promise<{ membership: Membership; ownerActivation?: OwnerActivation }> {
     await this.assertOwnerOrAdmin(ctx, dto.tenantId);
 
     if (
@@ -70,12 +75,26 @@ export class MembershipService {
       }
     }
 
-    const membership = this.membershipRepository.create({
-      userId: dto.userId,
-      tenantId: dto.tenantId,
-      role: dto.role ?? MembershipRole.MEMBER,
-    });
-    return this.membershipRepository.save(membership);
+    const membership = await this.membershipRepository.save(
+      this.membershipRepository.create({
+        userId: dto.userId,
+        tenantId: dto.tenantId,
+        role: dto.role ?? MembershipRole.MEMBER,
+      }),
+    );
+
+    // When assigning an OWNER, provision their tenant-admin user + activation
+    // link so they can actually log into the tenant.
+    let ownerActivation: OwnerActivation | undefined;
+    if (membership.role === MembershipRole.OWNER) {
+      const { token } = await this.ownerProvisioning.provisionOwner(
+        tenant.schemaName,
+        { email: user.email, name: user.name, platformUserId: user.id },
+      );
+      ownerActivation = { token, tenantSlug: tenant.slug };
+    }
+
+    return { membership, ownerActivation };
   }
 
   async findById(ctx: RequestContextDto, id: string): Promise<Membership> {

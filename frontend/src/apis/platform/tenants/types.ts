@@ -24,6 +24,17 @@ export interface PlatformTenant {
   updatedAt: string;
 }
 
+/** One-time owner activation handed back when an owner is (re)provisioned. */
+export interface OwnerActivation {
+  token: string;
+  tenantSlug: string;
+}
+
+/** Create-tenant response: the tenant plus an optional owner activation link. */
+export interface CreateTenantResult extends PlatformTenant {
+  activation: OwnerActivation | null;
+}
+
 export interface CreateTenantPayload {
   name: string;
   slug: string;

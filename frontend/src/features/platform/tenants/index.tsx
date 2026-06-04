@@ -3,6 +3,7 @@
 import type { ColumnDef } from "@tanstack/react-table";
 import {
   ArrowLeftRight,
+  KeyRound,
   MoreHorizontal,
   Pencil,
   Plus,
@@ -24,9 +25,17 @@ import { StatusBadge } from "~/features/platform/_components/badges";
 import { PageHeader } from "~/features/platform/_components/page-header";
 import { PlatformGuard } from "~/features/platform/_components/guard";
 import { useIsPlatformAdmin } from "~/features/platform/_components/hooks";
-import { useDeleteTenant, useTenants } from "~/apis/platform/tenants/queries";
+import {
+  useDeleteTenant,
+  useReissueOwnerActivation,
+  useTenants,
+} from "~/apis/platform/tenants/queries";
 import { usePlatformUsers } from "~/apis/platform/users/queries";
-import type { PlatformTenant } from "~/apis/platform/tenants/types";
+import type {
+  OwnerActivation,
+  PlatformTenant,
+} from "~/apis/platform/tenants/types";
+import { ActivationLinkDialog } from "./activation-link-dialog";
 import { TenantFormDialog } from "./tenant-form-dialog";
 import { TransferOwnershipDialog } from "./transfer-ownership-dialog";
 
@@ -44,11 +53,13 @@ function TenantsContent() {
   // Owner / transfer selects need the users list (admin-only endpoint).
   const usersQuery = usePlatformUsers({ enabled: isAdmin });
   const deleteTenant = useDeleteTenant();
+  const reissue = useReissueOwnerActivation();
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<PlatformTenant | null>(null);
   const [transferring, setTransferring] = useState<PlatformTenant | null>(null);
   const [deleting, setDeleting] = useState<PlatformTenant | null>(null);
+  const [activation, setActivation] = useState<OwnerActivation | null>(null);
 
   const users = usersQuery.data ?? [];
 
@@ -112,6 +123,18 @@ function TenantsContent() {
                     </DropdownMenuItem>
                   ) : null}
                   {isAdmin ? (
+                    <DropdownMenuItem
+                      onSelect={() =>
+                        reissue.mutate(tenant.id, {
+                          onSuccess: (data) => setActivation(data),
+                        })
+                      }
+                    >
+                      <KeyRound className="size-4" />
+                      Copy owner activation link
+                    </DropdownMenuItem>
+                  ) : null}
+                  {isAdmin ? (
                     <>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
@@ -130,7 +153,7 @@ function TenantsContent() {
         },
       },
     ],
-    [isAdmin],
+    [isAdmin, reissue],
   );
 
   return (
@@ -159,6 +182,7 @@ function TenantsContent() {
         onOpenChange={setCreateOpen}
         users={users}
         isAdmin={isAdmin}
+        onOwnerActivation={setActivation}
       />
 
       <TenantFormDialog
@@ -172,6 +196,13 @@ function TenantsContent() {
         onOpenChange={(o) => !o && setTransferring(null)}
         tenant={transferring}
         users={users}
+        onOwnerActivation={setActivation}
+      />
+
+      <ActivationLinkDialog
+        open={Boolean(activation)}
+        onOpenChange={(o) => !o && setActivation(null)}
+        activation={activation}
       />
 
       <ConfirmDialog

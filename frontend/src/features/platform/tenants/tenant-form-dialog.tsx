@@ -36,6 +36,7 @@ import {
 } from "~/apis/platform/tenants/schema";
 import {
   TENANT_STATUSES,
+  type OwnerActivation,
   type PlatformTenant,
 } from "~/apis/platform/tenants/types";
 import type { PlatformUserRow } from "~/apis/platform/users/types";
@@ -48,6 +49,8 @@ interface TenantFormDialogProps {
   /** Platform users for the optional owner select (admin-only, create mode). */
   users?: PlatformUserRow[];
   isAdmin?: boolean;
+  /** Called after a create that provisioned an owner, with their activation link. */
+  onOwnerActivation?: (activation: OwnerActivation) => void;
 }
 
 export const TenantFormDialog = ({
@@ -56,6 +59,7 @@ export const TenantFormDialog = ({
   tenant,
   users = [],
   isAdmin = false,
+  onOwnerActivation,
 }: TenantFormDialogProps) => {
   const isEdit = Boolean(tenant);
 
@@ -73,6 +77,7 @@ export const TenantFormDialog = ({
             users={users}
             isAdmin={isAdmin}
             onDone={() => onOpenChange(false)}
+            onOwnerActivation={onOwnerActivation}
           />
         )}
       </DialogContent>
@@ -84,10 +89,12 @@ function CreateTenantForm({
   users,
   isAdmin,
   onDone,
+  onOwnerActivation,
 }: {
   users: PlatformUserRow[];
   isAdmin: boolean;
   onDone: () => void;
+  onOwnerActivation?: (activation: OwnerActivation) => void;
 }) {
   const createTenant = useCreateTenant();
   const form = useForm<CreateValues>({
@@ -96,16 +103,15 @@ function CreateTenantForm({
   });
 
   const onSubmit = async (values: CreateValues) => {
-    await createTenant.mutateAsync(
-      {
-        name: values.name,
-        slug: values.slug,
-        domain: values.domain?.trim() ? values.domain.trim() : undefined,
-        ownerUserId:
-          isAdmin && values.ownerUserId ? values.ownerUserId : undefined,
-      },
-      { onSuccess: onDone },
-    );
+    const created = await createTenant.mutateAsync({
+      name: values.name,
+      slug: values.slug,
+      domain: values.domain?.trim() ? values.domain.trim() : undefined,
+      ownerUserId:
+        isAdmin && values.ownerUserId ? values.ownerUserId : undefined,
+    });
+    onDone();
+    if (created.activation) onOwnerActivation?.(created.activation);
   };
 
   return (

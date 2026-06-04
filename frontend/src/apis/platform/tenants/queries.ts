@@ -11,6 +11,8 @@ import { errorMessage, usePlatformQueryEnabled } from "~/apis/platform/shared";
 import { membershipKeys } from "~/apis/platform/memberships/queries";
 import type {
   CreateTenantPayload,
+  CreateTenantResult,
+  OwnerActivation,
   PlatformTenant,
   TransferOwnershipPayload,
   UpdateTenantPayload,
@@ -28,7 +30,10 @@ export const tenantKeys = {
 export const getTenants = () => api.get<PlatformTenant[]>("/tenants");
 
 export const createTenant = (payload: CreateTenantPayload) =>
-  api.post<PlatformTenant>("/tenants", payload);
+  api.post<CreateTenantResult>("/tenants", payload);
+
+export const reissueOwnerActivation = (id: string) =>
+  api.post<OwnerActivation>(`/tenants/${id}/owner/activation-link`);
 
 export const updateTenant = (id: string, payload: UpdateTenantPayload) =>
   api.patch<PlatformTenant>(`/tenants/${id}`, payload);
@@ -36,7 +41,11 @@ export const updateTenant = (id: string, payload: UpdateTenantPayload) =>
 export const transferOwnership = (
   id: string,
   payload: TransferOwnershipPayload,
-) => api.post(`/tenants/${id}/transfer-ownership`, payload);
+) =>
+  api.post<{ activation: OwnerActivation | null }>(
+    `/tenants/${id}/transfer-ownership`,
+    payload,
+  );
 
 export const deleteTenant = (id: string) => api.delete<void>(`/tenants/${id}`);
 
@@ -106,5 +115,13 @@ export const useDeleteTenant = () => {
       toast.success("Tenant deleted");
     },
     onError: (e) => toast.error(errorMessage(e, "Failed to delete tenant")),
+  });
+}
+
+export const useReissueOwnerActivation = () => {
+  return useMutation({
+    mutationFn: (id: string) => reissueOwnerActivation(id),
+    onError: (e) =>
+      toast.error(errorMessage(e, "Failed to issue activation link")),
   });
 }

@@ -25,6 +25,8 @@ import {
 import { usePlatformUsers } from "~/apis/platform/users/queries";
 import { useTenants } from "~/apis/platform/tenants/queries";
 import type { Membership } from "~/apis/platform/memberships/types";
+import type { OwnerActivation } from "~/apis/platform/tenants/types";
+import { ActivationLinkDialog } from "~/features/platform/tenants/activation-link-dialog";
 import {
   CreateMembershipDialog,
   EditMembershipRoleDialog,
@@ -56,6 +58,7 @@ function MembershipsContent() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<MembershipRow | null>(null);
   const [deleting, setDeleting] = useState<MembershipRow | null>(null);
+  const [activation, setActivation] = useState<OwnerActivation | null>(null);
 
   const users = usersQuery.data ?? [];
   const tenants = tenantsQuery.data ?? [];
@@ -177,6 +180,13 @@ function MembershipsContent() {
         users={users}
         tenants={tenants}
         isAdmin={isAdmin}
+        onOwnerActivation={setActivation}
+      />
+
+      <ActivationLinkDialog
+        open={Boolean(activation)}
+        onOpenChange={(o) => !o && setActivation(null)}
+        activation={activation}
       />
 
       <EditMembershipRoleDialog

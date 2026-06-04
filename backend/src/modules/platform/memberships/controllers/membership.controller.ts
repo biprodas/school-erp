@@ -103,12 +103,15 @@ export class MembershipController {
     @RequestContext() ctx: RequestContextDto,
     @Body() dto: CreateMembershipDto,
   ) {
-    const membership = await this.membershipService.create(ctx, dto);
+    const { membership, ownerActivation } = await this.membershipService.create(
+      ctx,
+      dto,
+    );
     return {
       success: true,
       statusCode: 201,
       message: `Membership created successfully`,
-      data: membership,
+      data: { ...membership, activation: ownerActivation ?? null },
     };
   }
 

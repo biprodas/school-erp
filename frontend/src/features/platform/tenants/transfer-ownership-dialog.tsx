@@ -23,6 +23,7 @@ import { useTransferOwnership } from "~/apis/platform/tenants/queries";
 import {
   DEMOTE_OPTIONS,
   type DemoteOldOwnerTo,
+  type OwnerActivation,
   type PlatformTenant,
 } from "~/apis/platform/tenants/types";
 import type { PlatformUserRow } from "~/apis/platform/users/types";
@@ -38,6 +39,7 @@ interface TransferOwnershipDialogProps {
   onOpenChange: (open: boolean) => void;
   tenant: PlatformTenant | null;
   users: PlatformUserRow[];
+  onOwnerActivation?: (activation: OwnerActivation) => void;
 }
 
 export const TransferOwnershipDialog = ({
@@ -45,6 +47,7 @@ export const TransferOwnershipDialog = ({
   onOpenChange,
   tenant,
   users,
+  onOwnerActivation,
 }: TransferOwnershipDialogProps) => {
   const transfer = useTransferOwnership();
   const [newOwnerUserId, setNewOwnerUserId] = useState("");
@@ -62,13 +65,12 @@ export const TransferOwnershipDialog = ({
 
   const onSubmit = async () => {
     if (!tenant || !newOwnerUserId) return;
-    await transfer.mutateAsync(
-      {
-        id: tenant.id,
-        payload: { newOwnerUserId, demoteOldOwnerTo },
-      },
-      { onSuccess: () => handleOpenChange(false) },
-    );
+    const result = await transfer.mutateAsync({
+      id: tenant.id,
+      payload: { newOwnerUserId, demoteOldOwnerTo },
+    });
+    handleOpenChange(false);
+    if (result.activation) onOwnerActivation?.(result.activation);
   };
 
   return (

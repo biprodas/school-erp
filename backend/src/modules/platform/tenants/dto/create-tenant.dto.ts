@@ -35,7 +35,7 @@ export class CreateTenantDto {
     allow_underscores: false,
   })
   @IsOptional()
-  domain: string;
+  domain?: string;
 
   /**
    * Only honored when the caller is an admin. If provided, an OWNER

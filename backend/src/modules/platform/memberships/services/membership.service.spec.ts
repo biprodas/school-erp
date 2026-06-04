@@ -10,6 +10,7 @@ import { Membership } from '../entities/membership.entity';
 import { MembershipRole } from '../enums/membership-role.enum';
 import { TenantService } from 'src/modules/platform/tenants/services/tenant.service';
 import { UserService } from 'src/modules/platform/users/user.service';
+import { OwnerProvisioningService } from '~/tenanted/auth/owner-provisioning.service';
 import { PlatformRole } from 'src/modules/platform/users/enums/platform-role.enum';
 import { UserStatus } from 'src/modules/platform/users/enums/user-status.enum';
 import { RequestContextDto } from '~/common/dto/request-context.dto';
@@ -102,6 +103,14 @@ describe('MembershipService', () => {
         { provide: getRepositoryToken(Membership), useValue: membershipRepo },
         { provide: TenantService, useValue: tenantService },
         { provide: UserService, useValue: userService },
+        {
+          provide: OwnerProvisioningService,
+          useValue: {
+            provisionOwner: jest
+              .fn()
+              .mockResolvedValue({ token: 'activation-token' }),
+          },
+        },
       ],
     }).compile();
 

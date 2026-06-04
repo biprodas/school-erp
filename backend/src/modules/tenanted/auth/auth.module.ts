@@ -9,6 +9,7 @@ import { RbacModule } from '../rbac/rbac.module';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './jwt.strategy';
+import { ActivationTokenRepository } from './activation-token.repository';
 
 @Module({
   imports: [
@@ -35,6 +36,6 @@ import { JwtStrategy } from './jwt.strategy';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
+  providers: [AuthService, JwtStrategy, ActivationTokenRepository],
 })
 export class AuthModule {}

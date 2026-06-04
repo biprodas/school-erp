@@ -28,7 +28,10 @@ import {
   type Membership,
   type MembershipRole,
 } from "~/apis/platform/memberships/types";
-import type { PlatformTenant } from "~/apis/platform/tenants/types";
+import type {
+  OwnerActivation,
+  PlatformTenant,
+} from "~/apis/platform/tenants/types";
 import type { PlatformUserRow } from "~/apis/platform/users/types";
 
 /** Roles a non-admin caller may assign (OWNER is admin-only on the backend). */
@@ -42,6 +45,7 @@ interface CreateDialogProps {
   users: PlatformUserRow[];
   tenants: PlatformTenant[];
   isAdmin: boolean;
+  onOwnerActivation?: (activation: OwnerActivation) => void;
 }
 
 export const CreateMembershipDialog = ({
@@ -50,6 +54,7 @@ export const CreateMembershipDialog = ({
   users,
   tenants,
   isAdmin,
+  onOwnerActivation,
 }: CreateDialogProps) => {
   const createMembership = useCreateMembership();
   const [userId, setUserId] = useState("");
@@ -69,10 +74,9 @@ export const CreateMembershipDialog = ({
 
   const onSubmit = async () => {
     if (!userId || !tenantId) return;
-    await createMembership.mutateAsync(
-      { userId, tenantId, role },
-      { onSuccess: () => handleOpenChange(false) },
-    );
+    const result = await createMembership.mutateAsync({ userId, tenantId, role });
+    handleOpenChange(false);
+    if (result.activation) onOwnerActivation?.(result.activation);
   };
 
   return (

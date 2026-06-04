@@ -9,6 +9,7 @@ import { IsAdminGuard } from './is-admin.guard';
 import { PermissionResolverService } from './permission-resolver.service';
 import { PermissionsGuard } from './permissions.guard';
 import { RbacSeederService } from './rbac-seeder.service';
+import { OwnerProvisioningService } from '../auth/owner-provisioning.service';
 
 /**
  * Tenant-scoped role-based access control: role/permission management,
@@ -25,6 +26,7 @@ import { RbacSeederService } from './rbac-seeder.service';
     PermissionsGuard,
     IsAdminGuard,
     RbacSeederService,
+    OwnerProvisioningService,
   ],
   exports: [
     RoleService,
@@ -34,6 +36,7 @@ import { RbacSeederService } from './rbac-seeder.service';
     PermissionsGuard,
     IsAdminGuard,
     RbacSeederService,
+    OwnerProvisioningService,
   ],
 })
 export class RbacModule {}

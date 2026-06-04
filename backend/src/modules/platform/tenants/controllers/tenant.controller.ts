@@ -60,13 +60,16 @@ export class TenantController {
     @RequestContext() ctx: RequestContextDto,
     @Body() createTenantDto: CreateTenantDto,
   ) {
-    const tenant = await this.tenantService.createTenant(ctx, createTenantDto);
+    const { tenant, ownerActivation } = await this.tenantService.createTenant(
+      ctx,
+      createTenantDto,
+    );
 
     return {
       success: true,
       statusCode: 201,
       message: `Tenant created successfully`,
-      data: tenant,
+      data: { ...tenant, activation: ownerActivation ?? null },
     };
   }
 
@@ -98,13 +101,31 @@ export class TenantController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: TransferOwnershipDto,
   ) {
-    const membership = await this.tenantService.transferOwnership(ctx, id, dto);
+    const { membership, ownerActivation } =
+      await this.tenantService.transferOwnership(ctx, id, dto);
 
     return {
       success: true,
       statusCode: 200,
       message: 'Tenant ownership transferred',
-      data: membership,
+      data: { ...membership, activation: ownerActivation ?? null },
+    };
+  }
+
+  @Post(':id/owner/activation-link')
+  @UseGuards(RolesGuard)
+  @Roles(PlatformRole.ADMIN)
+  async reissueOwnerActivation(
+    @RequestContext() ctx: RequestContextDto,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    const activation = await this.tenantService.reissueOwnerActivation(ctx, id);
+
+    return {
+      success: true,
+      statusCode: 200,
+      message: 'Owner activation link issued',
+      data: activation,
     };
   }
 
