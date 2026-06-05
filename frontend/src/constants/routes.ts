@@ -10,6 +10,10 @@ export const PLATFORM_LOGIN = "/login";
 export const PLATFORM_SIGNUP = "/signup";
 export const PLATFORM_LOGIN_REDIRECT = "/platform/dashboard";
 
+// Self-service onboarding wizard (apex host): register → create your school.
+export const ONBOARDING_SIGNUP = "/onboarding/signup";
+export const ONBOARDING_SCHOOL = "/onboarding/school";
+
 // Platform management sections.
 export const PLATFORM_TENANTS = "/platform/tenants";
 export const PLATFORM_USERS = "/platform/users";
