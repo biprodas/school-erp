@@ -160,7 +160,7 @@ export class TenantService {
       }
 
       // tenant is always set if we got here, but keep types safe
-      return { tenant: tenant!, ownerActivation };
+      return { tenant: tenant, ownerActivation };
     } catch (error) {
       // Compensating rollback: best-effort cleanup to avoid orphaned tenants/schemas.
       try {
@@ -208,9 +208,7 @@ export class TenantService {
     dto: TransferOwnershipDto,
   ): Promise<{ membership: Membership; ownerActivation?: OwnerActivation }> {
     if (!ctx.user?.isAdmin) {
-      throw new ForbiddenException(
-        'Only admins can transfer tenant ownership',
-      );
+      throw new ForbiddenException('Only admins can transfer tenant ownership');
     }
 
     const tenant = await this.tenantRepository.findOne({

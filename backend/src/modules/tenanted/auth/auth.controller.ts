@@ -1,5 +1,7 @@
 import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiHeader, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
+import { AUTH_THROTTLE } from '~/common/throttling/throttle.constants';
 import { RequestContext } from '~/common/decorators/request-context.decorator';
 import { RequestContextDto } from '~/common/dto/request-context.dto';
 import { AuthService } from './auth.service';
@@ -31,6 +33,7 @@ export class AuthController {
   }
 
   @Post('activate')
+  @Throttle(AUTH_THROTTLE)
   async activate(@Body() dto: ActivateDto) {
     const result = await this.authService.activate(dto);
 
@@ -43,6 +46,7 @@ export class AuthController {
   }
 
   @Post('login')
+  @Throttle(AUTH_THROTTLE)
   async login(@Body() dto: LoginDto) {
     const result = await this.authService.login(dto);
 

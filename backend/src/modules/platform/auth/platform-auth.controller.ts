@@ -7,6 +7,8 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
+import { AUTH_THROTTLE } from '~/common/throttling/throttle.constants';
 import { RequestContext } from '~/common/decorators/request-context.decorator';
 import { RequestContextDto } from '~/common/dto/request-context.dto';
 import { PlatformJwtAuthGuard } from '~/common/guards/platform-jwt-auth.guard';
@@ -21,6 +23,7 @@ export class PlatformAuthController {
   constructor(private readonly platformAuthService: PlatformAuthService) {}
 
   @Post('register')
+  @Throttle(AUTH_THROTTLE)
   async register(@Body() dto: PlatformRegisterDto) {
     const result = await this.platformAuthService.register(dto);
     return {
@@ -33,6 +36,7 @@ export class PlatformAuthController {
 
   @Post('login')
   @HttpCode(200)
+  @Throttle(AUTH_THROTTLE)
   async login(@Body() dto: PlatformLoginDto) {
     const result = await this.platformAuthService.login(dto);
     return {

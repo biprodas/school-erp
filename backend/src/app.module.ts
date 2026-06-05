@@ -1,6 +1,8 @@
 import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
-import { APP_INTERCEPTOR } from '@nestjs/core';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { TenantThrottlerGuard } from '~/common/throttling/tenant-throttler.guard';
 import { PlatformAuthModule } from '~/platform/auth/platform-auth.module';
 import { MembershipModule } from '~/platform/memberships/membership.module';
 import { TenantModule } from '~/platform/tenants/tenant.module';
@@ -13,7 +15,7 @@ import { StudentModule } from '~/tenanted/students/student.module';
 import { TenantUserModule } from '~/tenanted/users/user.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { configLoaders, envValidationSchema } from './config';
+import { configLoaders, envValidationSchema, ThrottleConfig } from './config';
 import { DatabaseModule } from './database/database.module';
 import { AuthModule } from '~/tenanted/auth/auth.module';
 import { CatModule } from '~/tenanted/cats/cat.module';
@@ -31,6 +33,17 @@ const envFilePath = ['.env', `.env.${nodeEnv}`];
       envFilePath,
       validationSchema: envValidationSchema,
       load: configLoaders,
+    }),
+    ThrottlerModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => {
+        const cfg = configService.get<ThrottleConfig>('throttle')!;
+        return {
+          throttlers: [{ ttl: cfg.ttl, limit: cfg.limit }],
+          // Kill-switch via RATE_LIMIT_ENABLED=false (e.g. load tests).
+          skipIf: () => !cfg.enabled,
+        };
+      },
     }),
     DatabaseModule,
     HealthModule,
@@ -50,6 +63,10 @@ const envFilePath = ['.env', `.env.${nodeEnv}`];
   controllers: [AppController],
   providers: [
     AppService,
+    {
+      provide: APP_GUARD,
+      useClass: TenantThrottlerGuard,
+    },
     {
       provide: APP_INTERCEPTOR,
       useClass: TenantCleanupInterceptor,

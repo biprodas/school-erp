@@ -201,11 +201,12 @@ describe('MembershipService', () => {
 
     it('rejects OWNER role when tenant already has an OWNER', async () => {
       // duplicate check returns null, then OWNER guard finds an existing owner
-      membershipRepo.findOne
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce(
-          makeMembership({ userId: 'existing-owner', role: MembershipRole.OWNER }),
-        );
+      membershipRepo.findOne.mockResolvedValueOnce(null).mockResolvedValueOnce(
+        makeMembership({
+          userId: 'existing-owner',
+          role: MembershipRole.OWNER,
+        }),
+      );
 
       await expect(
         service.create(superAdminCtx(), {

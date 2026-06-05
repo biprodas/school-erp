@@ -4,6 +4,7 @@ import dbConfig from './db.config';
 import jwtConfig from './jwt.config';
 import swaggerConfig from './swagger.config';
 import healthConfig from './health.config';
+import throttleConfig from './throttle.config';
 
 /**
  * Single place to register config namespaces. Add new `*.config.ts` files and append here.
@@ -14,6 +15,7 @@ export const configLoaders: ConfigFactory[] = [
   jwtConfig,
   swaggerConfig,
   healthConfig,
+  throttleConfig,
 ];
 
 export type {
@@ -23,6 +25,7 @@ export type {
   JwtConfig,
   SwaggerConfig,
   HealthConfig,
+  ThrottleConfig,
 } from './config.types';
 export { validateEnv, envValidationSchema } from './env.validation';
 export { setupSwagger } from './swagger.setup';

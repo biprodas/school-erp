@@ -35,7 +35,18 @@ export class UserRepository extends BaseTenantRepository<User> {
   }
 
   async findFiltered(where: Record<string, any>): Promise<User[]> {
-    return this.repo.find({ where });
+    return this.repo.find({
+      where,
+      relations: { userRoles: { role: true } },
+    });
+  }
+
+  /** Returns a single user with their assigned roles eager-loaded. */
+  async findByIdWithRoles(id: string): Promise<User | null> {
+    return this.repo.findOne({
+      where: { id },
+      relations: { userRoles: { role: true } },
+    });
   }
 
   /** Returns users that have the given role assigned, with optional filters. */
@@ -45,8 +56,10 @@ export class UserRepository extends BaseTenantRepository<User> {
   ): Promise<User[]> {
     const qb = this.repo
       .createQueryBuilder('user')
-      .innerJoin('user.userRoles', 'userRole')
-      .where('userRole.role_id = :roleId', { roleId });
+      .innerJoin('user.userRoles', 'userRoleFilter')
+      .leftJoinAndSelect('user.userRoles', 'userRole')
+      .leftJoinAndSelect('userRole.role', 'role')
+      .where('userRoleFilter.role_id = :roleId', { roleId });
 
     if (filters.id) {
       qb.andWhere('user.id = :id', { id: filters.id });
