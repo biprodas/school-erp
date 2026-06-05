@@ -20,7 +20,12 @@ export class Student {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ name: 'admission_number', type: 'varchar', length: 60, unique: true })
+  @Column({
+    name: 'admission_number',
+    type: 'varchar',
+    length: 60,
+    unique: true,
+  })
   admissionNumber: string;
 
   @Column({ name: 'first_name' })
@@ -38,10 +43,20 @@ export class Student {
   @Column({ type: 'varchar', length: 16, nullable: true })
   gender: StudentGender | null;
 
-  @Column({ name: 'guardian_name', type: 'varchar', length: 160, nullable: true })
+  @Column({
+    name: 'guardian_name',
+    type: 'varchar',
+    length: 160,
+    nullable: true,
+  })
   guardianName: string | null;
 
-  @Column({ name: 'guardian_phone', type: 'varchar', length: 40, nullable: true })
+  @Column({
+    name: 'guardian_phone',
+    type: 'varchar',
+    length: 40,
+    nullable: true,
+  })
   guardianPhone: string | null;
 
   @Column({ type: 'text', nullable: true })

@@ -35,13 +35,8 @@ export class MembershipService {
   ): Promise<{ membership: Membership; ownerActivation?: OwnerActivation }> {
     await this.assertOwnerOrAdmin(ctx, dto.tenantId);
 
-    if (
-      !ctx.user?.isAdmin &&
-      dto.role === MembershipRole.OWNER
-    ) {
-      throw new ForbiddenException(
-        'Only admins can create owner memberships',
-      );
+    if (!ctx.user?.isAdmin && dto.role === MembershipRole.OWNER) {
+      throw new ForbiddenException('Only admins can create owner memberships');
     }
 
     const tenant = await this.tenantService.findById(ctx, dto.tenantId);
@@ -161,10 +156,7 @@ export class MembershipService {
     ctx: RequestContextDto,
     userId: string,
   ): Promise<Membership[]> {
-    if (
-      !ctx.user?.isAdmin &&
-      userId !== ctx.user?.id
-    ) {
+    if (!ctx.user?.isAdmin && userId !== ctx.user?.id) {
       throw new ForbiddenException('You can only view your own memberships');
     }
 
@@ -197,9 +189,7 @@ export class MembershipService {
         throw new ForbiddenException('Cannot modify an owner membership');
       }
       if (dto.role === MembershipRole.OWNER) {
-        throw new ForbiddenException(
-          'Only admins can assign the owner role',
-        );
+        throw new ForbiddenException('Only admins can assign the owner role');
       }
     }
 
@@ -235,10 +225,7 @@ export class MembershipService {
 
     await this.assertOwnerOrAdmin(ctx, membership.tenantId);
 
-    if (
-      !ctx.user?.isAdmin &&
-      membership.role === MembershipRole.OWNER
-    ) {
+    if (!ctx.user?.isAdmin && membership.role === MembershipRole.OWNER) {
       throw new ForbiddenException('Cannot remove an owner membership');
     }
 

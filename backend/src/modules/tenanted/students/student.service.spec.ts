@@ -10,25 +10,24 @@ import { StudentService } from './student.service';
 import { Student } from './entities/student.entity';
 import { StudentStatus } from './enums/student-status.enum';
 
-const makeStudent = (overrides: Partial<Student> = {}): Student =>
-  ({
-    id: 'student-1',
-    admissionNumber: 'ADM-001',
-    firstName: 'Ada',
-    lastName: 'Lovelace',
-    fullName: 'Ada Lovelace',
-    dob: null,
-    gender: null,
-    guardianName: null,
-    guardianPhone: null,
-    address: null,
-    status: StudentStatus.ACTIVE,
-    userId: null,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    syncFullName: () => {},
-    ...overrides,
-  }) as unknown as Student;
+const makeStudent = (overrides: Partial<Student> = {}): Student => ({
+  id: 'student-1',
+  admissionNumber: 'ADM-001',
+  firstName: 'Ada',
+  lastName: 'Lovelace',
+  fullName: 'Ada Lovelace',
+  dob: null,
+  gender: null,
+  guardianName: null,
+  guardianPhone: null,
+  address: null,
+  status: StudentStatus.ACTIVE,
+  userId: null,
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  syncFullName: () => {},
+  ...overrides,
+});
 
 describe('StudentService', () => {
   let service: StudentService;

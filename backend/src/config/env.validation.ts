@@ -65,6 +65,9 @@ export const envValidationSchema = Joi.object({
     .integer()
     .min(1)
     .default(500 * 1024 * 1024),
+  RATE_LIMIT_ENABLED: Joi.boolean().default(true),
+  RATE_LIMIT_TTL: Joi.number().integer().min(1000).default(60000),
+  RATE_LIMIT_MAX: Joi.number().integer().min(1).default(100),
 })
   .unknown(true)
   .prefs({ abortEarly: false });
