@@ -1,12 +1,13 @@
 import { CheckIcon } from "lucide-react";
 import { cn } from "~/lib/utils";
 
-export type OnboardingStep = "signup" | "school" | "activate";
+export type OnboardingStep = "signup" | "school" | "setup" | "complete";
 
 const STEPS: { key: OnboardingStep; label: string }[] = [
   { key: "signup", label: "Create account" },
   { key: "school", label: "Create school" },
-  { key: "activate", label: "Set up access" },
+  { key: "setup", label: "Set up access" },
+  { key: "complete", label: "Finish" },
 ];
 
 /** Presentational step indicator for the onboarding wizard. */

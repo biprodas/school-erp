@@ -27,8 +27,7 @@ import {
   FieldLabel,
 } from "~/components/ui/field";
 import { Input } from "~/components/ui/input";
-import { PLATFORM_LOGIN_REDIRECT } from "~/constants/routes";
-import { buildTenantActivationUrl } from "~/lib/tenant";
+import { ONBOARDING_ACTIVATE } from "~/constants/routes";
 import { ApiError } from "~/types/api";
 
 const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "lvh.me";
@@ -61,24 +60,15 @@ export function CreateSchoolStep() {
 
   const onSubmit = async (values: CreateTenantValues) => {
     try {
-      const created = await createTenant.mutateAsync({
+      await createTenant.mutateAsync({
         name: values.name,
         slug: values.slug,
         domain: values.domain?.trim() ? values.domain.trim() : undefined,
       });
 
-      // Self-service create always provisions the caller as OWNER, so an
-      // activation token is expected. Hand off to the tenant subdomain.
-      if (created.activation) {
-        window.location.assign(
-          buildTenantActivationUrl(
-            created.activation.tenantSlug,
-            created.activation.token,
-          ),
-        );
-        return;
-      }
-      router.push(PLATFORM_LOGIN_REDIRECT);
+      // Stay on the apex host: advance to the "set up access" step, which sets
+      // the school password without leaving the platform.
+      router.push(ONBOARDING_ACTIVATE);
     } catch (err) {
       // Surface a taken slug inline; the mutation hook already toasts.
       if (err instanceof ApiError && /slug/i.test(err.message)) {

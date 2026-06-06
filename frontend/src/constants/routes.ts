@@ -10,9 +10,17 @@ export const PLATFORM_LOGIN = "/login";
 export const PLATFORM_SIGNUP = "/signup";
 export const PLATFORM_LOGIN_REDIRECT = "/platform/dashboard";
 
-// Self-service onboarding wizard (apex host): register → create your school.
+// Self-service onboarding wizard — entirely on the apex host:
+// register → create school → set up access → finish, then platform dashboard.
 export const ONBOARDING_SIGNUP = "/onboarding/signup";
 export const ONBOARDING_SCHOOL = "/onboarding/school";
+// Step 3: owner sets their school password (apex; tenant resolved via header).
+export const ONBOARDING_ACTIVATE = "/onboarding/activate";
+// Step 4: completion screen → go to the platform dashboard.
+export const ONBOARDING_COMPLETE = "/onboarding/complete";
+// Resume handoff (apex host): figures out the next step for an owner who already
+// has a tenant and bounces them to the right step.
+export const ONBOARDING_CONTINUE = "/onboarding/continue";
 
 // Platform management sections.
 export const PLATFORM_TENANTS = "/platform/tenants";

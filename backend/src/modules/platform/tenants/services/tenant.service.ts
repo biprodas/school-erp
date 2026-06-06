@@ -12,6 +12,7 @@ import { Repository, DataSource, In } from 'typeorm';
 import { Tenant } from '../entities/tenant.entity';
 import { Membership } from 'src/modules/platform/memberships/entities/membership.entity';
 import { MembershipRole } from 'src/modules/platform/memberships/enums/membership-role.enum';
+import { TenantBootstrapStatus } from '../enums/tenant-bootstrap-status.enum';
 import { UserService } from 'src/modules/platform/users/user.service';
 import { Key } from '~/common/enums/keys.enum';
 import { TenantConnectionService } from '~/tenancy/tenant-connection.service';
@@ -113,9 +114,19 @@ export class TenantService {
         throw new ConflictException('Tenant slug already exists');
       }
 
+      // Onboarding progress: a self-service owner still has to activate (step 3),
+      // whereas an admin who creates the tenant *and* assigns the owner has done
+      // the provisioning for them — that owner skips straight to the dashboard
+      // once they activate.
+      const bootstrapStatus =
+        isAdmin && ownerId
+          ? TenantBootstrapStatus.ADMIN_INVITED
+          : TenantBootstrapStatus.SCHOOL_CREATED;
+
       tenant = queryRunner.manager.create(Tenant, {
         ...dto,
         schemaName,
+        bootstrapStatus,
       });
       await queryRunner.manager.save(tenant);
 
@@ -291,6 +302,14 @@ export class TenantService {
         { email: owner.email, name: owner.name, platformUserId: owner.id },
       );
       ownerActivation = { token, tenantSlug: tenant.slug };
+
+      // An admin just assigned the owner, so the new owner skips the wizard:
+      // they activate and land straight on the dashboard. Don't disturb a tenant
+      // that has already finished onboarding.
+      if (tenant.bootstrapStatus !== TenantBootstrapStatus.COMPLETED) {
+        tenant.bootstrapStatus = TenantBootstrapStatus.ADMIN_INVITED;
+        await this.tenantRepository.save(tenant);
+      }
     } catch (err) {
       this.logger.warn(
         `Ownership of "${tenant.slug}" transferred, but owner provisioning failed: ${(err as Error).message}`,
@@ -317,6 +336,92 @@ export class TenantService {
     });
     if (!tenant) {
       throw new NotFoundException('Tenant not found');
+    }
+
+    const ownerMembership = await this.membershipRepository.findOne({
+      where: { tenantId, role: MembershipRole.OWNER },
+      order: { createdAt: 'ASC' },
+    });
+    if (!ownerMembership) {
+      throw new NotFoundException('Tenant has no owner to activate');
+    }
+
+    const owner = await this.userService.findById(ctx, ownerMembership.userId);
+    const { token } = await this.ownerProvisioning.provisionOwner(
+      tenant.schemaName,
+      { email: owner.email, name: owner.name, platformUserId: owner.id },
+    );
+    return { token, tenantSlug: tenant.slug };
+  }
+
+  /**
+   * Marks the final onboarding step done (`owner_activated → completed`). Called
+   * from the apex wizard where the owner holds a platform session. Allowed for
+   * the tenant's own OWNER or a platform admin; idempotent for other states.
+   */
+  async completeOnboarding(
+    ctx: RequestContextDto,
+    tenantId: string,
+  ): Promise<{ bootstrapStatus: TenantBootstrapStatus }> {
+    const tenant = await this.tenantRepository.findOne({
+      where: { id: tenantId },
+    });
+    if (!tenant) {
+      throw new NotFoundException('Tenant not found');
+    }
+
+    if (!ctx.user?.isAdmin) {
+      const membership = await this.membershipRepository.findOne({
+        where: {
+          tenantId,
+          userId: ctx.user?.id ?? '',
+          role: MembershipRole.OWNER,
+        },
+      });
+      if (!membership) {
+        throw new ForbiddenException(
+          'Only the tenant owner or an admin can complete onboarding',
+        );
+      }
+    }
+
+    if (tenant.bootstrapStatus === TenantBootstrapStatus.OWNER_ACTIVATED) {
+      tenant.bootstrapStatus = TenantBootstrapStatus.COMPLETED;
+      await this.tenantRepository.save(tenant);
+    }
+    return { bootstrapStatus: tenant.bootstrapStatus };
+  }
+
+  /**
+   * Mints a fresh activation link so a self-service owner can resume step 3
+   * (set password). The original raw token is unrecoverable — only its hash is
+   * stored — so resuming always issues a new one. Allowed for the tenant's own
+   * OWNER or a platform admin.
+   */
+  async resumeOwnerActivation(
+    ctx: RequestContextDto,
+    tenantId: string,
+  ): Promise<OwnerActivation> {
+    const tenant = await this.tenantRepository.findOne({
+      where: { id: tenantId },
+    });
+    if (!tenant) {
+      throw new NotFoundException('Tenant not found');
+    }
+
+    if (!ctx.user?.isAdmin) {
+      const membership = await this.membershipRepository.findOne({
+        where: {
+          tenantId,
+          userId: ctx.user?.id ?? '',
+          role: MembershipRole.OWNER,
+        },
+      });
+      if (!membership) {
+        throw new ForbiddenException(
+          'Only the tenant owner or an admin can resume activation',
+        );
+      }
     }
 
     const ownerMembership = await this.membershipRepository.findOne({

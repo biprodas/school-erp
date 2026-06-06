@@ -6,6 +6,8 @@ export interface Tenant {
   id: string;
   slug: string;
   schema: string;
+  /** Owner-onboarding progress; present on login/activate responses. */
+  bootstrapStatus?: string | null;
 }
 
 /** Fields common to both platform and tenanted users. */

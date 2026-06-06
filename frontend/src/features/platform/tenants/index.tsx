@@ -3,6 +3,7 @@
 import type { ColumnDef } from "@tanstack/react-table";
 import {
   ArrowLeftRight,
+  ExternalLink,
   KeyRound,
   MoreHorizontal,
   Pencil,
@@ -20,7 +21,9 @@ import {
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
 import { ConfirmDialog } from "~/components/confirm-dialog";
+import { DEFAULT_LOGIN_REDIRECT } from "~/constants/routes";
 import { formatDate } from "~/lib/format";
+import { buildTenantUrl } from "~/lib/tenant";
 import { StatusBadge } from "~/features/platform/_components/badges";
 import { PageHeader } from "~/features/platform/_components/page-header";
 import { PlatformGuard } from "~/features/platform/_components/guard";
@@ -112,6 +115,18 @@ function TenantsContent() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onSelect={() =>
+                      window.open(
+                        buildTenantUrl(tenant.slug, DEFAULT_LOGIN_REDIRECT),
+                        "_blank",
+                        "noopener,noreferrer",
+                      )
+                    }
+                  >
+                    <ExternalLink className="size-4" />
+                    Open school
+                  </DropdownMenuItem>
                   <DropdownMenuItem onSelect={() => setEditing(tenant)}>
                     <Pencil className="size-4" />
                     Edit
