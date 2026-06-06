@@ -41,7 +41,16 @@ const signupSchema = z.object({
 
 type SignupFormValues = z.infer<typeof signupSchema>
 
-export const PlatformSignupForm = () => {
+interface PlatformSignupFormProps {
+  /** Where to send the user after a successful sign-up + auto sign-in.
+   *  Defaults to the platform dashboard; the onboarding wizard overrides it
+   *  to advance to the create-school step. */
+  redirectTo?: string
+}
+
+export const PlatformSignupForm = ({
+  redirectTo = PLATFORM_LOGIN_REDIRECT,
+}: PlatformSignupFormProps) => {
   const [showPassword, setShowPassword] = useState(false)
   const router = useRouter()
   const registerMutation = useRegister("platform")
@@ -64,7 +73,7 @@ export const PlatformSignupForm = () => {
         return
       }
       toast.success("Account created")
-      router.push(PLATFORM_LOGIN_REDIRECT)
+      router.push(redirectTo)
       router.refresh()
     } catch (err) {
       toast.error(

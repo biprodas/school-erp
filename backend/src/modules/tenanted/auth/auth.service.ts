@@ -6,8 +6,12 @@ import {
 } from '@nestjs/common';
 import { REQUEST } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import type { RequestWithTenant } from '~/tenancy/tenant.middleware';
+import { Tenant } from '~/platform/tenants/entities/tenant.entity';
+import { TenantBootstrapStatus } from '~/platform/tenants/enums/tenant-bootstrap-status.enum';
 import { UserRoleRepository } from '../rbac/user-role.repository';
 import { UserRepository } from '../users/user.repository';
 import { User } from '../users/entities/user.entity';
@@ -24,6 +28,8 @@ export class AuthService {
     private readonly userRepo: UserRepository,
     private readonly userRoleRepo: UserRoleRepository,
     private readonly activationTokenRepo: ActivationTokenRepository,
+    @InjectRepository(Tenant)
+    private readonly tenantRepo: Repository<Tenant>,
     @Inject(REQUEST) private readonly request: RequestWithTenant,
     private readonly jwtService: JwtService,
   ) {}
@@ -53,7 +59,42 @@ export class AuthService {
     record.usedAt = new Date();
     await this.activationTokenRepo.save(record);
 
-    return this.generateToken(user);
+    // Advance onboarding: a self-service owner still has a completion step,
+    // whereas an admin-invited owner is done the moment they activate.
+    const bootstrapStatus = await this.advanceBootstrapAfterActivation();
+
+    return this.generateToken(user, bootstrapStatus);
+  }
+
+  /**
+   * Moves the tenant's onboarding forward after the owner sets their password:
+   * `school_created → owner_activated` (self-service, completion still pending)
+   * and `admin_invited → completed` (owner skips straight to the dashboard).
+   * Returns the resulting status (or the unchanged one for other states).
+   */
+  private async advanceBootstrapAfterActivation(): Promise<TenantBootstrapStatus | null> {
+    const tenant = await this.loadTenant();
+    if (!tenant) return null;
+
+    let next: TenantBootstrapStatus | null = null;
+    if (tenant.bootstrapStatus === TenantBootstrapStatus.SCHOOL_CREATED) {
+      next = TenantBootstrapStatus.OWNER_ACTIVATED;
+    } else if (tenant.bootstrapStatus === TenantBootstrapStatus.ADMIN_INVITED) {
+      next = TenantBootstrapStatus.COMPLETED;
+    }
+
+    if (next && next !== tenant.bootstrapStatus) {
+      tenant.bootstrapStatus = next;
+      await this.tenantRepo.save(tenant);
+    }
+    return tenant.bootstrapStatus;
+  }
+
+  /** Loads the current request's tenant row from the platform (public) schema. */
+  private async loadTenant(): Promise<Tenant | null> {
+    const tenantId = this.request.tenantId;
+    if (!tenantId) return null;
+    return this.tenantRepo.findOne({ where: { id: tenantId } });
   }
 
   private async resolveActivation(
@@ -105,7 +146,10 @@ export class AuthService {
       .filter((name): name is string => !!name);
   }
 
-  private async generateToken(user: User) {
+  private async generateToken(
+    user: User,
+    bootstrapStatus?: TenantBootstrapStatus | null,
+  ) {
     const payload = {
       sub: user.id,
       email: user.email,
@@ -115,6 +159,13 @@ export class AuthService {
     };
 
     const roles = await this.getRoleNames(user.id);
+
+    // For logins (and any caller that didn't already resolve it) read the
+    // current bootstrap status so the session/dashboard can gate on it.
+    const status =
+      bootstrapStatus !== undefined
+        ? bootstrapStatus
+        : ((await this.loadTenant())?.bootstrapStatus ?? null);
 
     return {
       access_token: this.jwtService.sign(payload),
@@ -131,6 +182,7 @@ export class AuthService {
         id: this.request.tenantId,
         slug: this.request.tenantSlug,
         schema: this.request.tenantSchema,
+        bootstrapStatus: status,
       },
     };
   }

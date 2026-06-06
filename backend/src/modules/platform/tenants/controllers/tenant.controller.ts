@@ -109,6 +109,36 @@ export class TenantController {
     };
   }
 
+  @Post(':id/resume-activation')
+  async resumeOwnerActivation(
+    @RequestContext() ctx: RequestContextDto,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    const activation = await this.tenantService.resumeOwnerActivation(ctx, id);
+
+    return {
+      success: true,
+      statusCode: 200,
+      message: 'Owner activation link issued',
+      data: { activation },
+    };
+  }
+
+  @Post(':id/complete-onboarding')
+  async completeOnboarding(
+    @RequestContext() ctx: RequestContextDto,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    const result = await this.tenantService.completeOnboarding(ctx, id);
+
+    return {
+      success: true,
+      statusCode: 200,
+      message: 'Onboarding completed',
+      data: result,
+    };
+  }
+
   @Post(':id/owner/activation-link')
   @UseGuards(PlatformAdminGuard)
   async reissueOwnerActivation(

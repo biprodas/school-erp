@@ -82,7 +82,9 @@ export default function ActivateView() {
       return;
     }
 
-    // Sign straight in with the credentials the owner just set.
+    // This page serves admin-invited owners who arrive via an emailed link on
+    // their tenant subdomain. Sign them straight into the tenant and land on
+    // the tenant dashboard.
     const result = await signInWithCredentials(
       "tenant",
       { email: info.email, password: values.password },

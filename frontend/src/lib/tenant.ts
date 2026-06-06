@@ -143,17 +143,25 @@ function rootDomainForLinks(): string {
 }
 
 /**
- * Absolute owner-activation URL on a tenant's host, e.g.
- * `http://acme.lvh.me:3000/activate?token=…`. Built client-side from the
- * current origin's protocol/port and the platform root domain.
+ * Absolute URL for a `path` on a tenant's host, e.g.
+ * `http://acme.lvh.me:3000/welcome`. Built client-side from the current
+ * origin's protocol/port and the platform root domain; on the server it falls
+ * back to the bare `path` (relative).
  */
-export function buildTenantActivationUrl(slug: string, token: string): string {
-  const query = `/activate?token=${encodeURIComponent(token)}`;
-  if (typeof window === "undefined") return query;
+export function buildTenantUrl(slug: string, path: string): string {
+  if (typeof window === "undefined") return path;
   const { protocol, port } = window.location;
   const portSuffix = port ? `:${port}` : "";
   const host = `${slug}.${rootDomainForLinks()}${portSuffix}`;
-  return `${protocol}//${host}${query}`;
+  return `${protocol}//${host}${path}`;
+}
+
+/**
+ * Absolute owner-activation URL on a tenant's host, e.g.
+ * `http://acme.lvh.me:3000/activate?token=…`.
+ */
+export function buildTenantActivationUrl(slug: string, token: string): string {
+  return buildTenantUrl(slug, `/activate?token=${encodeURIComponent(token)}`);
 }
 
 /** Client-only, sync (Tier 1 only) — for cookie/header fallbacks. */
