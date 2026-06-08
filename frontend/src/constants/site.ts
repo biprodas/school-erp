@@ -8,7 +8,6 @@ export const ROUTES = {
   PRIVACY: '/policy',
   LOGIN: '/login',
   SIGNUP: '/signup',
-  ONBOARDING_SIGN_UP: '/onboarding/signup',
   TERMS: '/terms',
   SOLUTIONS: '/solutions',
   DASHBOARD: '/dashboard',

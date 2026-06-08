@@ -10,17 +10,9 @@ export const PLATFORM_LOGIN = "/login";
 export const PLATFORM_SIGNUP = "/signup";
 export const PLATFORM_LOGIN_REDIRECT = "/platform/dashboard";
 
-// Self-service onboarding wizard — entirely on the apex host:
-// register → create school → set up access → finish, then platform dashboard.
-export const ONBOARDING_SIGNUP = "/onboarding/signup";
-export const ONBOARDING_SCHOOL = "/onboarding/school";
-// Step 3: owner sets their school password (apex; tenant resolved via header).
-export const ONBOARDING_ACTIVATE = "/onboarding/activate";
-// Step 4: completion screen → go to the platform dashboard.
-export const ONBOARDING_COMPLETE = "/onboarding/complete";
-// Resume handoff (apex host): figures out the next step for an owner who already
-// has a tenant and bounces them to the right step.
-export const ONBOARDING_CONTINUE = "/onboarding/continue";
+// Owner/staff account activation (set password) — opened on the tenant subdomain
+// via a one-time link, then signs the user into their tenant workspace.
+export const ACTIVATE = "/activate";
 
 // Platform management sections.
 export const PLATFORM_TENANTS = "/platform/tenants";
@@ -46,12 +38,6 @@ export const protectedPrefixes = [
   "/platform/tenants",
   "/platform/users",
   "/platform/memberships",
-  // Onboarding steps require an authenticated platform owner. `/onboarding/signup`
-  // is intentionally omitted — it's the public self-registration entry point.
-  "/onboarding/school",
-  "/onboarding/activate",
-  "/onboarding/complete",
-  "/onboarding/continue",
 ];
 
 export const apiAuthPrefix = "/api/auth";
@@ -66,17 +52,7 @@ export function isProtectedRoute(pathname: string): boolean {
   );
 }
 
-/** Prefix for the self-service onboarding wizard on the apex host. */
-export const onboardingPrefix = "/onboarding";
-
 /** True for any path under the platform (super-admin) surface. */
 export function isPlatformPath(pathname: string): boolean {
   return pathname === "/platform" || pathname.startsWith("/platform/");
-}
-
-/** True for any path under the onboarding wizard. */
-export function isOnboardingPath(pathname: string): boolean {
-  return (
-    pathname === onboardingPrefix || pathname.startsWith(`${onboardingPrefix}/`)
-  );
 }

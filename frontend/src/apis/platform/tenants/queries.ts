@@ -32,20 +32,9 @@ export const getTenants = () => api.get<PlatformTenant[]>("/tenants");
 export const createTenant = (payload: CreateTenantPayload) =>
   api.post<CreateTenantResult>("/tenants", payload);
 
+/** Owner-or-admin: mint a fresh one-time owner activation link. */
 export const reissueOwnerActivation = (id: string) =>
   api.post<OwnerActivation>(`/tenants/${id}/owner/activation-link`);
-
-/** Owner-or-admin: mint a fresh activation link to resume onboarding (step 3). */
-export const resumeOwnerActivation = (id: string) =>
-  api.post<{ activation: OwnerActivation }>(
-    `/tenants/${id}/resume-activation`,
-  );
-
-/** Owner-or-admin: mark onboarding finished (step 4) from the platform session. */
-export const completeOnboarding = (id: string) =>
-  api.post<{ bootstrapStatus: PlatformTenant["bootstrapStatus"] }>(
-    `/tenants/${id}/complete-onboarding`,
-  );
 
 export const updateTenant = (id: string, payload: UpdateTenantPayload) =>
   api.patch<PlatformTenant>(`/tenants/${id}`, payload);
@@ -135,16 +124,6 @@ export const useReissueOwnerActivation = () => {
     mutationFn: (id: string) => reissueOwnerActivation(id),
     onError: (e) =>
       toast.error(errorMessage(e, "Failed to issue activation link")),
-  });
-}
-
-export const useCompleteOnboarding = () => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) => completeOnboarding(id),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: tenantKeys.all });
-    },
   });
 }
 

@@ -9,7 +9,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 
-import { ONBOARDING_CONTINUE, TENANT_LOGIN } from "~/constants/routes"
+import { PLATFORM_LOGIN_REDIRECT, TENANT_LOGIN } from "~/constants/routes"
 import { useRegister } from "~/features/auth/hooks"
 import { ApiError } from "~/types/api"
 import { cn } from "~/lib/utils"
@@ -43,13 +43,12 @@ type SignupFormValues = z.infer<typeof signupSchema>
 
 interface PlatformSignupFormProps {
   /** Where to send the user after a successful sign-up + auto sign-in.
-   *  Defaults to the onboarding resume resolver; the wizard overrides it
-   *  to advance directly to the create-school step. */
+   *  Defaults to the platform dashboard. */
   redirectTo?: string
 }
 
 export const PlatformSignupForm = ({
-  redirectTo = ONBOARDING_CONTINUE,
+  redirectTo = PLATFORM_LOGIN_REDIRECT,
 }: PlatformSignupFormProps) => {
   const [showPassword, setShowPassword] = useState(false)
   const router = useRouter()

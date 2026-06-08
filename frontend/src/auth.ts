@@ -2,9 +2,7 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { authConfigForRequest } from "~/auth.config";
 import { AUTH_ENDPOINTS, TENANT_HEADER } from "~/config";
-import type { PlatformTenant } from "~/apis/platform/tenants/types";
-import { deriveBootstrapStatus } from "~/features/onboarding/resolve-destination";
-import { backendGet, backendPost } from "~/lib/api/backend";
+import { backendPost } from "~/lib/api/backend";
 import type { PlatformAuthData, TenantAuthData } from "~/types/api";
 
 // Request-aware config so the cookie Domain is chosen per host (`.lvh.me` on
@@ -71,19 +69,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth((request) => ({
             { email, password },
           );
 
-          let onboardingBootstrapStatus: PlatformTenant["bootstrapStatus"] | null =
-            null;
-          if (!data.user.isAdmin) {
-            try {
-              const tenants = await backendGet<PlatformTenant[]>("/tenants", {
-                accessToken: data.access_token,
-              });
-              onboardingBootstrapStatus = deriveBootstrapStatus(tenants);
-            } catch {
-              onboardingBootstrapStatus = null;
-            }
-          }
-
           return {
             id: data.user.id,
             email: data.user.email,
@@ -91,7 +76,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth((request) => ({
             isAdmin: data.user.isAdmin,
             accessToken: data.access_token,
             authKind: "platform",
-            onboardingBootstrapStatus,
           };
         } catch (err) {
           console.error("platform-credentials authorize failed:", err);

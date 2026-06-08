@@ -7,7 +7,6 @@ import {
   isAuthRoute,
   isProtectedRoute,
 } from "~/constants/routes";
-import { resolveOwnerDestinationFromBootstrap } from "~/features/onboarding/resolve-destination";
 
 /**
  * Optional shared cookie domain so the session can span tenant subdomains
@@ -86,14 +85,10 @@ export const authConfig = {
       // based on which surface they're signed into.
       if (isAuthRoute(pathname)) {
         if (isLoggedIn) {
-          let target = DEFAULT_LOGIN_REDIRECT;
-          if (auth?.authKind === "platform") {
-            target = auth.user.isAdmin
+          const target =
+            auth?.authKind === "platform"
               ? PLATFORM_LOGIN_REDIRECT
-              : resolveOwnerDestinationFromBootstrap(
-                  auth.onboardingBootstrapStatus,
-                );
-          }
+              : DEFAULT_LOGIN_REDIRECT;
           return NextResponse.redirect(new URL(target, request.nextUrl));
         }
         return true;
@@ -108,20 +103,13 @@ export const authConfig = {
 
       return true;
     },
-    jwt({ token, user, trigger, session }) {
+    jwt({ token, user }) {
       if (user) {
         token.accessToken = user.accessToken;
         token.authKind = user.authKind;
         token.roles = user.roles;
         token.isAdmin = user.isAdmin;
         token.tenant = user.tenant;
-        if (user.authKind === "platform" && !user.isAdmin) {
-          token.onboardingBootstrapStatus =
-            user.onboardingBootstrapStatus ?? null;
-        }
-      }
-      if (trigger === "update" && session?.onboardingBootstrapStatus !== undefined) {
-        token.onboardingBootstrapStatus = session.onboardingBootstrapStatus;
       }
       return token;
     },
@@ -132,10 +120,6 @@ export const authConfig = {
       session.user.roles = token.roles;
       session.user.isAdmin = token.isAdmin;
       session.user.tenant = token.tenant;
-      if (token.authKind === "platform" && !token.isAdmin) {
-        session.onboardingBootstrapStatus =
-          token.onboardingBootstrapStatus ?? null;
-      }
       return session;
     },
   },
