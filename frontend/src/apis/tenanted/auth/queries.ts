@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { TENANT_HEADER } from "~/config";
+import { TENANT_HEADER } from "~/config/api-config";
 import { api } from "~/lib/api/client";
 import type { ActivationInfo, ActivatePayload, ActivateResult } from "./types";
 

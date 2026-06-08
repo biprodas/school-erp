@@ -28,7 +28,7 @@ import {
 } from "~/components/ui/field";
 import { Input } from "~/components/ui/input";
 import { Skeleton } from "~/components/ui/skeleton";
-import { TENANT_LOGIN, DEFAULT_LOGIN_REDIRECT } from "~/constants/routes";
+import { ROUTES } from "~/constants";
 import { signInWithCredentials } from "~/features/auth/hooks";
 
 export default function ActivateView() {
@@ -92,11 +92,11 @@ export default function ActivateView() {
     );
     if (!result || result.error) {
       toast.success("Account activated — please sign in.");
-      router.push(TENANT_LOGIN);
+      router.push(ROUTES.TENANT_LOGIN);
       return;
     }
     toast.success("Welcome aboard!");
-    router.push(DEFAULT_LOGIN_REDIRECT);
+    router.push(ROUTES.DEFAULT_LOGIN_REDIRECT);
     router.refresh();
   };
 
@@ -195,7 +195,7 @@ function InvalidState({ description }: { description: string }) {
       </CardHeader>
       <CardContent>
         <Button asChild variant="outline">
-          <Link href={TENANT_LOGIN}>Go to sign in</Link>
+          <Link href={ROUTES.TENANT_LOGIN}>Go to sign in</Link>
         </Button>
       </CardContent>
     </Card>

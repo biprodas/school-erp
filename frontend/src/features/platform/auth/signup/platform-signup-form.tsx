@@ -9,7 +9,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 
-import { PLATFORM_LOGIN_REDIRECT, TENANT_LOGIN } from "~/constants/routes"
+import { ROUTES } from "~/constants";
 import { useRegister } from "~/features/auth/hooks"
 import { ApiError } from "~/types/api"
 import { cn } from "~/lib/utils"
@@ -43,13 +43,12 @@ type SignupFormValues = z.infer<typeof signupSchema>
 
 interface PlatformSignupFormProps {
   /** Where to send the user after a successful sign-up + auto sign-in.
-   *  Defaults to the platform dashboard; the onboarding wizard overrides it
-   *  to advance to the create-school step. */
+   *  Defaults to the platform dashboard. */
   redirectTo?: string
 }
 
 export const PlatformSignupForm = ({
-  redirectTo = PLATFORM_LOGIN_REDIRECT,
+  redirectTo = ROUTES.PLATFORM_LOGIN_REDIRECT,
 }: PlatformSignupFormProps) => {
   const [showPassword, setShowPassword] = useState(false)
   const router = useRouter()
@@ -69,7 +68,7 @@ export const PlatformSignupForm = ({
       const result = await registerMutation.mutateAsync({ payload: values })
       if (!result || result.error) {
         toast.success("Account created — please sign in")
-        router.push(TENANT_LOGIN)
+        router.push(ROUTES.TENANT_LOGIN)
         return
       }
       toast.success("Account created")
@@ -172,7 +171,7 @@ export const PlatformSignupForm = ({
                 )}
               </Button>
               <FieldDescription className="text-center">
-                Already have an account? <Link href={TENANT_LOGIN}>Login</Link>
+                Already have an account? <Link href={ROUTES.TENANT_LOGIN}>Login</Link>
               </FieldDescription>
             </Field>
           </FieldGroup>

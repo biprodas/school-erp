@@ -1,4 +1,4 @@
-import { API_BASE_URL } from "~/config";
+import { apiConfig } from "~/config/api-config";
 
 export type PublicTenant = {
   slug: string;
@@ -17,7 +17,7 @@ export async function getPublicTenant(
 ): Promise<PublicTenant | null> {
   try {
     const res = await fetch(
-      `${API_BASE_URL}/public/tenants/by-slug?slug=${encodeURIComponent(slug)}`,
+      `${apiConfig.baseUrl}/public/tenants/by-slug?slug=${encodeURIComponent(slug)}`,
       { headers: { Accept: "application/json" } },
     );
     if (!res.ok) return null;

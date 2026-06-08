@@ -12,7 +12,7 @@ import {
   CardTitle,
 } from "~/components/ui/card";
 import { Skeleton } from "~/components/ui/skeleton";
-import { PLATFORM_LOGIN } from "~/constants/routes";
+import { ROUTES } from "~/constants";
 
 /**
  * Gate platform management pages: blocks while loading, redirects non-platform
@@ -48,7 +48,7 @@ export const PlatformGuard = ({
         </CardHeader>
         <CardContent>
           <Button asChild>
-            <Link href={PLATFORM_LOGIN}>Sign in as a platform admin</Link>
+            <Link href={ROUTES.PLATFORM_LOGIN}>Sign in as a platform admin</Link>
           </Button>
         </CardContent>
       </Card>

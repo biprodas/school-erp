@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Button } from "~/components/ui/button";
 import { ArrowRight, Zap, Globe, Lock, HeadphonesIcon } from "lucide-react";
-import { ONBOARDING_SIGNUP } from "~/constants/routes";
+import { ROUTES } from "~/constants";
 
 const trustBadges = [
   { icon: Zap, label: "99.9% Uptime" },
@@ -25,7 +25,7 @@ export function CtaSection() {
           <div className="mt-10 flex flex-wrap justify-center gap-4">
             <Button size="lg" variant="secondary" asChild>
               <Link
-                href={ONBOARDING_SIGNUP}
+                href={ROUTES.PLATFORM_SIGNUP}
                 className="inline-flex items-center justify-center gap-1.5"
               >
                 Get Started Free

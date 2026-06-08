@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { FaGithub, FaLinkedin } from "react-icons/fa";
 import { FcGoogle } from "react-icons/fc";
 import { Button } from "~/components/ui/button";
-import { DEFAULT_LOGIN_REDIRECT } from "~/constants/routes";
+import { ROUTES } from "~/constants";
 import { cn } from "~/lib/utils";
 
 interface SocialAuthProps {
@@ -19,7 +19,7 @@ export const SocialAuth = ({ mode = "row", providers = ["google"] }: SocialAuthP
 
   const onClick = (provider: "google" | "github" | "linkedin") => {
     signIn(provider, {
-      callbackUrl: callbackUrl || DEFAULT_LOGIN_REDIRECT,
+      callbackUrl: callbackUrl || ROUTES.DEFAULT_LOGIN_REDIRECT,
     });
   };
 

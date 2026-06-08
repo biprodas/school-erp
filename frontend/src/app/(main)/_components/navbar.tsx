@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Button } from "~/components/ui/button";
 import { ThemeToggleButton } from "~/components/theme-toggle-button";
 import { GraduationCap, ArrowRight, Menu } from "lucide-react";
-import { ONBOARDING_SIGNUP } from "~/constants/routes";
+import { ROUTES } from "~/constants";
 
 const navLinks = [
   { label: "Features", href: "#features" },
@@ -40,7 +40,7 @@ export function Navbar() {
             <Link href="/login">Log in</Link>
           </Button>
           <Button size="sm" asChild>
-            <Link href={ONBOARDING_SIGNUP}>
+            <Link href={ROUTES.PLATFORM_SIGNUP}>
               Get Started <ArrowRight />
             </Link>
           </Button>

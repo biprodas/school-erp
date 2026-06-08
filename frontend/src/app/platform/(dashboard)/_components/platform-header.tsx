@@ -5,7 +5,7 @@ import { FaSchool } from "react-icons/fa6";
 import { Separator } from "~/components/ui/separator";
 import { SidebarTrigger } from "~/components/ui/sidebar";
 import { UserButton } from "~/components/user-button";
-import { PLATFORM_LOGIN_REDIRECT } from "~/constants/routes";
+import { ROUTES } from "~/constants";
 
 export function PlatformHeader() {
   return (
@@ -16,7 +16,7 @@ export function PlatformHeader() {
         className="mx-1 data-[orientation=vertical]:h-4"
       />
       <Link
-        href={PLATFORM_LOGIN_REDIRECT}
+        href={ROUTES.PLATFORM_LOGIN_REDIRECT}
         className="flex items-center gap-2 font-medium"
       >
         <div className="flex size-6 items-center justify-center rounded-md bg-primary text-primary-foreground">
