@@ -19,7 +19,7 @@ import {
   BellIcon,
 } from "lucide-react";
 import { ThemeSegmentControl } from "./theme-segment-control";
-import { TENANT_LOGIN } from "~/constants/routes";
+import { ROUTES } from "~/constants";
 import {
   Avatar,
   AvatarFallback,
@@ -46,7 +46,7 @@ export function UserButton() {
 
   if (!session?.user) {
     return (
-      <Link href={TENANT_LOGIN}>
+      <Link href={ROUTES.TENANT_LOGIN}>
         <Button variant="outline" size="sm">Sign in</Button>
       </Link>
     );
@@ -57,7 +57,7 @@ export function UserButton() {
   const avatar = session.user.image ?? "";
   const initials = getInitials(name);
   // Both surfaces share `/login`; the host renders the right view after logout.
-  const loginPath = TENANT_LOGIN;
+  const loginPath = ROUTES.TENANT_LOGIN;
 
   return (
     <DropdownMenu>

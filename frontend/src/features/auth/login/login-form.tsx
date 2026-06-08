@@ -8,7 +8,7 @@ import { useEffect, useState } from "react"
 import { Controller, useForm } from "react-hook-form"
 import { toast } from "sonner"
 import { z } from "zod"
-import { DEFAULT_LOGIN_REDIRECT } from "~/constants/routes"
+import { ROUTES } from "~/constants";
 import { signInWithCredentials } from "~/features/auth/hooks"
 import { resolveClientTenantSlug } from "~/lib/tenant"
 import { Button } from "~/components/ui/button"
@@ -84,7 +84,7 @@ export const LoginForm = () => {
     }
 
     const callbackUrl =
-      searchParams.get("callbackUrl") || DEFAULT_LOGIN_REDIRECT
+      searchParams.get("callbackUrl") || ROUTES.DEFAULT_LOGIN_REDIRECT
 
     toast.success("Welcome back")
     router.push(callbackUrl)

@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth } from "~/auth";
-import { TENANT_LOGIN } from "~/constants/routes";
+import { ROUTES } from "~/constants";
 import { SidebarInset, SidebarProvider } from "~/components/ui/sidebar";
 import { PlatformHeader } from "./_components/platform-header";
 import { PlatformSidebar } from "./_components/platform-sidebar";
@@ -13,7 +13,7 @@ export default async function PlatformDashboardLayout({
   const session = await auth();
 
   if (!session?.user) {
-    redirect(TENANT_LOGIN);
+    redirect(ROUTES.TENANT_LOGIN);
   }
 
   return (

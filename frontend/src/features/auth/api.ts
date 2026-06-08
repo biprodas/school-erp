@@ -1,4 +1,4 @@
-import { AUTH_ENDPOINTS, TENANT_HEADER } from "~/config";
+import { AUTH_ENDPOINTS, apiConfig } from "~/config/api-config";
 import { api } from "~/lib/api/client";
 import type { RegisterPayload } from "~/types/api";
 import type { AuthKind } from "~/types/user";
@@ -19,7 +19,7 @@ export function registerUser(
       : AUTH_ENDPOINTS.tenant.register;
   const config =
     authKind === "tenant" && tenantSlug
-      ? { headers: { [TENANT_HEADER]: tenantSlug } }
+      ? { headers: { [apiConfig.tenantHeader]: tenantSlug } }
       : undefined;
   return api.post<unknown>(endpoint, payload, config);
 }

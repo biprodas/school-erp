@@ -9,7 +9,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 
-import { DEFAULT_LOGIN_REDIRECT, TENANT_LOGIN } from "~/constants/routes"
+import { ROUTES } from "~/constants";
 import { useRegister } from "~/features/auth/hooks"
 import { resolveClientTenantSlug } from "~/lib/tenant"
 import { ApiError } from "~/types/api"
@@ -52,8 +52,8 @@ export const SignupForm = () => {
   const router = useRouter()
   const registerMutation = useRegister("tenant")
 
-  const loginHref = TENANT_LOGIN
-  const redirectTo = DEFAULT_LOGIN_REDIRECT
+  const loginHref = ROUTES.TENANT_LOGIN
+  const redirectTo = ROUTES.DEFAULT_LOGIN_REDIRECT
 
   // Resolve tenant from the host (subdomain parse, or custom-domain lookup).
   const [detectedSlug, setDetectedSlug] = useState<string | null>(null)

@@ -7,7 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "~/components/ui/card";
-import { TENANT_LOGIN } from "~/constants/routes";
+import { ROUTES } from "~/constants";
 
 /**
  * Tenant self-registration is disabled — accounts are provisioned by an admin
@@ -27,7 +27,7 @@ export default function TenantSignupNotice() {
         </CardHeader>
         <CardContent>
           <Button asChild>
-            <Link href={TENANT_LOGIN}>Go to sign in</Link>
+            <Link href={ROUTES.TENANT_LOGIN}>Go to sign in</Link>
           </Button>
         </CardContent>
       </Card>

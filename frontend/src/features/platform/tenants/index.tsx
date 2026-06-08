@@ -21,7 +21,7 @@ import {
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
 import { ConfirmDialog } from "~/components/confirm-dialog";
-import { DEFAULT_LOGIN_REDIRECT } from "~/constants/routes";
+import { ROUTES } from "~/constants";
 import { formatDate } from "~/lib/format";
 import { buildTenantUrl } from "~/lib/tenant";
 import { StatusBadge } from "~/features/platform/_components/badges";
@@ -118,7 +118,7 @@ function TenantsContent() {
                   <DropdownMenuItem
                     onSelect={() =>
                       window.open(
-                        buildTenantUrl(tenant.slug, DEFAULT_LOGIN_REDIRECT),
+                        buildTenantUrl(tenant.slug, ROUTES.DEFAULT_LOGIN_REDIRECT),
                         "_blank",
                         "noopener,noreferrer",
                       )

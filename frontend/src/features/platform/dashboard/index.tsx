@@ -10,11 +10,7 @@ import {
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useMemo } from "react";
-import {
-  PLATFORM_MEMBERSHIPS,
-  PLATFORM_TENANTS,
-  PLATFORM_USERS,
-} from "~/constants/routes";
+import { ROUTES } from "~/constants";
 import { Badge } from "~/components/ui/badge";
 import {
   Card,
@@ -122,28 +118,28 @@ function OverviewContent() {
           label="Tenants"
           value={tenants.length}
           icon={Building2}
-          href={PLATFORM_TENANTS}
+          href={ROUTES.PLATFORM_TENANTS}
           loading={tenantsQuery.isLoading}
         />
         <MetricCard
           label="Active tenants"
           value={activeTenants}
           icon={CircleCheck}
-          href={PLATFORM_TENANTS}
+          href={ROUTES.PLATFORM_TENANTS}
           loading={tenantsQuery.isLoading}
         />
         <MetricCard
           label="Memberships"
           value={membershipsQuery.data?.length ?? 0}
           icon={Users}
-          href={PLATFORM_MEMBERSHIPS}
+          href={ROUTES.PLATFORM_MEMBERSHIPS}
           loading={membershipsQuery.isLoading}
         />
         <MetricCard
           label="Platform users"
           value={isAdmin ? (usersQuery.data?.length ?? 0) : "—"}
           icon={ShieldUser}
-          href={PLATFORM_USERS}
+          href={ROUTES.PLATFORM_USERS}
           loading={isAdmin && usersQuery.isLoading}
         />
       </div>

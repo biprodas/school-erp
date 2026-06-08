@@ -1,7 +1,7 @@
 "use client";
 
 import { getSession, signOut } from "next-auth/react";
-import { TENANT_LOGIN } from "~/constants/routes";
+import { ROUTES } from "~/constants";
 import { getClientTenantSlug } from "~/lib/tenant";
 import { createApiClient, makeHttp } from "./axios";
 
@@ -18,7 +18,7 @@ const instance = createApiClient(
     };
   },
   () => {
-    void signOut({ redirectTo: TENANT_LOGIN });
+    void signOut({ redirectTo: ROUTES.TENANT_LOGIN });
   },
 );
 

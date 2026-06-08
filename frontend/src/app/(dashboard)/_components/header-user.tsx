@@ -17,7 +17,7 @@ import {
 } from "~/components/ui/dropdown-menu"
 import { CircleUserRoundIcon, CreditCardIcon, LogOutIcon } from "lucide-react"
 import { signOut, useSession } from "next-auth/react"
-import { TENANT_LOGIN } from "~/constants/routes"
+import { ROUTES } from "~/constants";
 
 export type HeaderUserProps = {
   user?: {
@@ -85,7 +85,7 @@ export function HeaderUser({ user }: HeaderUserProps) {
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => signOut({ redirectTo: TENANT_LOGIN })}>
+        <DropdownMenuItem onClick={() => signOut({ redirectTo: ROUTES.TENANT_LOGIN })}>
           <LogOutIcon />
           Log out
         </DropdownMenuItem>

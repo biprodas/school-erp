@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, GraduationCap } from "lucide-react";
 
-import { TENANT_LOGIN, TENANT_SIGNUP } from "~/constants/routes";
+import { ROUTES } from "~/constants";
 import { Button } from "~/components/ui/button";
 import { ThemeToggleButton } from "~/components/theme-toggle-button";
 import type { PublicTenant } from "./api";
@@ -37,12 +37,12 @@ export default function TenantLandingView({
         </p>
         <div className="flex flex-col items-center gap-3 sm:flex-row">
           <Button size="lg" asChild>
-            <Link href={TENANT_SIGNUP}>
+            <Link href={ROUTES.TENANT_SIGNUP}>
               Get started <ArrowRight className="size-4" />
             </Link>
           </Button>
           <Button size="lg" variant="outline" asChild>
-            <Link href={TENANT_LOGIN}>Log in</Link>
+            <Link href={ROUTES.TENANT_LOGIN}>Log in</Link>
           </Button>
         </div>
       </main>

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Button } from "~/components/ui/button";
 import { Badge } from "~/components/ui/badge";
 import { ArrowRight } from "lucide-react";
-import { PLATFORM_SIGNUP } from "~/constants/routes";
+import { ROUTES } from "~/constants";
 
 const stats = [
   { value: "500+", label: "Schools Onboarded" },
@@ -36,7 +36,7 @@ export function HeroSection() {
 
           <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
             <Button size="lg" asChild>
-              <Link href={PLATFORM_SIGNUP}>
+              <Link href={ROUTES.PLATFORM_SIGNUP}>
                 Start Free Trial <ArrowRight />
               </Link>
             </Button>
