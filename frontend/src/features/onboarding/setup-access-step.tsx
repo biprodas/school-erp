@@ -28,10 +28,12 @@ import {
 } from "~/components/ui/field";
 import { Input } from "~/components/ui/input";
 import { Skeleton } from "~/components/ui/skeleton";
+import type { TenantBootstrapStatus } from "~/apis/platform/tenants/types";
 import {
   ONBOARDING_COMPLETE,
   PLATFORM_LOGIN_REDIRECT,
 } from "~/constants/routes";
+import { usePatchOnboardingBootstrapStatus } from "~/features/onboarding/session";
 
 interface SetupAccessStepProps {
   tenantId: string;
@@ -47,6 +49,7 @@ interface SetupAccessStepProps {
  */
 export function SetupAccessStep({ tenantId, tenantSlug }: SetupAccessStepProps) {
   const router = useRouter();
+  const patchOnboardingStatus = usePatchOnboardingBootstrapStatus();
   const [token, setToken] = useState<string | null>(null);
   const [tokenError, setTokenError] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -76,7 +79,10 @@ export function SetupAccessStep({ tenantId, tenantSlug }: SetupAccessStepProps) 
       toast.success("Password set!");
       // Admin-bootstrapped tenants come back `completed`; self-service owners
       // get the finish step.
-      const isComplete = result.tenant?.bootstrapStatus === "completed";
+      const status = (result.tenant?.bootstrapStatus ??
+        "owner_activated") as TenantBootstrapStatus;
+      await patchOnboardingStatus(status);
+      const isComplete = status === "completed";
       router.push(isComplete ? PLATFORM_LOGIN_REDIRECT : ONBOARDING_COMPLETE);
       router.refresh();
     } catch {

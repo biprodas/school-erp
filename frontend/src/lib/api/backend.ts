@@ -36,3 +36,32 @@ export async function backendPost<T>(
 
   return json!.data;
 }
+
+/** Minimal server-side GET to the backend (e.g. hydrate JWT on platform login). */
+export async function backendGet<T>(
+  path: string,
+  opts?: { tenantSlug?: string | null; accessToken?: string },
+): Promise<T> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (opts?.tenantSlug) headers[TENANT_HEADER] = opts.tenantSlug;
+  if (opts?.accessToken) headers.Authorization = `Bearer ${opts.accessToken}`;
+
+  const res = await fetch(`${API_BASE_URL}${path}`, {
+    method: "GET",
+    headers,
+    cache: "no-store",
+  });
+
+  const json = (await res.json().catch(() => null)) as ApiResponse<T> | null;
+
+  if (!res.ok) {
+    const message =
+      (json as { message?: string } | null)?.message ??
+      `Request failed with status ${res.status}`;
+    throw new Error(message);
+  }
+
+  return json!.data;
+}

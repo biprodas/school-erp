@@ -46,6 +46,12 @@ export const protectedPrefixes = [
   "/platform/tenants",
   "/platform/users",
   "/platform/memberships",
+  // Onboarding steps require an authenticated platform owner. `/onboarding/signup`
+  // is intentionally omitted — it's the public self-registration entry point.
+  "/onboarding/school",
+  "/onboarding/activate",
+  "/onboarding/complete",
+  "/onboarding/continue",
 ];
 
 export const apiAuthPrefix = "/api/auth";
@@ -60,7 +66,17 @@ export function isProtectedRoute(pathname: string): boolean {
   );
 }
 
+/** Prefix for the self-service onboarding wizard on the apex host. */
+export const onboardingPrefix = "/onboarding";
+
 /** True for any path under the platform (super-admin) surface. */
 export function isPlatformPath(pathname: string): boolean {
   return pathname === "/platform" || pathname.startsWith("/platform/");
+}
+
+/** True for any path under the onboarding wizard. */
+export function isOnboardingPath(pathname: string): boolean {
+  return (
+    pathname === onboardingPrefix || pathname.startsWith(`${onboardingPrefix}/`)
+  );
 }

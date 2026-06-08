@@ -8,7 +8,7 @@ import { useState } from "react"
 import { Controller, useForm } from "react-hook-form"
 import { toast } from "sonner"
 import { z } from "zod"
-import { PLATFORM_LOGIN_REDIRECT } from "~/constants/routes"
+import { ONBOARDING_CONTINUE } from "~/constants/routes"
 import { signInWithCredentials } from "~/features/auth/hooks"
 import { Button } from "~/components/ui/button"
 import {
@@ -54,7 +54,7 @@ export const PlatformLoginForm = () => {
     }
 
     const callbackUrl =
-      searchParams.get("callbackUrl") || PLATFORM_LOGIN_REDIRECT
+      searchParams.get("callbackUrl") || ONBOARDING_CONTINUE
 
     toast.success("Welcome back")
     router.push(callbackUrl)

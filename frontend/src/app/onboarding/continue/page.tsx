@@ -1,17 +1,11 @@
 import { redirect } from "next/navigation";
 import { auth } from "~/auth";
-import {
-  ONBOARDING_ACTIVATE,
-  ONBOARDING_COMPLETE,
-  ONBOARDING_SCHOOL,
-  ONBOARDING_SIGNUP,
-  PLATFORM_LOGIN_REDIRECT,
-} from "~/constants/routes";
-import { getOnboardingTenant } from "~/features/onboarding/resume";
+import { ONBOARDING_SIGNUP } from "~/constants/routes";
+import { resolveOwnerDestinationForSession } from "~/features/onboarding/resolve-session-destination";
 
 /**
- * Resume resolver (apex). Maps an owner's onboarding `bootstrap_status` to the
- * next wizard step — all on the apex host (no subdomain hop).
+ * Resume resolver (apex). Reads onboarding progress from the JWT and redirects
+ * to the correct wizard step — no API round-trip.
  */
 export default async function OnboardingContinuePage() {
   const session = await auth();
@@ -19,20 +13,5 @@ export default async function OnboardingContinuePage() {
     redirect(ONBOARDING_SIGNUP);
   }
 
-  const tenant = await getOnboardingTenant();
-  if (!tenant) {
-    redirect(ONBOARDING_SCHOOL);
-  }
-
-  switch (tenant.bootstrapStatus) {
-    case "owner_activated":
-      redirect(ONBOARDING_COMPLETE);
-      break;
-    case "school_created":
-    case "admin_invited":
-      redirect(ONBOARDING_ACTIVATE);
-      break;
-    default:
-      redirect(PLATFORM_LOGIN_REDIRECT);
-  }
+  redirect(await resolveOwnerDestinationForSession(session));
 }

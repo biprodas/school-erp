@@ -12,6 +12,7 @@ import {
   CardTitle,
 } from "~/components/ui/card";
 import { PLATFORM_LOGIN_REDIRECT } from "~/constants/routes";
+import { usePatchOnboardingBootstrapStatus } from "~/features/onboarding/session";
 
 /**
  * Final onboarding step (apex): a brief welcome that marks the tenant's bootstrap
@@ -21,6 +22,7 @@ import { PLATFORM_LOGIN_REDIRECT } from "~/constants/routes";
 export function OnboardingComplete({ tenantId }: { tenantId: string }) {
   const router = useRouter();
   const complete = useCompleteOnboarding();
+  const patchOnboardingStatus = usePatchOnboardingBootstrapStatus();
 
   const goToDashboard = async () => {
     try {
@@ -28,6 +30,7 @@ export function OnboardingComplete({ tenantId }: { tenantId: string }) {
     } catch {
       // Non-fatal: the platform resume gate will re-route if needed.
     }
+    await patchOnboardingStatus("completed");
     router.push(PLATFORM_LOGIN_REDIRECT);
     router.refresh();
   };

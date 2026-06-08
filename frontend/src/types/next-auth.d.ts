@@ -1,4 +1,5 @@
 import type { DefaultSession } from "next-auth";
+import type { TenantBootstrapStatus } from "~/apis/platform/tenants/types";
 import type { AuthKind, Tenant } from "~/types/user";
 
 /**
@@ -9,6 +10,8 @@ declare module "next-auth" {
   interface Session {
     accessToken: string;
     authKind: AuthKind;
+    /** Platform owner onboarding progress; `null` = no school yet. */
+    onboardingBootstrapStatus?: TenantBootstrapStatus | null;
     user: {
       id: string;
       roles?: string[];
@@ -23,6 +26,7 @@ declare module "next-auth" {
     roles?: string[];
     isAdmin: boolean;
     tenant?: Tenant;
+    onboardingBootstrapStatus?: TenantBootstrapStatus | null;
   }
 }
 
@@ -35,5 +39,6 @@ declare module "@auth/core/jwt" {
     roles?: string[];
     isAdmin: boolean;
     tenant?: Tenant;
+    onboardingBootstrapStatus?: TenantBootstrapStatus | null;
   }
 }

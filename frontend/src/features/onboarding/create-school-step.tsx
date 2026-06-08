@@ -28,6 +28,7 @@ import {
 } from "~/components/ui/field";
 import { Input } from "~/components/ui/input";
 import { ONBOARDING_ACTIVATE } from "~/constants/routes";
+import { usePatchOnboardingBootstrapStatus } from "~/features/onboarding/session";
 import { ApiError } from "~/types/api";
 
 const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "lvh.me";
@@ -51,6 +52,7 @@ function slugify(value: string): string {
 export function CreateSchoolStep() {
   const router = useRouter();
   const createTenant = useCreateTenant();
+  const patchOnboardingStatus = usePatchOnboardingBootstrapStatus();
   const slugEdited = useRef(false);
 
   const form = useForm<CreateTenantValues>({
@@ -60,11 +62,13 @@ export function CreateSchoolStep() {
 
   const onSubmit = async (values: CreateTenantValues) => {
     try {
-      await createTenant.mutateAsync({
+      const tenant = await createTenant.mutateAsync({
         name: values.name,
         slug: values.slug,
         domain: values.domain?.trim() ? values.domain.trim() : undefined,
       });
+
+      await patchOnboardingStatus(tenant.bootstrapStatus);
 
       // Stay on the apex host: advance to the "set up access" step, which sets
       // the school password without leaving the platform.
