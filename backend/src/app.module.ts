@@ -21,6 +21,7 @@ import { AuthModule } from '~/tenanted/auth/auth.module';
 import { CatModule } from '~/tenanted/cats/cat.module';
 import { TaskModule } from '~/tenanted/tasks/task.module';
 import { HealthModule } from './shared/health/health.module';
+import { MailModule } from './shared/mail/mail.module';
 import { TenancyModule } from './tenancy/tenancy.module';
 
 const nodeEnv = process.env.NODE_ENV ?? 'development';
@@ -47,6 +48,7 @@ const envFilePath = ['.env', `.env.${nodeEnv}`];
     }),
     DatabaseModule,
     HealthModule,
+    MailModule,
     TenancyModule,
     PlatformAuthModule,
     MembershipModule,
@@ -92,6 +94,8 @@ export class AppModule {
         { path: 'platform/users/*path', method: RequestMethod.ALL },
         { path: 'public', method: RequestMethod.ALL },
         { path: 'public/*path', method: RequestMethod.ALL },
+        { path: 'dev/mail', method: RequestMethod.ALL },
+        { path: 'dev/mail/*path', method: RequestMethod.ALL },
       )
       .forRoutes('*');
   }

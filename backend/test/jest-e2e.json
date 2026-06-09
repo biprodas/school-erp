@@ -11,6 +11,7 @@
     "^~/common/(.*)$": "<rootDir>/../src/common/$1",
     "^~/config$": "<rootDir>/../src/config",
     "^~/utils/(.*)$": "<rootDir>/../src/utils/$1",
+    "^~/shared/(.*)$": "<rootDir>/../src/shared/$1",
     "^~/tenancy/(.*)$": "<rootDir>/../src/tenancy/$1",
     "^~/platform/(.*)$": "<rootDir>/../src/modules/platform/$1",
     "^~/tenanted/(.*)$": "<rootDir>/../src/modules/tenanted/$1",

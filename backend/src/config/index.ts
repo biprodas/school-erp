@@ -2,6 +2,7 @@ import type { ConfigFactory } from '@nestjs/config';
 import appConfig from './app.config';
 import dbConfig from './db.config';
 import jwtConfig from './jwt.config';
+import mailerConfig from './mailer.config';
 import swaggerConfig from './swagger.config';
 import healthConfig from './health.config';
 import throttleConfig from './throttle.config';
@@ -13,6 +14,7 @@ export const configLoaders: ConfigFactory[] = [
   appConfig,
   dbConfig,
   jwtConfig,
+  mailerConfig,
   swaggerConfig,
   healthConfig,
   throttleConfig,
@@ -23,6 +25,7 @@ export type {
   AppConfig,
   DbConfig,
   JwtConfig,
+  MailerConfig,
   SwaggerConfig,
   HealthConfig,
   ThrottleConfig,

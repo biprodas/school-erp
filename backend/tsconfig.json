@@ -21,6 +21,7 @@
       "~/common/*":["src/common/*"],
       "~/config":["src/config"],
       "~/utils/*":["src/utils/*"],
+      "~/shared/*":["src/shared/*"],
       "~/tenancy/*":["src/tenancy/*"],
       // "~/modules/*":["src/modules/*"],
       "~/platform/*":["src/modules/platform/*"],
