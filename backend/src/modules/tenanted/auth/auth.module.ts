@@ -12,6 +12,7 @@ import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './jwt.strategy';
 import { ActivationTokenRepository } from './activation-token.repository';
+import { AuthTokenRepository } from './auth-token.repository';
 
 @Module({
   imports: [
@@ -41,6 +42,11 @@ import { ActivationTokenRepository } from './activation-token.repository';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, ActivationTokenRepository],
+  providers: [
+    AuthService,
+    JwtStrategy,
+    ActivationTokenRepository,
+    AuthTokenRepository,
+  ],
 })
 export class AuthModule {}

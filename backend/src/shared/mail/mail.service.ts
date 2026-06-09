@@ -31,16 +31,41 @@ export class MailService {
     await this.send(to, 'Welcome to School ERP', 'welcome', { name });
   }
 
+  async sendEmailVerificationEmail(
+    to: string,
+    name: string,
+    token: string,
+    tenantSlug?: string,
+  ): Promise<void> {
+    const link = this.withTenant(
+      `${this.appUrl}/verify-email?token=${token}`,
+      tenantSlug,
+    );
+    await this.send(to, 'Verify your email', 'email-verification', {
+      name,
+      link,
+    });
+  }
+
   async sendPasswordResetEmail(
     to: string,
     name: string,
     token: string,
+    tenantSlug?: string,
   ): Promise<void> {
-    const link = `${this.appUrl}/reset-password?token=${token}`;
+    const link = this.withTenant(
+      `${this.appUrl}/reset-password?token=${token}`,
+      tenantSlug,
+    );
     await this.send(to, 'Reset your password', 'password-reset', {
       name,
       link,
     });
+  }
+
+  /** Appends the tenant slug to a link so the frontend can scope the request. */
+  private withTenant(link: string, tenantSlug?: string): string {
+    return tenantSlug ? `${link}&tenant=${tenantSlug}` : link;
   }
 
   private get appUrl(): string {

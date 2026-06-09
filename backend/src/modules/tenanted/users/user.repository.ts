@@ -34,6 +34,20 @@ export class UserRepository extends BaseTenantRepository<User> {
     });
   }
 
+  async findByIdWithPassword(id: string): Promise<User | null> {
+    return this.repo.findOne({
+      where: { id },
+      select: {
+        id: true,
+        email: true,
+        password: true,
+        name: true,
+        status: true,
+        isAdmin: true,
+      },
+    });
+  }
+
   async findFiltered(where: Record<string, any>): Promise<User[]> {
     return this.repo.find({
       where,

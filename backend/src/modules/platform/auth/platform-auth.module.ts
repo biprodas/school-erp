@@ -9,10 +9,11 @@ import { User } from 'src/modules/platform/users/entities/user.entity';
 import { PlatformAuthService } from './platform-auth.service';
 import { PlatformAuthController } from './platform-auth.controller';
 import { PlatformJwtStrategy } from './platform-jwt.strategy';
+import { AuthToken } from './entities/auth-token.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User]),
+    TypeOrmModule.forFeature([User, AuthToken]),
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],

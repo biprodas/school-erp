@@ -39,6 +39,10 @@ export class User {
   @Column({ name: 'is_admin', default: false })
   isAdmin: boolean;
 
+  /** Set when the user confirms their email; null while unverified. */
+  @Column({ name: 'email_verified_at', type: 'timestamptz', nullable: true })
+  emailVerifiedAt: Date | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
