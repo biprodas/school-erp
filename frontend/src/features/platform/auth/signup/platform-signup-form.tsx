@@ -4,13 +4,15 @@ import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import { Eye, EyeOff, Loader2 } from "lucide-react"
+import { Eye, EyeOff, Loader2, Loader2Icon, MailCheckIcon } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 
 import { ROUTES } from "~/constants";
 import { useRegister } from "~/features/auth/hooks"
+import { registerUser } from "~/features/auth/api"
+import { useResendVerification } from "~/apis/platform/auth/queries"
 import { ApiError } from "~/types/api"
 import { cn } from "~/lib/utils"
 import { Button } from "~/components/ui/button"
@@ -45,14 +47,21 @@ interface PlatformSignupFormProps {
   /** Where to send the user after a successful sign-up + auto sign-in.
    *  Defaults to the platform dashboard. */
   redirectTo?: string
+  /** When true, register WITHOUT auto-login and show a "verify your email"
+   *  confirmation — platform login is blocked until the email is verified.
+   *  Used by the standalone /signup view; onboarding keeps the default path. */
+  requireVerification?: boolean
 }
 
 export const PlatformSignupForm = ({
   redirectTo = ROUTES.PLATFORM_LOGIN_REDIRECT,
+  requireVerification = false,
 }: PlatformSignupFormProps) => {
   const [showPassword, setShowPassword] = useState(false)
+  const [registeredEmail, setRegisteredEmail] = useState<string | null>(null)
   const router = useRouter()
   const registerMutation = useRegister("platform")
+  const resend = useResendVerification()
 
   const {
     register,
@@ -64,6 +73,20 @@ export const PlatformSignupForm = ({
   })
 
   const onSubmit = async (values: SignupFormValues) => {
+    // Standalone signup: login is blocked until the email is verified, so skip
+    // the (doomed) auto-login and show a "verify your email" confirmation.
+    if (requireVerification) {
+      try {
+        await registerUser("platform", values)
+        setRegisteredEmail(values.email)
+      } catch (err) {
+        toast.error(
+          err instanceof ApiError ? err.message : "Could not create account",
+        )
+      }
+      return
+    }
+
     try {
       const result = await registerMutation.mutateAsync({ payload: values })
       if (!result || result.error) {
@@ -79,6 +102,51 @@ export const PlatformSignupForm = ({
         err instanceof ApiError ? err.message : "Could not create account",
       )
     }
+  }
+
+  if (registeredEmail) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <MailCheckIcon className="size-5" />
+            Verify your email
+          </CardTitle>
+          <CardDescription>
+            We&apos;ve sent a verification link to <strong>{registeredEmail}</strong>.
+            Click it to activate your account, then sign in.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <FieldGroup>
+            <Button
+              variant="outline"
+              disabled={resend.isPending}
+              onClick={async () => {
+                try {
+                  await resend.mutateAsync(registeredEmail)
+                  toast.success("Verification email sent")
+                } catch {
+                  toast.error("Could not resend. Please try again.")
+                }
+              }}
+            >
+              {resend.isPending ? (
+                <>
+                  <Loader2Icon className="size-4 animate-spin" />
+                  Sending…
+                </>
+              ) : (
+                "Resend email"
+              )}
+            </Button>
+            <FieldDescription className="text-center">
+              Already verified? <Link href={ROUTES.TENANT_LOGIN}>Login</Link>
+            </FieldDescription>
+          </FieldGroup>
+        </CardContent>
+      </Card>
+    )
   }
 
   return (

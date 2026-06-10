@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { createHash, randomBytes } from 'crypto';
+import { MailService } from '~/shared/mail/mail.service';
 import { TenantConnectionService } from '~/tenancy/tenant-connection.service';
 import { Role } from '../rbac/entities/role.entity';
 import { UserRole } from '../rbac/entities/user-role.entity';
@@ -34,6 +35,7 @@ export class OwnerProvisioningService {
 
   constructor(
     private readonly tenantConnectionService: TenantConnectionService,
+    private readonly mailService: MailService,
   ) {}
 
   async provisionOwner(
@@ -94,6 +96,15 @@ export class OwnerProvisioningService {
           expiresAt,
           usedAt: null,
         }),
+      );
+
+      // Deliver the activation link. Best-effort: MailService swallows transport
+      // errors, and the raw token is still returned for tests / manual delivery.
+      await this.mailService.sendActivationEmail(
+        email,
+        name,
+        rawToken,
+        schemaName,
       );
 
       this.logger.log(`Provisioned owner ${email} in schema ${schemaName}`);

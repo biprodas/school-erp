@@ -11,7 +11,23 @@ export interface ActivatePayload {
   password: string;
 }
 
-/** Tenant context carried on auth responses. */
+/** `data` from `GET /auth/reset-password?token=` — token pre-check. */
+export interface ResetTokenInfo {
+  email: string;
+}
+
+export interface ResetPasswordPayload {
+  token: string;
+  password: string;
+}
+
+/** `data` from `POST /auth/verify-email`. */
+export interface VerifyEmailResult {
+  email: string;
+  emailVerifiedAt: string;
+}
+
+/** Tenant context carried on auth responses, incl. onboarding progress. */
 export interface TenantContext {
   id: string;
   slug: string;

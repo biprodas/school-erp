@@ -40,6 +40,10 @@ export class User {
   @Column({ name: 'platform_user_id', type: 'uuid', nullable: true })
   platformUserId: string | null;
 
+  /** Set when the user confirms their email; null while unverified. */
+  @Column({ name: 'email_verified_at', type: 'timestamptz', nullable: true })
+  emailVerifiedAt: Date | null;
+
   @OneToMany(() => UserRole, (userRole) => userRole.user)
   userRoles: UserRole[];
 

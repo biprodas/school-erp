@@ -99,7 +99,15 @@ export const PlatformLoginForm = () => {
               control={form.control}
               render={({ field, fieldState }) => (
                 <Field className="gap-1">
-                  <FieldLabel htmlFor={field.name}>Password</FieldLabel>
+                  <div className="flex items-center">
+                    <FieldLabel htmlFor={field.name}>Password</FieldLabel>
+                    <Link
+                      href="/forgot-password"
+                      className="ml-auto inline-block text-xs underline-offset-4 hover:underline"
+                    >
+                      Forgot your password?
+                    </Link>
+                  </div>
                   <div className="relative">
                     <Input
                       {...field}

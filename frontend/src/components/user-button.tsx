@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import {
   DropdownMenu,
@@ -39,6 +40,7 @@ function getInitials(name: string): string {
 
 export function UserButton() {
   const { data: session, status } = useSession();
+  const router = useRouter();
 
   if (status === "loading") {
     return <div className="w-8 h-8 rounded-full bg-muted animate-pulse" />;
@@ -56,8 +58,16 @@ export function UserButton() {
   const email = session.user.email ?? "";
   const avatar = session.user.image ?? "";
   const initials = getInitials(name);
-  // Both surfaces share `/login`; the host renders the right view after logout.
-  const loginPath = ROUTES.TENANT_LOGIN;
+
+  // Sign out without NextAuth's redirect: its server-inferred base URL drops the
+  // tenant subdomain (lands on the apex/localhost). Clear the session, then
+  // soft-navigate to `/login` — a relative push stays on the current host and
+  // avoids a full page reload.
+  const handleLogout = async () => {
+    await signOut({ redirect: false });
+    router.push(ROUTES.TENANT_LOGIN);
+    router.refresh();
+  };
 
   return (
     <DropdownMenu>
@@ -109,7 +119,7 @@ export function UserButton() {
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => signOut({ redirectTo: loginPath })}>
+        <DropdownMenuItem onClick={handleLogout}>
           <LogOutIcon />
           Log out
         </DropdownMenuItem>
