@@ -59,18 +59,19 @@ export class MailService {
 
   /**
    * Absolute frontend URL for `path` (a path-with-query like
-   * `/reset-password?token=…`). When a tenant slug and a configured root domain
-   * are both present, the link is built on the tenant's subdomain
-   * (`{slug}.{rootDomain}`) reusing appUrl's protocol + port, so the host itself
-   * carries the tenant. Otherwise it falls back to appUrl, appending a
-   * `&tenant=` hint so the frontend can still scope the request.
+   * `/reset-password?token=…`). When a root domain is configured, the link is
+   * built under it — on the tenant's subdomain (`{slug}.{rootDomain}`) when a
+   * slug is given, or on the platform apex (`{rootDomain}`) otherwise — reusing
+   * appUrl's protocol + port so the host carries the right surface. Without a
+   * root domain it falls back to appUrl, appending a `&tenant=` hint for tenants.
    */
   private buildLink(path: string, tenantSlug?: string): string {
     const { rootDomain } = this;
-    if (tenantSlug && rootDomain) {
+    if (rootDomain) {
       const base = new URL(this.appUrl);
       const portSuffix = base.port ? `:${base.port}` : '';
-      return `${base.protocol}//${tenantSlug}.${rootDomain}${portSuffix}${path}`;
+      const host = tenantSlug ? `${tenantSlug}.${rootDomain}` : rootDomain;
+      return `${base.protocol}//${host}${portSuffix}${path}`;
     }
     const link = `${this.appUrl}${path}`;
     return tenantSlug ? `${link}&tenant=${tenantSlug}` : link;

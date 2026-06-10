@@ -12,7 +12,7 @@ export default function PlatformSignupView() {
           </div>
           SchoolERP Platform
         </Link>
-        <PlatformSignupForm />
+        <PlatformSignupForm requireVerification />
       </div>
     </div>
   )
