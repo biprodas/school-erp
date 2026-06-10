@@ -3,10 +3,18 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { EyeIcon, EyeOffIcon, Loader2Icon } from "lucide-react"
 import Link from "next/link"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useState } from "react"
 import { Controller, useForm } from "react-hook-form"
 import { toast } from "sonner"
-import { z } from "zod"
+import {
+  useCheckResetToken,
+  useResetPassword,
+} from "~/apis/tenanted/auth/queries"
+import {
+  resetPasswordSchema,
+  type ResetPasswordValues,
+} from "~/apis/tenanted/auth/schema"
 import { Button } from "~/components/ui/button"
 import {
   Card,
@@ -25,34 +33,57 @@ import {
 import { Input } from "~/components/ui/input"
 import { cn } from "~/lib/utils"
 
-const resetPasswordSchema = z
-  .object({
-    password: z
-      .string()
-      .min(8, "Password must be at least 8 characters"),
-    confirmPassword: z.string().min(1, "Please confirm your password"),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords do not match",
-    path: ["confirmPassword"],
-  })
-
-type ResetPasswordFormValues = z.infer<typeof resetPasswordSchema>
-
 export const ResetPasswordForm = () => {
+  const searchParams = useSearchParams()
+  const token = searchParams.get("token") ?? ""
+  const router = useRouter()
+
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
 
-  const form = useForm<ResetPasswordFormValues>({
+  const check = useCheckResetToken(token)
+  const reset = useResetPassword()
+
+  const form = useForm<ResetPasswordValues>({
     resolver: zodResolver(resetPasswordSchema),
     defaultValues: { password: "", confirmPassword: "" },
   })
 
-  const onSubmit = async (values: ResetPasswordFormValues) => {
-    console.log(values)
-    await new Promise((resolve) => setTimeout(resolve, 600))
+  if (!token) {
+    return <InvalidState description="This reset link is missing its token." />
+  }
+
+  if (check.isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Reset your password</CardTitle>
+          <CardDescription>Checking your reset link…</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <FieldGroup>
+            <Loader2Icon className="mx-auto size-6 animate-spin text-muted-foreground" />
+          </FieldGroup>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (check.isError || !check.data) {
+    return (
+      <InvalidState description="This reset link is invalid or has expired. Request a new one to continue." />
+    )
+  }
+
+  const onSubmit = async (values: ResetPasswordValues) => {
+    try {
+      await reset.mutateAsync({ token, password: values.password })
+    } catch {
+      toast.error("Could not reset password. The link may have expired.")
+      return
+    }
     toast.success("Password has been reset")
-    form.reset()
+    router.push("/login")
   }
 
   return (
@@ -60,7 +91,7 @@ export const ResetPasswordForm = () => {
       <CardHeader>
         <CardTitle>Reset your password</CardTitle>
         <CardDescription>
-          Choose a new password for your account
+          Choose a new password for <strong>{check.data.email}</strong>
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -141,8 +172,11 @@ export const ResetPasswordForm = () => {
             />
 
             <Field>
-              <Button type="submit" disabled={form.formState.isSubmitting}>
-                {form.formState.isSubmitting ? (
+              <Button
+                type="submit"
+                disabled={reset.isPending || form.formState.isSubmitting}
+              >
+                {reset.isPending || form.formState.isSubmitting ? (
                   <>
                     <Loader2Icon className="size-4 animate-spin" />
                     Resetting…
@@ -157,6 +191,27 @@ export const ResetPasswordForm = () => {
             </Field>
           </FieldGroup>
         </form>
+      </CardContent>
+    </Card>
+  )
+}
+
+function InvalidState({ description }: { description: string }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Reset link problem</CardTitle>
+        <CardDescription>{description}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <FieldGroup>
+          <Button asChild>
+            <Link href="/forgot-password">Request a new link</Link>
+          </Button>
+          <FieldDescription className="text-center">
+            Back to <Link href="/login">Login</Link>
+          </FieldDescription>
+        </FieldGroup>
       </CardContent>
     </Card>
   )

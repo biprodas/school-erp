@@ -18,7 +18,11 @@ const instance = createApiClient(
     };
   },
   () => {
-    void signOut({ redirectTo: TENANT_LOGIN });
+    // Avoid NextAuth's redirect (its server-inferred base URL drops the tenant
+    // subdomain). Clear the session, then bounce to `/login` on this same host.
+    void signOut({ redirect: false }).then(() => {
+      window.location.href = `${window.location.origin}${TENANT_LOGIN}`;
+    });
   },
 );
 

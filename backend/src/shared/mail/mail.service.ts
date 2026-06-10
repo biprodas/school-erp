@@ -37,10 +37,7 @@ export class MailService {
     token: string,
     tenantSlug?: string,
   ): Promise<void> {
-    const link = this.withTenant(
-      `${this.appUrl}/verify-email?token=${token}`,
-      tenantSlug,
-    );
+    const link = this.buildLink(`/verify-email?token=${token}`, tenantSlug);
     await this.send(to, 'Verify your email', 'email-verification', {
       name,
       link,
@@ -53,23 +50,38 @@ export class MailService {
     token: string,
     tenantSlug?: string,
   ): Promise<void> {
-    const link = this.withTenant(
-      `${this.appUrl}/reset-password?token=${token}`,
-      tenantSlug,
-    );
+    const link = this.buildLink(`/reset-password?token=${token}`, tenantSlug);
     await this.send(to, 'Reset your password', 'password-reset', {
       name,
       link,
     });
   }
 
-  /** Appends the tenant slug to a link so the frontend can scope the request. */
-  private withTenant(link: string, tenantSlug?: string): string {
+  /**
+   * Absolute frontend URL for `path` (a path-with-query like
+   * `/reset-password?token=…`). When a tenant slug and a configured root domain
+   * are both present, the link is built on the tenant's subdomain
+   * (`{slug}.{rootDomain}`) reusing appUrl's protocol + port, so the host itself
+   * carries the tenant. Otherwise it falls back to appUrl, appending a
+   * `&tenant=` hint so the frontend can still scope the request.
+   */
+  private buildLink(path: string, tenantSlug?: string): string {
+    const { rootDomain } = this;
+    if (tenantSlug && rootDomain) {
+      const base = new URL(this.appUrl);
+      const portSuffix = base.port ? `:${base.port}` : '';
+      return `${base.protocol}//${tenantSlug}.${rootDomain}${portSuffix}${path}`;
+    }
+    const link = `${this.appUrl}${path}`;
     return tenantSlug ? `${link}&tenant=${tenantSlug}` : link;
   }
 
   private get appUrl(): string {
     return this.config.get<MailerConfig>('mailer')!.appUrl;
+  }
+
+  private get rootDomain(): string | undefined {
+    return this.config.get<MailerConfig>('mailer')!.rootDomain;
   }
 
   private async send(

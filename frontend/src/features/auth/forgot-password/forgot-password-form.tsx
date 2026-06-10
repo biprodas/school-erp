@@ -1,11 +1,16 @@
 "use client"
 
 import { zodResolver } from "@hookform/resolvers/zod"
-import { Loader2Icon } from "lucide-react"
+import { Loader2Icon, MailCheckIcon } from "lucide-react"
 import Link from "next/link"
+import { useState } from "react"
 import { Controller, useForm } from "react-hook-form"
 import { toast } from "sonner"
-import { z } from "zod"
+import {
+  forgotPasswordSchema,
+  type ForgotPasswordValues,
+} from "~/apis/tenanted/auth/schema"
+import { useRequestPasswordReset } from "~/apis/tenanted/auth/queries"
 import { Button } from "~/components/ui/button"
 import {
   Card,
@@ -23,26 +28,57 @@ import {
 } from "~/components/ui/field"
 import { Input } from "~/components/ui/input"
 
-const forgotPasswordSchema = z.object({
-  email: z
-    .string()
-    .min(1, "Email is required")
-    .email("Enter a valid email"),
-})
-
-type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>
-
 export const ForgotPasswordForm = () => {
-  const form = useForm<ForgotPasswordFormValues>({
+  // The backend always responds 200 (anti-enumeration), so on success we show a
+  // neutral confirmation regardless of whether the address exists.
+  const [submittedEmail, setSubmittedEmail] = useState<string | null>(null)
+  const requestReset = useRequestPasswordReset()
+
+  const form = useForm<ForgotPasswordValues>({
     resolver: zodResolver(forgotPasswordSchema),
     defaultValues: { email: "" },
   })
 
-  const onSubmit = async (values: ForgotPasswordFormValues) => {
-    console.log(values)
-    await new Promise((resolve) => setTimeout(resolve, 600))
-    toast.success(`Reset link sent to ${values.email}`)
-    form.reset()
+  const onSubmit = async (values: ForgotPasswordValues) => {
+    try {
+      await requestReset.mutateAsync(values.email)
+      setSubmittedEmail(values.email)
+    } catch {
+      toast.error("Something went wrong. Please try again.")
+    }
+  }
+
+  if (submittedEmail) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <MailCheckIcon className="size-5" />
+            Check your email
+          </CardTitle>
+          <CardDescription>
+            If an account exists for <strong>{submittedEmail}</strong>, we&apos;ve
+            sent a link to reset your password. The link expires in 1 hour.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <FieldGroup>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setSubmittedEmail(null)
+                form.reset()
+              }}
+            >
+              Use a different email
+            </Button>
+            <FieldDescription className="text-center">
+              Remember your password? <Link href="/login">Login</Link>
+            </FieldDescription>
+          </FieldGroup>
+        </CardContent>
+      </Card>
+    )
   }
 
   return (
