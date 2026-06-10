@@ -3,7 +3,8 @@
 import * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { ChevronRight, Search, type LucideIcon } from "lucide-react"
+import { useSession } from "next-auth/react"
+import { ChevronRight, Search } from "lucide-react"
 
 import {
   Collapsible,
@@ -12,6 +13,13 @@ import {
 } from "~/components/ui/collapsible"
 import { Input } from "~/components/ui/input"
 import { cn } from "~/lib/utils"
+import {
+  isActivePath,
+  menuHasOpenSubmenu,
+  menuRowActive,
+  type NavCategory,
+  type NavMenuEntry,
+} from "~/lib/sidebar-nav"
 import {
   SidebarGroup,
   SidebarGroupLabel,
@@ -24,72 +32,47 @@ import {
   SidebarMenuSubItem,
 } from "~/components/ui/sidebar"
 
-/** Third level: links under a menu (category → menu → submenu). */
-export type NavSubmenuItem = {
-  title: string
-  url: string
-  icon: LucideIcon
-  exact?: boolean
+export type { NavCategory, NavMenuEntry, NavSubmenuItem } from "~/lib/sidebar-nav"
+
+/** Whether a user with `roles` (and admin flag) may see a role-gated item. */
+function canSee(gate: string[] | undefined, roles: string[], isAdmin: boolean) {
+  if (isAdmin) return true
+  if (!gate || gate.length === 0) return true
+  return gate.some((r) => roles.includes(r))
 }
 
-/** Second level: one collapsible row (optional submenu). */
-export type NavMenuEntry = {
-  title: string
-  /** Primary navigation target for the menu row. */
-  url: string
-  icon: LucideIcon
-  /** Use for leaf routes like `/dashboard` so nested paths don’t highlight it. */
-  exact?: boolean
-  /** Submenu entries; omit or leave empty for a single leaf link. */
-  items?: NavSubmenuItem[]
-}
+/**
+ * Drop categories/menus/submenus the user isn't allowed to see. Admins (the
+ * tenant `isAdmin` flag or the `"admin"` role) see everything. A menu whose
+ * submenus are all filtered out is dropped; a category with no remaining menus
+ * is dropped.
+ */
+function filterNavByRoles(
+  categories: NavCategory[],
+  roles: string[],
+  isAdmin: boolean
+): NavCategory[] {
+  if (isAdmin || roles.includes("admin")) return categories
 
-/** Top level: sidebar section grouping related menus. */
-export type NavCategory = {
-  label: string
-  /** Tailwind background class for the category marker dot (e.g. `bg-violet-500`). */
-  accentDot?: string
-  menus: NavMenuEntry[]
-}
+  const out: NavCategory[] = []
+  for (const cat of categories) {
+    if (!canSee(cat.roles, roles, false)) continue
 
-function normalizePath(p: string) {
-  if (!p || p === "#") return ""
-  const t = p.replace(/\/$/, "")
-  return t === "" ? "/" : t
-}
+    const nextMenus: NavMenuEntry[] = []
+    for (const menu of cat.menus) {
+      if (!canSee(menu.roles, roles, false)) continue
 
-function isActivePath(
-  pathname: string,
-  url: string,
-  options?: { exact?: boolean }
-): boolean {
-  const path = normalizePath(pathname)
-  const target = normalizePath(url)
-  if (!target || target === "#") return false
-  if (options?.exact) return path === target
-  return path === target || path.startsWith(`${target}/`)
-}
+      if (!menu.items?.length) {
+        nextMenus.push(menu)
+        continue
+      }
+      const subs = menu.items.filter((s) => canSee(s.roles, roles, false))
+      if (subs.length) nextMenus.push({ ...menu, items: subs })
+    }
 
-function menuHasOpenSubmenu(items: NavSubmenuItem[] | undefined, pathname: string) {
-  return Boolean(
-    items?.some((sub) =>
-      isActivePath(pathname, sub.url, { exact: sub.exact })
-    )
-  )
-}
-
-function menuRowActive(
-  pathname: string,
-  menu: NavMenuEntry,
-  hasSub: boolean
-): boolean {
-  if (!hasSub) {
-    return isActivePath(pathname, menu.url, { exact: menu.exact })
+    if (nextMenus.length) out.push({ ...cat, menus: nextMenus })
   }
-  return (
-    menuHasOpenSubmenu(menu.items, pathname) ||
-    isActivePath(pathname, menu.url, { exact: menu.exact })
-  )
+  return out
 }
 
 function normalizeQuery(q: string) {
@@ -142,12 +125,23 @@ function filterNavCategories(
 
 export function NavMain({ categories }: { categories: NavCategory[] }) {
   const pathname = usePathname()
+  const { data: session } = useSession()
+  const roles = React.useMemo(
+    () => session?.user?.roles ?? [],
+    [session?.user?.roles]
+  )
+  const isAdmin = session?.user?.isAdmin ?? false
   const [filter, setFilter] = React.useState("")
   const filterActive = normalizeQuery(filter).length > 0
 
+  // Role gate first (what the user is allowed to see), then the search filter.
+  const allowedCategories = React.useMemo(
+    () => filterNavByRoles(categories, roles, isAdmin),
+    [categories, roles, isAdmin]
+  )
   const visibleCategories = React.useMemo(
-    () => filterNavCategories(categories, filter),
-    [categories, filter]
+    () => filterNavCategories(allowedCategories, filter),
+    [allowedCategories, filter]
   )
 
   return (

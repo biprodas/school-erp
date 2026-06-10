@@ -1,5 +1,5 @@
 import type { DefaultSession } from "next-auth";
-import type { AuthKind, Tenant } from "~/types/user";
+import type { AuthKind, Tenant, UserType } from "~/types/user";
 
 /**
  * Module augmentation so `session`, `user`, and the JWT carry the backend
@@ -12,6 +12,7 @@ declare module "next-auth" {
     user: {
       id: string;
       roles?: string[];
+      userType?: UserType;
       isAdmin: boolean;
       tenant?: Tenant;
     } & DefaultSession["user"];

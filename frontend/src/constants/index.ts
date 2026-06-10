@@ -1,10 +1,4 @@
-// Site metadata.
-export const SITE = {
-  NAME: "StartDescribe",
-  URL: "https://startdescribe.com",
-  SUPPORT_CONTACT_EMAIL: "contact@startdescribe.com",
-  CUSTOM_CALL_URL: "#",
-} as const;
+import { resolveUserType } from "~/types/user";
 
 export const ROUTES = {
   // Auth routes are shared `/login` `/signup`; the HOST decides which surface
@@ -12,6 +6,9 @@ export const ROUTES = {
   TENANT_LOGIN: "/login",
   TENANT_SIGNUP: "/signup",
   DEFAULT_LOGIN_REDIRECT: "/dashboard",
+
+  // Where tenant users with the "student" role land after login.
+  STUDENT_LOGIN_REDIRECT: "/student/dashboard",
 
   // Platform auth lives on the same `/login` `/signup` (apex host); only the
   // post-login app area differs.
@@ -44,6 +41,7 @@ export const authRoutes = [
 export const protectedPrefixes = [
   "/dashboard",
   "/profile",
+  "/student",
   "/platform/dashboard",
   "/platform/tenants",
   "/platform/users",
@@ -65,4 +63,16 @@ export function isProtectedRoute(pathname: string): boolean {
 /** True for any path under the platform (super-admin) surface. */
 export function isPlatformPath(pathname: string): boolean {
   return pathname === "/platform" || pathname.startsWith("/platform/");
+}
+
+/** True for any path under the student surface. */
+export function isStudentPath(pathname: string): boolean {
+  return pathname === "/student" || pathname.startsWith("/student/");
+}
+
+/** Post-login landing page for a tenant user, based on their derived surface. */
+export function resolveTenantLanding(roles?: string[]): string {
+  return resolveUserType(roles) === "student"
+    ? ROUTES.STUDENT_LOGIN_REDIRECT
+    : ROUTES.DEFAULT_LOGIN_REDIRECT;
 }

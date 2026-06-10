@@ -1,6 +1,13 @@
 import type { NextAuthConfig } from "next-auth";
 import { NextResponse } from "next/server";
-import { ROUTES, isAuthRoute, isProtectedRoute } from "~/constants";
+import {
+  ROUTES,
+  isAuthRoute,
+  isProtectedRoute,
+  isStudentPath,
+  resolveTenantLanding,
+} from "~/constants";
+import { resolveUserType } from "~/types/user";
 
 /**
  * Optional shared cookie domain so the session can span tenant subdomains
@@ -75,14 +82,14 @@ export const authConfig = {
       const isLoggedIn = !!auth?.user;
       const { pathname } = request.nextUrl;
 
-      // Authenticated users shouldn't see auth pages — send to their dashboard
-      // based on which surface they're signed into.
+      // Authenticated users shouldn't see auth pages — send to their landing
+      // page based on surface (platform vs tenant) and, for tenants, role.
       if (isAuthRoute(pathname)) {
         if (isLoggedIn) {
           const target =
             auth?.authKind === "platform"
               ? ROUTES.PLATFORM_LOGIN_REDIRECT
-              : ROUTES.DEFAULT_LOGIN_REDIRECT;
+              : resolveTenantLanding(auth?.user?.roles);
           return NextResponse.redirect(new URL(target, request.nextUrl));
         }
         return true;
@@ -93,6 +100,26 @@ export const authConfig = {
         const loginUrl = new URL(ROUTES.TENANT_LOGIN, request.nextUrl);
         loginUrl.searchParams.set("callbackUrl", pathname);
         return NextResponse.redirect(loginUrl);
+      }
+
+      // Hard-separate the two tenant surfaces: students stay in `/student/*`,
+      // staff stay in the dashboard. Platform users are gated by `authKind`.
+      if (isLoggedIn && auth?.authKind === "tenant") {
+        const userType = resolveUserType(auth.user?.roles);
+        if (
+          userType === "student" &&
+          isProtectedRoute(pathname) &&
+          !isStudentPath(pathname)
+        ) {
+          return NextResponse.redirect(
+            new URL(ROUTES.STUDENT_LOGIN_REDIRECT, request.nextUrl),
+          );
+        }
+        if (userType === "staff" && isStudentPath(pathname)) {
+          return NextResponse.redirect(
+            new URL(ROUTES.DEFAULT_LOGIN_REDIRECT, request.nextUrl),
+          );
+        }
       }
 
       return true;
@@ -112,6 +139,7 @@ export const authConfig = {
       session.authKind = token.authKind;
       session.user.id = token.sub ?? session.user.id;
       session.user.roles = token.roles;
+      session.user.userType = resolveUserType(token.roles);
       session.user.isAdmin = token.isAdmin;
       session.user.tenant = token.tenant;
       return session;
