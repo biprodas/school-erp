@@ -470,6 +470,8 @@ export const sidebarNavCategories: NavCategory[] = [
         title: "Finance",
         url: "/dashboard/operations/finance",
         icon: Wallet,
+        // Admins/isAdmin see all; otherwise restricted to finance staff.
+        roles: ["accountant"],
         items: [
           {
             title: "Fee Structure",
@@ -588,6 +590,8 @@ export const sidebarNavCategories: NavCategory[] = [
         title: "Library",
         url: "/dashboard/operations/campus/library/books",
         icon: Library,
+        // Admins/isAdmin see all; otherwise restricted to library staff.
+        roles: ["librarian"],
         items: [
           {
             title: "Books",
@@ -740,6 +744,8 @@ export const sidebarNavCategories: NavCategory[] = [
   {
     label: "Administration",
     accentDot: "bg-zinc-400",
+    // School setup, users & access, integrations, system — admins only.
+    roles: ["admin"],
     menus: [
       {
         title: "School setup",

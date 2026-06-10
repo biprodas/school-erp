@@ -3,12 +3,13 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { EyeIcon, EyeOffIcon, Loader2Icon } from "lucide-react"
 import Link from "next/link"
+import { getSession } from "next-auth/react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useState } from "react"
 import { Controller, useForm } from "react-hook-form"
 import { toast } from "sonner"
 import { z } from "zod"
-import { ROUTES } from "~/constants";
+import { resolveTenantLanding } from "~/constants";
 import { signInWithCredentials } from "~/features/auth/hooks"
 import { resolveClientTenantSlug } from "~/lib/tenant"
 import { Button } from "~/components/ui/button"
@@ -83,11 +84,15 @@ export const LoginForm = () => {
       return
     }
 
-    const callbackUrl =
-      searchParams.get("callbackUrl") || ROUTES.DEFAULT_LOGIN_REDIRECT
+    // Honor an explicit callbackUrl; otherwise land the user on the surface
+    // their role belongs to (students → student area, staff → dashboard).
+    const callbackUrl = searchParams.get("callbackUrl")
+    const target =
+      callbackUrl ||
+      resolveTenantLanding((await getSession())?.user?.roles)
 
     toast.success("Welcome back")
-    router.push(callbackUrl)
+    router.push(target)
     router.refresh()
   }
 
