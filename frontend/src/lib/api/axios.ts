@@ -3,7 +3,7 @@ import axios, {
   type AxiosRequestConfig,
   type InternalAxiosRequestConfig,
 } from "axios";
-import { API_BASE_URL, TENANT_HEADER } from "~/config";
+import { apiConfig } from "~/config/api-config";
 import { ApiError, type ApiResponse } from "~/types/api";
 
 /** Auth context resolved per-request (token + optional tenant slug). */
@@ -26,7 +26,7 @@ export function createApiClient(
   onUnauthorized?: () => void,
 ): AxiosInstance {
   const instance = axios.create({
-    baseURL: API_BASE_URL,
+    baseURL: apiConfig.baseUrl,
     headers: { "Content-Type": "application/json" },
   });
 
@@ -37,8 +37,8 @@ export function createApiClient(
         config.headers.set("Authorization", `Bearer ${ctx.accessToken}`);
       }
       // Don't clobber an explicitly-set tenant header (e.g. apex registration).
-      if (ctx?.tenantSlug && !config.headers.has(TENANT_HEADER)) {
-        config.headers.set(TENANT_HEADER, ctx.tenantSlug);
+      if (ctx?.tenantSlug && !config.headers.has(apiConfig.tenantHeader)) {
+        config.headers.set(apiConfig.tenantHeader, ctx.tenantSlug);
       }
       return config;
     },

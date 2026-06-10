@@ -9,16 +9,6 @@ export const TENANT_STATUSES = [
 ] as const;
 export type TenantStatus = (typeof TENANT_STATUSES)[number];
 
-/** Owner-onboarding (bootstrap) progress — mirrors the backend enum. */
-export const TENANT_BOOTSTRAP_STATUSES = [
-  "school_created",
-  "owner_activated",
-  "admin_invited",
-  "completed",
-] as const;
-export type TenantBootstrapStatus =
-  (typeof TENANT_BOOTSTRAP_STATUSES)[number];
-
 /** What happens to the previous owner on a tenant ownership transfer. */
 export const DEMOTE_OPTIONS = ["admin", "member", "remove"] as const;
 export type DemoteOldOwnerTo = (typeof DEMOTE_OPTIONS)[number];
@@ -30,7 +20,6 @@ export interface PlatformTenant {
   schemaName: string;
   domain: string | null;
   status: TenantStatus;
-  bootstrapStatus: TenantBootstrapStatus;
   createdAt: string;
   updatedAt: string;
 }

@@ -1,7 +1,5 @@
 /** Owner/staff account-activation data structures (tenant-scoped). */
 
-import type { TenantBootstrapStatus } from "~/apis/platform/tenants/types";
-
 export interface ActivationInfo {
   email: string;
   name: string;
@@ -34,7 +32,6 @@ export interface TenantContext {
   id: string;
   slug: string;
   schema: string;
-  bootstrapStatus: TenantBootstrapStatus | null;
 }
 
 /** `data` payload returned by `POST /auth/activate`. */

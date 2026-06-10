@@ -8,6 +8,7 @@ import { ThemeProvider } from "~/providers/theme-provider";
 import { ToasterProvider } from "~/providers/toast-provider";
 
 import "./globals.css";
+import { siteConfig } from "~/config/site-config";
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 
@@ -32,12 +33,35 @@ const fontMono = JetBrains_Mono({
 });
 
 
-
 export const metadata: Metadata = {
-  title: "SchoolERP — Modern School Management Platform",
-  description:
-    "SchoolERP unifies academics, finance, HR, and communication on a single platform. Trusted by 500+ schools.",
+  metadataBase: new URL(siteConfig.siteUrl),
+  title: {
+    default: siteConfig.title,
+    template: `%s — ${siteConfig.name}`,
+  },
+  description: siteConfig.description,
+  keywords: siteConfig.keywords,
+  applicationName: siteConfig.name,
+  robots: siteConfig.robots,
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    type: "website",
+    siteName: siteConfig.name,
+    title: siteConfig.title,
+    description: siteConfig.description,
+    url: siteConfig.siteUrl,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: siteConfig.title,
+    description: siteConfig.description,
+  },
+  // Icons are generated from src/app/{favicon.ico,icon.png,apple-icon.png}
+  // via the Next.js file convention (see scripts/generate-favicons.mjs).
 };
+
 
 export default function RootLayout({
   children,

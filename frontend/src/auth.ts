@@ -1,7 +1,7 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { authConfigForRequest } from "~/auth.config";
-import { AUTH_ENDPOINTS, TENANT_HEADER } from "~/config";
+import { AUTH_ENDPOINTS, apiConfig } from "~/config/api-config";
 import { backendPost } from "~/lib/api/backend";
 import type { PlatformAuthData, TenantAuthData } from "~/types/api";
 
@@ -25,7 +25,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth((request) => ({
         // `x-tenant-id` header (custom domains in production — no client work).
         const tenantSlug =
           (credentials?.tenantSlug as string | undefined)?.trim() ||
-          request?.headers?.get(TENANT_HEADER)?.trim() ||
+          request?.headers?.get(apiConfig.tenantHeader)?.trim() ||
           undefined;
         if (!email || !password || !tenantSlug) return null;
 
@@ -68,6 +68,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth((request) => ({
             AUTH_ENDPOINTS.platform.login,
             { email, password },
           );
+
           return {
             id: data.user.id,
             email: data.user.email,

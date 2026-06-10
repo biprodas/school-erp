@@ -15,18 +15,13 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "~/components/ui/sidebar";
-import {
-  PLATFORM_LOGIN_REDIRECT,
-  PLATFORM_MEMBERSHIPS,
-  PLATFORM_TENANTS,
-  PLATFORM_USERS,
-} from "~/constants/routes";
+import { ROUTES } from "~/constants";
 
 const NAV_ITEMS = [
-  { title: "Overview", url: PLATFORM_LOGIN_REDIRECT, icon: LayoutDashboard },
-  { title: "Tenants", url: PLATFORM_TENANTS, icon: Building2 },
-  { title: "Users", url: PLATFORM_USERS, icon: ShieldUser },
-  { title: "Memberships", url: PLATFORM_MEMBERSHIPS, icon: Users },
+  { title: "Overview", url: ROUTES.PLATFORM_LOGIN_REDIRECT, icon: LayoutDashboard },
+  { title: "Tenants", url: ROUTES.PLATFORM_TENANTS, icon: Building2 },
+  { title: "Users", url: ROUTES.PLATFORM_USERS, icon: ShieldUser },
+  { title: "Memberships", url: ROUTES.PLATFORM_MEMBERSHIPS, icon: Users },
 ] as const;
 
 export function PlatformSidebar({
@@ -43,7 +38,7 @@ export function PlatformSidebar({
               asChild
               className="data-[slot=sidebar-menu-button]:p-1.5!"
             >
-              <Link href={PLATFORM_LOGIN_REDIRECT}>
+              <Link href={ROUTES.PLATFORM_LOGIN_REDIRECT}>
                 <FaSchool className="size-5!" />
                 <span className="text-base font-semibold">
                   SchoolERP Platform

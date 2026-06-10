@@ -1,12 +1,6 @@
 import type { NextAuthConfig } from "next-auth";
 import { NextResponse } from "next/server";
-import {
-  DEFAULT_LOGIN_REDIRECT,
-  PLATFORM_LOGIN_REDIRECT,
-  TENANT_LOGIN,
-  isAuthRoute,
-  isProtectedRoute,
-} from "~/constants/routes";
+import { ROUTES, isAuthRoute, isProtectedRoute } from "~/constants";
 
 /**
  * Optional shared cookie domain so the session can span tenant subdomains
@@ -73,7 +67,7 @@ export const authConfig = {
   session: { strategy: "jwt" },
   useSecureCookies: USE_SECURE_COOKIES,
   pages: {
-    signIn: TENANT_LOGIN,
+    signIn: ROUTES.TENANT_LOGIN,
   },
   providers: [],
   callbacks: {
@@ -87,8 +81,8 @@ export const authConfig = {
         if (isLoggedIn) {
           const target =
             auth?.authKind === "platform"
-              ? PLATFORM_LOGIN_REDIRECT
-              : DEFAULT_LOGIN_REDIRECT;
+              ? ROUTES.PLATFORM_LOGIN_REDIRECT
+              : ROUTES.DEFAULT_LOGIN_REDIRECT;
           return NextResponse.redirect(new URL(target, request.nextUrl));
         }
         return true;
@@ -96,7 +90,7 @@ export const authConfig = {
 
       // Gate protected areas; the host renders the right login surface.
       if (isProtectedRoute(pathname) && !isLoggedIn) {
-        const loginUrl = new URL(TENANT_LOGIN, request.nextUrl);
+        const loginUrl = new URL(ROUTES.TENANT_LOGIN, request.nextUrl);
         loginUrl.searchParams.set("callbackUrl", pathname);
         return NextResponse.redirect(loginUrl);
       }

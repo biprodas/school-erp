@@ -8,7 +8,7 @@
  *     host is an opaque key resolved via the backend's public lookup endpoint.
  */
 
-import { API_BASE_URL } from "~/config";
+import { apiConfig } from "~/config/api-config";
 
 /** Platform root domain, e.g. `lvh.me` in dev or `mydomain.com` in prod. */
 const ROOT_DOMAIN = (process.env.NEXT_PUBLIC_ROOT_DOMAIN || "")
@@ -113,7 +113,7 @@ export async function resolveTenantSlug(
 
   try {
     const res = await fetch(
-      `${API_BASE_URL}/public/tenants/resolve?host=${encodeURIComponent(h)}`,
+      `${apiConfig.baseUrl}/public/tenants/resolve?host=${encodeURIComponent(h)}`,
       { headers: { Accept: "application/json" } },
     );
     if (!res.ok) {

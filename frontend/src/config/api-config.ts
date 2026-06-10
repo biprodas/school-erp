@@ -1,7 +1,12 @@
-/** Centralized runtime config. */
+const API_BASE_URL = process.env.NEXT_PUBLIC_BASE_API_URL ?? "http://localhost:3900/api";
+const TENANT_HEADER = "x-tenant-id";
 
-export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_BASE_API_URL ?? "http://localhost:3900/api";
+export const apiConfig = {
+  baseUrl: API_BASE_URL,
+  tenantHeader: TENANT_HEADER,
+} as const;
+
+export type ApiConfig = typeof apiConfig;
 
 /** Backend auth endpoints, grouped by auth surface. */
 export const AUTH_ENDPOINTS = {
@@ -17,5 +22,3 @@ export const AUTH_ENDPOINTS = {
   },
 } as const;
 
-/** Header the backend reads to resolve the active tenant. */
-export const TENANT_HEADER = "x-tenant-id";

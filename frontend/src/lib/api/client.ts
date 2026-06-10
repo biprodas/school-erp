@@ -1,7 +1,7 @@
 "use client";
 
 import { getSession, signOut } from "next-auth/react";
-import { TENANT_LOGIN } from "~/constants/routes";
+import { ROUTES } from "~/constants";
 import { getClientTenantSlug } from "~/lib/tenant";
 import { createApiClient, makeHttp } from "./axios";
 
@@ -18,11 +18,7 @@ const instance = createApiClient(
     };
   },
   () => {
-    // Avoid NextAuth's redirect (its server-inferred base URL drops the tenant
-    // subdomain). Clear the session, then bounce to `/login` on this same host.
-    void signOut({ redirect: false }).then(() => {
-      window.location.href = `${window.location.origin}${TENANT_LOGIN}`;
-    });
+    void signOut({ redirectTo: ROUTES.TENANT_LOGIN });
   },
 );
 

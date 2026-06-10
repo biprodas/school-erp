@@ -20,7 +20,7 @@ import {
   BellIcon,
 } from "lucide-react";
 import { ThemeSegmentControl } from "./theme-segment-control";
-import { TENANT_LOGIN } from "~/constants/routes";
+import { ROUTES } from "~/constants";
 import {
   Avatar,
   AvatarFallback,
@@ -48,7 +48,7 @@ export function UserButton() {
 
   if (!session?.user) {
     return (
-      <Link href={TENANT_LOGIN}>
+      <Link href={ROUTES.TENANT_LOGIN}>
         <Button variant="outline" size="sm">Sign in</Button>
       </Link>
     );
@@ -65,7 +65,7 @@ export function UserButton() {
   // avoids a full page reload.
   const handleLogout = async () => {
     await signOut({ redirect: false });
-    router.push(TENANT_LOGIN);
+    router.push(ROUTES.TENANT_LOGIN);
     router.refresh();
   };
 
