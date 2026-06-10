@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { TENANT_HEADER } from "~/config/api-config";
+import { apiConfig } from "~/config/api-config";
 import { api } from "~/lib/api/client";
 import type {
   ActivationInfo,
@@ -28,7 +28,7 @@ export const activateAccount = (payload: ActivatePayload, tenantSlug?: string) =
   api.post<ActivateResult>(
     "/auth/activate",
     payload,
-    tenantSlug ? { headers: { [TENANT_HEADER]: tenantSlug } } : undefined,
+    tenantSlug ? { headers: { [apiConfig.tenantHeader]: tenantSlug } } : undefined,
   );
 
 // ---- Password reset (tenant-scoped via the subdomain's x-tenant-id header) ----
