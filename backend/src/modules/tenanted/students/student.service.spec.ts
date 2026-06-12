@@ -18,11 +18,10 @@ const makeStudent = (overrides: Partial<Student> = {}): Student => ({
   fullName: 'Ada Lovelace',
   dob: null,
   gender: null,
-  guardianName: null,
-  guardianPhone: null,
   address: null,
   status: StudentStatus.ACTIVE,
   userId: null,
+  guardians: [],
   createdAt: new Date(),
   updatedAt: new Date(),
   syncFullName: () => {},
@@ -214,12 +213,14 @@ describe('StudentService', () => {
     it('updates allowed fields', async () => {
       studentRepo.findByIdOrFail
         .mockResolvedValueOnce(makeStudent())
-        .mockResolvedValueOnce(makeStudent({ guardianName: 'Mom' }));
+        .mockResolvedValueOnce(makeStudent({ address: '12 Oak St' }));
 
-      const result = await service.update('student-1', { guardianName: 'Mom' });
+      const result = await service.update('student-1', {
+        address: '12 Oak St',
+      });
 
       expect(studentRepo.save).toHaveBeenCalled();
-      expect(result.guardianName).toBe('Mom');
+      expect(result.address).toBe('12 Oak St');
     });
   });
 

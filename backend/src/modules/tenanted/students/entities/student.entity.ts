@@ -8,10 +8,12 @@ import {
   Entity,
   JoinColumn,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
+import { StudentGuardian } from '../../guardians/entities/student-guardian.entity';
 import { StudentGender } from '../enums/student-gender.enum';
 import { StudentStatus } from '../enums/student-status.enum';
 
@@ -43,22 +45,6 @@ export class Student {
   @Column({ type: 'varchar', length: 16, nullable: true })
   gender: StudentGender | null;
 
-  @Column({
-    name: 'guardian_name',
-    type: 'varchar',
-    length: 160,
-    nullable: true,
-  })
-  guardianName: string | null;
-
-  @Column({
-    name: 'guardian_phone',
-    type: 'varchar',
-    length: 40,
-    nullable: true,
-  })
-  guardianPhone: string | null;
-
   @Column({ type: 'text', nullable: true })
   address: string | null;
 
@@ -71,6 +57,9 @@ export class Student {
   @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'user_id' })
   user?: User | null;
+
+  @OneToMany(() => StudentGuardian, (link) => link.student)
+  guardians: StudentGuardian[];
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

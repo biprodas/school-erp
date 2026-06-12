@@ -1,0 +1,20 @@
+import { Inject, Injectable } from '@nestjs/common';
+import { TENANT_DATASOURCE } from '~/tenancy/tenancy.constants';
+import { TenantDataSourceProxy } from '~/tenancy/tenant-datasource.proxy';
+import { BaseTenantRepository } from '~/tenancy/base-tenant.repository';
+import { Department } from './entities/department.entity';
+
+@Injectable()
+export class DepartmentRepository extends BaseTenantRepository<Department> {
+  constructor(@Inject(TENANT_DATASOURCE) ds: TenantDataSourceProxy) {
+    super(ds, Department, 'Department');
+  }
+
+  findByName(name: string): Promise<Department | null> {
+    return this.repo.findOne({ where: { name } });
+  }
+
+  findFiltered(where: Record<string, any>): Promise<Department[]> {
+    return this.repo.find({ where, order: { createdAt: 'DESC' } });
+  }
+}

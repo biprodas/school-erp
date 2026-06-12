@@ -88,8 +88,6 @@ export class StudentService {
       lastName: dto.lastName,
       dob: dto.dob ?? null,
       gender: dto.gender ?? null,
-      guardianName: dto.guardianName ?? null,
-      guardianPhone: dto.guardianPhone ?? null,
       address: dto.address ?? null,
       status: dto.status ?? StudentStatus.ACTIVE,
       userId,
