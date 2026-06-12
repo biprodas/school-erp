@@ -3,12 +3,12 @@ import {
   ConflictException,
   NotFoundException,
 } from '@nestjs/common';
-import { RoleRepository } from '../rbac/role.repository';
-import { UserService } from '../users/user.service';
-import { StudentRepository } from './student.repository';
+import { RoleRepository } from '../../rbac/role.repository';
+import { UserService } from '../../users/user.service';
+import { StudentRepository } from '../repositories/student.repository';
 import { StudentService } from './student.service';
-import { Student } from './entities/student.entity';
-import { StudentStatus } from './enums/student-status.enum';
+import { Student } from '../entities/student.entity';
+import { StudentStatus } from '../enums/student-status.enum';
 
 const makeStudent = (overrides: Partial<Student> = {}): Student => ({
   id: 'student-1',

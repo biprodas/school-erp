@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { TENANT_DATASOURCE } from '~/tenancy/tenancy.constants';
 import { TenantDataSourceProxy } from '~/tenancy/tenant-datasource.proxy';
 import { BaseTenantRepository } from '~/tenancy/base-tenant.repository';
-import { Student } from './entities/student.entity';
+import { Student } from '../entities/student.entity';
 
 @Injectable()
 export class StudentRepository extends BaseTenantRepository<Student> {

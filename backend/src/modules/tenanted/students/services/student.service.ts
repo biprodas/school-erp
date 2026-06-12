@@ -5,14 +5,14 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { RoleRepository } from '../rbac/role.repository';
-import { UserService } from '../users/user.service';
-import { CreateStudentDto } from './dto/create-student.dto';
-import { FilterStudentDto } from './dto/filter-student.dto';
-import { UpdateStudentDto } from './dto/update-student.dto';
-import { Student } from './entities/student.entity';
-import { StudentStatus } from './enums/student-status.enum';
-import { StudentRepository } from './student.repository';
+import { RoleRepository } from '../../rbac/role.repository';
+import { UserService } from '../../users/user.service';
+import { CreateStudentDto } from '../dto/create-student.dto';
+import { FilterStudentDto } from '../dto/filter-student.dto';
+import { UpdateStudentDto } from '../dto/update-student.dto';
+import { Student } from '../entities/student.entity';
+import { StudentStatus } from '../enums/student-status.enum';
+import { StudentRepository } from '../repositories/student.repository';
 
 const STUDENT_ROLE_NAME = 'student';
 
@@ -85,10 +85,18 @@ export class StudentService {
     const student = await this.studentRepo.saveNew({
       admissionNumber: dto.admissionNumber,
       firstName: dto.firstName,
+      middleName: dto.middleName ?? null,
       lastName: dto.lastName,
       dob: dto.dob ?? null,
       gender: dto.gender ?? null,
+      religion: dto.religion ?? null,
+      nationality: dto.nationality ?? null,
+      email: dto.email ?? null,
+      phone: dto.phone ?? null,
+      photoUrl: dto.photoUrl ?? null,
       address: dto.address ?? null,
+      admissionDate: dto.admissionDate ?? null,
+      admissionType: dto.admissionType ?? null,
       status: dto.status ?? StudentStatus.ACTIVE,
       userId,
     });

@@ -18,6 +18,24 @@ export const PERMISSIONS = {
   STUDENTS_UPDATE: 'students:update',
   STUDENTS_DELETE: 'students:delete',
 
+  // Student documents
+  STUDENT_DOCUMENTS_READ: 'student_documents:read',
+  STUDENT_DOCUMENTS_CREATE: 'student_documents:create',
+  STUDENT_DOCUMENTS_UPDATE: 'student_documents:update',
+  STUDENT_DOCUMENTS_DELETE: 'student_documents:delete',
+
+  // Student medical records
+  STUDENT_MEDICAL_READ: 'student_medical:read',
+  STUDENT_MEDICAL_CREATE: 'student_medical:create',
+  STUDENT_MEDICAL_UPDATE: 'student_medical:update',
+  STUDENT_MEDICAL_DELETE: 'student_medical:delete',
+
+  // Student notes
+  STUDENT_NOTES_READ: 'student_notes:read',
+  STUDENT_NOTES_CREATE: 'student_notes:create',
+  STUDENT_NOTES_UPDATE: 'student_notes:update',
+  STUDENT_NOTES_DELETE: 'student_notes:delete',
+
   // Departments
   DEPARTMENTS_READ: 'departments:read',
   DEPARTMENTS_CREATE: 'departments:create',

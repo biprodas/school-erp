@@ -2,7 +2,7 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { AcademicYearRepository } from '../academic-years/academic-year.repository';
 import { ClassRepository } from '../classes/class.repository';
 import { SectionRepository } from '../sections/section.repository';
-import { StudentService } from '../students/student.service';
+import { StudentService } from '../students/services/student.service';
 import { CreatePromotionDto } from './dto/create-promotion.dto';
 import { FilterPromotionDto } from './dto/filter-promotion.dto';
 import { StudentPromotion } from './entities/student-promotion.entity';

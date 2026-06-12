@@ -10,7 +10,7 @@ import { ClassRepository } from '../classes/class.repository';
 import { ClassSubjectRepository } from '../class-curriculum/class-subject.repository';
 import { SectionRepository } from '../sections/section.repository';
 import { SubjectRepository } from '../subjects/subject.repository';
-import { StudentService } from '../students/student.service';
+import { StudentService } from '../students/services/student.service';
 import { CreateEnrollmentDto } from './dto/create-enrollment.dto';
 import { FilterEnrollmentDto } from './dto/filter-enrollment.dto';
 import { SelectSubjectDto } from './dto/select-subject.dto';

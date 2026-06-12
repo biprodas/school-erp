@@ -8,7 +8,7 @@ import { ClassRepository } from '../classes/class.repository';
 import { ClassSubjectRepository } from '../class-curriculum/class-subject.repository';
 import { SectionRepository } from '../sections/section.repository';
 import { SubjectRepository } from '../subjects/subject.repository';
-import { StudentService } from '../students/student.service';
+import { StudentService } from '../students/services/student.service';
 import { EnrollmentRepository } from './enrollment.repository';
 import { StudentSubjectRepository } from './student-subject.repository';
 import { EnrollmentService } from './enrollment.service';

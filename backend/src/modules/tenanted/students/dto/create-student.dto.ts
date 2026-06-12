@@ -12,6 +12,7 @@ import {
   MinLength,
   ValidateNested,
 } from 'class-validator';
+import { AdmissionType } from '../enums/admission-type.enum';
 import { StudentGender } from '../enums/student-gender.enum';
 import { StudentStatus } from '../enums/student-status.enum';
 
@@ -37,6 +38,10 @@ export class CreateStudentDto {
   @IsNotEmpty()
   firstName: string;
 
+  @IsOptional()
+  @IsString()
+  middleName?: string;
+
   @IsString()
   @IsNotEmpty()
   lastName: string;
@@ -51,7 +56,38 @@ export class CreateStudentDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(60)
+  religion?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(60)
+  nationality?: string;
+
+  @IsOptional()
+  @IsEmail()
+  email?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  phone?: string;
+
+  @IsOptional()
+  @IsString()
+  photoUrl?: string;
+
+  @IsOptional()
+  @IsString()
   address?: string;
+
+  @IsOptional()
+  @IsDateString()
+  admissionDate?: string;
+
+  @IsOptional()
+  @IsEnum(AdmissionType)
+  admissionType?: AdmissionType;
 
   @IsOptional()
   @IsEnum(StudentStatus)

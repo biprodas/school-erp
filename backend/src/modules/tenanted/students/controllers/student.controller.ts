@@ -11,14 +11,14 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiHeader, ApiTags } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { PermissionsGuard } from '../rbac/permissions.guard';
-import { PERMISSIONS } from '../rbac/permissions.catalog';
-import { RequirePermissions } from '../rbac/require-permissions.decorator';
-import { CreateStudentDto } from './dto/create-student.dto';
-import { FilterStudentDto } from './dto/filter-student.dto';
-import { UpdateStudentDto } from './dto/update-student.dto';
-import { StudentService } from './student.service';
+import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
+import { PermissionsGuard } from '../../rbac/permissions.guard';
+import { PERMISSIONS } from '../../rbac/permissions.catalog';
+import { RequirePermissions } from '../../rbac/require-permissions.decorator';
+import { CreateStudentDto } from '../dto/create-student.dto';
+import { FilterStudentDto } from '../dto/filter-student.dto';
+import { UpdateStudentDto } from '../dto/update-student.dto';
+import { StudentService } from '../services/student.service';
 
 @ApiTags('Tenant / Students')
 @ApiBearerAuth('tenant-jwt')
