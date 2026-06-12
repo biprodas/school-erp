@@ -9,13 +9,20 @@ import {
   JoinColumn,
   ManyToOne,
   OneToMany,
+  OneToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { StudentGuardian } from '../../guardians/entities/student-guardian.entity';
+import { AdmissionType } from '../enums/admission-type.enum';
 import { StudentGender } from '../enums/student-gender.enum';
 import { StudentStatus } from '../enums/student-status.enum';
+import { StudentAddress } from './student-address.entity';
+import { StudentDocument } from './student-document.entity';
+import { StudentEmergencyContact } from './student-emergency-contact.entity';
+import { StudentMedicalRecord } from './student-medical-record.entity';
+import { StudentNote } from './student-note.entity';
 
 @Entity('students')
 export class Student {
@@ -33,6 +40,9 @@ export class Student {
   @Column({ name: 'first_name' })
   firstName: string;
 
+  @Column({ name: 'middle_name', type: 'varchar', nullable: true })
+  middleName: string | null;
+
   @Column({ name: 'last_name' })
   lastName: string;
 
@@ -45,8 +55,34 @@ export class Student {
   @Column({ type: 'varchar', length: 16, nullable: true })
   gender: StudentGender | null;
 
+  @Column({ type: 'varchar', length: 60, nullable: true })
+  religion: string | null;
+
+  @Column({ type: 'varchar', length: 60, nullable: true })
+  nationality: string | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  email: string | null;
+
+  @Column({ type: 'varchar', length: 40, nullable: true })
+  phone: string | null;
+
+  @Column({ name: 'photo_url', type: 'text', nullable: true })
+  photoUrl: string | null;
+
   @Column({ type: 'text', nullable: true })
   address: string | null;
+
+  @Column({ name: 'admission_date', type: 'date', nullable: true })
+  admissionDate: string | null;
+
+  @Column({
+    name: 'admission_type',
+    type: 'varchar',
+    length: 16,
+    nullable: true,
+  })
+  admissionType: AdmissionType | null;
 
   @Column({ type: 'varchar', default: StudentStatus.ACTIVE })
   status: string;
@@ -61,6 +97,21 @@ export class Student {
   @OneToMany(() => StudentGuardian, (link) => link.student)
   guardians: StudentGuardian[];
 
+  @OneToMany(() => StudentAddress, (address) => address.student)
+  addresses: StudentAddress[];
+
+  @OneToMany(() => StudentDocument, (document) => document.student)
+  documents: StudentDocument[];
+
+  @OneToMany(() => StudentEmergencyContact, (contact) => contact.student)
+  emergencyContacts: StudentEmergencyContact[];
+
+  @OneToMany(() => StudentNote, (note) => note.student)
+  notes: StudentNote[];
+
+  @OneToOne(() => StudentMedicalRecord, (record) => record.student)
+  medicalRecord: StudentMedicalRecord | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
@@ -74,7 +125,7 @@ export class Student {
   @BeforeInsert()
   @BeforeUpdate()
   syncFullName(): void {
-    const parts = [this.firstName, this.lastName].filter(
+    const parts = [this.firstName, this.middleName, this.lastName].filter(
       (p) => p != null && String(p).trim() !== '',
     );
     this.fullName = parts.join(' ');

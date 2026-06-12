@@ -1,6 +1,6 @@
 import { StudentController } from './student.controller';
-import { StudentService } from './student.service';
-import { StudentStatus } from './enums/student-status.enum';
+import { StudentService } from '../services/student.service';
+import { StudentStatus } from '../enums/student-status.enum';
 
 describe('StudentController', () => {
   let controller: StudentController;

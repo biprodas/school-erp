@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { RoleRepository } from '../rbac/role.repository';
-import { StudentService } from '../students/student.service';
+import { StudentService } from '../students/services/student.service';
 import { UserService } from '../users/user.service';
 import { AttachGuardianDto } from './dto/attach-guardian.dto';
 import { CreateGuardianDto } from './dto/create-guardian.dto';
