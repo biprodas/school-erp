@@ -36,6 +36,18 @@ export const PERMISSIONS = {
   EMPLOYEES_UPDATE: 'employees:update',
   EMPLOYEES_DELETE: 'employees:delete',
 
+  // Guardians
+  GUARDIANS_READ: 'guardians:read',
+  GUARDIANS_CREATE: 'guardians:create',
+  GUARDIANS_UPDATE: 'guardians:update',
+  GUARDIANS_DELETE: 'guardians:delete',
+
+  // Stakeholders
+  STAKEHOLDERS_READ: 'stakeholders:read',
+  STAKEHOLDERS_CREATE: 'stakeholders:create',
+  STAKEHOLDERS_UPDATE: 'stakeholders:update',
+  STAKEHOLDERS_DELETE: 'stakeholders:delete',
+
   // Cats
   CATS_READ: 'cats:read',
   CATS_CREATE: 'cats:create',

@@ -51,16 +51,6 @@ export class CreateStudentDto {
 
   @IsOptional()
   @IsString()
-  @MaxLength(160)
-  guardianName?: string;
-
-  @IsOptional()
-  @IsString()
-  @MaxLength(40)
-  guardianPhone?: string;
-
-  @IsOptional()
-  @IsString()
   address?: string;
 
   @IsOptional()
