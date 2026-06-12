@@ -44,7 +44,9 @@ export class MailController {
   @ApiOperation({ summary: 'Send a test email (dev only)' })
   async sendTest(@Body() dto: SendTestEmailDto) {
     if (this.config.get<string>('app.environment') === 'production') {
-      throw new ForbiddenException('Test mail endpoint is disabled in production');
+      throw new ForbiddenException(
+        'Test mail endpoint is disabled in production',
+      );
     }
 
     const name = dto.name ?? 'Test User';

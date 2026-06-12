@@ -4,11 +4,17 @@ import { IsEmail, IsIn, IsOptional, IsString } from 'class-validator';
 export type TestEmailType = 'activation' | 'password-reset';
 
 export class SendTestEmailDto {
-  @ApiProperty({ example: 'someone@example.com', description: 'Recipient address' })
+  @ApiProperty({
+    example: 'someone@example.com',
+    description: 'Recipient address',
+  })
   @IsEmail()
   to: string;
 
-  @ApiPropertyOptional({ example: 'Jane Doe', description: 'Name shown in the email' })
+  @ApiPropertyOptional({
+    example: 'Jane Doe',
+    description: 'Name shown in the email',
+  })
   @IsOptional()
   @IsString()
   name?: string;
