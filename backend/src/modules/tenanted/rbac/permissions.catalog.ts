@@ -18,6 +18,24 @@ export const PERMISSIONS = {
   STUDENTS_UPDATE: 'students:update',
   STUDENTS_DELETE: 'students:delete',
 
+  // Departments
+  DEPARTMENTS_READ: 'departments:read',
+  DEPARTMENTS_CREATE: 'departments:create',
+  DEPARTMENTS_UPDATE: 'departments:update',
+  DEPARTMENTS_DELETE: 'departments:delete',
+
+  // Designations
+  DESIGNATIONS_READ: 'designations:read',
+  DESIGNATIONS_CREATE: 'designations:create',
+  DESIGNATIONS_UPDATE: 'designations:update',
+  DESIGNATIONS_DELETE: 'designations:delete',
+
+  // Employees
+  EMPLOYEES_READ: 'employees:read',
+  EMPLOYEES_CREATE: 'employees:create',
+  EMPLOYEES_UPDATE: 'employees:update',
+  EMPLOYEES_DELETE: 'employees:delete',
+
   // Cats
   CATS_READ: 'cats:read',
   CATS_CREATE: 'cats:create',

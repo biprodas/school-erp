@@ -12,6 +12,9 @@ import { TenantMiddleware } from '~/tenancy/tenant.middleware';
 import { ProductModule } from '~/tenanted/products/product.module';
 import { RbacModule } from '~/tenanted/rbac/rbac.module';
 import { StudentModule } from '~/tenanted/students/student.module';
+import { DepartmentModule } from '~/tenanted/departments/department.module';
+import { DesignationModule } from '~/tenanted/designations/designation.module';
+import { EmployeeModule } from '~/tenanted/employees/employee.module';
 import { TenantUserModule } from '~/tenanted/users/user.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -61,6 +64,9 @@ const envFilePath = ['.env', `.env.${nodeEnv}`];
     TaskModule,
     ProductModule,
     StudentModule,
+    DepartmentModule,
+    DesignationModule,
+    EmployeeModule,
   ],
   controllers: [AppController],
   providers: [
