@@ -4,16 +4,16 @@ import request from 'supertest';
 import { JwtModule, JwtService } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
-import { MembershipController } from 'src/modules/platform/memberships/controllers/membership.controller';
-import { MembershipService } from 'src/modules/platform/memberships/services/membership.service';
-import { Membership } from 'src/modules/platform/memberships/entities/membership.entity';
-import { MembershipRole } from 'src/modules/platform/memberships/enums/membership-role.enum';
-import { OrganizationService } from 'src/modules/platform/organizations/services/organization.service';
-import { UserService } from 'src/modules/platform/users/user.service';
-import { PlatformJwtStrategy } from 'src/modules/platform/auth/platform-jwt.strategy';
-import { UserStatus } from 'src/modules/platform/users/enums/user-status.enum';
+import { MembershipController } from 'src/modules/memberships/controllers/membership.controller';
+import { MembershipService } from 'src/modules/memberships/services/membership.service';
+import { Membership } from 'src/modules/memberships/entities/membership.entity';
+import { MembershipRole } from 'src/modules/memberships/enums/membership-role.enum';
+import { OrganizationService } from 'src/modules/organizations/services/organization.service';
+import { UserService } from 'src/modules/users/services/user.service';
+import { PlatformJwtStrategy } from 'src/modules/auth/strategies/platform-jwt.strategy';
+import { UserStatus } from 'src/modules/users/enums/user-status.enum';
 import { ConfigService } from '@nestjs/config';
-import { OwnerProvisioningService } from '~/tenanted/auth/owner-provisioning.service';
+import { OwnerProvisioningService } from '~/modules/auth/services/owner-provisioning.service';
 
 const JWT_SECRET = 'test-secret-key-for-e2e-testing-32chars!';
 

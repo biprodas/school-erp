@@ -18,26 +18,23 @@ src/
 │   └── tokens/              # Secure token util, auth token types + TTLs
 ├── database/                # TypeORM root module; CLI datasource for migrations
 ├── tenancy/                 # Shared-schema (org_id + RLS) infrastructure (see below)
-├── modules/
-│   ├── platform/            # Platform realm features
-│   │   ├── auth/            # Platform login, 'platform-jwt' strategy
-│   │   ├── users/           # Global user accounts (one login across schools)
-│   │   ├── organizations/   # Organization (school) CRUD + provisioning; public lookup
-│   │   └── memberships/     # User ↔ organization memberships (role, isAdmin, status)
-│   └── tenanted/            # Org-scoped school features (tenant realm)
-│       ├── auth/            # Tenant login, JwtAuthGuard, activation/reset tokens, owner provisioning
-│       ├── users/           # Members of the current org (AccountRepository, MemberRepository)
-│       ├── rbac/            # Roles, user-roles, permission catalog, PermissionsGuard, system-role seeder
-│       ├── students/        # Student profile + addresses, documents, medical records, emergency contacts, notes
-│       ├── guardians/       # Guardians + student-guardian links
-│       ├── employees/  departments/  designations/  stakeholders/
-│       ├── academic-years/  classes/ (+ class sections)  sections/  subjects/  subject-groups/
-│       ├── class-curriculum/  # Class ↔ subject / subject-group assignments
-│       ├── enrollments/     # Enrollments + student subjects
-│       ├── teaching/        # Class teachers, subject teachers
-│       ├── timetable/       # Periods, class timetables
-│       ├── promotions/
-│       └── cats/  tasks/  products/   # Sample modules
+├── modules/                 # All feature modules, flat (org-scoped = entity extends OrgScopedEntity)
+│   ├── auth/                # Both realms: platform login ('platform-jwt') + tenant login (JwtAuthGuard),
+│   │                        #   activation/reset/verification tokens, owner provisioning
+│   ├── users/               # Global accounts (/platform/users) + members of the current org (/users)
+│   ├── organizations/       # Organization (school) CRUD + provisioning; public lookup
+│   ├── memberships/         # User ↔ organization memberships (role, isAdmin, status)
+│   ├── rbac/                # Roles, user-roles, permission catalog, PermissionsGuard, system-role seeder
+│   ├── students/            # Student profile + addresses, documents, medical records, emergency contacts, notes
+│   ├── guardians/           # Guardians + student-guardian links
+│   ├── employees/  departments/  designations/  stakeholders/
+│   ├── academic-years/  classes/ (+ class sections)  sections/  subjects/  subject-groups/
+│   ├── class-curriculum/    # Class ↔ subject / subject-group assignments
+│   ├── enrollments/         # Enrollments + student subjects
+│   ├── teaching/            # Class teachers, subject teachers
+│   ├── timetable/           # Periods, class timetables
+│   ├── promotions/
+│   └── cats/  tasks/  products/   # Sample modules
 ├── shared/
 │   ├── health/              # HealthModule (@nestjs/terminus)
 │   ├── mail/                # MailModule/MailService, Handlebars templates (activation, email-verification, password-reset, welcome), dev mail controller
@@ -72,7 +69,7 @@ Every module must be imported in `app.module.ts`.
 | `tenant.datasource.ts` | Entity globs and tenant pool options |
 | `exceptions/` | Tenant-not-found / inactive / context-missing exceptions |
 
-Entities are discovered by glob (`modules/platform/**/entities/*.entity.ts` and `modules/tenanted/**/entities/*.entity.ts`); all live in the `public` schema.
+Entities are discovered by the glob `modules/**/entities/*.entity.ts`; all live in the `public` schema.
 
 ### Migrations
 
@@ -94,7 +91,7 @@ backend/
 ├── .env.example         # env template (.env.development is loaded by default)
 ├── package.json         # scripts + Jest config (moduleNameMapper mirrors tsconfig paths)
 ├── nest-cli.json
-├── tsconfig.json        # path aliases: ~/common, ~/config, ~/utils, ~/shared, ~/tenancy, ~/platform, ~/tenanted
+├── tsconfig.json        # path aliases: ~/common, ~/config, ~/utils, ~/shared, ~/tenancy, ~/modules
 ├── tsconfig.build.json
 └── eslint.config.mjs
 ```

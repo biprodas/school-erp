@@ -3,8 +3,7 @@ import type { DbConfig } from '../config/db.config';
 
 /** Every entity lives in the shared `public` schema. */
 export const ALL_ENTITIES_GLOBS = [
-  __dirname + '/../modules/platform/**/entities/*.entity{.ts,.js}',
-  __dirname + '/../modules/tenanted/**/entities/*.entity{.ts,.js}',
+  __dirname + '/../modules/**/entities/*.entity{.ts,.js}',
 ];
 
 /**

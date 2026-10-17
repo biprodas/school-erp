@@ -8,12 +8,12 @@ import {
 import { MembershipService } from './membership.service';
 import { Membership } from '../entities/membership.entity';
 import { MembershipRole } from '../enums/membership-role.enum';
-import { OrganizationService } from 'src/modules/platform/organizations/services/organization.service';
-import { UserService } from 'src/modules/platform/users/user.service';
-import { OwnerProvisioningService } from '~/tenanted/auth/owner-provisioning.service';
-import { UserStatus } from 'src/modules/platform/users/enums/user-status.enum';
+import { OrganizationService } from 'src/modules/organizations/services/organization.service';
+import { UserService } from 'src/modules/users/services/user.service';
+import { OwnerProvisioningService } from '~/modules/auth/services/owner-provisioning.service';
+import { UserStatus } from 'src/modules/users/enums/user-status.enum';
 import { RequestContextDto } from '~/common/dto/request-context.dto';
-import { UserRole } from '~/tenanted/rbac/entities/user-role.entity';
+import { UserRole } from '~/modules/rbac/entities/user-role.entity';
 
 // --- Helpers ---
 

@@ -11,7 +11,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { UserStatus } from '../enums/user-status.enum';
-import { Membership } from 'src/modules/platform/memberships/entities/membership.entity';
+import { Membership } from 'src/modules/memberships/entities/membership.entity';
 
 @Entity('users', { schema: 'public' })
 export class User {

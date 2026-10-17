@@ -9,9 +9,9 @@ import {
   IsUUID,
   MinLength,
 } from 'class-validator';
-import { MembershipStatus } from '~/platform/memberships/enums/membership-status.enum';
+import { MembershipStatus } from '~/modules/memberships/enums/membership-status.enum';
 
-export class CreateUserDto {
+export class CreateOrgUserDto {
   @IsString()
   @IsNotEmpty()
   @IsDefined()

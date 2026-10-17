@@ -13,14 +13,14 @@ import { AUTH_THROTTLE } from '~/common/throttling/throttle.constants';
 import { RequestContext } from '~/common/decorators/request-context.decorator';
 import { RequestContextDto } from '~/common/dto/request-context.dto';
 import { PlatformJwtAuthGuard } from '~/common/guards/platform-jwt-auth.guard';
-import { PlatformLoginDto } from './dto/platform-login.dto';
-import { PlatformRegisterDto } from './dto/platform-register.dto';
-import { ForgotPasswordDto } from './dto/forgot-password.dto';
-import { ResetPasswordDto } from './dto/reset-password.dto';
-import { VerifyEmailDto } from './dto/verify-email.dto';
-import { ResendVerificationDto } from './dto/resend-verification.dto';
-import { ChangePasswordDto } from './dto/change-password.dto';
-import { PlatformAuthService } from './platform-auth.service';
+import { PlatformLoginDto } from '../dto/platform-login.dto';
+import { PlatformRegisterDto } from '../dto/platform-register.dto';
+import { ForgotPasswordDto } from '../dto/forgot-password.dto';
+import { ResetPasswordDto } from '../dto/reset-password.dto';
+import { VerifyEmailDto } from '../dto/verify-email.dto';
+import { ResendVerificationDto } from '../dto/resend-verification.dto';
+import { ChangePasswordDto } from '../dto/change-password.dto';
+import { PlatformAuthService } from '../services/platform-auth.service';
 
 /** Generic message used by anti-enumeration endpoints. */
 const GENERIC_EMAIL_MSG =

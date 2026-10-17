@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { RoleRepository } from '../rbac/role.repository';
 import { StudentService } from '../students/services/student.service';
-import { UserService } from '../users/user.service';
+import { OrgUserService } from '../users/services/org-user.service';
 import { Guardian } from './entities/guardian.entity';
 import { StudentGuardian } from './entities/student-guardian.entity';
 import { GuardianRelation } from './enums/guardian-relation.enum';
@@ -76,7 +76,7 @@ describe('GuardianService', () => {
     service = new GuardianService(
       guardianRepo as unknown as GuardianRepository,
       linkRepo as unknown as StudentGuardianRepository,
-      userService as unknown as UserService,
+      userService as unknown as OrgUserService,
       roleRepo as unknown as RoleRepository,
       studentService as unknown as StudentService,
     );

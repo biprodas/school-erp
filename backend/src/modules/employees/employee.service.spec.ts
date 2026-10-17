@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { RoleRepository } from '../rbac/role.repository';
-import { UserService } from '../users/user.service';
+import { OrgUserService } from '../users/services/org-user.service';
 import { DepartmentRepository } from '../departments/department.repository';
 import { DesignationRepository } from '../designations/designation.repository';
 import { EmployeeRepository } from './employee.repository';
@@ -72,7 +72,7 @@ describe('EmployeeService', () => {
 
     service = new EmployeeService(
       employeeRepo as unknown as EmployeeRepository,
-      userService as unknown as UserService,
+      userService as unknown as OrgUserService,
       roleRepo as unknown as RoleRepository,
       departmentRepo as unknown as DepartmentRepository,
       designationRepo as unknown as DesignationRepository,

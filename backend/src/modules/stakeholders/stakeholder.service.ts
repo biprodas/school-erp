@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { RoleRepository } from '../rbac/role.repository';
-import { UserService } from '../users/user.service';
+import { OrgUserService } from '../users/services/org-user.service';
 import { CreateStakeholderDto } from './dto/create-stakeholder.dto';
 import { FilterStakeholderDto } from './dto/filter-stakeholder.dto';
 import { UpdateStakeholderDto } from './dto/update-stakeholder.dto';
@@ -22,7 +22,7 @@ export class StakeholderService {
 
   constructor(
     private readonly stakeholderRepo: StakeholderRepository,
-    private readonly userService: UserService,
+    private readonly userService: OrgUserService,
     private readonly roleRepo: RoleRepository,
   ) {}
 

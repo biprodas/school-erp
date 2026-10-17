@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { RoleRepository } from '../rbac/role.repository';
 import { StudentService } from '../students/services/student.service';
-import { UserService } from '../users/user.service';
+import { OrgUserService } from '../users/services/org-user.service';
 import { AttachGuardianDto } from './dto/attach-guardian.dto';
 import { CreateGuardianDto } from './dto/create-guardian.dto';
 import { FilterGuardianDto } from './dto/filter-guardian.dto';
@@ -27,7 +27,7 @@ export class GuardianService {
   constructor(
     private readonly guardianRepo: GuardianRepository,
     private readonly linkRepo: StudentGuardianRepository,
-    private readonly userService: UserService,
+    private readonly userService: OrgUserService,
     private readonly roleRepo: RoleRepository,
     private readonly studentService: StudentService,
   ) {}

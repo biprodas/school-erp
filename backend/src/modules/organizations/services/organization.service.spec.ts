@@ -8,14 +8,14 @@ import {
 } from '@nestjs/common';
 import { OrganizationService } from './organization.service';
 import { Organization } from '../entities/organization.entity';
-import { Membership } from 'src/modules/platform/memberships/entities/membership.entity';
-import { MembershipRole } from 'src/modules/platform/memberships/enums/membership-role.enum';
+import { Membership } from 'src/modules/memberships/entities/membership.entity';
+import { MembershipRole } from 'src/modules/memberships/enums/membership-role.enum';
 import { DemoteOldOwnerTo } from '../dto/transfer-ownership.dto';
-import { UserService } from 'src/modules/platform/users/user.service';
-import { UserStatus } from 'src/modules/platform/users/enums/user-status.enum';
-import { UserRole } from '~/tenanted/rbac/entities/user-role.entity';
-import { RbacSeederService } from '~/tenanted/rbac/rbac-seeder.service';
-import { OwnerProvisioningService } from '~/tenanted/auth/owner-provisioning.service';
+import { UserService } from 'src/modules/users/services/user.service';
+import { UserStatus } from 'src/modules/users/enums/user-status.enum';
+import { UserRole } from '~/modules/rbac/entities/user-role.entity';
+import { RbacSeederService } from '~/modules/rbac/rbac-seeder.service';
+import { OwnerProvisioningService } from '~/modules/auth/services/owner-provisioning.service';
 import { RequestContextDto } from '~/common/dto/request-context.dto';
 
 // --- Helpers ---

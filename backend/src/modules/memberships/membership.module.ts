@@ -3,9 +3,9 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Membership } from './entities/membership.entity';
 import { MembershipService } from './services/membership.service';
 import { MembershipController } from './controllers/membership.controller';
-import { OrganizationModule } from 'src/modules/platform/organizations/organization.module';
-import { UserModule } from 'src/modules/platform/users/user.module';
-import { RbacModule } from '~/tenanted/rbac/rbac.module';
+import { OrganizationModule } from 'src/modules/organizations/organization.module';
+import { UserModule } from 'src/modules/users/user.module';
+import { RbacModule } from '~/modules/rbac/rbac.module';
 
 @Module({
   imports: [

@@ -25,7 +25,7 @@ const makeRepo = (): RepoMock =>
     delete: jest.fn(),
     createQueryBuilder: jest.fn().mockReturnValue('qb'),
     metadata: { findColumnWithPropertyName: jest.fn() },
-  }) as RepoMock;
+  }) as unknown as RepoMock;
 
 const asRepo = (raw: RepoMock) => raw as unknown as Repository<Row>;
 

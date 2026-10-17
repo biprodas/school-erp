@@ -1,4 +1,4 @@
-import { UserDto } from 'src/modules/platform/users/dto/user.dto';
+import { UserDto } from 'src/modules/users/dto/user.dto';
 
 export class RequestContextDto {
   public requestId: string;

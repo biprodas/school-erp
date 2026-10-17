@@ -13,7 +13,7 @@ import {
   Index,
 } from 'typeorm';
 import { OrgScopedEntity } from '~/tenancy/org-scoped.entity';
-import { User } from '~/platform/users/entities/user.entity';
+import { User } from '~/modules/users/entities/user.entity';
 import { Department } from '../../departments/entities/department.entity';
 import { Designation } from '../../designations/entities/designation.entity';
 import { EmployeeGender } from '../enums/employee-gender.enum';

@@ -5,16 +5,16 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
-import { Membership } from '~/platform/memberships/entities/membership.entity';
-import { MembershipStatus } from '~/platform/memberships/enums/membership-status.enum';
-import { UserStatus } from '~/platform/users/enums/user-status.enum';
-import { RoleRepository } from '../rbac/role.repository';
-import { UserRoleRepository } from '../rbac/user-role.repository';
-import { AccountRepository } from './account.repository';
-import { MemberRepository } from './member.repository';
-import { CreateUserDto } from './dto/create-user.dto';
-import { FilterUserDto } from './dto/filter-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
+import { Membership } from '~/modules/memberships/entities/membership.entity';
+import { MembershipStatus } from '~/modules/memberships/enums/membership-status.enum';
+import { UserStatus } from '~/modules/users/enums/user-status.enum';
+import { RoleRepository } from '../../rbac/role.repository';
+import { UserRoleRepository } from '../../rbac/user-role.repository';
+import { AccountRepository } from '../repositories/account.repository';
+import { MemberRepository } from '../repositories/member.repository';
+import { CreateOrgUserDto } from '../dto/create-org-user.dto';
+import { FilterOrgUserDto } from '../dto/filter-org-user.dto';
+import { UpdateOrgUserDto } from '../dto/update-org-user.dto';
 
 /**
  * A member of the current organization: the global user account merged with
@@ -40,8 +40,8 @@ export interface SerializedUser {
  * "removing" one deletes only that membership and its role assignments.
  */
 @Injectable()
-export class UserService {
-  private readonly logger = new Logger(UserService.name);
+export class OrgUserService {
+  private readonly logger = new Logger(OrgUserService.name);
 
   constructor(
     private readonly accountRepo: AccountRepository,
@@ -70,7 +70,9 @@ export class UserService {
     }));
   }
 
-  async findFiltered(filterUserDto: FilterUserDto): Promise<SerializedUser[]> {
+  async findFiltered(
+    filterUserDto: FilterOrgUserDto,
+  ): Promise<SerializedUser[]> {
     this.logger.log(`${this.findFiltered.name} Service Called`);
 
     const { id, name, email, roleId } = filterUserDto;
@@ -110,7 +112,7 @@ export class UserService {
    * account with the given password; an existing account is linked as-is
    * (its password is never changed from here).
    */
-  async create(dto: CreateUserDto): Promise<SerializedUser> {
+  async create(dto: CreateOrgUserDto): Promise<SerializedUser> {
     this.logger.log(`${this.create.name} Service Called`);
 
     // Validate the requested roles up front so we never create a member
@@ -149,7 +151,7 @@ export class UserService {
     return this.findById(account.id);
   }
 
-  async update(id: string, dto: UpdateUserDto): Promise<SerializedUser> {
+  async update(id: string, dto: UpdateOrgUserDto): Promise<SerializedUser> {
     this.logger.log(`${this.update.name} Service Called`);
 
     const member = await this.getMemberOrFail(id);

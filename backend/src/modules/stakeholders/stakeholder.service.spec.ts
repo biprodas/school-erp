@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { RoleRepository } from '../rbac/role.repository';
-import { UserService } from '../users/user.service';
+import { OrgUserService } from '../users/services/org-user.service';
 import { StakeholderRepository } from './stakeholder.repository';
 import { StakeholderService } from './stakeholder.service';
 import { Stakeholder } from './entities/stakeholder.entity';
@@ -57,7 +57,7 @@ describe('StakeholderService', () => {
 
     service = new StakeholderService(
       stakeholderRepo as unknown as StakeholderRepository,
-      userService as unknown as UserService,
+      userService as unknown as OrgUserService,
       roleRepo as unknown as RoleRepository,
     );
   });

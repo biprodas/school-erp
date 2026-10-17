@@ -15,7 +15,7 @@ import {
   Index,
 } from 'typeorm';
 import { OrgScopedEntity } from '~/tenancy/org-scoped.entity';
-import { User } from '~/platform/users/entities/user.entity';
+import { User } from '~/modules/users/entities/user.entity';
 import { StudentGuardian } from '../../guardians/entities/student-guardian.entity';
 import { AdmissionType } from '../enums/admission-type.enum';
 import { StudentGender } from '../enums/student-gender.enum';

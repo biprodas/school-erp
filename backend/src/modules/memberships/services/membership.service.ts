@@ -10,10 +10,10 @@ import { RequestContextDto } from '~/common/dto/request-context.dto';
 import {
   OwnerActivation,
   OrganizationService,
-} from 'src/modules/platform/organizations/services/organization.service';
-import { UserService } from 'src/modules/platform/users/user.service';
-import { OwnerProvisioningService } from '~/tenanted/auth/owner-provisioning.service';
-import { UserRole } from '~/tenanted/rbac/entities/user-role.entity';
+} from 'src/modules/organizations/services/organization.service';
+import { UserService } from 'src/modules/users/services/user.service';
+import { OwnerProvisioningService } from '~/modules/auth/services/owner-provisioning.service';
+import { UserRole } from '~/modules/rbac/entities/user-role.entity';
 import { CreateMembershipDto } from '../dto/create-membership.dto';
 import { UpdateMembershipRoleDto } from '../dto/update-membership-role.dto';
 import { Membership } from '../entities/membership.entity';

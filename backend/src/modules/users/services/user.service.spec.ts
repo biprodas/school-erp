@@ -6,8 +6,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { UserService } from './user.service';
-import { User } from './entities/user.entity';
-import { UserStatus } from './enums/user-status.enum';
+import { User } from '../entities/user.entity';
+import { UserStatus } from '../enums/user-status.enum';
 import { RequestContextDto } from '~/common/dto/request-context.dto';
 
 // --- Helpers ---

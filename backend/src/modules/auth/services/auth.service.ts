@@ -16,18 +16,18 @@ import { generateToken, hashToken } from '~/common/tokens/secure-token.util';
 import { AuthTokenType } from '~/common/tokens/auth-token-type.enum';
 import { MailService } from '~/shared/mail/mail.service';
 import type { RequestWithOrg } from '~/tenancy/tenant.middleware';
-import { AuthToken } from '~/platform/auth/entities/auth-token.entity';
-import { Membership } from '~/platform/memberships/entities/membership.entity';
-import { MembershipStatus } from '~/platform/memberships/enums/membership-status.enum';
-import { User } from '~/platform/users/entities/user.entity';
-import { UserStatus } from '~/platform/users/enums/user-status.enum';
-import { UserRoleRepository } from '../rbac/user-role.repository';
-import { AccountRepository } from '../users/account.repository';
-import { MemberRepository } from '../users/member.repository';
-import { LoginDto } from './dto/login.dto';
-import { ActivateDto } from './dto/activate.dto';
-import { AuthTokenRepository } from './auth-token.repository';
-import type { TenantJwtPayload } from './jwt.strategy';
+import { AuthToken } from '~/modules/auth/entities/auth-token.entity';
+import { Membership } from '~/modules/memberships/entities/membership.entity';
+import { MembershipStatus } from '~/modules/memberships/enums/membership-status.enum';
+import { User } from '~/modules/users/entities/user.entity';
+import { UserStatus } from '~/modules/users/enums/user-status.enum';
+import { UserRoleRepository } from '../../rbac/user-role.repository';
+import { AccountRepository } from '../../users/repositories/account.repository';
+import { MemberRepository } from '../../users/repositories/member.repository';
+import { LoginDto } from '../dto/login.dto';
+import { ActivateDto } from '../dto/activate.dto';
+import { AuthTokenRepository } from '../repositories/auth-token.repository';
+import type { TenantJwtPayload } from '../strategies/jwt.strategy';
 
 /** Global account states that may never sign in, in any organization. */
 const BLOCKED_ACCOUNT_STATUSES = new Set<string>([

@@ -16,16 +16,16 @@ import { RequestContextDto } from '~/common/dto/request-context.dto';
 import { PlatformJwtAuthGuard } from '~/common/guards/platform-jwt-auth.guard';
 import { PlatformAdminGuard } from '~/common/guards/platform-admin.guard';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { CreateUserDto } from './dto/create-user.dto';
-import { FilterUserDto } from './dto/filter-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
-import { UserService } from './user.service';
+import { CreateUserDto } from '../dto/create-user.dto';
+import { FilterUserDto } from '../dto/filter-user.dto';
+import { UpdateUserDto } from '../dto/update-user.dto';
+import { UserService } from '../services/user.service';
 
 @ApiTags('Platform / Users')
 @ApiBearerAuth('platform-jwt')
 @Controller('platform/users')
 @UseGuards(PlatformJwtAuthGuard)
-export class UserController {
+export class PlatformUserController {
   constructor(private readonly userService: UserService) {}
 
   @Get()

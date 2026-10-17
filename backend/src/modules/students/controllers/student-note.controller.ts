@@ -11,7 +11,7 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiHeader, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '~/common/decorators/current-user.decorator';
-import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { PERMISSIONS } from '../../rbac/permissions.catalog';
 import { PermissionsGuard } from '../../rbac/permissions.guard';
 import { RequirePermissions } from '../../rbac/require-permissions.decorator';

@@ -1,8 +1,8 @@
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import { NextFunction, Request, Response } from 'express';
 import { Key } from '~/common/enums/keys.enum';
-import { OrganizationStatus } from 'src/modules/platform/organizations/enums/organization-status.enum';
-import { OrganizationService } from 'src/modules/platform/organizations/services/organization.service';
+import { OrganizationStatus } from 'src/modules/organizations/enums/organization-status.enum';
+import { OrganizationService } from 'src/modules/organizations/services/organization.service';
 import {
   TenantContextMissingException,
   TenantInactiveException,

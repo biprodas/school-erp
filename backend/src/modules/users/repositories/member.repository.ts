@@ -3,7 +3,7 @@ import { FindOptionsWhere, In } from 'typeorm';
 import { TENANT_DATASOURCE } from '~/tenancy/tenancy.constants';
 import { TenantDataSourceProxy } from '~/tenancy/tenant-datasource.proxy';
 import { BaseTenantRepository } from '~/tenancy/base-tenant.repository';
-import { Membership } from '~/platform/memberships/entities/membership.entity';
+import { Membership } from '~/modules/memberships/entities/membership.entity';
 
 export interface MemberFilters {
   userId?: string;

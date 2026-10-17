@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { RoleRepository } from '../../rbac/role.repository';
-import { UserService } from '../../users/user.service';
+import { OrgUserService } from '../../users/services/org-user.service';
 import { CreateStudentDto } from '../dto/create-student.dto';
 import { FilterStudentDto } from '../dto/filter-student.dto';
 import { UpdateStudentDto } from '../dto/update-student.dto';
@@ -22,7 +22,7 @@ export class StudentService {
 
   constructor(
     private readonly studentRepo: StudentRepository,
-    private readonly userService: UserService,
+    private readonly userService: OrgUserService,
     private readonly roleRepo: RoleRepository,
   ) {}
 

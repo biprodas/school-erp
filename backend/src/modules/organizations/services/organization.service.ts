@@ -9,17 +9,17 @@ import {
 import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
 import { Repository, DataSource, In } from 'typeorm';
 import { Organization } from '../entities/organization.entity';
-import { Membership } from 'src/modules/platform/memberships/entities/membership.entity';
-import { MembershipRole } from 'src/modules/platform/memberships/enums/membership-role.enum';
-import { User } from 'src/modules/platform/users/entities/user.entity';
-import { UserService } from 'src/modules/platform/users/user.service';
+import { Membership } from 'src/modules/memberships/entities/membership.entity';
+import { MembershipRole } from 'src/modules/memberships/enums/membership-role.enum';
+import { User } from 'src/modules/users/entities/user.entity';
+import { UserService } from 'src/modules/users/services/user.service';
 import {
   tenantDomainCache,
   tenantSlugCache,
 } from '~/tenancy/tenant-slug.cache';
-import { UserRole } from '~/tenanted/rbac/entities/user-role.entity';
-import { RbacSeederService } from '~/tenanted/rbac/rbac-seeder.service';
-import { OwnerProvisioningService } from '~/tenanted/auth/owner-provisioning.service';
+import { UserRole } from '~/modules/rbac/entities/user-role.entity';
+import { RbacSeederService } from '~/modules/rbac/rbac-seeder.service';
+import { OwnerProvisioningService } from '~/modules/auth/services/owner-provisioning.service';
 import { CreateOrganizationDto } from '../dto/create-organization.dto';
 import {
   DemoteOldOwnerTo,

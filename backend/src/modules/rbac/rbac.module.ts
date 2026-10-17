@@ -9,8 +9,8 @@ import { IsAdminGuard } from './is-admin.guard';
 import { PermissionResolverService } from './permission-resolver.service';
 import { PermissionsGuard } from './permissions.guard';
 import { RbacSeederService } from './rbac-seeder.service';
-import { OwnerProvisioningService } from '../auth/owner-provisioning.service';
-import { MemberRepository } from '../users/member.repository';
+import { OwnerProvisioningService } from '../auth/services/owner-provisioning.service';
+import { MemberRepository } from '../users/repositories/member.repository';
 
 /**
  * Tenant-scoped role-based access control: role/permission management,

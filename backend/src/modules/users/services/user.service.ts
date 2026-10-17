@@ -9,11 +9,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { Repository } from 'typeorm';
 import { RequestContextDto } from '~/common/dto/request-context.dto';
-import { CreateUserDto } from './dto/create-user.dto';
-import { FilterUserDto } from './dto/filter-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
-import { User } from './entities/user.entity';
-import { UserStatus } from './enums/user-status.enum';
+import { CreateUserDto } from '../dto/create-user.dto';
+import { FilterUserDto } from '../dto/filter-user.dto';
+import { UpdateUserDto } from '../dto/update-user.dto';
+import { User } from '../entities/user.entity';
+import { UserStatus } from '../enums/user-status.enum';
 
 @Injectable()
 export class UserService {

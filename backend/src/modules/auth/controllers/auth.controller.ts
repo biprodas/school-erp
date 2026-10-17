@@ -12,15 +12,15 @@ import { Throttle } from '@nestjs/throttler';
 import { AUTH_THROTTLE } from '~/common/throttling/throttle.constants';
 import { RequestContext } from '~/common/decorators/request-context.decorator';
 import { RequestContextDto } from '~/common/dto/request-context.dto';
-import { AuthService } from './auth.service';
-import { LoginDto } from './dto/login.dto';
-import { ActivateDto } from './dto/activate.dto';
-import { ForgotPasswordDto } from './dto/forgot-password.dto';
-import { ResetPasswordDto } from './dto/reset-password.dto';
-import { VerifyEmailDto } from './dto/verify-email.dto';
-import { ResendVerificationDto } from './dto/resend-verification.dto';
-import { ChangePasswordDto } from './dto/change-password.dto';
-import { JwtAuthGuard } from './jwt-auth.guard';
+import { AuthService } from '../services/auth.service';
+import { LoginDto } from '../dto/login.dto';
+import { ActivateDto } from '../dto/activate.dto';
+import { ForgotPasswordDto } from '../dto/forgot-password.dto';
+import { ResetPasswordDto } from '../dto/reset-password.dto';
+import { VerifyEmailDto } from '../dto/verify-email.dto';
+import { ResendVerificationDto } from '../dto/resend-verification.dto';
+import { ChangePasswordDto } from '../dto/change-password.dto';
+import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 
 /** Generic message used by anti-enumeration endpoints. */
 const GENERIC_EMAIL_MSG =

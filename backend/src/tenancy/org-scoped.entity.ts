@@ -1,5 +1,5 @@
 import { Column, Index, JoinColumn, ManyToOne } from 'typeorm';
-import { Organization } from 'src/modules/platform/organizations/entities/organization.entity';
+import { Organization } from 'src/modules/organizations/entities/organization.entity';
 
 /**
  * Base class for every tenanted (school-owned) entity in the shared schema.

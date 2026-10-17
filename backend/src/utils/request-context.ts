@@ -3,7 +3,7 @@ import { plainToClass } from 'class-transformer';
 import { RequestContextDto } from '~/common/dto/request-context.dto';
 import { Key } from '~/common/enums/keys.enum';
 import type { RequestWithOrg } from '~/tenancy/tenant.middleware';
-import { UserDto } from 'src/modules/platform/users/dto/user.dto';
+import { UserDto } from 'src/modules/users/dto/user.dto';
 
 declare module 'express' {
   export interface Request {

@@ -50,7 +50,7 @@ npm test               # unit tests (src/**/*.spec.ts)
 npm run test:cov       # with coverage
 npm run test:e2e       # test/*.e2e-spec.ts. Loads .env.development and needs a running Postgres
 
-npx jest src/modules/tenanted/students/services/student.service.spec.ts   # single file
+npx jest src/modules/students/services/student.service.spec.ts   # single file
 npx jest -t "creates a student"                                          # single test by name
 ```
 
@@ -58,7 +58,7 @@ npx jest -t "creates a student"                                          # singl
 
 ### Multi-tenancy (shared schema, `org_id` + RLS)
 
-- **One `public` schema.** Platform data (users, organizations, memberships, auth tokens) lives in `src/modules/platform/`; school data in `src/modules/tenanted/`. Every tenanted entity extends `OrgScopedEntity`, which adds `org_id` (FK to `organizations`, `ON DELETE CASCADE`).
+- **One `public` schema.** All feature modules sit flat under `src/modules/` (platform data: users, organizations, memberships, auth tokens; plus every school feature). Every school-owned entity extends `OrgScopedEntity`, which adds `org_id` (FK to `organizations`, `ON DELETE CASCADE`).
 - **Users are global.** One login works across schools; per-school admin flag, status and roles live on `memberships` and `user_roles`.
 - **Org resolution:**
   1. `TenantMiddleware` finds the organization from the `x-tenant-id` header (the slug), then the subdomain (`acme.lvh.me`), then a custom domain, and sets `req.orgId`.
@@ -73,14 +73,14 @@ Platform and public routes (`organizations`, `memberships`, `platform/auth`, `pl
 
 - **Platform realm** (`platform-jwt`): super-admin and tenant management. `PlatformAdminGuard` requires `users.is_admin = true`.
 - **Tenant realm** (`JwtAuthGuard`): everything inside a school. Handlers use `@RequirePermissions(PERMISSIONS.X)` with `PermissionsGuard`.
-- **Permissions** are defined in code in `src/modules/tenanted/rbac/permissions.catalog.ts`, as `resource:action` keys. Roles are stored per tenant, and system roles are seeded from `system-roles.seed.ts`. Tenant users with `isAdmin` bypass permission checks.
+- **Permissions** are defined in code in `src/modules/rbac/permissions.catalog.ts`, as `resource:action` keys. Roles are stored per tenant, and system roles are seeded from `system-roles.seed.ts`. Tenant users with `isAdmin` bypass permission checks.
 
 ### Conventions
 
 - **Response envelope:** `{ success, statusCode, message, data }`.
 - **Validation:** the global `ValidationPipe` uses `whitelist`, `forbidNonWhitelisted` and `transform`, so unknown DTO fields return 400.
 - **Serialization and errors:** `ClassSerializerInterceptor` is global, so use `@Exclude` to hide entity fields. Errors go through `GlobalExceptionFilter`.
-- **Path aliases:** `~/common`, `~/config`, `~/utils`, `~/shared`, `~/tenancy`, `~/platform`, `~/tenanted`. Keep `tsconfig.json`, Jest `moduleNameMapper` and `test/jest-e2e.json` in sync.
+- **Path aliases:** `~/common`, `~/config`, `~/utils`, `~/shared`, `~/tenancy`, `~/modules`. Keep `tsconfig.json`, Jest `moduleNameMapper` and `test/jest-e2e.json` in sync.
 - **`.http` files** next to modules are sample requests for a REST client.
 
 For the full folder map, see [doc/backend-structure.md](../doc/backend-structure.md).

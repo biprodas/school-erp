@@ -11,15 +11,15 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiHeader, ApiTags } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { IsAdminGuard } from '../rbac/is-admin.guard';
-import { PermissionsGuard } from '../rbac/permissions.guard';
-import { RequirePermissions } from '../rbac/require-permissions.decorator';
-import { PERMISSIONS } from '../rbac/permissions.catalog';
-import { CreateUserDto } from './dto/create-user.dto';
-import { FilterUserDto } from './dto/filter-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
-import { UserService } from './user.service';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { IsAdminGuard } from '../../rbac/is-admin.guard';
+import { PermissionsGuard } from '../../rbac/permissions.guard';
+import { RequirePermissions } from '../../rbac/require-permissions.decorator';
+import { PERMISSIONS } from '../../rbac/permissions.catalog';
+import { CreateOrgUserDto } from '../dto/create-org-user.dto';
+import { FilterOrgUserDto } from '../dto/filter-org-user.dto';
+import { UpdateOrgUserDto } from '../dto/update-org-user.dto';
+import { OrgUserService } from '../services/org-user.service';
 
 @ApiTags('Tenant / Users')
 @ApiBearerAuth('tenant-jwt')
@@ -30,12 +30,12 @@ import { UserService } from './user.service';
 })
 @Controller('users')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
-export class UserController {
-  constructor(private readonly userService: UserService) {}
+export class OrgUserController {
+  constructor(private readonly userService: OrgUserService) {}
 
   @Get()
   @RequirePermissions(PERMISSIONS.USERS_READ)
-  async findAll(@Query() filterUserDto: FilterUserDto) {
+  async findAll(@Query() filterUserDto: FilterOrgUserDto) {
     const users = await this.userService.findFiltered(filterUserDto);
 
     return {
@@ -48,7 +48,7 @@ export class UserController {
 
   @Post()
   @RequirePermissions(PERMISSIONS.USERS_CREATE)
-  async create(@Body() createUserDto: CreateUserDto) {
+  async create(@Body() createUserDto: CreateOrgUserDto) {
     const user = await this.userService.create(createUserDto);
 
     return {
@@ -76,7 +76,7 @@ export class UserController {
   @RequirePermissions(PERMISSIONS.USERS_UPDATE)
   async update(
     @Param('id', ParseUUIDPipe) id: string,
-    @Body() updateUserDto: UpdateUserDto,
+    @Body() updateUserDto: UpdateOrgUserDto,
   ) {
     const user = await this.userService.update(id, updateUserDto);
 

@@ -18,7 +18,7 @@ npm run build
 npm run lint                           # eslint --fix
 npm run format                         # prettier
 npm test                               # unit tests (*.spec.ts under src/)
-npx jest src/modules/tenanted/students/services/student.service.spec.ts   # single file
+npx jest src/modules/students/services/student.service.spec.ts   # single file
 npx jest -t "creates a student"        # single test by name
 npm run test:e2e                       # test/*.e2e-spec.ts; loads .env.development, needs a live Postgres
 ```
@@ -39,7 +39,7 @@ Local env: the backend reads `.env` and then `.env.${NODE_ENV}` (`.env.developme
 
 ### Shared-schema multi-tenancy with `org_id` + RLS (`src/tenancy/`)
 
-- **One schema (`public`) for everything.** A school is an `Organization` (`organizations` table, `modules/platform/organizations/`). Platform entities live in `src/modules/platform/**/entities`, school-owned entities in `src/modules/tenanted/**/entities/*.entity.ts`. Both globs are loaded by the root DataSource and the tenant pool, so you don't register entities anywhere.
+- **One schema (`public`) for everything.** A school is an `Organization` (`organizations` table, `modules/organizations/`). All feature modules sit flat under `src/modules/` (no platform/tenanted split); what makes an entity school-owned is extending `OrgScopedEntity`, not its folder. The glob `src/modules/**/entities/*.entity.ts` is loaded by the root DataSource and the tenant pool, so you don't register entities anywhere.
 - **Every tenanted entity extends `OrgScopedEntity`** (`src/tenancy/org-scoped.entity.ts`), which adds `org_id` with a cascading FK to `organizations` (deleting an org deletes all its data). Per-org uniqueness must include `orgId`, e.g. `@Index('uq_classes_org_name', ['orgId', 'name'], { unique: true })`. Never put `unique: true` on a tenanted column.
 - **Users are global**: one `users` table (one login across schools). Per-school state lives on `memberships` (`org_id`, `role`, `is_admin` = school admin, `status`) and `user_roles` (org-scoped). `auth_tokens` is shared; `org_id` is null for platform-issued tokens and set for school-issued ones (incl. `activation`).
 - **Request flow**:
@@ -50,7 +50,7 @@ Local env: the backend reads `.env` and then `.env.${NODE_ENV}` (`.env.developme
   - App level: `BaseTenantRepository` wraps `this.repo` with `scopeRepository` (`org-scoped-repository.ts`) for entities that have `orgId`, so `find*`/`count`/`save`/`create`/`update`/`delete` are pinned to the org automatically. **Query builders are not rewritten**: add `.andWhere('alias.orgId = :orgId', { orgId: this.orgId })` yourself.
   - Database level: Postgres row-level security (`rls.ts`) on every table with a NOT NULL `org_id`, policy `org_isolation` comparing against `current_setting('app.org_id')` (unset → no rows). The tenant pool connects as the restricted role `DB_APP_USERNAME`; the root connection (table owner) bypasses RLS and is used for platform code, org provisioning and migrations. Without `DB_APP_USERNAME` the pool falls back to the owner and RLS does not apply (a warning is logged).
 - **Platform routes must be excluded from `TenantMiddleware`**: when you add a platform or public route (`organizations`, `memberships`, `platform/auth`, `platform/users`, `public`, `health`, `dev/mail`), add it to the `.exclude(...)` list in `src/app.module.ts`.
-- **Tenanted repositories** extend `BaseTenantRepository<T>` and inject `@Inject(TENANT_DATASOURCE) ds: TenantDataSourceProxy`. Never use `@InjectRepository` for tenanted entities. Because `TENANT_DATASOURCE` is request-scoped, every repository, service and controller that depends on it is request-scoped too. For transactions, use `ds.getManager()`. Global accounts are read through `AccountRepository`, org members through `MemberRepository` (`modules/tenanted/users/`).
+- **Tenanted repositories** extend `BaseTenantRepository<T>` and inject `@Inject(TENANT_DATASOURCE) ds: TenantDataSourceProxy`. Never use `@InjectRepository` for org-scoped entities. Because `TENANT_DATASOURCE` is request-scoped, every repository, service and controller that depends on it is request-scoped too. For transactions, use `ds.getManager()`. Global accounts are read through `AccountRepository`, org members through `MemberRepository` (`modules/users/repositories/`).
 - **Schema changes**: there are no migration files yet (`src/database/public.datasource.ts` points at `src/migrations/`).
   - In dev with `DB_SYNC=true`, the root DataSource syncs every table; then (non-production) `TenancyModule` creates the app role if missing, enables RLS, (re)creates the policies and grants the app role DML.
   - Organization creation (`OrganizationService`) runs in one transaction: insert the org, seed system roles (`RbacSeederService.seedSystemRoles(manager, orgId)`), and provision the owner (`OwnerProvisioningService.provisionOwner(manager, …)`: OWNER membership with `isAdmin`, admin role, activation token). The activation email is sent after commit.
@@ -60,19 +60,19 @@ Local env: the backend reads `.env` and then `.env.${NODE_ENV}` (`.env.developme
 
 - **Two JWT realms**:
   - Platform (`PlatformJwtAuthGuard` / `'platform-jwt'`, plus `PlatformAdminGuard`, in `src/common/guards/`), used for super-admin and organization management. Platform tokens never carry `orgId`; `PlatformJwtStrategy` rejects tokens that do.
-  - Tenant (`JwtAuthGuard` in `modules/tenanted/auth/`), used for everything inside a school. Payload `{ sub, email, orgId, isAdmin }`; `JwtStrategy` rejects tokens whose `orgId` differs from `req.orgId`. Login checks the global password, then requires an ACTIVE membership in the org.
+  - Tenant (`JwtAuthGuard` in `modules/auth/guards/`), used for everything inside a school. Payload `{ sub, email, orgId, isAdmin }`; `JwtStrategy` rejects tokens whose `orgId` differs from `req.orgId`. Login checks the global password, then requires an ACTIVE membership in the org.
 - **Tenanted controller pattern**:
   - `@UseGuards(JwtAuthGuard, PermissionsGuard)` plus `@RequirePermissions(PERMISSIONS.X)` per handler.
   - Swagger decorators: `@ApiBearerAuth('tenant-jwt')` and `@ApiHeader({ name: 'x-tenant-id' })`.
-- **Permission catalog**: permissions are code-defined in `modules/tenanted/rbac/permissions.catalog.ts`, using `resource:action` keys.
+- **Permission catalog**: permissions are code-defined in `modules/rbac/permissions.catalog.ts`, using `resource:action` keys.
   - Roles are stored per tenant and reference these keys. System roles are seeded from `system-roles.seed.ts`.
   - Members with `isAdmin` (from their membership, carried in the JWT) bypass permission checks.
   - A new feature needs new catalog entries, plus seed updates if system roles should get them.
 
 ### Conventions
 
-- **Path aliases** (tsconfig and Jest `moduleNameMapper`, which must be kept in sync, including `test/jest-e2e.json`): `~/common/*`, `~/config`, `~/utils/*`, `~/shared/*`, `~/tenancy/*`, `~/platform/*` → `src/modules/platform/*`, `~/tenanted/*` → `src/modules/tenanted/*`, and `src/*`.
-- **Feature module layout**: `<feature>.module.ts`, `controllers/`, `services/`, `repositories/`, `entities/`, `dto/`, `enums/`. Smaller modules keep these files flat. Every module must be imported in `src/app.module.ts`. `cats`, `tasks` and `products` are sample modules.
+- **Path aliases** (tsconfig and Jest `moduleNameMapper`, which must be kept in sync, including `test/jest-e2e.json`): `~/common/*`, `~/config`, `~/utils/*`, `~/shared/*`, `~/tenancy/*`, `~/modules/*` → `src/modules/*`, and `src/*`.
+- **Feature module layout**: `<feature>.module.ts`, `controllers/`, `services/`, `repositories/`, `entities/`, `dto/`, `enums/`. Smaller modules keep these files flat. `auth/` and `users/` each hold both realms in one module: platform pieces are prefixed `platform-`/`Platform*` (e.g. `PlatformAuthController` on `/platform/auth`, `PlatformUserController` on `/platform/users`), tenant pieces are unprefixed or `org-`/`Org*` (`AuthController` on `/auth`, `OrgUserController`/`OrgUserService` on `/users`). Every module must be imported in `src/app.module.ts`. `cats`, `tasks` and `products` are sample modules.
 - **Response envelope**: controllers return `{ success, statusCode, message, data }`. The frontend axios client unwraps `data`.
 - **Global pipes**: `ValidationPipe` runs with `whitelist`, `forbidNonWhitelisted` and `transform`, so unknown DTO fields cause a 400. `ClassSerializerInterceptor` is global (use `@Exclude` on entity fields). Errors go through `GlobalExceptionFilter`.
 - **Rate limiting**: `TenantThrottlerGuard` is a global guard that limits per tenant plus per user or IP.

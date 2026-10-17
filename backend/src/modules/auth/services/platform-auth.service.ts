@@ -16,11 +16,11 @@ import {
 import { generateToken, hashToken } from '~/common/tokens/secure-token.util';
 import { AuthTokenType } from '~/common/tokens/auth-token-type.enum';
 import { MailService } from '~/shared/mail/mail.service';
-import { User } from 'src/modules/platform/users/entities/user.entity';
-import { UserStatus } from 'src/modules/platform/users/enums/user-status.enum';
-import { PlatformRegisterDto } from './dto/platform-register.dto';
-import { PlatformLoginDto } from './dto/platform-login.dto';
-import { AuthToken } from './entities/auth-token.entity';
+import { User } from 'src/modules/users/entities/user.entity';
+import { UserStatus } from 'src/modules/users/enums/user-status.enum';
+import { PlatformRegisterDto } from '../dto/platform-register.dto';
+import { PlatformLoginDto } from '../dto/platform-login.dto';
+import { AuthToken } from '../entities/auth-token.entity';
 
 /**
  * Authentication + self-service account operations for platform users:

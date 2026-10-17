@@ -1,6 +1,6 @@
 import { IsOptional, IsString, IsUUID } from 'class-validator';
 
-export class FilterUserDto {
+export class FilterOrgUserDto {
   @IsOptional()
   @IsString()
   id?: string;
