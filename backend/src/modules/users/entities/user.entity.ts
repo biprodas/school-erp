@@ -10,6 +10,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { PlatformRole } from '../enums/platform-role.enum';
 import { UserStatus } from '../enums/user-status.enum';
 import { Membership } from 'src/modules/memberships/entities/membership.entity';
 
@@ -25,8 +26,20 @@ export class User {
   @Column({ select: false })
   password: string;
 
+  /** Optional handle; unique when set (Postgres allows many NULLs). */
+  @Column({ type: 'varchar', length: 60, unique: true, nullable: true })
+  username: string | null;
+
   @Column()
   name: string;
+
+  @Column({
+    name: 'platform_role',
+    type: 'enum',
+    enum: PlatformRole,
+    default: PlatformRole.USER,
+  })
+  platformRole: PlatformRole;
 
   @Column({
     type: 'enum',
