@@ -1,7 +1,16 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
+import type { RequestWithTenant } from '~/tenancy/tenant.middleware';
+
+interface TenantJwtPayload {
+  sub: string;
+  email: string;
+  tenantId?: string;
+  schemaName?: string;
+  isAdmin?: boolean;
+}
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -14,10 +23,18 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
       secretOrKey: secret,
+      passReqToCallback: true,
     });
   }
 
-  async validate(payload: any) {
+  validate(req: RequestWithTenant, payload: TenantJwtPayload) {
+    // The token must have been issued by the tenant this request resolved to
+    // (header/subdomain/domain). Without this, a token from tenant A would be
+    // accepted against tenant B's schema, including the isAdmin RBAC bypass.
+    if (!payload.tenantId || payload.tenantId !== req.tenantId) {
+      throw new UnauthorizedException('Token does not belong to this tenant');
+    }
+
     return {
       userId: payload.sub,
       email: payload.email,
