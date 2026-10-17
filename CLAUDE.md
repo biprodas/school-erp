@@ -8,6 +8,8 @@ Monorepo for a multi-tenant School ERP SaaS. `backend/` is a NestJS 11 API (Type
 
 ## Commands
 
+Local infrastructure (repo root): `docker compose up -d` starts Postgres (host port 5433), pgAdmin (:5050), Redis (:6379), RedisInsight (:5540) and Mailpit (SMTP :1025, UI :8025). Overrides go in a root `.env` (see `.env.docker.example`).
+
 Backend (`cd backend`, API on `PORT=3900` with global prefix `/api`, Swagger at `/api/docs`):
 
 ```bash

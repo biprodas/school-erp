@@ -1,0 +1,14 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "School ERP (docker)",
+      "Group": "Servers",
+      "Host": "postgres",
+      "Port": 5432,
+      "MaintenanceDB": "postgres",
+      "Username": "postgres",
+      "PassFile": "/tmp/pgpass",
+      "SSLMode": "prefer"
+    }
+  }
+}

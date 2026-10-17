@@ -13,6 +13,28 @@ Monorepo for a school administration platform: admissions, academics, people (st
 ## Prerequisites
 
 - **Node.js** (LTS recommended) and **npm**
+- **Docker** with Compose v2 (for local infrastructure)
+
+## Local infrastructure
+
+`docker-compose.yml` at the repo root runs the services the apps depend on (the apps themselves still run on the host):
+
+```bash
+docker compose up -d      # start
+docker compose ps         # status / health
+docker compose down       # stop, keep data
+docker compose down -v    # stop and wipe all data
+```
+
+| Service | URL / port | Credentials |
+|---------|------------|-------------|
+| PostgreSQL 17 | `localhost:5433` (db `school_erp`) | `postgres` / `postgres` |
+| pgAdmin | http://localhost:5050 | no login; server pre-registered |
+| Redis 7 | `localhost:6379` | none |
+| RedisInsight | http://localhost:5540 | none; Redis pre-registered |
+| Mailpit | SMTP `localhost:1025`, UI http://localhost:8025 | any |
+
+Postgres uses host port 5433 so it can coexist with a native Postgres on 5432; set `DB_PORT=5433` in `backend/.env.development`. To change any port or credential, copy `.env.docker.example` to `.env` in the repo root.
 
 ## Frontend
 

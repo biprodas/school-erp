@@ -1,0 +1,100 @@
+# Local development infrastructure for School ERP.
+# Apps (backend/frontend) still run on the host via npm; this only provides
+# the services they depend on. Override any value in a root `.env`
+# (see .env.docker.example).
+#
+#   docker compose up -d      # start
+#   docker compose down       # stop (keep data)
+#   docker compose down -v    # stop and wipe all data volumes
+
+name: school-erp
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-school_erp}
+    ports:
+      - '${POSTGRES_PORT:-5433}:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@school-erp.dev}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
+      # Desktop mode: no login screen, no master password prompt.
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
+    # libpq ignores a pgpass file that isn't 0600, so copy it before starting.
+    entrypoint: >
+      /bin/sh -c "cp /pgadmin4/pgpass.src /tmp/pgpass && chmod 600 /tmp/pgpass && exec /entrypoint.sh"
+    ports:
+      - '${PGADMIN_PORT:-5050}:80'
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+      - ./docker/pgadmin/servers.json:/pgadmin4/servers.json:ro
+      - ./docker/pgadmin/pgpass:/pgadmin4/pgpass.src:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ['redis-server', '--appendonly', 'yes']
+    ports:
+      - '${REDIS_PORT:-6379}:6379'
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis-insight:
+    image: redis/redisinsight:latest
+    restart: unless-stopped
+    environment:
+      # Pre-register the compose Redis so the UI opens connected.
+      RI_REDIS_HOST: redis
+      RI_REDIS_PORT: 6379
+      RI_REDIS_ALIAS: School ERP (docker)
+    ports:
+      - '${REDIS_INSIGHT_PORT:-5540}:5540'
+    volumes:
+      - redis_insight_data:/data
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  mailpit:
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    environment:
+      MP_DATABASE: /data/mailpit.db
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
+    ports:
+      - '${MAILPIT_SMTP_PORT:-1025}:1025'
+      - '${MAILPIT_UI_PORT:-8025}:8025'
+    volumes:
+      - mailpit_data:/data
+
+volumes:
+  postgres_data:
+  pgadmin_data:
+  redis_data:
+  redis_insight_data:
+  mailpit_data:
