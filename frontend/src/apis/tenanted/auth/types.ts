@@ -3,7 +3,7 @@
 export interface ActivationInfo {
   email: string;
   name: string;
-  tenant: { id: string; slug: string; schema: string };
+  organization: OrganizationContext;
 }
 
 export interface ActivatePayload {
@@ -27,11 +27,10 @@ export interface VerifyEmailResult {
   emailVerifiedAt: string;
 }
 
-/** Tenant context carried on auth responses, incl. onboarding progress. */
-export interface TenantContext {
+/** Organization (school) context carried on tenanted auth responses. */
+export interface OrganizationContext {
   id: string;
   slug: string;
-  schema: string;
 }
 
 /** `data` payload returned by `POST /auth/activate`. */
@@ -46,5 +45,5 @@ export interface ActivateResult {
     status: string;
     isAdmin: boolean;
   };
-  tenant: TenantContext;
+  organization: OrganizationContext;
 }

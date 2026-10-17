@@ -1,11 +1,14 @@
-/** Tenant user data structures, mirroring the NestJS tenanted user entity/DTOs. */
+/**
+ * Members of the current organization: a global user account plus its
+ * per-org membership (status, admin flag) and roles. `id` is the user id.
+ */
 
+/** Membership status inside this organization. */
 export const USER_STATUSES = [
   "pending",
   "active",
   "suspended",
   "deactivated",
-  "banned",
 ] as const;
 export type UserStatus = (typeof USER_STATUSES)[number];
 
@@ -17,6 +20,7 @@ export interface UserRoleRef {
 
 export interface TenantUserRow {
   id: string;
+  membershipId: string;
   email: string;
   name: string;
   status: UserStatus;

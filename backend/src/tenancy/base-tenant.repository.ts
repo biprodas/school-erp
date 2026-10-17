@@ -9,6 +9,7 @@ import {
 } from 'typeorm';
 import { TENANT_DATASOURCE } from './tenancy.constants';
 import { TenantDataSourceProxy } from './tenant-datasource.proxy';
+import { ORG_ID_PROPERTY, scopeRepository } from './org-scoped-repository';
 
 /**
  * Abstract base class for tenant-scoped repositories.
@@ -16,6 +17,12 @@ import { TenantDataSourceProxy } from './tenant-datasource.proxy';
  * Owns the TypeORM `Repository<T>` and provides standard data access
  * methods. Concrete repositories extend this class and can add
  * entity-specific queries using `this.repo`.
+ *
+ * For org-scoped entities (those extending `OrgScopedEntity`), `this.repo`
+ * is wrapped by `scopeRepository`, so find/count/save/update/delete calls
+ * are automatically pinned to the request's organization. Query builders
+ * are not rewritten: add `.andWhere('alias.orgId = :orgId', { orgId:
+ * this.orgId })` yourself (row-level security still backs it up).
  *
  * Usage:
  * ```ts
@@ -29,13 +36,19 @@ import { TenantDataSourceProxy } from './tenant-datasource.proxy';
  */
 export abstract class BaseTenantRepository<T extends ObjectLiteral> {
   protected readonly repo: Repository<T>;
+  /** The organization every query of this repository is scoped to. */
+  protected readonly orgId: string;
 
   constructor(
     @Inject(TENANT_DATASOURCE) ds: TenantDataSourceProxy,
     entityClass: new () => T,
     public readonly entityName: string = 'Entity',
   ) {
-    this.repo = ds.getRepository(entityClass);
+    this.orgId = ds.orgId;
+    const repo = ds.getRepository(entityClass);
+    const isOrgScoped =
+      !!repo.metadata.findColumnWithPropertyName(ORG_ID_PROPERTY);
+    this.repo = isOrgScoped ? scopeRepository(repo, ds.orgId) : repo;
   }
 
   async findAll(options?: FindManyOptions<T>): Promise<T[]> {

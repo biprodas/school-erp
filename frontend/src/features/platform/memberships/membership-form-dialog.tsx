@@ -30,8 +30,8 @@ import {
 } from "~/apis/platform/memberships/types";
 import type {
   OwnerActivation,
-  PlatformTenant,
-} from "~/apis/platform/tenants/types";
+  PlatformOrganization,
+} from "~/apis/platform/organizations/types";
 import type { PlatformUserRow } from "~/apis/platform/users/types";
 
 /** Roles a non-admin caller may assign (OWNER is admin-only on the backend). */
@@ -43,7 +43,7 @@ interface CreateDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   users: PlatformUserRow[];
-  tenants: PlatformTenant[];
+  tenants: PlatformOrganization[];
   isAdmin: boolean;
   onOwnerActivation?: (activation: OwnerActivation) => void;
 }
@@ -74,7 +74,7 @@ export const CreateMembershipDialog = ({
 
   const onSubmit = async () => {
     if (!userId || !tenantId) return;
-    const result = await createMembership.mutateAsync({ userId, tenantId, role });
+    const result = await createMembership.mutateAsync({ userId, orgId: tenantId, role });
     handleOpenChange(false);
     if (result.activation) onOwnerActivation?.(result.activation);
   };
@@ -122,7 +122,7 @@ export const CreateMembershipDialog = ({
                 hasValue={!!tenantId}
                 onClear={() => setTenantId("")}
               >
-                <SelectValue placeholder="Select a tenant" />
+                <SelectValue placeholder="Select an organization" />
               </SelectTrigger>
               <SelectContent>
                 {tenants.map((t) => (

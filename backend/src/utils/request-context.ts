@@ -2,7 +2,8 @@ import { Request } from 'express';
 import { plainToClass } from 'class-transformer';
 import { RequestContextDto } from '~/common/dto/request-context.dto';
 import { Key } from '~/common/enums/keys.enum';
-import { UserDto } from 'src/modules/platform/users/dto/user.dto';
+import type { RequestWithOrg } from '~/tenancy/tenant.middleware';
+import { UserDto } from 'src/modules/users/dto/user.dto';
 
 declare module 'express' {
   export interface Request {
@@ -22,7 +23,7 @@ export function createRequestContext(request: Request): RequestContextDto {
   ctx.host = request.get('host') ?? '';
   ctx.url = request.url;
 
-  ctx.tenantId = request.header(Key.TenantKeyHeader) ?? null;
+  ctx.orgId = (request as RequestWithOrg).orgId ?? null;
 
   const authUser = request.user as (UserDto & { userId?: string }) | undefined;
   if (authUser) {

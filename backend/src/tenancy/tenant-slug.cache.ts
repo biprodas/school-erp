@@ -1,7 +1,6 @@
 export interface CachedTenant {
   id: string;
   slug: string;
-  schemaName: string;
   status: string;
   expiresAt: number;
 }

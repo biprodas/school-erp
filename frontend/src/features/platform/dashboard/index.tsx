@@ -33,7 +33,7 @@ import { PlatformGuard } from "~/features/platform/_components/guard";
 import { useIsPlatformAdmin } from "~/features/platform/_components/hooks";
 import { useMemberships } from "~/apis/platform/memberships/queries";
 import { usePlatformUsers } from "~/apis/platform/users/queries";
-import { useTenants } from "~/apis/platform/tenants/queries";
+import { useOrganizations } from "~/apis/platform/organizations/queries";
 
 export default function PlatformDashboardView() {
   return (
@@ -79,7 +79,7 @@ function OverviewContent() {
   const { data: session } = useSession();
   const isAdmin = useIsPlatformAdmin();
 
-  const tenantsQuery = useTenants();
+  const tenantsQuery = useOrganizations();
   const usersQuery = usePlatformUsers({ enabled: isAdmin });
   const membershipsQuery = useMemberships();
 
@@ -115,17 +115,17 @@ function OverviewContent() {
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard
-          label="Tenants"
+          label="Organizations"
           value={tenants.length}
           icon={Building2}
-          href={ROUTES.PLATFORM_TENANTS}
+          href={ROUTES.PLATFORM_ORGANIZATIONS}
           loading={tenantsQuery.isLoading}
         />
         <MetricCard
-          label="Active tenants"
+          label="Active organizations"
           value={activeTenants}
           icon={CircleCheck}
-          href={ROUTES.PLATFORM_TENANTS}
+          href={ROUTES.PLATFORM_ORGANIZATIONS}
           loading={tenantsQuery.isLoading}
         />
         <MetricCard
@@ -147,7 +147,7 @@ function OverviewContent() {
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle className="text-base">Recent tenants</CardTitle>
+            <CardTitle className="text-base">Recent organizations</CardTitle>
             <CardDescription>
               Newest school workspaces on the platform.
             </CardDescription>
@@ -179,7 +179,7 @@ function OverviewContent() {
                         colSpan={3}
                         className="h-20 text-center text-muted-foreground"
                       >
-                        {tenantsQuery.isLoading ? "Loading…" : "No tenants yet."}
+                        {tenantsQuery.isLoading ? "Loading…" : "No organizations yet."}
                       </TableCell>
                     </TableRow>
                   )}

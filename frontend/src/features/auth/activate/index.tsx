@@ -88,7 +88,7 @@ export default function ActivateView() {
     const result = await signInWithCredentials(
       "tenant",
       { email: info.email, password: values.password },
-      info.tenant.slug,
+      info.organization.slug,
     );
     if (!result || result.error) {
       toast.success("Account activated — please sign in.");
@@ -106,7 +106,7 @@ export default function ActivateView() {
         <CardTitle>Set your password</CardTitle>
         <CardDescription>
           Activate the account for <strong>{info.email}</strong> at{" "}
-          {info.tenant.slug}.
+          {info.organization.slug}.
         </CardDescription>
       </CardHeader>
       <CardContent>

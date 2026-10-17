@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import type { DbConfig } from '../config/db.config';
+import { ALL_ENTITIES_GLOBS } from '../tenancy/tenant.datasource';
 import { PUBLIC_SCHEMA } from './public.datasource';
 
 @Module({
@@ -26,6 +27,8 @@ import { PUBLIC_SCHEMA } from './public.datasource';
           password: db.password,
           database: db.database,
           schema: PUBLIC_SCHEMA,
+          // Platform + tenanted entities all live in the shared public schema.
+          entities: ALL_ENTITIES_GLOBS,
           autoLoadEntities: true,
           synchronize: db.sync && !isProduction,
           logging: db.logging,

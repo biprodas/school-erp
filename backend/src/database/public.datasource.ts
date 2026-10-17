@@ -10,8 +10,8 @@ export const publicDataSourceOptions: DataSourceOptions = {
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
   schema: PUBLIC_SCHEMA,
-  entities: [__dirname + '/../modules/platform/**/entities/*.entity{.ts,.js}'],
-  migrations: [__dirname + '/../migrations/public/*{.ts,.js}'],
+  entities: [__dirname + '/../modules/**/entities/*.entity{.ts,.js}'],
+  migrations: [__dirname + '/../migrations/*{.ts,.js}'],
   synchronize: false,
 };
 

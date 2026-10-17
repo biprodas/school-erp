@@ -130,7 +130,7 @@ export const authConfig = {
         token.authKind = user.authKind;
         token.roles = user.roles;
         token.isAdmin = user.isAdmin;
-        token.tenant = user.tenant;
+        token.organization = user.organization;
       }
       return token;
     },
@@ -141,7 +141,7 @@ export const authConfig = {
       session.user.roles = token.roles;
       session.user.userType = resolveUserType(token.roles);
       session.user.isAdmin = token.isAdmin;
-      session.user.tenant = token.tenant;
+      session.user.organization = token.organization;
       return session;
     },
   },

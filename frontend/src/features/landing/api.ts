@@ -17,7 +17,7 @@ export async function getPublicTenant(
 ): Promise<PublicTenant | null> {
   try {
     const res = await fetch(
-      `${apiConfig.baseUrl}/public/tenants/by-slug?slug=${encodeURIComponent(slug)}`,
+      `${apiConfig.baseUrl}/public/organizations/by-slug?slug=${encodeURIComponent(slug)}`,
       { headers: { Accept: "application/json" } },
     );
     if (!res.ok) return null;

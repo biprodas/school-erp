@@ -43,7 +43,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth((request) => ({
             roles: data.user.roles,
             accessToken: data.access_token,
             authKind: "tenant",
-            tenant: data.tenant,
+            organization: data.organization,
           };
         } catch (err) {
           console.error("tenant-credentials authorize failed:", err);

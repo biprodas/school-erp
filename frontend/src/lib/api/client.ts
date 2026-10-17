@@ -14,7 +14,7 @@ const instance = createApiClient(
     const session = await getSession();
     return {
       accessToken: session?.accessToken,
-      tenantSlug: session?.user?.tenant?.slug ?? getClientTenantSlug(),
+      tenantSlug: session?.user?.organization?.slug ?? getClientTenantSlug(),
     };
   },
   () => {

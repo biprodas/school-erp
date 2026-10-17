@@ -1,0 +1,142 @@
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { RequestContext } from '~/common/decorators/request-context.decorator';
+import { RequestContextDto } from '~/common/dto/request-context.dto';
+import { PlatformJwtAuthGuard } from '~/common/guards/platform-jwt-auth.guard';
+import { CreateMembershipDto } from '../dto/create-membership.dto';
+import { UpdateMembershipRoleDto } from '../dto/update-membership-role.dto';
+import { MembershipService } from '../services/membership.service';
+import { FilterMembershipDto } from '../dto/filter-membership.dto';
+
+@ApiTags('Platform / Memberships')
+@ApiBearerAuth('platform-jwt')
+@Controller('memberships')
+@UseGuards(PlatformJwtAuthGuard)
+export class MembershipController {
+  constructor(private readonly membershipService: MembershipService) {}
+
+  @Get()
+  async findAll(
+    @RequestContext() ctx: RequestContextDto,
+    @Query() dto: FilterMembershipDto,
+  ) {
+    const memberships = await this.membershipService.findAll(ctx, dto);
+    return {
+      success: true,
+      statusCode: 200,
+      message: `List of memberships`,
+      data: memberships,
+    };
+  }
+
+  @Get('organization/:orgId')
+  async findByOrganization(
+    @RequestContext() ctx: RequestContextDto,
+    @Param('orgId') orgId: string,
+  ) {
+    const memberships = await this.membershipService.findByOrgId(ctx, orgId);
+    return {
+      success: true,
+      statusCode: 200,
+      message: `List of memberships`,
+      data: memberships,
+    };
+  }
+
+  @Get('user/:userId')
+  async findByUser(
+    @RequestContext() ctx: RequestContextDto,
+    @Param('userId') userId: string,
+  ) {
+    const memberships = await this.membershipService.findByUserId(ctx, userId);
+    return {
+      success: true,
+      statusCode: 200,
+      message: `List of memberships`,
+      data: memberships,
+    };
+  }
+
+  @Get('me')
+  async findMine(@RequestContext() ctx: RequestContextDto) {
+    const memberships = await this.membershipService.findByUserId(
+      ctx,
+      ctx.user?.id ?? '',
+    );
+    return {
+      success: true,
+      statusCode: 200,
+      message: `List of memberships`,
+      data: memberships,
+    };
+  }
+
+  @Get(':id')
+  async findOne(
+    @RequestContext() ctx: RequestContextDto,
+    @Param('id') id: string,
+  ) {
+    const membership = await this.membershipService.findById(ctx, id);
+    return {
+      success: true,
+      statusCode: 200,
+      message: `Membership found`,
+      data: membership,
+    };
+  }
+
+  @Post()
+  async create(
+    @RequestContext() ctx: RequestContextDto,
+    @Body() dto: CreateMembershipDto,
+  ) {
+    const { membership, ownerActivation } = await this.membershipService.create(
+      ctx,
+      dto,
+    );
+    return {
+      success: true,
+      statusCode: 201,
+      message: `Membership created successfully`,
+      data: { ...membership, activation: ownerActivation ?? null },
+    };
+  }
+
+  @Patch(':id')
+  async updateRole(
+    @RequestContext() ctx: RequestContextDto,
+    @Param('id') id: string,
+    @Body() dto: UpdateMembershipRoleDto,
+  ) {
+    const membership = await this.membershipService.updateRole(ctx, id, dto);
+    return {
+      success: true,
+      statusCode: 200,
+      message: `Membership updated successfully`,
+      data: membership,
+    };
+  }
+
+  @Delete(':id')
+  async remove(
+    @RequestContext() ctx: RequestContextDto,
+    @Param('id') id: string,
+  ) {
+    await this.membershipService.remove(ctx, id);
+    return {
+      success: true,
+      statusCode: 200,
+      message: `Membership removed successfully`,
+    };
+  }
+}

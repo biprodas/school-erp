@@ -23,10 +23,10 @@ import {
   useMemberships,
 } from "~/apis/platform/memberships/queries";
 import { usePlatformUsers } from "~/apis/platform/users/queries";
-import { useTenants } from "~/apis/platform/tenants/queries";
+import { useOrganizations } from "~/apis/platform/organizations/queries";
 import type { Membership } from "~/apis/platform/memberships/types";
-import type { OwnerActivation } from "~/apis/platform/tenants/types";
-import { ActivationLinkDialog } from "~/features/platform/tenants/activation-link-dialog";
+import type { OwnerActivation } from "~/apis/platform/organizations/types";
+import { ActivationLinkDialog } from "~/features/platform/organizations/activation-link-dialog";
 import {
   CreateMembershipDialog,
   EditMembershipRoleDialog,
@@ -50,7 +50,7 @@ export default function PlatformMembershipsView() {
 function MembershipsContent() {
   const isAdmin = useIsPlatformAdmin();
   const membershipsQuery = useMemberships();
-  const tenantsQuery = useTenants();
+  const tenantsQuery = useOrganizations();
   // Users come from the admin-only endpoint; non-admins join on id fallback.
   const usersQuery = usePlatformUsers({ enabled: isAdmin });
   const deleteMembership = useDeleteMembership();
@@ -68,12 +68,12 @@ function MembershipsContent() {
     const tenantById = new Map((tenantsQuery.data ?? []).map((t) => [t.id, t]));
     return (membershipsQuery.data ?? []).map((m) => {
       const u = userById.get(m.userId);
-      const t = tenantById.get(m.tenantId);
+      const t = tenantById.get(m.orgId);
       return {
         ...m,
         userLabel: u?.name ?? `${m.userId.slice(0, 8)}…`,
         userEmail: u?.email ?? "",
-        tenantLabel: t?.name ?? `${m.tenantId.slice(0, 8)}…`,
+        tenantLabel: t?.name ?? `${m.orgId.slice(0, 8)}…`,
       };
     });
   }, [membershipsQuery.data, usersQuery.data, tenantsQuery.data]);
@@ -96,7 +96,7 @@ function MembershipsContent() {
       },
       {
         accessorKey: "tenantLabel",
-        header: "Tenant",
+        header: "Organization",
         cell: ({ row }) => row.original.tenantLabel,
       },
       {
@@ -155,7 +155,7 @@ function MembershipsContent() {
     <div className="space-y-6">
       <PageHeader
         title="Memberships"
-        description="Assign users to tenants and roles."
+        description="Assign users to organizations and roles."
         actions={
           isAdmin ? (
             <Button onClick={() => setCreateOpen(true)}>

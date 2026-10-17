@@ -1,9 +1,17 @@
 import type { DataSourceOptions } from 'typeorm';
 import type { DbConfig } from '../config/db.config';
 
-const tenantedEntitiesGlob =
-  __dirname + '/../modules/tenanted/**/entities/*.entity{.ts,.js}';
+/** Every entity lives in the shared `public` schema. */
+export const ALL_ENTITIES_GLOBS = [
+  __dirname + '/../modules/**/entities/*.entity{.ts,.js}',
+];
 
+/**
+ * Options for the shared tenant pool. It connects as the restricted app role
+ * (`DB_APP_USERNAME`) so row-level security applies; falls back to the owner
+ * credentials when no app role is configured (RLS is then bypassed and only
+ * the app-level scoping protects tenants).
+ */
 export function createTenantPoolDataSourceOptions(
   db: DbConfig,
 ): DataSourceOptions {
@@ -11,10 +19,11 @@ export function createTenantPoolDataSourceOptions(
     type: 'postgres',
     host: db.host,
     port: db.port,
-    username: db.username,
-    password: db.password,
+    username: db.appUsername ?? db.username,
+    password: db.appUsername ? db.appPassword : db.password,
     database: db.database,
-    entities: [tenantedEntitiesGlob],
+    schema: 'public',
+    entities: ALL_ENTITIES_GLOBS,
     synchronize: false,
     logging: db.logging,
     ...(db.ssl ? { ssl: { rejectUnauthorized: false } } : {}),
@@ -24,23 +33,5 @@ export function createTenantPoolDataSourceOptions(
       idleTimeoutMillis: db.idleTimeout,
       maxLifetimeMillis: db.maxLifetime,
     },
-  };
-}
-
-export function createTenantSchemaSyncDataSourceOptions(
-  db: DbConfig,
-  schemaName: string,
-): DataSourceOptions {
-  return {
-    type: 'postgres',
-    host: db.host,
-    port: db.port,
-    username: db.username,
-    password: db.password,
-    database: db.database,
-    schema: schemaName,
-    entities: [tenantedEntitiesGlob],
-    synchronize: false,
-    logging: false,
   };
 }

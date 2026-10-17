@@ -6,15 +6,17 @@ export type MembershipRole = (typeof MEMBERSHIP_ROLES)[number];
 export interface Membership {
   id: string;
   userId: string;
-  tenantId: string;
+  orgId: string;
   role: MembershipRole;
+  isAdmin: boolean;
+  status: string;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface CreateMembershipPayload {
   userId: string;
-  tenantId: string;
+  orgId: string;
   role?: MembershipRole;
 }
 

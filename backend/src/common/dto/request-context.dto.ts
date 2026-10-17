@@ -1,4 +1,4 @@
-import { UserDto } from 'src/modules/platform/users/dto/user.dto';
+import { UserDto } from 'src/modules/users/dto/user.dto';
 
 export class RequestContextDto {
   public requestId: string;
@@ -10,7 +10,8 @@ export class RequestContextDto {
   public host: string;
   public url: string;
 
-  public tenantId: string | null;
+  /** Organization resolved by TenantMiddleware (null on platform routes). */
+  public orgId: string | null;
   public userId: string | null;
   public user: UserDto | null;
 }
