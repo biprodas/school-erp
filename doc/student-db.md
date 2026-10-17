@@ -5,8 +5,10 @@ student record and its profile satellites — addresses, documents, medical
 profile, emergency contacts, and internal notes.
 
 It reflects the **implemented** TypeORM entities under
-`backend/src/modules/tenanted/students/`. Every table described here has a
-corresponding entity in the codebase.
+`backend/src/modules/students/` (`entities/`, `enums/`). Every table described
+here has a corresponding entity in the codebase. All tables live in the single
+shared `public` schema and are scoped to a school (`organizations` row) by
+`org_id`.
 
 ## Overview
 
@@ -28,7 +30,7 @@ Capabilities supported:
 **Out of the student tables but closely related** (documented elsewhere):
 
 - **Guardians** — `guardians` + `student_guardians` link table, in
-  `backend/src/modules/tenanted/guardians/`.
+  `backend/src/modules/guardians/`.
 - **Enrollment / placement** — `student_enrollments`, `student_subjects`, and
   `student_promotions`, covered in [`academic-db.md`](./academic-db.md). A
   student's class, section, roll number, and academic-year placement live there,
@@ -37,13 +39,21 @@ Capabilities supported:
 **Conventions used across every table:**
 
 - Primary key `id` is a `uuid` (`@PrimaryGeneratedColumn('uuid')`).
+- Every entity extends `OrgScopedEntity`
+  (`backend/src/tenancy/org-scoped.entity.ts`), which adds an indexed, NOT NULL
+  `org_id` uuid column with an FK to `organizations.id` (`ON DELETE CASCADE` —
+  deleting a school deletes all of its student data). `OrgScopedEntity` adds no
+  other columns; `id` and the audit columns are declared on each entity.
 - Audit columns `created_at` and `updated_at` exist on every table.
 - `students`, `student_documents`, and `student_notes` additionally support soft
   delete via `deleted_at`.
 - Every satellite's `student_id` is `ON DELETE CASCADE` — deleting a student
   removes its profile rows.
-- Multi-tenancy is enforced at the repository layer (`BaseTenantRepository`),
-  not via a tenant column on these tables.
+- Multi-tenancy is enforced twice on `org_id`: at the repository layer
+  (`BaseTenantRepository` pins every find/save/update/delete to the request's
+  org) and in Postgres by the `org_isolation` row-level-security policy.
+- Uniqueness is per school: every unique index includes `org_id` as its first
+  column.
 - Enum-like fields are stored as short `varchar` columns validated in code.
 
 ## 1. Student Profile Map
@@ -69,7 +79,8 @@ academic year.
 | Column | Type | Constraints | Notes |
 |---|---|---|---|
 | `id` | uuid | PK | Auto-generated |
-| `admission_number` | varchar(60) | Unique, Not Null | School-assigned admission no. |
+| `org_id` | uuid | FK → `organizations.id` (CASCADE), Not Null, Indexed | Inherited from `OrgScopedEntity`; tenant discriminator (RLS) |
+| `admission_number` | varchar(60) | Not Null, unique per org | School-assigned admission no. |
 | `first_name` | varchar | Not Null | |
 | `middle_name` | varchar | Nullable | |
 | `last_name` | varchar | Not Null | |
@@ -89,14 +100,17 @@ academic year.
 | `updated_at` | timestamp | Not Null | |
 | `deleted_at` | timestamp | Nullable | Soft delete |
 
-**Unique index:** `admission_number`.
+**Unique index:** `uq_students_org_admission_number` on (`org_id`,
+`admission_number`) — admission numbers are unique within a school.
 
 **Virtual field:** `fullName` is computed (not stored) from
 `first_name` + `middle_name` + `last_name` on load/insert/update.
 
 Relations:
 
-- `user` — ManyToOne → `User` (nullable, `SET NULL`)
+- `org` — ManyToOne → `Organization` (inherited, `CASCADE`)
+- `user` — ManyToOne → `User` (nullable, `SET NULL`; `users` is the global,
+  non-tenanted accounts table)
 - `guardians` — OneToMany → `StudentGuardian`
 - `addresses` / `documents` / `emergencyContacts` / `notes` — OneToMany
 - `medicalRecord` — OneToOne → `StudentMedicalRecord`
@@ -130,6 +144,7 @@ each type.
 | Column | Type | Constraints | Notes |
 |---|---|---|---|
 | `id` | uuid | PK | |
+| `org_id` | uuid | FK → `organizations.id` (CASCADE), Not Null, Indexed | Inherited from `OrgScopedEntity`; tenant discriminator (RLS) |
 | `student_id` | uuid | FK → `students.id` (CASCADE), Not Null | |
 | `address_type` | varchar(16) | Not Null | Enum `AddressType` |
 | `address_line_1` | varchar(255) | Not Null | |
@@ -142,7 +157,7 @@ each type.
 | `created_at` | timestamp | Not Null | |
 | `updated_at` | timestamp | Not Null | |
 
-**Unique index:** `uq_student_address_type` on (`student_id`, `address_type`).
+**Unique index:** `uq_student_address_type` on (`org_id`, `student_id`, `address_type`).
 
 ```ts
 enum AddressType { PRESENT = 'present', PERMANENT = 'permanent' }
@@ -155,6 +170,7 @@ A file attachment for a student, with verification and optional validity dates.
 | Column | Type | Constraints | Notes |
 |---|---|---|---|
 | `id` | uuid | PK | |
+| `org_id` | uuid | FK → `organizations.id` (CASCADE), Not Null, Indexed | Inherited from `OrgScopedEntity`; tenant discriminator (RLS) |
 | `student_id` | uuid | FK → `students.id` (CASCADE), Not Null | |
 | `document_type` | varchar(32) | Not Null | Enum `DocumentType` |
 | `title` | varchar(160) | Nullable | Display label |
@@ -193,6 +209,7 @@ upserts (create on first write, update thereafter).
 | Column | Type | Constraints | Notes |
 |---|---|---|---|
 | `id` | uuid | PK | |
+| `org_id` | uuid | FK → `organizations.id` (CASCADE), Not Null, Indexed | Inherited from `OrgScopedEntity`; tenant discriminator (RLS) |
 | `student_id` | uuid | FK → `students.id` (CASCADE), Not Null | |
 | `blood_group` | varchar(8) | Nullable | e.g. `O+` |
 | `height_cm` | numeric(5,2) | Nullable | |
@@ -206,8 +223,8 @@ upserts (create on first write, update thereafter).
 | `created_at` | timestamp | Not Null | |
 | `updated_at` | timestamp | Not Null | |
 
-**Unique index:** `uq_student_medical_record` on (`student_id`) — enforces the
-one-to-one relationship.
+**Unique index:** `uq_student_medical_record` on (`org_id`, `student_id`) —
+enforces the one-to-one relationship.
 
 ## 6. `student_emergency_contacts`
 
@@ -217,6 +234,7 @@ ascending `priority` order.
 | Column | Type | Constraints | Notes |
 |---|---|---|---|
 | `id` | uuid | PK | |
+| `org_id` | uuid | FK → `organizations.id` (CASCADE), Not Null, Indexed | Inherited from `OrgScopedEntity`; tenant discriminator (RLS) |
 | `student_id` | uuid | FK → `students.id` (CASCADE), Not Null | |
 | `name` | varchar(160) | Not Null | |
 | `relation` | varchar(60) | Nullable | Free-text relationship |
@@ -236,6 +254,7 @@ author.
 | Column | Type | Constraints | Notes |
 |---|---|---|---|
 | `id` | uuid | PK | |
+| `org_id` | uuid | FK → `organizations.id` (CASCADE), Not Null, Indexed | Inherited from `OrgScopedEntity`; tenant discriminator (RLS) |
 | `student_id` | uuid | FK → `students.id` (CASCADE), Not Null | |
 | `note_type` | varchar(16) | Not Null, default `general` | Enum `NoteType` |
 | `note` | text | Not Null | |
@@ -255,22 +274,30 @@ enum NoteType {
 
 ## 8. API Surface
 
-All routes are tenant-scoped (`x-tenant-id` header + tenant JWT) and guarded by
-RBAC permissions from the catalog
-(`backend/src/modules/tenanted/rbac/permissions.catalog.ts`).
+All routes are tenant-scoped (`x-tenant-id` header + tenant JWT, `JwtAuthGuard`
++ `PermissionsGuard`) and guarded by RBAC permissions from the catalog
+(`backend/src/modules/rbac/permissions.catalog.ts`). Controllers live in
+`backend/src/modules/students/controllers/` and `backend/src/modules/guardians/`.
 
 | Resource | Route | Permissions |
 |---|---|---|
 | Student | `/students` (CRUD) | `students:*` |
 | Address | `/students/:studentId/addresses` (CRUD) | `students:*` |
 | Document | `/students/:studentId/documents` (CRUD) | `student_documents:*` |
-| Medical record | `/students/:studentId/medical-record` (GET / PUT / DELETE) | `student_medical:*` |
+| Medical record | `/students/:studentId/medical-record` (GET / PUT / DELETE) | `student_medical:read` / `:update` / `:delete` |
 | Emergency contact | `/students/:studentId/emergency-contacts` (CRUD) | `students:*` |
 | Note | `/students/:studentId/notes` (CRUD) | `student_notes:*` |
+| Guardian | `/guardians` (CRUD) | `guardians:*` |
 | Guardian link | `/students/:studentId/guardians` (CRUD) | `guardians:*` |
 
+"CRUD" here means `GET` (list), `POST`, `PATCH /:id` and `DELETE /:id`, mapped
+to the resource's `read` / `create` / `update` / `delete` permission. `/students`
+and `/guardians` also expose `GET /:id`.
+
 The medical record is a singleton per student: `GET` returns it (or `null`),
-`PUT` upserts, `DELETE` clears it.
+`PUT` upserts (it is guarded by `student_medical:update` even when it creates
+the row; `student_medical:create` exists in the catalog but no route uses it),
+`DELETE` clears it.
 
 Documents, medical records, and notes carry **dedicated** permissions because
 they are sensitive or standalone; addresses and emergency contacts reuse
@@ -295,7 +322,8 @@ students ──< student_enrollments >── …               (academic-db.md)
 ```
 
 Legend: `A ──< B` means "one A, many B" (B holds the FK). Every satellite's FK to
-`students` is `ON DELETE CASCADE`.
+`students` is `ON DELETE CASCADE`. Not drawn: every table above (including
+`students`) also has `org_id` → `organizations.id` (`ON DELETE CASCADE`).
 
 ## 10. Implemented Tables
 

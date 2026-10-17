@@ -1,8 +1,37 @@
 # Dashboard menu structure
 
-Authoritative mapping lives in `frontend/src/app/(dashboard)/_components/sidebar-nav.tsx` (`sidebarNavCategories`). Routes below use the app base path **`/dashboard`** (many screens are placeholders via `[...slug]` until built).
+The source of truth is `sidebarNavCategories` in `frontend/src/app/(dashboard)/_components/sidebar-nav.tsx`. Its types (`NavCategory` → `NavMenuEntry` → `NavSubmenuItem`) and the active-path helpers live in `frontend/src/lib/sidebar-nav.ts`. Role filtering and search happen in `frontend/src/app/(dashboard)/_components/nav-main.tsx`. Keep this doc in sync with `sidebar-nav.tsx`. Order and labels below match the file exactly.
 
-Legend: **menu** → optional **submenu** (indented).
+Legend: **menu** → optional submenu (indented). `…/x` is shorthand for the parent menu's base path plus `/x`. A menu with submenus links to the first target shown on its own line, which is usually also its first submenu.
+
+## Role gating
+
+Any category, menu or submenu can carry `roles: string[]`. The values are tenant role names (system roles are seeded from `backend/src/modules/rbac/system-roles.seed.ts`: `admin`, `staff`, `teacher`, `accountant`, `librarian`, `parent`, `student`, `stakeholder`) read from `session.user.roles`.
+
+- Items without `roles` are visible to every staff user.
+- Tenant admins (`session.user.isAdmin`) and users holding the `admin` role see everything.
+- Otherwise, a user sees a gated item only if they hold at least one of the listed roles. A menu whose submenus are all filtered out is hidden, and so is a category left with no menus.
+
+Gates currently set in `sidebar-nav.tsx`:
+
+| Level | Item | `roles` |
+| --- | --- | --- |
+| Menu | Operations → **Finance** | `["accountant"]` |
+| Menu | Campus Services → **Library** | `["librarian"]` |
+| Category | **Administration** (all menus) | `["admin"]` |
+
+## Route status
+
+Every sidebar link points under `/dashboard`. Only these routes have real pages under `frontend/src/app/(dashboard)/`:
+
+| Route | Page |
+| --- | --- |
+| `/dashboard` | `dashboard/page.tsx` (stub; no sidebar item links here, since **Overview** points to `/dashboard/overview`) |
+| `/dashboard/admin/users-access/users` | `dashboard/admin/users-access/users/page.tsx` |
+| `/dashboard/admin/users-access/roles` | `dashboard/admin/users-access/roles/page.tsx` |
+| `/profile` | `profile/page.tsx` (sidebar footer) |
+
+Every other `/dashboard/...` link, including `/dashboard/settings` in the footer, falls through to the catch-all `dashboard/[...slug]/page.tsx`. That page renders a placeholder titled from the URL segments, so nothing 404s, but those screens are not built yet.
 
 ---
 
@@ -104,7 +133,7 @@ Legend: **menu** → optional **submenu** (indented).
 
 | Accent | `bg-orange-500` |
 
-- **Finance** → `/dashboard/operations/finance`
+- **Finance** → `/dashboard/operations/finance` (roles: `accountant`)
   - Fee Structure → `/dashboard/operations/finance/fee-structure`
   - Discounts / Waivers → `…/discounts-waivers`
   - Scholarships → `…/scholarships`
@@ -129,12 +158,12 @@ Legend: **menu** → optional **submenu** (indented).
 | Accent | `bg-cyan-500` |
 
 - **Transport** → `/dashboard/operations/campus/transport`
-  - Vehicles → `…/transport/vehicles`
-  - Routes → `…/transport/routes`
-  - Stops → `…/transport/stops`
-  - Transport Fees → `…/transport/fees`
+  - Vehicles → `…/vehicles`
+  - Routes → `…/routes`
+  - Stops → `…/stops`
+  - Transport Fees → `…/fees`
 
-- **Library** → `/dashboard/operations/campus/library/books`
+- **Library** → `/dashboard/operations/campus/library/books` (roles: `librarian`)
   - Books → `…/library/books`
   - Categories → `…/library/categories`
   - Issue / Return → `…/library/issue-return`
@@ -178,6 +207,8 @@ Legend: **menu** → optional **submenu** (indented).
 ## Administration
 
 | Accent | `bg-zinc-400` |
+
+Category gated with roles: `admin`. Only admins see it.
 
 - **School setup** → `/dashboard/admin/school-setup/profile`
   - Schools / Branches → `/dashboard/admin/schools-branches`
@@ -229,7 +260,23 @@ Defined in `sidebarSecondaryNav` (same file):
 
 ---
 
+## Known overlaps in the current sidebar
+
+These are in the code as-is and are recorded here so they are not mistaken for doc errors:
+
+- School setup has both **Schools / Branches** (`/dashboard/admin/schools-branches`) and **Branches** (`/dashboard/admin/school-setup/branches`).
+- **Departments** appears under Staff & HR (`/dashboard/people/staff/departments`) and under School setup (`/dashboard/admin/school-setup/departments`).
+- Parent meetings appear under People → Parents (`/dashboard/people/parents/meetings`) and Communication → Parent engagement (`/dashboard/communication/parent-engagement/meetings`).
+- Attendance reports appear under Dashboard → Reports (`/dashboard/reports/attendance`) and Academics → Attendance (`/dashboard/academics/attendance/reports`). Student and staff attendance also have their own entries under People.
+- Scholarships appear under Admissions (`/dashboard/academics/admissions/scholarships`) and Finance (`/dashboard/operations/finance/scholarships`).
+- **Teachers** sits under Staff & HR but routes to `/dashboard/people/teachers`, outside the `/dashboard/people/staff` base.
+- The Campus Services menus route under `/dashboard/operations/campus/...`, even though Campus Services is its own category.
+
+---
+
 ## Related
 
-- Navigation rendering & filters: `frontend/src/app/(dashboard)/_components/nav-main.tsx`
+- Navigation types & active-path helpers: `frontend/src/lib/sidebar-nav.ts`
+- Navigation rendering, role filtering & search: `frontend/src/app/(dashboard)/_components/nav-main.tsx`
+- Sidebar shell (wires `sidebarNavCategories` and `sidebarSecondaryNav`): `frontend/src/app/(dashboard)/_components/app-sidebar.tsx`
 - Product features overview: `doc/features.md`

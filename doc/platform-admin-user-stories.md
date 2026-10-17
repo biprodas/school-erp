@@ -1,13 +1,14 @@
 # Platform Admin — User Stories
 
-These stories cover the platform-level administration layer: account registration, tenant (school) management, and membership (access control). They are written from the perspective of two actor types.
+These stories cover the platform-level administration layer: account registration, school management, and membership (access control). In the code a school is an **organization** (`organizations` table, `/organizations` routes); this document says "school" and "organization" interchangeably. Technical details are in `platform-admin-module.md`.
 
 **Actors**
 
 | Actor | Who they are |
 |---|---|
-| **Super Admin** | The platform operator. Manages all schools and all users across the system. |
-| **School Owner** | A user who creates and owns one or more schools on the platform. |
+| **Super Admin** | The platform operator (a user with the platform admin flag). Manages all schools, all user accounts and all memberships. |
+| **School Owner** | A user who holds the Owner membership of a school, usually because they created it. |
+| **Platform user** | Anyone with a platform account. One account (one email and password) works across every school they belong to. |
 
 ---
 
@@ -22,9 +23,9 @@ These stories cover the platform-level administration layer: account registratio
 > so that I can log in and manage schools.
 
 Acceptance criteria:
-- I can submit first name, last name, email, and a password (minimum 6 characters).
+- I can submit my name, email, and a password (minimum 6 characters).
 - If the email is already in use, I see an error and am not registered twice.
-- On success, I receive an access token and am immediately logged in.
+- On success, my account is pending and a verification email is sent; I am not logged in until I verify (see US-AUTH-08).
 
 ---
 
@@ -37,8 +38,9 @@ Acceptance criteria:
 Acceptance criteria:
 - I submit my email and password.
 - If the credentials are correct and my account is active, I receive an access token.
-- If the credentials are wrong, I see an error message.
-- If my account has been deactivated, I cannot log in.
+- If the credentials are wrong, I see a generic "invalid credentials" error.
+- If I have not verified my email yet, I am told to verify it first.
+- If my account is suspended, deactivated, or banned, I cannot log in.
 
 ---
 
@@ -50,7 +52,50 @@ Acceptance criteria:
 
 Acceptance criteria:
 - I can fetch my profile without providing my ID.
-- The response includes my name, email, role, and a list of my school memberships.
+- The response includes my name, email, account status, platform admin flag, and my memberships (school ID, role, school-admin flag, membership status).
+- Note: memberships are returned without the school's name or slug; the client has to look those up separately.
+
+---
+
+**US-AUTH-06 — Request a password reset link**
+
+> As a user who has forgotten their password,
+> I want to request a reset link sent to my registered email address,
+> so that I can regain access to my account without contacting support.
+
+Acceptance criteria:
+- I submit my email address.
+- If the email is registered, a reset link is sent.
+- The response is the same whether or not the email is registered.
+- The reset link expires after 1 hour.
+
+---
+
+**US-AUTH-07 — Reset password using a link**
+
+> As a user who requested a password reset,
+> I want to set a new password using the link I received,
+> so that I can log in again.
+
+Acceptance criteria:
+- The reset page can check the link is still valid before I type a new password.
+- I can submit a new password (minimum 6 characters).
+- The link works only once; it cannot be reused after the reset.
+- I can log in immediately with the new password.
+
+---
+
+**US-AUTH-08 — Verify email address after registration**
+
+> As a newly registered user,
+> I want to verify my email address,
+> so that the platform can confirm I own the address I signed up with.
+
+Acceptance criteria:
+- After registration, a verification email is sent; the link is valid for 24 hours and works once.
+- Following the link marks my account as verified and active, and logs me in.
+- Unverified accounts cannot log in to the platform at all.
+- I can ask for the verification email to be re-sent; the response does not reveal whether the email is registered.
 
 ---
 
@@ -65,8 +110,9 @@ Acceptance criteria:
 > so that I can onboard operators or school owners without them self-registering.
 
 Acceptance criteria:
-- I can specify first name, last name, email, password, and optionally assign a platform role.
-- The new user receives a hashed password (not stored in plain text).
+- I can specify name, email, and password, and optionally an account status and the platform admin flag.
+- The new account is active by default and does not need email verification.
+- The password is stored hashed, never in plain text.
 - Duplicate emails are rejected.
 
 ---
@@ -79,6 +125,7 @@ Acceptance criteria:
 
 Acceptance criteria:
 - I can retrieve all users in one request.
+- I can narrow the list by exact ID, name, or email (see US-USER-09 for richer search).
 - Regular users cannot access this list.
 
 ---
@@ -99,25 +146,27 @@ Acceptance criteria:
 **US-USER-04 — Update my own profile**
 
 > As a logged-in user,
-> I want to update my first name or last name,
+> I want to update my name,
 > so that my profile stays accurate.
 
 Acceptance criteria:
-- I can change my own first and last name.
-- I cannot change my own platform role or active status — those fields are ignored if I send them.
+- I can change my own name.
+- I cannot change my own account status or platform admin flag; a request that includes them is rejected.
+- I cannot update anyone else's profile.
 
 ---
 
-**US-USER-05 — Promote or deactivate a user (admin action)**
+**US-USER-05 — Promote or suspend a user (admin action)**
 
 > As a Super Admin,
-> I want to change a user's platform role or deactivate their account,
-> so that I can manage who has elevated access or revoke platform access without deleting the account.
+> I want to change a user's platform admin flag or account status,
+> so that I can manage who has elevated access or revoke access without deleting the account.
 
 Acceptance criteria:
-- I can set another user's `role` to `super_admin` or `user`.
-- I can set `isActive` to `false` to prevent login without deleting their data.
+- I can grant or remove the platform admin flag on any user.
+- I can set the account status to suspended, deactivated, or banned, which blocks platform login and login to every school.
 - Regular users cannot perform these actions on anyone, including themselves.
+- Gap: access tokens already issued stay valid until they expire (default 1 day); see US-AUTH-04.
 
 ---
 
@@ -128,31 +177,48 @@ Acceptance criteria:
 > so that I can remove users who should no longer exist in the system.
 
 Acceptance criteria:
-- The user record is removed.
-- Any memberships belonging to that user are also removed automatically.
+- The user account is permanently removed (not soft-deleted).
+- The user's memberships and school role assignments are removed automatically.
 - Only a Super Admin can perform this action.
+- Gap: if the user was a school's Owner, the school is left without an Owner; nothing warns about this or requires a transfer first.
 
 ---
 
-## Tenants (Schools)
+**US-USER-07 — Change my own password**
+
+> As a logged-in user,
+> I want to change my password by providing my current password and a new one,
+> so that I can update my credentials without admin involvement.
+
+Acceptance criteria:
+- I provide my current password and a new password (minimum 6 characters).
+- If the current password is wrong, the change is rejected.
+- The new password is stored hashed; the old password no longer works.
+- Because accounts are global, the new password applies to every school I belong to.
 
 ---
 
-**US-TENANT-01 — Create a new school**
+## Schools (Organizations)
+
+---
+
+**US-ORG-01 — Create a new school**
 
 > As a logged-in user,
 > I want to create a new school on the platform,
 > so that I can set up a workspace for my institution.
 
 Acceptance criteria:
-- I provide a school name, a unique slug (short URL-friendly identifier), and optionally a custom domain.
-- The system provisions a dedicated data space for that school automatically.
-- I am automatically assigned as the Owner of the school.
-- A Super Admin creating a school is not automatically assigned as owner (they manage the platform globally).
+- I provide a school name and a unique slug (lowercase letters, digits, and underscores; used as the school's subdomain), and optionally a custom domain.
+- The school, its standard roles (e.g. admin, staff), and its Owner are set up together; if any step fails, nothing is created.
+- When a regular user creates a school, they become its Owner and receive an activation email for it.
+- A Super Admin can name another existing user as Owner, or create the school with no Owner and assign one later (US-ORG-08).
+- A duplicate slug is rejected.
+- Note: a new Owner's school membership is pending until they follow the activation link (valid 7 days), which also sets their password. Until then they cannot sign in to the school, even if they created it themselves.
 
 ---
 
-**US-TENANT-02 — View my schools**
+**US-ORG-02 — View my schools**
 
 > As a logged-in user,
 > I want to see the list of schools I belong to,
@@ -164,7 +230,7 @@ Acceptance criteria:
 
 ---
 
-**US-TENANT-03 — View a school's details**
+**US-ORG-03 — View a school's details**
 
 > As a member of a school or a Super Admin,
 > I want to view a school's details by its ID,
@@ -173,11 +239,11 @@ Acceptance criteria:
 Acceptance criteria:
 - A Super Admin can view any school.
 - A regular user can only view schools they are a member of.
-- Requesting a school the user has no membership in is rejected.
+- Requesting a school the user has no membership in is rejected; an unknown school ID returns not found.
 
 ---
 
-**US-TENANT-04 — Update a school**
+**US-ORG-04 — Update a school**
 
 > As the Owner of a school or a Super Admin,
 > I want to update the school's name, domain, or status,
@@ -185,13 +251,14 @@ Acceptance criteria:
 
 Acceptance criteria:
 - Only the school's Owner or a Super Admin can make changes.
-- The slug and internal schema name cannot be changed after creation.
-- Valid status transitions include activating, suspending, or archiving a school.
+- The slug cannot be changed after creation.
+- The status can be set to pending, active, inactive, suspended, or archived (any value, no transition rules).
 - Admins and Members cannot edit school settings.
+- Gap: the update currently requires the name to be sent every time; a status-only or domain-only update is rejected.
 
 ---
 
-**US-TENANT-05 — Delete a school**
+**US-ORG-05 — Delete a school**
 
 > As a Super Admin,
 > I want to permanently delete a school,
@@ -199,9 +266,35 @@ Acceptance criteria:
 
 Acceptance criteria:
 - Only a Super Admin can delete a school.
-- All data stored in that school's dedicated data space is permanently destroyed.
-- All memberships associated with the school are removed automatically.
-- This action is irreversible.
+- All of the school's data (students, staff, roles, memberships, school-issued tokens, and everything else tied to it) is permanently removed in one step.
+- User accounts are kept, since they are shared across schools.
+- This action is irreversible; there is no soft delete or confirmation step.
+
+---
+
+**US-ORG-11 — Re-send the Owner activation link**
+
+> As a School Owner or a Super Admin,
+> I want to issue a fresh activation link for the school's Owner,
+> so that an Owner whose link expired or was lost can still activate.
+
+Acceptance criteria:
+- A new single-use link is created and emailed to the current Owner; it is also returned to the caller.
+- Only the school's Owner or a Super Admin can do this.
+- If the school has no Owner, a not-found error is returned.
+
+---
+
+**US-ORG-12 — Find a school before signing in**
+
+> As a visitor on a school's custom domain or subdomain,
+> I want the app to recognise which school I am visiting,
+> so that I land on the right sign-in page.
+
+Acceptance criteria:
+- A school can be looked up without signing in, by custom domain or by slug.
+- Only the slug, name, and status are returned.
+- Schools that are not active are reported as not found.
 
 ---
 
@@ -209,86 +302,121 @@ Acceptance criteria:
 
 ---
 
-**US-MEMBER-01 — Invite a user to a school (admin action)**
+**US-MEMBER-01 — Add a user to a school (admin action)**
 
 > As a Super Admin,
 > I want to add an existing platform user to a school with a specific role,
 > so that they can access that school's workspace.
 
 Acceptance criteria:
-- I specify the user ID, the school ID, and a role (`owner`, `admin`, or `member`).
-- A user cannot be added to the same school twice — a duplicate is rejected.
-- The school must exist; an invalid school ID is rejected.
+- I specify the user ID, the school ID, and a role (`owner`, `admin`, or `member`; default `member`).
+- A user cannot be added to the same school twice; a duplicate is rejected.
+- The school and the user must exist; unknown IDs are rejected.
+- Adding someone as `owner` is only possible when the school has no Owner; it sends them an activation link. Otherwise use ownership transfer (US-ORG-08).
+- `admin` and `owner` memberships make the user a school admin; `member` does not.
 
 ---
 
 **US-MEMBER-02 — View members of a school**
 
-> As an authenticated user,
+> As a Super Admin or the school's Owner,
 > I want to see all members of a specific school,
 > so that I know who has access to it.
 
 Acceptance criteria:
-- I provide the school's ID and receive a list of memberships including user details and roles.
+- I provide the school's ID and receive its memberships with each user ID, role, school-admin flag, and status.
 - Results are ordered by when each membership was created.
+- Other users are rejected.
+- Note: user names and emails are not included in the response.
 
 ---
 
 **US-MEMBER-03 — View all schools a user belongs to**
 
-> As an authenticated user,
+> As a Super Admin, or a user looking at their own access,
 > I want to look up all schools a given user is a member of,
 > so that I can understand their access across the platform.
 
 Acceptance criteria:
-- I provide a user ID and receive their membership list including school details and roles.
+- I provide a user ID (or use "my memberships") and receive the membership list with school IDs, roles, and status.
+- A regular user can only look up themselves.
 - Results are ordered by when each membership was created.
+- Note: school names and slugs are not included in the response.
 
 ---
 
 **US-MEMBER-04 — Look up a specific membership**
 
-> As an authenticated user,
+> As a Super Admin, the school's Owner, or the member themselves,
 > I want to retrieve a membership record by its ID,
 > so that I can see the exact role a user holds in a school.
 
 Acceptance criteria:
 - I provide a membership ID and receive the full membership record.
+- Anyone else is rejected.
 - A not-found error is returned if the ID does not exist.
 
 ---
 
-**US-MEMBER-05 — Change a member's role (admin action)**
+**US-MEMBER-05 — Change a member's role**
 
-> As a Super Admin,
+> As a Super Admin or the school's Owner,
 > I want to change the role of an existing membership,
 > so that I can promote a member to admin or demote an admin to member.
 
 Acceptance criteria:
-- I provide the membership ID and the new role.
-- Only `owner`, `admin`, and `member` are valid role values.
-- Only a Super Admin can change roles.
+- I provide the membership ID and the new role (`owner`, `admin`, or `member`).
+- An Owner cannot change the Owner membership or assign the `owner` role; only a Super Admin can.
+- Assigning `owner` while the school already has a different Owner is rejected (use ownership transfer).
+- Gap: demoting someone to `member` removes the school-admin flag but does not remove school roles they already hold (e.g. the full-access `admin` role given to Owners).
 
 ---
 
-**US-MEMBER-06 — Remove a user from a school (admin action)**
+**US-MEMBER-06 — Remove a user from a school**
 
-> As a Super Admin,
+> As a Super Admin or the school's Owner,
 > I want to remove a user's membership from a school,
 > so that they can no longer access that school's workspace.
 
 Acceptance criteria:
-- The membership record is permanently deleted.
+- The membership and the user's role assignments in that school are permanently deleted.
 - The user's platform account is not affected.
-- Only a Super Admin can remove memberships.
+- An Owner cannot remove the Owner membership; only a Super Admin can.
+
+---
+
+**US-MEMBER-07 — School Owner adds a user to their school**
+
+> As the Owner of a school,
+> I want to add an existing platform user to my school,
+> so that I can manage my school's team without requiring Super Admin involvement.
+
+Acceptance criteria:
+- An Owner can add users with roles of `admin` or `member` (not `owner`).
+- The user must already have a platform account.
+- Duplicate memberships are rejected.
+- Note: the user is added directly and is active immediately; there is no invitation the user has to accept.
+
+---
+
+**US-MEMBER-11 — Keep one Owner per school**
+
+> As a platform rule,
+> each school should have at most one Owner,
+> so that ownership is always unambiguous.
+
+Acceptance criteria:
+- Creating an `owner` membership, or changing a role to `owner`, is rejected when the school already has a different Owner.
+- Ownership transfer (US-ORG-08) swaps Owners in one step, demoting the previous Owner automatically.
+- Note: this is enforced by the application, not by a database constraint.
 
 ---
 
 ---
 
-## Suggested Stories — Missing or Not Yet Implemented
+## Suggested Stories — Missing or Partly Implemented
 
-The stories below describe functionality that is absent from the current codebase. Each one is marked with a status tag so the team can prioritise them.
+The stories below describe functionality that is absent or only partly present in the current codebase. Each one is marked with a status tag so the team can prioritise them.
 
 > **Status tags**
 > - `[NOT IMPLEMENTED]` — feature is completely absent; no endpoint or service method exists
@@ -309,7 +437,7 @@ The stories below describe functionality that is absent from the current codebas
 Acceptance criteria:
 - Calling the logout endpoint makes the current token unusable.
 - Subsequent requests with the old token are rejected.
-- Note: JWTs are currently stateless; a token denylist or short-lived refresh-token mechanism is needed.
+- Note: JWTs are stateless and are not checked against the database on each request; a token denylist or short-lived refresh-token mechanism is needed. The same mechanism would make suspensions (US-USER-05) take effect immediately.
 
 ---
 
@@ -326,62 +454,20 @@ Acceptance criteria:
 
 ---
 
-**US-AUTH-06 — Request a password reset link** `[NOT IMPLEMENTED]`
-
-> As a user who has forgotten their password,
-> I want to request a reset link sent to my registered email address,
-> so that I can regain access to my account without contacting support.
-
-Acceptance criteria:
-- I submit my email address.
-- If the email is registered, a time-limited reset link is sent.
-- If the email is not registered, the response gives no indication (security best practice).
-- The reset link expires after a set period (e.g., 1 hour).
-
----
-
-**US-AUTH-07 — Reset password using a link** `[NOT IMPLEMENTED]`
-
-> As a user who requested a password reset,
-> I want to set a new password using the link I received,
-> so that I can log in again.
-
-Acceptance criteria:
-- The reset link contains a single-use token.
-- I can submit a new password (minimum 6 characters).
-- After reset, the token is invalidated and cannot be reused.
-- I can log in immediately with the new password.
-
----
-
-**US-AUTH-08 — Verify email address after registration** `[NOT IMPLEMENTED]`
-
-> As a newly registered user,
-> I want to verify my email address,
-> so that the platform can confirm I own the address I signed up with.
-
-Acceptance criteria:
-- After registration, a verification email is sent.
-- Clicking the link marks my account as email-verified.
-- Unverified accounts may have limited access (e.g., cannot create schools) until verified.
-
----
-
 ### Users
 
 ---
 
-**US-USER-07 — Change my own password** `[NOT IMPLEMENTED]`
+**US-USER-07b — Super Admin sets another user's password** `[NOT IMPLEMENTED]`
 
-> As a logged-in user,
-> I want to change my password by providing my current password and a new one,
-> so that I can update my credentials without admin involvement.
+> As a Super Admin,
+> I want to set a new password for another user without knowing their current one,
+> so that I can help a user who is locked out.
 
 Acceptance criteria:
-- I provide my current password and a new password (minimum 6 characters).
-- If the current password is wrong, the change is rejected.
-- The new password is hashed and stored; old password no longer works.
-- I do not need to re-enter my current password if I am a Super Admin changing another user's password.
+- I can set a new password (minimum 6 characters) for any user.
+- Regular users cannot do this for anyone else.
+- Note: today a user can only change their own password (with the current one) or use the reset-by-email flow.
 
 ---
 
@@ -398,16 +484,17 @@ Acceptance criteria:
 
 ---
 
-**US-USER-09 — Search and filter platform users** `[NOT IMPLEMENTED]`
+**US-USER-09 — Search and filter platform users** `[PARTIAL]`
 
 > As a Super Admin,
-> I want to search users by name, email, role, or active status,
+> I want to search users by name, email, status, or admin flag,
 > so that I can find specific accounts quickly without scrolling through the full list.
 
 Acceptance criteria:
 - I can filter by partial name or email (case-insensitive).
-- I can filter by `role` and/or `isActive`.
+- I can filter by account status and/or the platform admin flag.
 - Results are paginated.
+- Note: the list endpoint only supports exact matches on ID, name, or email today.
 
 ---
 
@@ -423,24 +510,24 @@ Acceptance criteria:
 
 ---
 
-**US-USER-11 — Reactivate a deactivated account** `[PARTIAL]`
+**US-USER-11 — Reactivate a suspended account** `[PARTIAL]`
 
 > As a Super Admin,
-> I want to reactivate a previously deactivated user account,
+> I want to reactivate a previously suspended or deactivated user account,
 > so that a user who was temporarily suspended can regain access.
 
 Acceptance criteria:
-- Setting `isActive` to `true` on a deactivated user re-enables their login.
+- Setting the account status back to active re-enables their login.
 - This is a distinct action from deletion and should be confirmable.
-- Note: The `PATCH /platform/users/:id` endpoint technically allows this today via `isActive: true`, but there is no explicit "reactivate" path or confirmation flow.
+- Note: the user update endpoint (`PATCH /platform/users/:id` with `status: "active"`) allows this today, but there is no explicit "reactivate" action or confirmation flow.
 
 ---
 
-### Schools (Tenants)
+### Schools (Organizations)
 
 ---
 
-**US-TENANT-06 — Look up a school by its slug** `[NOT IMPLEMENTED]`
+**US-ORG-06 — Look up a school by its slug** `[PARTIAL]`
 
 > As an authenticated user or system,
 > I want to retrieve a school's details using its slug,
@@ -449,11 +536,11 @@ Acceptance criteria:
 Acceptance criteria:
 - I provide a slug and receive the matching school record.
 - A not-found error is returned if no school has that slug.
-- Note: `findBySlug` exists in `TenantService` but is not exposed via any controller route.
+- Note: the public endpoint `GET /public/organizations/by-slug` exists, but it returns only slug, name, and status, and only for active schools (US-ORG-12). There is no authenticated lookup that returns the full record.
 
 ---
 
-**US-TENANT-07 — Filter schools by status** `[NOT IMPLEMENTED]`
+**US-ORG-07 — Filter schools by status** `[NOT IMPLEMENTED]`
 
 > As a Super Admin,
 > I want to filter the school list by status (e.g., active, suspended, archived),
@@ -466,35 +553,36 @@ Acceptance criteria:
 
 ---
 
-**US-TENANT-08 — Transfer school ownership to another member** `[NOT IMPLEMENTED]`
+**US-ORG-08 — Transfer school ownership to another user** `[PARTIAL]`
 
 > As the Owner of a school,
-> I want to transfer ownership to another existing member,
+> I want to transfer ownership to another user,
 > so that someone else can take over administration of the school.
 
 Acceptance criteria:
-- I can designate another current member of the school as the new Owner.
-- My own role is downgraded to Admin (or Member) on transfer.
-- There can only be one Owner per school at any time.
-- Super Admin can also perform this transfer.
+- I can designate another user as the new Owner; they receive an activation link.
+- The previous Owner becomes an Admin, becomes a Member, or is removed from the school (Admin by default).
+- There is only one Owner per school at any time.
+- A Super Admin can also perform this transfer.
+- Note: the transfer endpoint (`POST /organizations/:id/transfer-ownership`) is implemented, but only a Super Admin can call it. Owners have no self-service transfer.
 
 ---
 
-**US-TENANT-09 — Suspend or archive a school** `[PARTIAL]`
+**US-ORG-09 — Suspend or archive a school** `[PARTIAL]`
 
 > As a Super Admin,
 > I want to suspend or archive a school,
 > so that I can disable access without permanently destroying the data.
 
 Acceptance criteria:
-- Setting status to `suspended` prevents tenant-level logins for that school.
-- Setting status to `archived` marks the school as read-only/inactive for historical records.
-- The school's data and schema are preserved in both cases.
-- Note: The `status` field and `TenantStatus` enum exist, but no login guard currently checks tenant status before granting access.
+- Setting the status to `suspended` blocks all access to that school's workspace, including sign-in.
+- Setting the status to `archived` makes the school read-only for historical records.
+- The school's data is preserved in both cases.
+- Note: any status other than `active` already blocks every school-workspace request and hides the school from the public lookup, with data preserved. There is no read-only mode for `archived`; it is blocked the same way as `suspended`.
 
 ---
 
-**US-TENANT-10 — Paginate the school list** `[NOT IMPLEMENTED]`
+**US-ORG-10 — Paginate the school list** `[NOT IMPLEMENTED]`
 
 > As a Super Admin,
 > I want the school list to be paginated,
@@ -510,21 +598,7 @@ Acceptance criteria:
 
 ---
 
-**US-MEMBER-07 — School Owner invites a user to their school** `[NOT IMPLEMENTED]`
-
-> As the Owner of a school,
-> I want to add an existing platform user to my school,
-> so that I can manage my school's team without requiring Super Admin involvement.
-
-Acceptance criteria:
-- An Owner can add users with roles of `admin` or `member` (not `owner`).
-- The user must already have a platform account.
-- Duplicate memberships are rejected.
-- Note: Currently only Super Admins can create memberships. Owners have no self-service path.
-
----
-
-**US-MEMBER-08 — School Admin manages memberships within their school** `[NOT IMPLEMENTED]`
+**US-MEMBER-08 — School Admin manages memberships within their school** `[PARTIAL]`
 
 > As an Admin of a school,
 > I want to add and remove members from my school,
@@ -534,6 +608,7 @@ Acceptance criteria:
 - An Admin can add users as `member` (not `admin` or `owner`).
 - An Admin can remove `member`-level memberships.
 - An Admin cannot change or remove another Admin's membership or the Owner's membership.
+- Note: the platform membership endpoints only allow the Owner or a Super Admin. Inside the school workspace, staff with the `users:*` permissions (and school admins) can add, update, and remove members through the school's user management (`/users`), but that path has no protection for the Owner or other Admins.
 
 ---
 
@@ -545,36 +620,22 @@ Acceptance criteria:
 
 Acceptance criteria:
 - I can delete my own membership.
-- An Owner cannot leave a school they own — they must transfer ownership first.
+- An Owner cannot leave a school they own; they must transfer ownership first.
 - My platform account is not affected.
+- Note: today only the school's Owner or a Super Admin can remove a membership.
 
 ---
 
-**US-MEMBER-10 — View my membership within a specific school** `[NOT IMPLEMENTED]`
+**US-MEMBER-10 — View my membership within a specific school** `[PARTIAL]`
 
 > As a logged-in user,
 > I want to see my own membership record for a given school,
 > so that I can confirm my current role without fetching the full member list.
 
 Acceptance criteria:
-- I provide a school ID and receive my membership record (role, joined date).
+- I provide a school ID and receive my membership record (role, status, joined date).
 - If I have no membership in that school, a not-found response is returned.
-- Note: Today a user would need to call `GET /memberships/user/:userId` and filter client-side.
-
----
-
-**US-MEMBER-11 — Enforce one Owner per school** `[NOT IMPLEMENTED]`
-
-> As a platform rule,
-> when a new member is assigned the Owner role,
-> the previous Owner should be automatically downgraded,
-> so that each school always has exactly one Owner.
-
-Acceptance criteria:
-- Assigning `owner` to a membership checks for an existing owner.
-- The existing owner is demoted to `admin` (or a chosen role) automatically.
-- This rule applies when creating a membership with role `owner` or when updating a role to `owner`.
-- Note: Currently there is no guard against multiple Owners existing for the same school.
+- Note: `GET /memberships?orgId=<id>` already returns only the caller's own membership for a regular user, but as a list (empty when there is none) rather than a single record or a not-found.
 
 ---
 
@@ -584,50 +645,53 @@ Acceptance criteria:
 Platform Admin
 │
 ├── Authentication
-│   ├── US-AUTH-01  Register account
+│   ├── US-AUTH-01  Register account (email verification required)
 │   ├── US-AUTH-02  Log in
 │   ├── US-AUTH-03  View own profile
 │   ├── US-AUTH-04  Log out / invalidate token          [NOT IMPLEMENTED]
 │   ├── US-AUTH-05  Refresh access token                [NOT IMPLEMENTED]
-│   ├── US-AUTH-06  Request password reset link         [NOT IMPLEMENTED]
-│   ├── US-AUTH-07  Reset password via link             [NOT IMPLEMENTED]
-│   └── US-AUTH-08  Verify email after registration     [NOT IMPLEMENTED]
+│   ├── US-AUTH-06  Request password reset link
+│   ├── US-AUTH-07  Reset password via link
+│   └── US-AUTH-08  Verify email after registration
 │
 ├── Users
 │   ├── US-USER-01  Create user                         [Super Admin]
 │   ├── US-USER-02  List all users                      [Super Admin]
 │   ├── US-USER-03  View user profile                   [Super Admin / Self]
 │   ├── US-USER-04  Update own profile                  [Self]
-│   ├── US-USER-05  Change role / deactivate            [Super Admin]
+│   ├── US-USER-05  Change admin flag / status          [Super Admin]
 │   ├── US-USER-06  Delete user                         [Super Admin]
-│   ├── US-USER-07  Change own password                 [NOT IMPLEMENTED]
+│   ├── US-USER-07  Change own password                 [Self]
+│   ├── US-USER-07b Set another user's password         [NOT IMPLEMENTED]
 │   ├── US-USER-08  Change email address                [NOT IMPLEMENTED]
-│   ├── US-USER-09  Search and filter users             [NOT IMPLEMENTED]
+│   ├── US-USER-09  Search and filter users             [PARTIAL]
 │   ├── US-USER-10  Paginate user list                  [NOT IMPLEMENTED]
-│   └── US-USER-11  Reactivate deactivated account      [PARTIAL]
+│   └── US-USER-11  Reactivate suspended account        [PARTIAL]
 │
-├── Schools (Tenants)
-│   ├── US-TENANT-01  Create school                     [Any authenticated user]
-│   ├── US-TENANT-02  List my schools                   [Any authenticated user]
-│   ├── US-TENANT-03  View school details               [Member / Super Admin]
-│   ├── US-TENANT-04  Update school                     [Owner / Super Admin]
-│   ├── US-TENANT-05  Delete school                     [Super Admin]
-│   ├── US-TENANT-06  Look up school by slug            [NOT IMPLEMENTED]
-│   ├── US-TENANT-07  Filter schools by status          [NOT IMPLEMENTED]
-│   ├── US-TENANT-08  Transfer school ownership         [NOT IMPLEMENTED]
-│   ├── US-TENANT-09  Suspend or archive a school       [PARTIAL]
-│   └── US-TENANT-10  Paginate school list              [NOT IMPLEMENTED]
+├── Schools (Organizations)
+│   ├── US-ORG-01  Create school                        [Any authenticated user]
+│   ├── US-ORG-02  List my schools                      [Any authenticated user]
+│   ├── US-ORG-03  View school details                  [Member / Super Admin]
+│   ├── US-ORG-04  Update school                        [Owner / Super Admin]
+│   ├── US-ORG-05  Delete school                        [Super Admin]
+│   ├── US-ORG-06  Look up school by slug               [PARTIAL]
+│   ├── US-ORG-07  Filter schools by status             [NOT IMPLEMENTED]
+│   ├── US-ORG-08  Transfer school ownership            [PARTIAL: Super Admin only]
+│   ├── US-ORG-09  Suspend or archive a school          [PARTIAL]
+│   ├── US-ORG-10  Paginate school list                 [NOT IMPLEMENTED]
+│   ├── US-ORG-11  Re-send Owner activation link        [Owner / Super Admin]
+│   └── US-ORG-12  Find a school before sign-in         [Public]
 │
 └── Memberships
     ├── US-MEMBER-01  Add user to school                 [Super Admin]
-    ├── US-MEMBER-02  List school members                [Authenticated]
-    ├── US-MEMBER-03  List user's schools                [Authenticated]
-    ├── US-MEMBER-04  View membership                    [Authenticated]
-    ├── US-MEMBER-05  Change member role                 [Super Admin]
-    ├── US-MEMBER-06  Remove from school                 [Super Admin]
-    ├── US-MEMBER-07  Owner invites user to school       [NOT IMPLEMENTED]
-    ├── US-MEMBER-08  Admin manages school memberships   [NOT IMPLEMENTED]
+    ├── US-MEMBER-02  List school members                [Owner / Super Admin]
+    ├── US-MEMBER-03  List user's schools                [Self / Super Admin]
+    ├── US-MEMBER-04  View membership                    [Self / Owner / Super Admin]
+    ├── US-MEMBER-05  Change member role                 [Owner / Super Admin]
+    ├── US-MEMBER-06  Remove from school                 [Owner / Super Admin]
+    ├── US-MEMBER-07  Owner adds user to school          [Owner]
+    ├── US-MEMBER-08  Admin manages school memberships   [PARTIAL]
     ├── US-MEMBER-09  Leave a school                     [NOT IMPLEMENTED]
-    ├── US-MEMBER-10  View own membership in a school    [NOT IMPLEMENTED]
-    └── US-MEMBER-11  Enforce one owner per school       [NOT IMPLEMENTED]
+    ├── US-MEMBER-10  View own membership in a school    [PARTIAL]
+    └── US-MEMBER-11  One Owner per school               [Enforced in app]
 ```

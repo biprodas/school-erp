@@ -5,9 +5,12 @@ years, classes and sections, subjects and subject groups, the per-year
 curriculum, student enrollment and elective selection, teacher assignments, and
 the class timetable.
 
-It reflects the **implemented** TypeORM entities under
-`backend/src/modules/tenanted/`. Every table described here has a corresponding
-entity in the codebase.
+It reflects the **implemented** TypeORM entities under `backend/src/modules/`
+(`academic-years/`, `classes/`, `sections/`, `subjects/`, `subject-groups/`,
+`class-curriculum/`, `enrollments/`, `promotions/`, `teaching/`, `timetable/`).
+Every table described here has a corresponding entity in the codebase. All
+tables live in the single shared `public` schema and are scoped to a school
+(`organizations` row) by `org_id`.
 
 ## Overview
 
@@ -29,12 +32,21 @@ Capabilities supported:
 **Conventions used across every table:**
 
 - Primary key `id` is a `uuid` (`@PrimaryGeneratedColumn('uuid')`).
+- Every entity extends `OrgScopedEntity`
+  (`backend/src/tenancy/org-scoped.entity.ts`), which adds an indexed, NOT NULL
+  `org_id` uuid column with an FK to `organizations.id` (`ON DELETE CASCADE` —
+  deleting a school deletes all of its academic data). `OrgScopedEntity` adds no
+  other columns; `id` and the audit columns are declared on each entity.
 - Audit columns `created_at` and `updated_at` exist on every table
-  (`student_subjects` carries only `created_at`).
+  (`student_subjects` and `student_promotions` carry only `created_at`).
 - `academic_years` additionally supports soft delete via `deleted_at`.
-- Multi-tenancy is enforced at the repository layer (`BaseTenantRepository`),
-  not via a tenant column on these tables.
-- All foreign keys are declared `ON DELETE CASCADE`.
+- Multi-tenancy is enforced twice on `org_id`: at the repository layer
+  (`BaseTenantRepository` pins every find/save/update/delete to the request's
+  org) and in Postgres by the `org_isolation` row-level-security policy.
+- Uniqueness is per school: every unique index includes `org_id` as its first
+  column, so two schools can both have a `2026` year or a `Class 9`.
+- All foreign keys are declared `ON DELETE CASCADE`, except the nullable
+  section FKs on `student_promotions` (`SET NULL`).
 - Enum-like fields are stored as short `varchar` columns with a default value.
 
 ## 1. Academic Hierarchy
@@ -85,7 +97,8 @@ A session/year that scopes enrollment, curriculum, and scheduling.
 | Column | Type | Constraints | Notes |
 |---|---|---|---|
 | `id` | uuid | PK | Auto-generated |
-| `name` | varchar(80) | Unique, Not Null | e.g. `2026` |
+| `org_id` | uuid | FK → `organizations.id` (CASCADE), Not Null, Indexed | Inherited from `OrgScopedEntity`; tenant discriminator (RLS) |
+| `name` | varchar(80) | Not Null, unique per org | e.g. `2026` |
 | `code` | varchar(40) | Nullable | Short code, e.g. `AY26` |
 | `start_date` | date | Nullable | Session opening date |
 | `end_date` | date | Nullable | Session closing date |
@@ -96,7 +109,7 @@ A session/year that scopes enrollment, curriculum, and scheduling.
 | `updated_at` | timestamp | Not Null | |
 | `deleted_at` | timestamp | Nullable | Soft delete |
 
-**Unique index:** `name`.
+**Unique index:** `uq_academic_years_org_name` on (`org_id`, `name`).
 
 **Example rows:**
 
@@ -112,7 +125,8 @@ The master list of classes/grades.
 | Column | Type | Constraints | Notes |
 |---|---|---|---|
 | `id` | uuid | PK | |
-| `name` | varchar(120) | Unique, Not Null | e.g. `Class 9` |
+| `org_id` | uuid | FK → `organizations.id` (CASCADE), Not Null, Indexed | Inherited from `OrgScopedEntity`; tenant discriminator (RLS) |
+| `name` | varchar(120) | Not Null, unique per org | e.g. `Class 9` |
 | `code` | varchar(40) | Nullable | e.g. `C9` |
 | `level` | int | Nullable | Numeric rank used for sorting/promotion order |
 | `description` | text | Nullable | |
@@ -120,7 +134,7 @@ The master list of classes/grades.
 | `created_at` | timestamp | Not Null | |
 | `updated_at` | timestamp | Not Null | |
 
-**Unique index:** `name`.
+**Unique index:** `uq_classes_org_name` on (`org_id`, `name`).
 
 Relations:
 
@@ -136,14 +150,15 @@ The master list of sections, shared across classes.
 | Column | Type | Constraints | Notes |
 |---|---|---|---|
 | `id` | uuid | PK | |
-| `name` | varchar(60) | Unique, Not Null | e.g. `A` |
+| `org_id` | uuid | FK → `organizations.id` (CASCADE), Not Null, Indexed | Inherited from `OrgScopedEntity`; tenant discriminator (RLS) |
+| `name` | varchar(60) | Not Null, unique per org | e.g. `A` |
 | `code` | varchar(40) | Nullable | |
 | `description` | text | Nullable | |
 | `is_active` | boolean | Not Null, default `true` | |
 | `created_at` | timestamp | Not Null | |
 | `updated_at` | timestamp | Not Null | |
 
-**Unique index:** `name`.
+**Unique index:** `uq_sections_org_name` on (`org_id`, `name`).
 
 Relations:
 
@@ -158,8 +173,9 @@ The master subject catalog.
 | Column | Type | Constraints | Notes |
 |---|---|---|---|
 | `id` | uuid | PK | |
-| `name` | varchar(120) | Unique, Not Null | e.g. `Physics` |
-| `code` | varchar(40) | Unique, Nullable | e.g. `PHY` |
+| `org_id` | uuid | FK → `organizations.id` (CASCADE), Not Null, Indexed | Inherited from `OrgScopedEntity`; tenant discriminator (RLS) |
+| `name` | varchar(120) | Not Null, unique per org | e.g. `Physics` |
+| `code` | varchar(40) | Nullable, unique per org | e.g. `PHY` |
 | `type` | varchar(16) | Not Null, default `theory` | Enum `SubjectType` |
 | `is_optional` | boolean | Not Null, default `false` | Elective flag |
 | `credit` | int | Nullable | |
@@ -168,9 +184,11 @@ The master subject catalog.
 | `created_at` | timestamp | Not Null | |
 | `updated_at` | timestamp | Not Null | |
 
-**Unique indexes:** `name`, `code`.
+**Unique indexes:** `uq_subjects_org_name` on (`org_id`, `name`) and
+`uq_subjects_org_code` on (`org_id`, `code`). Rows with a NULL `code` do not
+conflict (Postgres treats NULLs as distinct).
 
-`SubjectType` (`backend/.../subjects/enums/subject-type.enum.ts`):
+`SubjectType` (`backend/src/modules/subjects/enums/subject-type.enum.ts`):
 
 ```ts
 enum SubjectType {
@@ -197,14 +215,15 @@ A reusable, school-wide stream/grouping of subjects (Science, Commerce, Arts).
 | Column | Type | Constraints | Notes |
 |---|---|---|---|
 | `id` | uuid | PK | |
-| `name` | varchar(120) | Unique, Not Null | e.g. `Science` |
+| `org_id` | uuid | FK → `organizations.id` (CASCADE), Not Null, Indexed | Inherited from `OrgScopedEntity`; tenant discriminator (RLS) |
+| `name` | varchar(120) | Not Null, unique per org | e.g. `Science` |
 | `code` | varchar(40) | Nullable | |
 | `description` | text | Nullable | |
 | `is_active` | boolean | Not Null, default `true` | |
 | `created_at` | timestamp | Not Null | |
 | `updated_at` | timestamp | Not Null | |
 
-**Unique index:** `name`.
+**Unique index:** `uq_subject_groups_org_name` on (`org_id`, `name`).
 
 Relations:
 
@@ -219,7 +238,8 @@ A named time slot in the daily schedule (used by the timetable).
 | Column | Type | Constraints | Notes |
 |---|---|---|---|
 | `id` | uuid | PK | |
-| `name` | varchar(80) | Unique, Not Null | e.g. `Period 1` |
+| `org_id` | uuid | FK → `organizations.id` (CASCADE), Not Null, Indexed | Inherited from `OrgScopedEntity`; tenant discriminator (RLS) |
+| `name` | varchar(80) | Not Null, unique per org | e.g. `Period 1` |
 | `start_time` | time | Nullable | e.g. `09:00` |
 | `end_time` | time | Nullable | e.g. `09:45` |
 | `display_order` | int | Not Null, default `0` | Ordering within a day |
@@ -227,7 +247,7 @@ A named time slot in the daily schedule (used by the timetable).
 | `created_at` | timestamp | Not Null | |
 | `updated_at` | timestamp | Not Null | |
 
-**Unique index:** `name`.
+**Unique index:** `uq_periods_org_name` on (`org_id`, `name`).
 
 **Example rows:**
 
@@ -247,6 +267,7 @@ Links a class to a section, carrying the per-class-section capacity. A section
 | Column | Type | Constraints | Notes |
 |---|---|---|---|
 | `id` | uuid | PK | |
+| `org_id` | uuid | FK → `organizations.id` (CASCADE), Not Null, Indexed | Inherited from `OrgScopedEntity`; tenant discriminator (RLS) |
 | `class_id` | uuid | FK → `classes.id` (CASCADE), Not Null | `schoolClass` |
 | `section_id` | uuid | FK → `sections.id` (CASCADE), Not Null | `section` |
 | `capacity` | int | Nullable | Max seats |
@@ -254,7 +275,7 @@ Links a class to a section, carrying the per-class-section capacity. A section
 | `created_at` | timestamp | Not Null | |
 | `updated_at` | timestamp | Not Null | |
 
-**Unique index:** `uq_class_section` on (`class_id`, `section_id`).
+**Unique index:** `uq_class_section` on (`org_id`, `class_id`, `section_id`).
 
 **Example:** Class 5 → A (40), Class 5 → B (40), Class 5 → C (38).
 
@@ -270,13 +291,14 @@ A subject group made available to a class in a given year.
 | Column | Type | Constraints | Notes |
 |---|---|---|---|
 | `id` | uuid | PK | |
+| `org_id` | uuid | FK → `organizations.id` (CASCADE), Not Null, Indexed | Inherited from `OrgScopedEntity`; tenant discriminator (RLS) |
 | `class_id` | uuid | FK → `classes.id` (CASCADE), Not Null | |
 | `subject_group_id` | uuid | FK → `subject_groups.id` (CASCADE), Not Null | |
 | `academic_year_id` | uuid | FK → `academic_years.id` (CASCADE), Not Null | |
 | `created_at` | timestamp | Not Null | |
 | `updated_at` | timestamp | Not Null | |
 
-**Unique index:** `uq_class_subject_group` on (`class_id`, `subject_group_id`, `academic_year_id`).
+**Unique index:** `uq_class_subject_group` on (`org_id`, `class_id`, `subject_group_id`, `academic_year_id`).
 
 **Example:** in 2026, Class 9 → Science, Class 9 → Commerce, Class 9 → Arts.
 
@@ -287,6 +309,7 @@ Membership of a subject within a subject group.
 | Column | Type | Constraints | Notes |
 |---|---|---|---|
 | `id` | uuid | PK | |
+| `org_id` | uuid | FK → `organizations.id` (CASCADE), Not Null, Indexed | Inherited from `OrgScopedEntity`; tenant discriminator (RLS) |
 | `subject_group_id` | uuid | FK → `subject_groups.id` (CASCADE), Not Null | |
 | `subject_id` | uuid | FK → `subjects.id` (CASCADE), Not Null | |
 | `is_compulsory` | boolean | Not Null, default `true` | Compulsory within the group |
@@ -294,7 +317,7 @@ Membership of a subject within a subject group.
 | `created_at` | timestamp | Not Null | |
 | `updated_at` | timestamp | Not Null | |
 
-**Unique index:** `uq_subject_group_subject` on (`subject_group_id`, `subject_id`).
+**Unique index:** `uq_subject_group_subject` on (`org_id`, `subject_group_id`, `subject_id`).
 
 **Example:**
 
@@ -313,6 +336,7 @@ A subject offered to a class in a given year, with grading and weekly load.
 | Column | Type | Constraints | Notes |
 |---|---|---|---|
 | `id` | uuid | PK | |
+| `org_id` | uuid | FK → `organizations.id` (CASCADE), Not Null, Indexed | Inherited from `OrgScopedEntity`; tenant discriminator (RLS) |
 | `class_id` | uuid | FK → `classes.id` (CASCADE), Not Null | |
 | `subject_id` | uuid | FK → `subjects.id` (CASCADE), Not Null | |
 | `academic_year_id` | uuid | FK → `academic_years.id` (CASCADE), Not Null | |
@@ -323,7 +347,7 @@ A subject offered to a class in a given year, with grading and weekly load.
 | `created_at` | timestamp | Not Null | |
 | `updated_at` | timestamp | Not Null | |
 
-**Unique index:** `uq_class_subject` on (`class_id`, `subject_id`, `academic_year_id`).
+**Unique index:** `uq_class_subject` on (`org_id`, `class_id`, `subject_id`, `academic_year_id`).
 
 **Example rows (Class 5, 2026):**
 
@@ -343,6 +367,7 @@ central operational table.
 | Column | Type | Constraints | Notes |
 |---|---|---|---|
 | `id` | uuid | PK | |
+| `org_id` | uuid | FK → `organizations.id` (CASCADE), Not Null, Indexed | Inherited from `OrgScopedEntity`; tenant discriminator (RLS) |
 | `student_id` | uuid | FK → `students.id` (CASCADE), Not Null | |
 | `academic_year_id` | uuid | FK → `academic_years.id` (CASCADE), Not Null | |
 | `class_id` | uuid | FK → `classes.id` (CASCADE), Not Null | |
@@ -354,10 +379,12 @@ central operational table.
 
 **Unique indexes:**
 
-- `uq_enrollment_student_year` on (`student_id`, `academic_year_id`) — one
+- `uq_enrollment_student_year` on (`org_id`, `student_id`, `academic_year_id`) — one
   enrollment per student per year.
-- `uq_enrollment_roll` on (`academic_year_id`, `class_id`, `section_id`, `roll_no`)
-  — roll numbers are unique within a section per year.
+- `uq_enrollment_roll` on (`org_id`, `academic_year_id`, `class_id`, `section_id`, `roll_no`)
+  — roll numbers are unique within a section per year. Because `roll_no` is
+  nullable and Postgres treats NULLs as distinct, any number of enrollments
+  without a roll number can coexist.
 
 `StudentEnrollmentStatus`:
 
@@ -386,11 +413,12 @@ A subject (typically an elective) chosen by an enrolled student.
 | Column | Type | Constraints | Notes |
 |---|---|---|---|
 | `id` | uuid | PK | |
+| `org_id` | uuid | FK → `organizations.id` (CASCADE), Not Null, Indexed | Inherited from `OrgScopedEntity`; tenant discriminator (RLS) |
 | `student_enrollment_id` | uuid | FK → `student_enrollments.id` (CASCADE), Not Null | |
 | `subject_id` | uuid | FK → `subjects.id` (CASCADE), Not Null | |
 | `created_at` | timestamp | Not Null | No `updated_at` on this table |
 
-**Unique index:** `uq_student_subject` on (`student_enrollment_id`, `subject_id`).
+**Unique index:** `uq_student_subject` on (`org_id`, `student_enrollment_id`, `subject_id`).
 
 **Example:** Student 101's enrollment picks `ICT`, `Higher Math`, `Biology`.
 
@@ -398,11 +426,13 @@ A subject (typically an elective) chosen by an enrolled student.
 
 An audit record of a student's movement between classes across academic years.
 Each row captures the `from` → `to` transition explicitly. The entity and its API
-live in `backend/src/modules/tenanted/promotions/`.
+live in `backend/src/modules/promotions/` (`entities/student-promotion.entity.ts`,
+`promotion.controller.ts`, `promotion.service.ts`).
 
 | Column | Type | Constraints | Notes |
 |---|---|---|---|
 | `id` | uuid | PK | |
+| `org_id` | uuid | FK → `organizations.id` (CASCADE), Not Null, Indexed | Inherited from `OrgScopedEntity`; tenant discriminator (RLS) |
 | `student_id` | uuid | FK → `students.id` (CASCADE), Not Null | |
 | `from_year_id` | uuid | FK → `academic_years.id` (CASCADE), Not Null | Source session |
 | `to_year_id` | uuid | FK → `academic_years.id` (CASCADE), Not Null | Destination session |
@@ -411,10 +441,12 @@ live in `backend/src/modules/tenanted/promotions/`.
 | `from_section_id` | uuid | FK → `sections.id` (SET NULL), Nullable | |
 | `to_section_id` | uuid | FK → `sections.id` (SET NULL), Nullable | |
 | `promotion_date` | date | Nullable | When the promotion took effect |
-| `created_at` | timestamp | Not Null | |
-| `updated_at` | timestamp | Not Null | |
+| `created_at` | timestamp | Not Null | No `updated_at` on this table |
 
-**Unique index:** `uq_promotion_student_years` on (`student_id`, `from_year_id`, `to_year_id`) — one transition record per student per year pair.
+**Indexes:** only the inherited index on `org_id`. There is **no** unique index
+on (`org_id`, `student_id`, `from_year_id`, `to_year_id`) today, so the database
+does not prevent duplicate transition records for the same student and year
+pair.
 
 Relations:
 
@@ -423,17 +455,27 @@ Relations:
 - `fromClass` / `toClass` — ManyToOne → `Class`
 - `fromSection` / `toSection` — ManyToOne → `Section` (nullable, `SET NULL`)
 
-> **How promotion works (`POST /promotions`):** in a single transaction the
-> service (1) sets the student's source-year (`from_year_id`) enrollment status to
-> `promoted`, (2) creates a new `student_enrollments` row for `to_year_id` with
-> `to_class_id` and the destination section (defaults to the source enrollment's
-> section when `to_section_id` is omitted; roll number is left blank for the
-> admin to assign), and (3) writes this `student_promotions` audit row. If the
-> student has no enrollment in the source year, is already enrolled in the
-> destination year, or the same transition already exists, the request is
-> rejected and nothing is written. `PATCH /promotions/:id` amends the audit
-> record only (section corrections / `promotion_date`) and does not re-run the
-> workflow. Endpoints are guarded by the `promotions:*` permissions.
+> **How promotion works today (`POST /promotions`):** the service checks that the
+> referenced student, both academic years, both classes and any given sections
+> exist in the current school (404 otherwise), then inserts this
+> `student_promotions` row. It does **not** touch `student_enrollments`: the
+> source enrollment's status is not changed to `promoted` and no destination
+> enrollment is created, so those must be managed separately via the
+> enrollments API. Duplicate transitions are not rejected.
+>
+> Endpoints (`promotion.controller.ts`): `GET /promotions` (filter by `id`,
+> `studentId`, `fromYearId`, `toYearId`) and `GET /promotions/:id` require
+> `promotions:read`; `POST /promotions` requires `promotions:create`;
+> `DELETE /promotions/:id` requires `promotions:delete`. There is no
+> `PATCH /promotions/:id`; `promotions:update` exists in the catalog but no
+> route uses it.
+>
+> **Planned (not implemented):** a transactional workflow that marks the source
+> enrollment `promoted`, creates the destination enrollment (defaulting the
+> section, leaving the roll number blank) and writes the audit row, rejecting
+> the request if the student has no source enrollment, is already enrolled in
+> the destination year, or the transition already exists; plus a `PATCH`
+> endpoint that amends only the audit record.
 
 **Example:** Student 101 · 2025 Class 7 A → 2026 Class 8 A · promoted 2026-01-05.
 
@@ -446,6 +488,7 @@ Assigns an employee as a class teacher of a class-section for a year.
 | Column | Type | Constraints | Notes |
 |---|---|---|---|
 | `id` | uuid | PK | |
+| `org_id` | uuid | FK → `organizations.id` (CASCADE), Not Null, Indexed | Inherited from `OrgScopedEntity`; tenant discriminator (RLS) |
 | `class_id` | uuid | FK → `classes.id` (CASCADE), Not Null | |
 | `section_id` | uuid | FK → `sections.id` (CASCADE), Not Null | |
 | `employee_id` | uuid | FK → `employees.id` (CASCADE), Not Null | The teacher |
@@ -454,7 +497,7 @@ Assigns an employee as a class teacher of a class-section for a year.
 | `created_at` | timestamp | Not Null | |
 | `updated_at` | timestamp | Not Null | |
 
-**Unique index:** `uq_class_teacher` on (`academic_year_id`, `class_id`, `section_id`, `employee_id`).
+**Unique index:** `uq_class_teacher` on (`org_id`, `academic_year_id`, `class_id`, `section_id`, `employee_id`).
 
 **Example:** 2026 · Class 7 · A → Mr. Karim (`is_primary = true`).
 
@@ -465,6 +508,7 @@ Assigns an employee to teach a subject to a class-section for a year.
 | Column | Type | Constraints | Notes |
 |---|---|---|---|
 | `id` | uuid | PK | |
+| `org_id` | uuid | FK → `organizations.id` (CASCADE), Not Null, Indexed | Inherited from `OrgScopedEntity`; tenant discriminator (RLS) |
 | `class_id` | uuid | FK → `classes.id` (CASCADE), Not Null | |
 | `section_id` | uuid | FK → `sections.id` (CASCADE), Not Null | |
 | `subject_id` | uuid | FK → `subjects.id` (CASCADE), Not Null | |
@@ -473,7 +517,7 @@ Assigns an employee to teach a subject to a class-section for a year.
 | `created_at` | timestamp | Not Null | |
 | `updated_at` | timestamp | Not Null | |
 
-**Unique index:** `uq_subject_teacher` on (`academic_year_id`, `class_id`, `section_id`, `subject_id`, `employee_id`).
+**Unique index:** `uq_subject_teacher` on (`org_id`, `academic_year_id`, `class_id`, `section_id`, `subject_id`, `employee_id`).
 
 **Example:** 2026 · Class 8 · A · Mathematics → Mr. Rahman.
 
@@ -487,6 +531,7 @@ weekday and period.
 | Column | Type | Constraints | Notes |
 |---|---|---|---|
 | `id` | uuid | PK | |
+| `org_id` | uuid | FK → `organizations.id` (CASCADE), Not Null, Indexed | Inherited from `OrgScopedEntity`; tenant discriminator (RLS) |
 | `academic_year_id` | uuid | FK → `academic_years.id` (CASCADE), Not Null | |
 | `class_id` | uuid | FK → `classes.id` (CASCADE), Not Null | |
 | `section_id` | uuid | FK → `sections.id` (CASCADE), Not Null | |
@@ -497,7 +542,7 @@ weekday and period.
 | `created_at` | timestamp | Not Null | |
 | `updated_at` | timestamp | Not Null | |
 
-**Unique index:** `uq_timetable_slot` on (`academic_year_id`, `class_id`, `section_id`, `day_of_week`, `period_id`) — one subject per slot.
+**Unique index:** `uq_timetable_slot` on (`org_id`, `academic_year_id`, `class_id`, `section_id`, `day_of_week`, `period_id`) — one subject per slot.
 
 `DayOfWeek`: `monday`, `tuesday`, `wednesday`, `thursday`, `friday`,
 `saturday`, `sunday`.
@@ -529,7 +574,9 @@ classes ──< class_sections >── sections
 classes ─── (referenced by every per-year table above)
 ```
 
-Legend: `A ──< B` means "one A, many B" (B holds the FK).
+Legend: `A ──< B` means "one A, many B" (B holds the FK). Not drawn: every
+table above also has `org_id` → `organizations.id` (`ON DELETE CASCADE`).
+`employees` belongs to the employees module (`backend/src/modules/employees/`).
 
 ## 9. End-to-End Example
 
@@ -598,7 +645,7 @@ Identifiers are shown as readable labels; in the database they are UUIDs.
 ## 10. Implemented Tables
 
 All sixteen tables below are implemented as TypeORM entities under
-`backend/src/modules/tenanted/`, grouped by concern:
+`backend/src/modules/` (all extend `OrgScopedEntity`), grouped by concern:
 
 | Group | Tables |
 |---|---|

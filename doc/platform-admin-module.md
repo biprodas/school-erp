@@ -1,142 +1,155 @@
 # Platform Admin Module
 
-> **Note (2026-10-17):** this document predates the move from schema-per-tenant to a shared schema with `org_id` + row-level security, tenants → organizations, and one global `users` table. See `CLAUDE.md` (Backend architecture) for the current design.
+Technical documentation for the platform-level modules that sit outside any single school: **Users** (global accounts), **Organizations** (schools), and **Memberships** (the link between them). Platform authentication is covered in section 4.
 
-Technical documentation for the three public-schema modules that power platform-level administration: **Users**, **Tenants**, and **Memberships**. Authentication for this layer is covered in a separate section at the end.
-
-All paths are relative to `backend/src/`.
+All paths are relative to `backend/src/`. All routes are served under the global `/api` prefix (e.g. `POST /api/organizations`).
 
 ---
 
 ## Overview
 
-The platform admin layer operates on the shared `public` PostgreSQL schema. It is distinct from the per-tenant schemas and handles identity, tenancy lifecycle, and the many-to-many relationship that binds users to tenants.
+Everything lives in the single `public` PostgreSQL schema. A school is an `Organization`; every school-owned table carries an `org_id` column with a cascading FK to `organizations` (via `OrgScopedEntity`, `tenancy/org-scoped.entity.ts`) and is protected by a row-level-security policy (`tenancy/rls.ts`).
 
 ```
-public.users  ──<  public.memberships  >──  public.tenants
+users ──<  memberships  >── organizations ──< (every org-scoped table: roles, user_roles, students, ...)
+  │                              │
+  └──<  auth_tokens  >───────────┘   (org_id nullable: null = platform-issued)
 ```
 
-Every platform request is authenticated with a **platform JWT** (strategy name `platform-jwt`). Role-based access control uses two platform roles:
+- `users` is **global**: one account (one email/password) across all schools.
+- `memberships` holds everything per-school about a user: membership role (`owner`/`admin`/`member`), the school-admin flag `is_admin`, and membership `status`.
+- `user_roles` (org-scoped, RBAC module) assigns tenant roles to users inside an org.
 
-| PlatformRole | Description |
+The platform controllers documented here use `@InjectRepository` / `@InjectDataSource` on the **root connection** (table owner), which bypasses RLS. Their routes are excluded from `TenantMiddleware` in `app.module.ts` (`organizations`, `memberships`, `platform/auth`, `platform/users`, `public`, plus `health` and `dev/mail`), so they never need an `x-tenant-id` header.
+
+Every protected platform request carries a **platform JWT** (Passport strategy `platform-jwt`). There is no platform role enum; a single boolean on the account decides access:
+
+| `users.is_admin` | Meaning |
 |---|---|
-| `super_admin` | Full access to all resources across all tenants |
-| `user` | Access restricted to owned/member tenants |
+| `true` | Platform super-admin: full access to all organizations, users and memberships |
+| `false` | Regular platform user: can create organizations and manage the ones they **own** |
+
+> `users.is_admin` (platform super-admin) is unrelated to `memberships.is_admin` (school admin inside one org, carried in **tenant** JWTs). `PlatformJwtStrategy` rejects any token carrying `orgId`, so a school admin's tenant token can never pass `PlatformAdminGuard`.
 
 ---
 
 ## 1. Users Module
 
-**Location:** `modules/public/users/`
+**Location:** `modules/users/` (platform side: `PlatformUserController`, `UserService`; the tenant side `OrgUserController`/`OrgUserService` on `/users` is out of scope here)
 
-### 1.1 Entity — `User`
+### 1.1 Entity: `User`
 
 Database table: `public.users`
 
-| Column | Type | Constraints | Notes |
+| Column (property) | Type | Constraints | Notes |
 |---|---|---|---|
 | `id` | uuid | PK | Auto-generated |
-| `email` | varchar | Unique, Not Null | Login identifier |
-| `password` | varchar | Not Null, `select: false` | bcrypt-hashed (10 rounds) |
-| `firstName` | varchar | Not Null | |
-| `lastName` | varchar | Not Null | |
-| `fullName` | varchar | | Synced automatically via `@AfterLoad`, `@AfterInsert`, `@AfterUpdate` hooks |
-| `role` | enum | Not Null, default `user` | `super_admin` \| `user` |
-| `isActive` | boolean | Not Null, default `true` | Soft-disable without deletion |
-| `createdAt` | timestamp | Not Null | Auto-set |
-| `updatedAt` | timestamp | Not Null | Auto-updated |
+| `email` | varchar | Unique, Not Null | Global login identifier |
+| `password` (`password`) | varchar | Not Null, `select: false` | bcrypt hash (10 rounds); only loaded with an explicit `select` |
+| `name` | varchar | Not Null | Single display-name field |
+| `status` | enum `UserStatus` | Not Null, default `active` | Global account state |
+| `is_admin` (`isAdmin`) | boolean | default `false` | Platform super-admin flag |
+| `email_verified_at` (`emailVerifiedAt`) | timestamptz | Nullable | Set when the email is verified (or on owner activation) |
+| `created_at` / `updated_at` | timestamp | Auto | |
+| `deleted_at` (`deletedAt`) | timestamp | Nullable | `@DeleteDateColumn` (soft-delete column; see note in 1.4) |
 
-Relations:
-- `memberships` — OneToMany → `Membership`
+Relations: `memberships`: OneToMany → `Membership`.
 
-The computed `fullName` column and the `name` getter both join `firstName + ' ' + lastName`. `fullName` is persisted to the database; `name` is a transient accessor.
+`@AfterInsert` / `@AfterUpdate` / `@AfterRemove` hooks only `console.log` the event.
 
 ### 1.2 Enums
 
 ```ts
-// modules/public/users/enums/platform-role.enum.ts
-enum PlatformRole {
-  SUPER_ADMIN = 'super_admin',
-  USER        = 'user',
+// modules/users/enums/user-status.enum.ts
+enum UserStatus {
+  PENDING     = 'pending',     // registered, email not verified
+  ACTIVE      = 'active',
+  SUSPENDED   = 'suspended',   // admin-suspended
+  DEACTIVATED = 'deactivated',
+  BANNED      = 'banned',
 }
 ```
 
+Platform login requires `active` (a `pending` account without `emailVerifiedAt` gets a dedicated "verify your email" 403). Tenant login blocks `suspended`, `deactivated` and `banned`.
+
 ### 1.3 DTOs
 
-**`CreatePlatformUserDto`**
+**`CreateUserDto`** (`POST /platform/users`)
 
 | Field | Validation | Required |
 |---|---|---|
-| `firstName` | string | Yes |
-| `lastName` | string | Yes |
+| `name` | IsString, IsNotEmpty | Yes |
 | `email` | IsEmail | Yes |
-| `password` | string, MinLength(6) | Yes |
-| `role` | IsEnum(PlatformRole) | No — defaults to `user` |
-| `isActive` | IsBoolean | No — defaults to `true` |
+| `password` | IsString, MinLength(6) | Yes |
+| `status` | IsEnum(UserStatus) | No (defaults to `active`) |
+| `isAdmin` | IsBoolean | No (defaults to `false`) |
 
-**`UpdateUserDto`**
-
-All fields optional. Non-admin callers have `role` and `isActive` stripped server-side regardless of what is sent.
+**`UpdateUserDto`** (`PATCH /platform/users/:id`): all optional.
 
 | Field | Validation |
 |---|---|
-| `firstName` | string |
-| `lastName` | string |
-| `role` | IsEnum(PlatformRole) |
-| `isActive` | IsBoolean |
+| `name` | IsString |
+| `status` | IsEnum(UserStatus) |
+| `isAdmin` | IsBoolean |
 
-### 1.4 Service — `UserService`
+Non-admin callers that send `status` or `isAdmin` get a **403** (the fields are rejected, not silently stripped). Email and password are not editable here (see `platform/auth/change-password`).
+
+**`FilterUserDto`** (query on `GET /platform/users`): optional `id`, `name`, `email`, matched **exactly** (no partial match, no pagination).
+
+### 1.4 Service: `UserService`
+
+Every method takes a `RequestContextDto` (`ctx`) first; `ctx.user` is `{ id, email, status, isAdmin }` built from the JWT.
 
 | Method | Signature | Description |
 |---|---|---|
-| `findAll` | `(): Promise<User[]>` | Returns all users |
-| `createPlatformUser` | `(dto): Promise<User>` | Hashes password; throws `ConflictException` on duplicate email |
-| `findById` | `(id: string): Promise<User>` | Throws `NotFoundException` if absent |
-| `update` | `(requesterId, requesterRole, targetId, dto)` | Self-update allowed; only `SUPER_ADMIN` can change `role`/`isActive` |
-| `remove` | `(id: string): Promise<void>` | Hard delete |
+| `findAll` | `(ctx, filter: FilterUserDto): Promise<User[]>` | Exact-match filter on `id`/`name`/`email` |
+| `findById` | `(ctx, id): Promise<User>` | `NotFoundException` if absent |
+| `createPlatformUser` | `(ctx, dto: CreateUserDto): Promise<User>` | `ConflictException` on duplicate email; hashes password |
+| `update` | `(ctx, targetId, dto: UpdateUserDto): Promise<User>` | Self or admin; only admins may change `status`/`isAdmin` (else 403) |
+| `remove` | `(ctx, targetId): Promise<void>` | `NotFoundException` if absent, then **hard delete** (`repo.delete`), so `deleted_at` is never used. Memberships and `user_roles` cascade via FK; `auth_tokens` rows have no FK to `users` and are left behind |
 
-### 1.5 Controller — `UserController`
+### 1.5 Controller: `PlatformUserController`
 
-Route prefix: `platform/users`
-Global guard: `PlatformJwtAuthGuard`
+Route prefix: `platform/users`. Class guard: `PlatformJwtAuthGuard`. Swagger: `@ApiBearerAuth('platform-jwt')`.
 
-| Method | Path | Guard / Decorator | Description |
+| Method | Path | Guard | Description |
 |---|---|---|---|
-| GET | `/` | `@Roles(SUPER_ADMIN)` | List all users |
-| POST | `/` | `@Roles(SUPER_ADMIN)` | Create user |
-| GET | `/:id` | — | Get user (self or SUPER_ADMIN) |
-| PATCH | `/:id` | — | Update user (enforced in service) |
-| DELETE | `/:id` | `@Roles(SUPER_ADMIN)` | Delete user |
+| GET | `/` | `PlatformAdminGuard` | List users (`FilterUserDto` query) |
+| POST | `/` | `PlatformAdminGuard` | Create user (201) |
+| GET | `/:id` | (controller check) | Self or admin, else 403 `Access denied` |
+| PATCH | `/:id` | (service check) | Update (rules in 1.3/1.4) |
+| DELETE | `/:id` | `PlatformAdminGuard` | Hard delete |
+
+`:id` is validated with `ParseUUIDPipe`.
 
 ---
 
-## 2. Tenants Module
+## 2. Organizations Module
 
-**Location:** `modules/public/tenants/`
+**Location:** `modules/organizations/`
 
-### 2.1 Entity — `Tenant`
+### 2.1 Entity: `Organization`
 
-Database table: `public.tenants`
+Database table: `public.organizations`
 
 | Column | Type | Constraints | Notes |
 |---|---|---|---|
 | `id` | uuid | PK | Auto-generated |
-| `name` | varchar | Unique, Not Null | Human-friendly display name (e.g., `"Acme Secondary School"`) |
-| `slug` | varchar | Unique, Not Null | URL-safe identifier, lowercase alphanumeric + underscores (e.g., `"001_acme"`) |
-| `schemaName` | varchar | Unique, Not Null | PostgreSQL schema identifier, generated as `tenant_<slug>` |
-| `domain` | varchar | Unique, Nullable | Optional custom FQDN (e.g., `"acme.myapp.com"`) |
-| `status` | enum | Not Null, default `active` | See TenantStatus below |
-| `createdAt` | timestamp | Not Null | Auto-set |
-| `updatedAt` | timestamp | Not Null | Auto-updated |
+| `name` | varchar | Not Null | Display name (not unique) |
+| `slug` | varchar | Unique, Not Null | Used as the subdomain and the `x-tenant-id` header value |
+| `domain` | varchar | Unique, Nullable | Optional custom domain (e.g. `erp.acme.com`) |
+| `status` | enum `OrganizationStatus` | Not Null, default `active` | |
+| `created_at` / `updated_at` | timestamp | Auto | |
 
-Relations:
-- `memberships` — OneToMany → `Membership`
+Relations: `memberships`: OneToMany → `Membership`.
+
+All org-scoped tables (`OrgScopedEntity`), `memberships` and `auth_tokens.org_id` reference `organizations(id)` with `ON DELETE CASCADE`.
 
 ### 2.2 Enums
 
 ```ts
-// modules/public/tenants/enums/tenant-status.enum.ts
-enum TenantStatus {
+// modules/organizations/enums/organization-status.enum.ts
+enum OrganizationStatus {
   PENDING   = 'pending',
   ACTIVE    = 'active',
   INACTIVE  = 'inactive',
@@ -145,210 +158,277 @@ enum TenantStatus {
 }
 ```
 
+Only `active` is usable: `TenantMiddleware` answers every tenant route of a non-active org with 403 `Tenant "<slug>" is not active`, and the public lookup endpoints return 404 for non-active orgs. No other status has distinct behavior.
+
 ### 2.3 DTOs
 
-**`CreateTenantDto`**
+**`CreateOrganizationDto`**
 
 | Field | Validation | Required |
 |---|---|---|
-| `name` | string, Length(3, 100) | Yes |
-| `slug` | string, Length(3, 63), Matches(`/^[a-z0-9_]+$/`) | Yes |
-| `domain` | IsFQDN (no underscores, requires TLD) | No |
+| `name` | IsString, IsNotEmpty, Length(3, 100) | Yes |
+| `slug` | IsString, Length(3, 63), Matches(`/^[a-z0-9_]+$/`) | Yes |
+| `domain` | IsString, Length(3, 63), IsFQDN (TLD required, no underscores) | No |
+| `ownerUserId` | IsUUID('4') | No (honored only for platform admins) |
 
-**`UpdateTenantDto`**
+**`UpdateOrganizationDto`**
 
 | Field | Validation | Required |
 |---|---|---|
-| `name` | string, Length(3, 100) | No |
-| `domain` | IsFQDN | No |
-| `status` | IsEnum(TenantStatus) | No |
+| `name` | IsString, Length(3, 100) | **Effectively yes**: it has no `@IsOptional()`, so a PATCH without `name` fails validation |
+| `domain` | IsString, Length(3, 63), IsFQDN | No |
+| `status` | IsEnum(OrganizationStatus) | No |
 
-> Note: `slug` and `schemaName` are immutable after creation.
+`slug` is not in the update DTO (unknown fields are rejected by the global `ValidationPipe`), so it is immutable after creation.
 
-### 2.4 Service — `TenantService`
+**`TransferOwnershipDto`**
+
+| Field | Validation | Required |
+|---|---|---|
+| `newOwnerUserId` | IsUUID('4') | Yes |
+| `demoteOldOwnerTo` | IsEnum: `admin` \| `member` \| `remove` | No (default `admin`) |
+
+### 2.4 Service: `OrganizationService`
+
+```ts
+interface OwnerActivation { token: string; orgSlug: string }
+interface CreateOrganizationResult { organization: Organization; ownerActivation?: OwnerActivation }
+```
 
 | Method | Signature | Description |
 |---|---|---|
-| `createTenant` | `(dto, ownerId?): Promise<Tenant>` | Creates DB record, provisions PostgreSQL schema, runs tenant migrations, optionally creates OWNER membership |
-| `getAllTenants` | `(): Promise<Tenant[]>` | Returns all tenants |
-| `getTenantsByUser` | `(userId): Promise<Tenant[]>` | Returns tenants the user has any membership in |
-| `findById` | `(id): Promise<Tenant \| null>` | Raw lookup |
-| `findBySlug` | `(slug): Promise<Tenant \| null>` | Raw lookup |
-| `findByIdForUser` | `(id, userId, role)` | Authorization-aware: `SUPER_ADMIN` sees all; others require membership |
-| `updateTenant` | `(id, dto, requesterId, requesterRole)` | Only OWNER or SUPER_ADMIN; `status` changes allowed |
-| `deleteTenant` | `(id): Promise<void>` | Drops PostgreSQL schema (`CASCADE`) then deletes record |
+| `createOrganization` | `(ctx, dto): Promise<CreateOrganizationResult>` | See provisioning flow below |
+| `transferOwnership` | `(ctx, orgId, dto): Promise<{ membership; ownerActivation? }>` | Admin only. Atomically provisions the new owner and demotes/removes the old one |
+| `reissueOwnerActivation` | `(ctx, orgId): Promise<OwnerActivation>` | Admin or the org's OWNER. Mints a fresh activation token for the current owner (the old raw token is unrecoverable) and emails it |
+| `getAllOrganizations` | `(ctx): Promise<Organization[]>` | Admin: all orgs. Others: delegates to `getOrganizationsByUser` |
+| `getOrganizationsByUser` | `(ctx, userId): Promise<Organization[]>` | Orgs where the user has any membership |
+| `findById` | `(ctx, id): Promise<Organization \| null>` | Raw lookup |
+| `findBySlug` | `(slug): Promise<Organization \| null>` | Raw lookup (used by `TenantMiddleware` and the public endpoint) |
+| `findByDomain` | `(domain): Promise<Organization \| null>` | Strips port, lowercases, then looks up `domain` |
+| `findByIdForUser` | `(ctx, id): Promise<Organization>` | 404 if missing; admin sees all; others need any membership (else 403) |
+| `updateOrganization` | `(ctx, id, dto): Promise<Organization>` | 404 if missing; admin or OWNER membership (else 403). Invalidates the in-memory slug/domain caches |
+| `deleteOrganization` | `(ctx, id): Promise<void>` | 404 if missing; deletes the row (cascade) and invalidates caches |
 
-**Schema provisioning flow (on `createTenant`):**
+**Ownership rules on create:**
+
+- Non-admin caller: the caller becomes OWNER; `dto.ownerUserId` is ignored.
+- Admin with `ownerUserId`: that user (validated up-front, 404 if absent) becomes OWNER.
+- Admin without `ownerUserId`: org is created with **no membership**; assign an owner later with `transfer-ownership` or `POST /memberships` (`role: owner`).
+
+**Org-provisioning flow (`createOrganization`):**
 
 ```
-1. Insert tenant record (slug → schemaName derived)
-2. CREATE SCHEMA IF NOT EXISTS <schemaName>
-3. Initialize separate TypeORM DataSource scoped to <schemaName>
-4. Run synchronize() to apply tenant entity migrations
-5. If ownerId provided → create Membership(userId=ownerId, role=OWNER)
+dataSource.transaction(manager => {
+  1. Reject duplicate slug (ConflictException 409)
+  2. INSERT organizations row
+  3. rbacSeederService.seedSystemRoles(manager, org.id)
+       -> idempotently inserts the SYSTEM_ROLES from rbac/system-roles.seed.ts
+          (admin = all permissions, staff, ...) with is_system = true
+  4. if owner: ownerProvisioning.provisionOwner(manager, { orgId, userId })
+       -> upsert membership: role = owner, is_admin = true,
+          status = pending (new membership) or unchanged (existing)
+       -> grant the seeded `admin` role in user_roles (if not already)
+       -> insert auth_tokens row: type = activation, org_id = org.id,
+          sha256(token) only, expires in 7 days
+})
+5. After commit: ownerProvisioning.sendActivationEmail(owner, org.slug, token)
+   (best effort; link = <appUrl>/activate?token=...&tenant=<slug>)
+6. Return { organization, ownerActivation: { token, orgSlug } }
 ```
 
-### 2.5 Controller — `TenantController`
+A failure in steps 1 to 4 rolls back everything. The owner redeems the token at the tenant endpoint `POST /auth/activate` (with the org's `x-tenant-id`), which sets the account password, marks the email verified (`pending` accounts become `active`), sets the membership to `active` and signs them in.
 
-Route prefix: `tenants`
-Global guard: `PlatformJwtAuthGuard`
+> A pending OWNER membership cannot sign in to the school (`Membership is pending`) until activated, including a regular user who created the org for themselves.
 
-| Method | Path | Auth rule | Description |
+**Transfer ownership (`transferOwnership`)**, one transaction: finds existing OWNER memberships (oldest = current; 400 if the target is already owner), runs `provisionOwner` for the new owner, then handles the old owner according to `demoteOldOwnerTo`: `admin` (role → admin, `is_admin` stays true), `member` (role → member, `is_admin` → false) or `remove` (deletes the membership and all of the user's `user_roles` in the org). Any extra OWNER rows are demoted to admin. Sends the activation email after commit.
+
+**Deletion semantics (`deleteOrganization`):** a single `DELETE FROM organizations`. The `org_id` FKs cascade to memberships, org-issued auth tokens, roles, user_roles and every other org-scoped table. Global `users` rows are kept. There is no soft delete and no confirmation step.
+
+### 2.5 Controllers
+
+**`OrganizationController`**: route prefix `organizations`. Class guard: `PlatformJwtAuthGuard`. `:id` uses `ParseUUIDPipe`.
+
+| Method | Path | Guard / rule | Response `data` |
 |---|---|---|---|
-| GET | `/` | — | `SUPER_ADMIN` → all tenants; `user` → own memberships only |
-| GET | `/:id` | — | Delegated to `findByIdForUser` |
-| POST | `/` | — | Creates tenant; requester becomes OWNER (unless SUPER_ADMIN) |
-| PATCH | `/:id` | — | Update; OWNER or SUPER_ADMIN only (enforced in service) |
-| DELETE | `/:id` | `@Roles(SUPER_ADMIN)` | Destroy tenant and schema |
+| GET | `/` | Admin: all; others: orgs with a membership | `Organization[]` |
+| GET | `/:id` | `findByIdForUser` | `Organization` |
+| POST | `/` | Any platform user (see ownership rules) | `{ ...organization, activation: OwnerActivation \| null }` (201) |
+| PATCH | `/:id` | Admin or OWNER (service) | `Organization` |
+| POST | `/:id/transfer-ownership` | `PlatformAdminGuard` | `{ ...membership, activation }` |
+| POST | `/:id/owner/activation-link` | Admin or OWNER (service) | `OwnerActivation` |
+| DELETE | `/:id` | `PlatformAdminGuard` | none |
+
+Note that the raw activation token is returned in the API response as well as emailed.
+
+**`PublicOrganizationController`**: route prefix `public/organizations`, no auth. Used by the frontend before login.
+
+| Method | Path | Query | Response `data` |
+|---|---|---|---|
+| GET | `/resolve` | `host` (required, else 400) | `{ slug, name, status }`; 404 unless an **active** org has that custom domain |
+| GET | `/by-slug` | `slug` (required, else 400) | `{ slug, name, status }`; 404 unless an **active** org has that slug |
 
 ---
 
 ## 3. Memberships Module
 
-**Location:** `modules/public/memberships/`
+**Location:** `modules/memberships/`
 
-A membership is the join record that grants a platform user access to a tenant with a specific role.
+A membership grants a global user access to one organization.
 
-### 3.1 Entity — `Membership`
+### 3.1 Entity: `Membership`
 
-Database table: `public.memberships`
-Unique index: `(userId, tenantId)` — one membership per user per tenant.
+Database table: `public.memberships`. Unique index `uq_memberships_org_user` on `(org_id, user_id)`: one membership per user per org. `org_id` is NOT NULL, so the table is under RLS for the tenant pool (platform code uses the owner connection).
 
 | Column | Type | Constraints | Notes |
 |---|---|---|---|
-| `id` | uuid | PK | Auto-generated |
-| `userId` | uuid | FK → `public.users(id)`, CASCADE DELETE | |
-| `tenantId` | uuid | FK → `public.tenants(id)`, CASCADE DELETE | |
-| `role` | enum | Not Null, default `member` | `owner` \| `admin` \| `member` |
-| `createdAt` | timestamp | Not Null | Auto-set |
-| `updatedAt` | timestamp | Not Null | Auto-updated |
+| `id` | uuid | PK | |
+| `user_id` | uuid | FK → `users(id)`, ON DELETE CASCADE | |
+| `org_id` | uuid | FK → `organizations(id)`, ON DELETE CASCADE, indexed | |
+| `role` | enum `MembershipRole` | default `member` | |
+| `is_admin` | boolean | default `false` | School admin: bypasses tenant RBAC checks; carried in tenant JWTs |
+| `status` | enum `MembershipStatus` | default `active` | Tenant login requires `active` |
+| `created_at` / `updated_at` | timestamp | Auto | |
 
-Relations:
-- `user` — ManyToOne → `User`
-- `tenant` — ManyToOne → `Tenant`
-
-Cascade behaviour: deleting a User or Tenant automatically removes all associated Memberships.
+Relations: `user` → `User`, `organization` → `Organization` (both ManyToOne, not eager-loaded).
 
 ### 3.2 Enums
 
 ```ts
-// modules/public/memberships/enums/membership-role.enum.ts
-enum MembershipRole {
-  OWNER  = 'owner',
-  ADMIN  = 'admin',
-  MEMBER = 'member',
-}
+enum MembershipRole   { OWNER = 'owner', ADMIN = 'admin', MEMBER = 'member' }
+enum MembershipStatus { PENDING = 'pending', ACTIVE = 'active', SUSPENDED = 'suspended', DEACTIVATED = 'deactivated' }
 ```
 
-| Role | Implied capabilities |
+| Role | Effect |
 |---|---|
-| `owner` | Can update/delete the tenant; only one per tenant (assigned at creation) |
-| `admin` | Tenant administration (tenant-level, not platform-level) |
-| `member` | Read/participate access within the tenant |
+| `owner` | `is_admin = true`; can update the org, manage its memberships, re-issue its activation link. One per org is enforced by the service (not by a DB constraint) |
+| `admin` | `is_admin = true` (school admin inside the tenant app); no extra platform rights |
+| `member` | `is_admin = false`; tenant access governed by RBAC roles |
 
 ### 3.3 DTOs
 
-**`CreateMembershipDto`**
+**`CreateMembershipDto`**: `userId` (IsUUID, required), `orgId` (IsUUID, required), `role` (IsEnum(MembershipRole), optional, default `member`).
 
-| Field | Validation | Required |
-|---|---|---|
-| `userId` | IsUUID | Yes |
-| `tenantId` | IsUUID | Yes |
-| `role` | IsEnum(MembershipRole) | No — defaults to `member` |
+**`UpdateMembershipRoleDto`**: `role` (IsEnum(MembershipRole), required).
 
-**`UpdateMembershipRoleDto`**
+**`FilterMembershipDto`** (query on `GET /memberships`): optional `userId`, `orgId` (IsString).
 
-| Field | Validation | Required |
-|---|---|---|
-| `role` | IsEnum(MembershipRole) | Yes |
+### 3.4 Service: `MembershipService`
 
-### 3.4 Service — `MembershipService`
+"Owner-or-admin" below means platform admin, or the caller holds the OWNER membership of that org (else 403 `Access denied`).
 
 | Method | Signature | Description |
 |---|---|---|
-| `create` | `(dto): Promise<Membership>` | Creates membership; validates tenant exists; throws `ConflictException` on duplicate `(userId, tenantId)` |
-| `findById` | `(id): Promise<Membership>` | Throws `NotFoundException` if absent |
-| `findByTenantId` | `(tenantId): Promise<Membership[]>` | All memberships for a tenant, ordered by `createdAt` |
-| `findByUserId` | `(userId): Promise<Membership[]>` | All memberships for a user, ordered by `createdAt` |
-| `updateRole` | `(id, dto): Promise<Membership>` | Changes the role on an existing membership |
-| `remove` | `(id): Promise<void>` | Hard delete |
+| `create` | `(ctx, dto): Promise<{ membership; ownerActivation? }>` | Owner-or-admin of `dto.orgId`. Non-admins cannot create `owner` (403). 404 if org/user missing; 409 on duplicate `(userId, orgId)`. Role `owner`: 409 if the org already has one, otherwise `provisionOwner` in a transaction plus activation email (membership starts `pending`). Other roles: plain insert, `status = active`, `is_admin = (role === admin)` |
+| `findAll` | `(ctx, filter): Promise<Membership[]>` | Admin: filtered over all. Others: only their own (403 if `userId` is someone else) |
+| `findById` | `(ctx, id): Promise<Membership>` | 404 if missing; admin, the membership's user, or owner of its org |
+| `findByOrgId` | `(ctx, orgId): Promise<Membership[]>` | 404 if org missing; owner-or-admin; ordered by `createdAt` |
+| `findByUserId` | `(ctx, userId): Promise<Membership[]>` | Self or admin (else 403); 404 if user missing; ordered by `createdAt` |
+| `updateRole` | `(ctx, id, dto): Promise<Membership>` | Owner-or-admin. Non-admins cannot modify an owner membership or assign `owner`. Assigning `owner` when another owner exists → 409 (use transfer-ownership). Sets `is_admin = role !== member`. Does not touch `user_roles` |
+| `remove` | `(ctx, id): Promise<void>` | Owner-or-admin; non-admins cannot remove an owner membership. Deletes the membership and the user's `user_roles` in that org in one transaction |
 
-### 3.5 Controller — `MembershipController`
+Responses contain the bare membership rows (`userId`, `orgId`, ...). User and organization details are not joined.
 
-Route prefix: `memberships`
-Global guard: `PlatformJwtAuthGuard`
+### 3.5 Controller: `MembershipController`
 
-| Method | Path | Guard / Decorator | Description |
+Route prefix: `memberships`. Class guard: `PlatformJwtAuthGuard`. Path params are **not** UUID-validated.
+
+| Method | Path | Rule | Response `data` |
 |---|---|---|---|
-| POST | `/` | `@Roles(SUPER_ADMIN)` | Manually create membership |
-| GET | `/tenant/:tenantId` | — | List memberships for a tenant |
-| GET | `/user/:userId` | — | List memberships for a user |
-| GET | `/:id` | — | Get single membership |
-| PATCH | `/:id` | `@Roles(SUPER_ADMIN)` | Update role |
-| DELETE | `/:id` | `@Roles(SUPER_ADMIN)` | Remove membership |
+| GET | `/` | `findAll` (query `userId`, `orgId`) | `Membership[]` |
+| GET | `/organization/:orgId` | `findByOrgId` | `Membership[]` |
+| GET | `/user/:userId` | `findByUserId` | `Membership[]` |
+| GET | `/me` | caller's memberships | `Membership[]` |
+| GET | `/:id` | `findById` | `Membership` |
+| POST | `/` | `create` | `{ ...membership, activation: OwnerActivation \| null }` (201) |
+| PATCH | `/:id` | `updateRole` | `Membership` |
+| DELETE | `/:id` | `remove` | none |
 
 ---
 
 ## 4. Platform Authentication
 
-**Location:** `modules/public/auth/`
+**Location:** `modules/auth/` (`PlatformAuthController`, `PlatformAuthService`, `PlatformJwtStrategy`), `common/guards/`, `common/tokens/`.
 
 ### 4.1 Endpoints
 
-Route prefix: `platform/auth`
+Route prefix: `platform/auth`. Endpoints marked "throttled" use `AUTH_THROTTLE` (5 requests / 60 s) on top of the global `TenantThrottlerGuard`.
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| POST | `/register` | Public | Register a new platform user |
-| POST | `/login` | Public | Authenticate and receive JWT |
-| GET | `/me` | `PlatformJwtAuthGuard` | Return current user profile with memberships |
+| POST | `/register` | Public, throttled | Create account (`status = pending`), email a verification link. **No JWT issued**; returns `{ email }` |
+| POST | `/login` | Public, throttled | Returns token response. 401 bad credentials; 403 if pending and unverified; 401 `Account is <status>` if not active |
+| POST | `/verify-email` | Public, throttled | `{ token }`: marks email verified, `pending` → `active`, consumes token, returns token response (auto-login) |
+| GET | `/verify-email?token=` | Public | Pre-checks a verification token without consuming it → `{ email }` |
+| POST | `/resend-verification` | Public, throttled | `{ email }`: re-sends if the account exists and is unverified; always the same generic message |
+| POST | `/forgot-password` | Public, throttled | `{ email }`: emails a reset link if the account exists; always the same generic message |
+| GET | `/reset-password?token=` | Public | Pre-checks a reset token → `{ email }` |
+| POST | `/reset-password` | Public, throttled | `{ token, password (min 6) }`: sets the password, consumes the token |
+| POST | `/change-password` | `PlatformJwtAuthGuard` | `{ currentPassword, newPassword (min 6) }`; 400 if the current password is wrong |
+| GET | `/me` | `PlatformJwtAuthGuard` | The `User` row with its `memberships` relation |
+
+All responses use the standard envelope `{ success, statusCode, message, data }`. Platform tokens (verification, reset) are stored in `auth_tokens` with `org_id = NULL`; only those are redeemable here (school-issued tokens are not).
 
 ### 4.2 Request / Response Shapes
 
-**Register & Login response:**
+**Register request:** `{ "name": "Jane Doe", "email": "jane@example.com", "password": "secret1" }` (password min 6).
+
+**Login / verify-email `data`:**
 ```json
 {
   "access_token": "<jwt>",
+  "token_type": "Bearer",
   "user": {
     "id": "uuid",
-    "email": "user@example.com",
-    "firstName": "Jane",
-    "lastName": "Doe",
-    "fullName": "Jane Doe",
-    "role": "user"
+    "email": "jane@example.com",
+    "name": "Jane Doe",
+    "status": "active",
+    "isAdmin": false
   }
 }
 ```
 
-**JWT payload:**
+**Platform JWT payload:**
 ```json
-{
-  "sub": "<userId>",
-  "email": "user@example.com",
-  "role": "user"
-}
+{ "sub": "<userId>", "email": "jane@example.com", "status": "active", "isAdmin": false }
 ```
 
-JWT expiry defaults to `24h` (configurable via `jwt.expiresIn` in config).
+`PlatformJwtStrategy.validate` rejects payloads containing `orgId` (tenant tokens share the signing secret) and sets `request.user = { userId, email, status, isAdmin }`; the `@RequestContext()` decorator maps it to `ctx.user = { id, email, status, isAdmin }`. The strategy does not re-read the database, so a suspended or demoted user keeps their access until the token expires.
 
-### 4.3 Guards & Decorators
+Expiry comes from `jwt.expiresIn` (`JWT_EXPIRES_IN`, default `1d`; `AuthModule` falls back to `24h` if unset). There is no refresh token or logout/denylist.
 
-**Location:** `common/guards/`, `common/decorators/`
+### 4.3 Auth tokens
+
+`auth_tokens` (`modules/auth/entities/auth-token.entity.ts`): `id`, `user_id` (uuid, no FK), `org_id` (nullable, FK → organizations ON DELETE CASCADE), `token_hash` (sha256 hex, unique), `type` (`AuthTokenType`), `expires_at`, `used_at` (single use), `created_at`. Raw tokens are 32 random bytes (hex) from `common/tokens/secure-token.util.ts`.
+
+| `AuthTokenType` | Issued by | TTL (`common/tokens/token-ttl.constants.ts`) |
+|---|---|---|
+| `email_verification` | platform register/resend (org_id null), tenant equivalents | 24 h |
+| `password_reset` | platform/tenant forgot-password | 1 h |
+| `activation` | `OwnerProvisioningService.provisionOwner` (org_id set) | 7 days |
+
+The table has a nullable `org_id`, so it is not under RLS.
+
+### 4.4 Guards & Decorators
 
 | Artifact | File | Purpose |
 |---|---|---|
-| `PlatformJwtAuthGuard` | `guards/platform-jwt-auth.guard.ts` | Validates Bearer token using `platform-jwt` strategy; applied to all protected routes |
-| `RolesGuard` | `guards/roles.guard.ts` | Reads `@Roles()` metadata; compares `request.user.role`; returns 403 on mismatch |
-| `@Roles(...roles)` | `decorators/roles.decorator.ts` | Sets `ROLES_KEY` metadata on handler; used alongside `RolesGuard` |
-| `@CurrentUser()` | `decorators/current-user.decorator.ts` | Param decorator that extracts `request.user` injected by Passport |
+| `PlatformJwtAuthGuard` | `common/guards/platform-jwt-auth.guard.ts` | `AuthGuard('platform-jwt')`; 401 on missing/invalid/tenant token |
+| `PlatformAdminGuard` | `common/guards/platform-admin.guard.ts` | Allows only `request.user.isAdmin === true`; returns 403 otherwise. Use after `PlatformJwtAuthGuard` |
+| `@RequestContext()` | `common/decorators/request-context.decorator.ts` | Builds `RequestContextDto` (`userId`, `user`, `orgId`, ip, ...) from the request |
+| `SelfOrAdminGuard` | `common/guards/self-or-admin.guard.ts` | Exists but is unused (and compares `request.user.id`, which the platform strategy does not set) |
 
 Usage pattern:
 ```ts
-@UseGuards(PlatformJwtAuthGuard, RolesGuard)
-@Roles(PlatformRole.SUPER_ADMIN)
-@Get('/')
-findAll() { ... }
+@Controller('organizations')
+@UseGuards(PlatformJwtAuthGuard)
+export class OrganizationController {
+  @Delete(':id')
+  @UseGuards(PlatformAdminGuard)
+  remove(@RequestContext() ctx: RequestContextDto, @Param('id', ParseUUIDPipe) id: string) { ... }
+}
 ```
+
+Finer rules (self-only, owner-only) are enforced in the services using `ctx.user`.
 
 ---
 
@@ -356,32 +436,51 @@ findAll() { ... }
 
 ```
 AppModule
-└── PublicModule (or direct imports)
-    ├── PlatformAuthModule
-    │   └── UserModule (for UserService)
-    ├── UserModule
-    ├── TenantModule
-    │   └── TenantConnectionService (dynamic DataSource per tenant)
-    └── MembershipModule
-        └── TenantModule (for TenantService)
+├── MailModule (@Global, MailService)
+├── TenancyModule (@Global; TenantMiddleware uses OrganizationService)
+├── AuthModule
+│   ├── UserModule
+│   ├── RbacModule
+│   └── JwtModule / PassportModule (PlatformJwtStrategy, JwtStrategy)
+├── UserModule
+│   └── RbacModule (MemberRepository)
+├── OrganizationModule
+│   ├── UserModule (UserService)
+│   └── RbacModule (RbacSeederService, OwnerProvisioningService)
+├── MembershipModule
+│   ├── OrganizationModule (OrganizationService)
+│   ├── UserModule (UserService)
+│   └── RbacModule (OwnerProvisioningService)
+└── RbacModule
 ```
 
-`TenantModule` and `UserModule` both export their services so they can be consumed by `MembershipModule` and `PlatformAuthModule`.
+`OwnerProvisioningService` lives in `modules/auth/services/` but is provided and exported by `RbacModule`.
 
 ---
 
 ## 6. Authorization Matrix
 
-| Action | `super_admin` | Tenant `owner` | Tenant `admin` | Tenant `member` | Unauthenticated |
-|---|---|---|---|---|---|
-| List all tenants | Yes | Own only | Own only | Own only | No |
-| Create tenant | Yes | Yes (becomes owner) | Yes (becomes owner) | Yes (becomes owner) | No |
-| Update tenant | Yes | Yes (own) | No | No | No |
-| Delete tenant | Yes | No | No | No | No |
-| List all users | Yes | No | No | No | No |
-| Create platform user | Yes | No | No | No | No |
-| Update own profile | Yes | Yes | Yes | Yes | No |
-| Manage memberships | Yes | No | No | No | No |
+"Owner" = holds the OWNER membership of the target org. School `admin`/`member` memberships grant no extra platform rights.
+
+| Action | Platform admin | Org owner | Other platform user | Unauthenticated |
+|---|---|---|---|---|
+| List organizations | All | Own memberships only | Own memberships only | No |
+| View organization | Any | Yes | Only if a member | No |
+| Create organization | Yes (owner optional via `ownerUserId`) | Yes (becomes owner) | Yes (becomes owner) | No |
+| Update organization (name/domain/status) | Yes | Yes | No | No |
+| Re-issue owner activation link | Yes | Yes | No | No |
+| Transfer ownership | Yes | No | No | No |
+| Delete organization | Yes | No | No | No |
+| List / create / delete platform users | Yes | No | No | No |
+| View / update own account (name only) | Yes | Yes | Yes | No |
+| Change another user's status / admin flag | Yes | No | No | No |
+| Create membership (admin/member) | Yes | Yes (own org) | No | No |
+| Create membership with role `owner` | Yes (if org has none) | No | No | No |
+| Change membership role | Yes | Yes (not owner rows, not to `owner`) | No | No |
+| Remove membership | Yes | Yes (not owner rows) | No | No |
+| List memberships of an org | Yes | Yes | No | No |
+| List a user's memberships | Any user | Self only | Self only | No |
+| Resolve org by host/slug (public) | Yes | Yes | Yes | Yes |
 
 ---
 
@@ -389,10 +488,22 @@ AppModule
 
 | Scenario | Exception | HTTP Status |
 |---|---|---|
-| Duplicate email on user create | `ConflictException` | 409 |
-| Duplicate `(userId, tenantId)` on membership create | `ConflictException` | 409 |
-| User/Membership not found | `NotFoundException` | 404 |
-| Tenant not found or no access | `NotFoundException` | 404 |
-| Role insufficient for action | `ForbiddenException` (via RolesGuard) | 403 |
-| Invalid or missing JWT | `UnauthorizedException` (via Passport) | 401 |
-| DTO validation failure | `BadRequestException` (via ValidationPipe) | 400 |
+| Duplicate email on register / user create | `ConflictException` | 409 |
+| Duplicate organization slug | `ConflictException` | 409 |
+| Duplicate `(userId, orgId)` membership | `ConflictException` | 409 |
+| Creating/assigning `owner` when the org already has one | `ConflictException` | 409 |
+| Transfer to the current owner | `BadRequestException` | 400 |
+| User / membership / organization not found | `NotFoundException` | 404 |
+| No active org for host/slug (public endpoints) | `NotFoundException` | 404 |
+| Missing `host`/`slug` query (public endpoints) | `BadRequestException` | 400 |
+| Not a member of the org (view) / not owner or admin | `ForbiddenException` | 403 |
+| Non-admin on a `PlatformAdminGuard` route | `ForbiddenException` (guard returns false) | 403 |
+| Login with unverified pending account | `ForbiddenException` | 403 |
+| Bad credentials / account not active | `UnauthorizedException` | 401 |
+| Invalid or missing JWT, or a tenant JWT on a platform route | `UnauthorizedException` (Passport) | 401 |
+| Invalid/expired/used verification or reset token | `BadRequestException` | 400 |
+| Wrong current password on change-password | `BadRequestException` | 400 |
+| DTO validation failure or unknown body field | `BadRequestException` (ValidationPipe) | 400 |
+| Non-UUID `:id` on organization/user routes | `BadRequestException` (ParseUUIDPipe) | 400 |
+| Duplicate custom `domain` (not pre-checked; DB unique violation) | unhandled `QueryFailedError` | 500 |
+| Too many auth requests | `ThrottlerException` | 429 |

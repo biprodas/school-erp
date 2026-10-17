@@ -48,7 +48,7 @@ src/
 
 ### Feature module layout
 
-Most modules keep files flat: `<feature>.module.ts`, `<feature>.controller.ts`, `<feature>.service.ts`, `<feature>.repository.ts`, `<feature>.service.spec.ts`, plus `dto/`, `entities/` and optionally `enums/`. Larger modules (`students/`, `platform/tenants/`, `platform/memberships/`) split into `controllers/`, `services/`, `repositories/`. Some modules include a `.http` file with sample requests.
+Most modules keep files flat: `<feature>.module.ts`, `<feature>.controller.ts`, `<feature>.service.ts`, `<feature>.repository.ts`, `<feature>.service.spec.ts`, plus `dto/`, `entities/` and optionally `enums/`. Larger modules (`auth/`, `users/`, `organizations/`, `memberships/`, `students/`) split into `controllers/`, `services/`, `repositories/`. Not every module has a service spec yet. Some modules include a `.http` file with sample requests.
 
 Every module must be imported in `app.module.ts`.
 
