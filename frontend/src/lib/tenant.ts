@@ -113,7 +113,7 @@ export async function resolveTenantSlug(
 
   try {
     const res = await fetch(
-      `${apiConfig.baseUrl}/public/tenants/resolve?host=${encodeURIComponent(h)}`,
+      `${apiConfig.baseUrl}/public/organizations/resolve?host=${encodeURIComponent(h)}`,
       { headers: { Accept: "application/json" } },
     );
     if (!res.ok) {

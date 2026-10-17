@@ -3,14 +3,14 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Membership } from './entities/membership.entity';
 import { MembershipService } from './services/membership.service';
 import { MembershipController } from './controllers/membership.controller';
-import { TenantModule } from 'src/modules/platform/tenants/tenant.module';
+import { OrganizationModule } from 'src/modules/platform/organizations/organization.module';
 import { UserModule } from 'src/modules/platform/users/user.module';
 import { RbacModule } from '~/tenanted/rbac/rbac.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Membership]),
-    TenantModule,
+    OrganizationModule,
     UserModule,
     RbacModule,
   ],

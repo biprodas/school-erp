@@ -4,15 +4,18 @@ import {
   Entity,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
+  Index,
 } from 'typeorm';
+import { OrgScopedEntity } from '~/tenancy/org-scoped.entity';
 
 /** A named time slot in the daily schedule (e.g. "Period 1", break). */
 @Entity('periods')
-export class Period {
+@Index('uq_periods_org_name', ['orgId', 'name'], { unique: true })
+export class Period extends OrgScopedEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'varchar', length: 80, unique: true })
+  @Column({ type: 'varchar', length: 80 })
   name: string;
 
   @Column({ name: 'start_time', type: 'time', nullable: true })

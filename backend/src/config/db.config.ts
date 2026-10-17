@@ -6,6 +6,9 @@ export interface DbConfig {
   port: number;
   username: string;
   password: string;
+  /** Restricted, non-owner role the tenant pool uses so RLS applies. */
+  appUsername?: string;
+  appPassword?: string;
   database: string;
   sync: boolean;
   logging: LoggerOptions;
@@ -23,6 +26,8 @@ export default registerAs(
     port: parseInt(process.env.DB_PORT ?? '5432', 10),
     username: process.env.DB_USERNAME!,
     password: process.env.DB_PASSWORD!,
+    appUsername: process.env.DB_APP_USERNAME || undefined,
+    appPassword: process.env.DB_APP_PASSWORD || undefined,
     database: process.env.DB_NAME!,
     sync: process.env.DB_SYNC === 'true',
     logging:

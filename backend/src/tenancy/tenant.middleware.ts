@@ -1,8 +1,8 @@
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import { NextFunction, Request, Response } from 'express';
 import { Key } from '~/common/enums/keys.enum';
-import { TenantStatus } from 'src/modules/platform/tenants/enums/tenant-status.enum';
-import { TenantService } from 'src/modules/platform/tenants/services/tenant.service';
+import { OrganizationStatus } from 'src/modules/platform/organizations/enums/organization-status.enum';
+import { OrganizationService } from 'src/modules/platform/organizations/services/organization.service';
 import {
   TenantContextMissingException,
   TenantInactiveException,
@@ -14,16 +14,15 @@ import {
   tenantSlugCache,
 } from './tenant-slug.cache';
 
-export interface RequestWithTenant extends Request {
-  tenantId?: string;
-  tenantSchema?: string;
-  tenantSlug?: string;
+/** Request after `TenantMiddleware` has resolved the organization (school). */
+export interface RequestWithOrg extends Request {
+  orgId?: string;
+  orgSlug?: string;
 }
 
-interface ResolvedTenant {
+interface ResolvedOrg {
   id: string;
   slug: string;
-  schemaName: string;
   status: string;
 }
 
@@ -31,22 +30,21 @@ const SLUG_PATTERN = /^[a-z0-9]([a-z0-9_-]*[a-z0-9])?$/;
 
 @Injectable()
 export class TenantMiddleware implements NestMiddleware {
-  constructor(private tenantService: TenantService) {}
+  constructor(private organizationService: OrganizationService) {}
 
-  async use(req: RequestWithTenant, res: Response, next: NextFunction) {
+  async use(req: RequestWithOrg, res: Response, next: NextFunction) {
     const resolved = await this.resolve(req);
 
     if (!resolved) {
       throw new TenantContextMissingException();
     }
 
-    if (resolved.status !== TenantStatus.ACTIVE) {
+    if (resolved.status !== OrganizationStatus.ACTIVE) {
       throw new TenantInactiveException(resolved.slug);
     }
 
-    req.tenantId = resolved.id;
-    req.tenantSlug = resolved.slug;
-    req.tenantSchema = resolved.schemaName;
+    req.orgId = resolved.id;
+    req.orgSlug = resolved.slug;
     next();
   }
 
@@ -57,7 +55,7 @@ export class TenantMiddleware implements NestMiddleware {
    *  2. Subdomain label (managed `acme.mydomain.com`) → lookup by slug.
    *  3. Full host (custom/vanity domain `app.acmeschool.com`) → lookup by domain.
    */
-  private async resolve(req: Request): Promise<ResolvedTenant | null> {
+  private async resolve(req: Request): Promise<ResolvedOrg | null> {
     const headerSlug = (
       req.headers[Key.TenantKeyHeader.toLowerCase()] as string | undefined
     )?.trim();
@@ -82,7 +80,7 @@ export class TenantMiddleware implements NestMiddleware {
   }
 
   /** Slug lookup with cache. Returns null on invalid pattern / not found. */
-  private async bySlug(slug: string): Promise<ResolvedTenant | null> {
+  private async bySlug(slug: string): Promise<ResolvedOrg | null> {
     if (!SLUG_PATTERN.test(slug)) return null;
 
     const cached = tenantSlugCache.get(slug);
@@ -90,21 +88,20 @@ export class TenantMiddleware implements NestMiddleware {
       return cached;
     }
 
-    const tenant = await this.tenantService.findBySlug(slug);
-    if (!tenant) return null;
+    const org = await this.organizationService.findBySlug(slug);
+    if (!org) return null;
 
     tenantSlugCache.set(slug, {
-      id: tenant.id,
-      slug: tenant.slug,
-      schemaName: tenant.schemaName,
-      status: tenant.status,
+      id: org.id,
+      slug: org.slug,
+      status: org.status,
       expiresAt: Date.now() + TENANT_SLUG_CACHE_TTL_MS,
     });
-    return tenant;
+    return org;
   }
 
   /** Custom-domain (full host) lookup with cache. */
-  private async byDomain(host: string): Promise<ResolvedTenant | null> {
+  private async byDomain(host: string): Promise<ResolvedOrg | null> {
     // Only hosts that look like a domain can match the `domain` column.
     if (!host || !host.includes('.')) return null;
 
@@ -113,16 +110,15 @@ export class TenantMiddleware implements NestMiddleware {
       return cached;
     }
 
-    const tenant = await this.tenantService.findByDomain(host);
-    if (!tenant) return null;
+    const org = await this.organizationService.findByDomain(host);
+    if (!org) return null;
 
     tenantDomainCache.set(host, {
-      id: tenant.id,
-      slug: tenant.slug,
-      schemaName: tenant.schemaName,
-      status: tenant.status,
+      id: org.id,
+      slug: org.slug,
+      status: org.status,
       expiresAt: Date.now() + TENANT_SLUG_CACHE_TTL_MS,
     });
-    return tenant;
+    return org;
   }
 }

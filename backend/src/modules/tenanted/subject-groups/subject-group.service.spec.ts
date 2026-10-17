@@ -8,6 +8,7 @@ import { SubjectGroupSubject } from './entities/subject-group-subject.entity';
 
 const makeGroup = (overrides: Partial<SubjectGroup> = {}): SubjectGroup => ({
   id: 'sg-1',
+  orgId: 'org-1',
   name: 'Science',
   code: null,
   description: null,

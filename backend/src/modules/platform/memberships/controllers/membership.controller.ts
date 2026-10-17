@@ -39,15 +39,12 @@ export class MembershipController {
     };
   }
 
-  @Get('tenant/:tenantId')
-  async findByTenant(
+  @Get('organization/:orgId')
+  async findByOrganization(
     @RequestContext() ctx: RequestContextDto,
-    @Param('tenantId') tenantId: string,
+    @Param('orgId') orgId: string,
   ) {
-    const memberships = await this.membershipService.findByTenantId(
-      ctx,
-      tenantId,
-    );
+    const memberships = await this.membershipService.findByOrgId(ctx, orgId);
     return {
       success: true,
       statusCode: 200,

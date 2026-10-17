@@ -14,11 +14,10 @@ export function resolveUserType(roles?: string[]): UserType {
   return roles?.includes("student") ? "student" : "staff";
 }
 
-/** Tenant context attached to tenanted auth responses. */
-export interface Tenant {
+/** Organization (school) context attached to tenanted auth responses. */
+export interface Organization {
   id: string;
   slug: string;
-  schema: string;
 }
 
 /** Fields common to both platform and tenanted users. */
@@ -46,5 +45,5 @@ export interface AuthUser extends BaseUser {
   authKind: AuthKind;
   roles?: string[];
   userType?: UserType;
-  tenant?: Tenant;
+  organization?: Organization;
 }

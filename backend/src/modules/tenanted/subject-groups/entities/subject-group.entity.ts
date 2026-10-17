@@ -5,7 +5,9 @@ import {
   OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
+  Index,
 } from 'typeorm';
+import { OrgScopedEntity } from '~/tenancy/org-scoped.entity';
 import { SubjectGroupSubject } from './subject-group-subject.entity';
 
 /**
@@ -14,11 +16,12 @@ import { SubjectGroupSubject } from './subject-group-subject.entity';
  * `class_subject_groups`; its member subjects via `subject_group_subjects`.
  */
 @Entity('subject_groups')
-export class SubjectGroup {
+@Index('uq_subject_groups_org_name', ['orgId', 'name'], { unique: true })
+export class SubjectGroup extends OrgScopedEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'varchar', length: 120, unique: true })
+  @Column({ type: 'varchar', length: 120 })
   name: string;
 
   @Column({ type: 'varchar', length: 40, nullable: true })

@@ -12,6 +12,7 @@ import { StudentStatus } from '../enums/student-status.enum';
 
 const makeStudent = (overrides: Partial<Student> = {}): Student => ({
   id: 'student-1',
+  orgId: 'org-1',
   admissionNumber: 'ADM-001',
   firstName: 'Ada',
   lastName: 'Lovelace',

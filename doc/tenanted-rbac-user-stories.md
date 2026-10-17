@@ -1,5 +1,7 @@
 # Tenanted RBAC — User Stories
 
+> **Note (2026-10-17):** this document predates the move from schema-per-tenant to a shared schema with `org_id` + row-level security, tenants → organizations, and one global `users` table. See `CLAUDE.md` (Backend architecture) for the current design.
+
 These stories cover the per-tenant access-control layer: tenant-scoped authentication, tenant user management, roles, permissions, and role assignments. They are written from the perspective of the four actors that interact with a tenant after it has been provisioned.
 
 **Actors**

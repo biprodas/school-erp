@@ -1,5 +1,7 @@
 # Platform Admin Module
 
+> **Note (2026-10-17):** this document predates the move from schema-per-tenant to a shared schema with `org_id` + row-level security, tenants → organizations, and one global `users` table. See `CLAUDE.md` (Backend architecture) for the current design.
+
 Technical documentation for the three public-schema modules that power platform-level administration: **Users**, **Tenants**, and **Memberships**. Authentication for this layer is covered in a separate section at the end.
 
 All paths are relative to `backend/src/`.

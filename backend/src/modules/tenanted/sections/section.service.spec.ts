@@ -5,6 +5,7 @@ import { Section } from './entities/section.entity';
 
 const makeSection = (overrides: Partial<Section> = {}): Section => ({
   id: 'sec-1',
+  orgId: 'org-1',
   name: 'A',
   code: null,
   description: null,

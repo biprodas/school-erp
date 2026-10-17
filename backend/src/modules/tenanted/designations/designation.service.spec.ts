@@ -7,6 +7,7 @@ const makeDesignation = (
   overrides: Partial<Designation> = {},
 ): Designation => ({
   id: 'desig-1',
+  orgId: 'org-1',
   title: 'Head Teacher',
   description: null,
   isActive: true,

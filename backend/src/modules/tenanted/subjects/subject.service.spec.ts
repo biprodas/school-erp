@@ -6,6 +6,7 @@ import { SubjectType } from './enums/subject-type.enum';
 
 const makeSubject = (overrides: Partial<Subject> = {}): Subject => ({
   id: 'sub-1',
+  orgId: 'org-1',
   name: 'Mathematics',
   code: null,
   type: SubjectType.THEORY,

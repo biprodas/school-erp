@@ -4,15 +4,16 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Not, Repository } from 'typeorm';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
+import { DataSource, Not, Repository } from 'typeorm';
 import { RequestContextDto } from '~/common/dto/request-context.dto';
 import {
   OwnerActivation,
-  TenantService,
-} from 'src/modules/platform/tenants/services/tenant.service';
+  OrganizationService,
+} from 'src/modules/platform/organizations/services/organization.service';
 import { UserService } from 'src/modules/platform/users/user.service';
 import { OwnerProvisioningService } from '~/tenanted/auth/owner-provisioning.service';
+import { UserRole } from '~/tenanted/rbac/entities/user-role.entity';
 import { CreateMembershipDto } from '../dto/create-membership.dto';
 import { UpdateMembershipRoleDto } from '../dto/update-membership-role.dto';
 import { Membership } from '../entities/membership.entity';
@@ -24,7 +25,9 @@ export class MembershipService {
   constructor(
     @InjectRepository(Membership)
     private readonly membershipRepository: Repository<Membership>,
-    private readonly tenantService: TenantService,
+    @InjectDataSource()
+    private readonly dataSource: DataSource,
+    private readonly organizationService: OrganizationService,
     private readonly userService: UserService,
     private readonly ownerProvisioning: OwnerProvisioningService,
   ) {}
@@ -33,15 +36,18 @@ export class MembershipService {
     ctx: RequestContextDto,
     dto: CreateMembershipDto,
   ): Promise<{ membership: Membership; ownerActivation?: OwnerActivation }> {
-    await this.assertOwnerOrAdmin(ctx, dto.tenantId);
+    await this.assertOwnerOrAdmin(ctx, dto.orgId);
 
     if (!ctx.user?.isAdmin && dto.role === MembershipRole.OWNER) {
       throw new ForbiddenException('Only admins can create owner memberships');
     }
 
-    const tenant = await this.tenantService.findById(ctx, dto.tenantId);
-    if (!tenant) {
-      throw new NotFoundException('Tenant not found');
+    const organization = await this.organizationService.findById(
+      ctx,
+      dto.orgId,
+    );
+    if (!organization) {
+      throw new NotFoundException('Organization not found');
     }
 
     const user = await this.userService.findById(ctx, dto.userId);
@@ -50,45 +56,60 @@ export class MembershipService {
     }
 
     const existing = await this.membershipRepository.findOne({
-      where: { userId: dto.userId, tenantId: dto.tenantId },
+      where: { userId: dto.userId, orgId: dto.orgId },
     });
     if (existing) {
       throw new ConflictException(
-        'Membership already exists for this user and tenant',
+        'Membership already exists for this user and organization',
       );
     }
 
     if (dto.role === MembershipRole.OWNER) {
       const currentOwner = await this.membershipRepository.findOne({
-        where: { tenantId: dto.tenantId, role: MembershipRole.OWNER },
+        where: { orgId: dto.orgId, role: MembershipRole.OWNER },
       });
       if (currentOwner) {
         throw new ConflictException(
-          'Tenant already has an owner; use the transfer-ownership endpoint instead',
+          'Organization already has an owner; use the transfer-ownership endpoint instead',
         );
       }
+
+      // OWNER: school admin + activation link (pending until activated),
+      // written atomically.
+      const { membership, token } = await this.dataSource.transaction(
+        async (manager) => {
+          const { token } = await this.ownerProvisioning.provisionOwner(
+            manager,
+            { orgId: dto.orgId, userId: dto.userId },
+          );
+          const membership = await manager.findOneOrFail(Membership, {
+            where: { orgId: dto.orgId, userId: dto.userId },
+          });
+          return { membership, token };
+        },
+      );
+      await this.ownerProvisioning.sendActivationEmail(
+        user,
+        organization.slug,
+        token,
+      );
+      const ownerActivation: OwnerActivation = {
+        token,
+        orgSlug: organization.slug,
+      };
+      return { membership, ownerActivation };
     }
 
     const membership = await this.membershipRepository.save(
       this.membershipRepository.create({
         userId: dto.userId,
-        tenantId: dto.tenantId,
+        orgId: dto.orgId,
         role: dto.role ?? MembershipRole.MEMBER,
+        isAdmin: dto.role === MembershipRole.ADMIN,
       }),
     );
 
-    // When assigning an OWNER, provision their tenant-admin user + activation
-    // link so they can actually log into the tenant.
-    let ownerActivation: OwnerActivation | undefined;
-    if (membership.role === MembershipRole.OWNER) {
-      const { token } = await this.ownerProvisioning.provisionOwner(
-        tenant.schemaName,
-        { email: user.email, name: user.name, platformUserId: user.id },
-      );
-      ownerActivation = { token, tenantSlug: tenant.slug };
-    }
-
-    return { membership, ownerActivation };
+    return { membership };
   }
 
   async findById(ctx: RequestContextDto, id: string): Promise<Membership> {
@@ -100,7 +121,7 @@ export class MembershipService {
     if (!ctx.user?.isAdmin) {
       const isOwnMembership = m.userId === ctx.user?.id;
       if (!isOwnMembership) {
-        await this.assertOwnerOrAdmin(ctx, m.tenantId);
+        await this.assertOwnerOrAdmin(ctx, m.orgId);
       }
     }
 
@@ -111,11 +132,11 @@ export class MembershipService {
     ctx: RequestContextDto,
     dto: FilterMembershipDto,
   ): Promise<Membership[]> {
-    const { userId, tenantId } = dto;
+    const { userId, orgId } = dto;
 
     const reqQuery: any = {};
     if (userId) reqQuery.userId = userId;
-    if (tenantId) reqQuery.tenantId = tenantId;
+    if (orgId) reqQuery.orgId = orgId;
 
     if (ctx.user?.isAdmin === true) {
       return this.membershipRepository.find({
@@ -135,19 +156,19 @@ export class MembershipService {
     });
   }
 
-  async findByTenantId(
+  async findByOrgId(
     ctx: RequestContextDto,
-    tenantId: string,
+    orgId: string,
   ): Promise<Membership[]> {
-    const tenant = await this.tenantService.findById(ctx, tenantId);
-    if (!tenant) {
-      throw new NotFoundException('Tenant not found');
+    const organization = await this.organizationService.findById(ctx, orgId);
+    if (!organization) {
+      throw new NotFoundException('Organization not found');
     }
 
-    await this.assertOwnerOrAdmin(ctx, tenantId);
+    await this.assertOwnerOrAdmin(ctx, orgId);
 
     return this.membershipRepository.find({
-      where: { tenantId },
+      where: { orgId },
       order: { createdAt: 'ASC' },
     });
   }
@@ -182,7 +203,7 @@ export class MembershipService {
       throw new NotFoundException('Membership not found');
     }
 
-    await this.assertOwnerOrAdmin(ctx, membership.tenantId);
+    await this.assertOwnerOrAdmin(ctx, membership.orgId);
 
     if (!ctx.user?.isAdmin) {
       if (membership.role === MembershipRole.OWNER) {
@@ -199,19 +220,21 @@ export class MembershipService {
     ) {
       const otherOwner = await this.membershipRepository.findOne({
         where: {
-          tenantId: membership.tenantId,
+          orgId: membership.orgId,
           role: MembershipRole.OWNER,
           id: Not(membership.id),
         },
       });
       if (otherOwner) {
         throw new ConflictException(
-          'Tenant already has an owner; use the transfer-ownership endpoint instead',
+          'Organization already has an owner; use the transfer-ownership endpoint instead',
         );
       }
     }
 
     membership.role = dto.role;
+    // Owners and admins administer the school; members don't.
+    membership.isAdmin = dto.role !== MembershipRole.MEMBER;
     return this.membershipRepository.save(membership);
   }
 
@@ -223,24 +246,31 @@ export class MembershipService {
       throw new NotFoundException('Membership not found');
     }
 
-    await this.assertOwnerOrAdmin(ctx, membership.tenantId);
+    await this.assertOwnerOrAdmin(ctx, membership.orgId);
 
     if (!ctx.user?.isAdmin && membership.role === MembershipRole.OWNER) {
       throw new ForbiddenException('Cannot remove an owner membership');
     }
 
-    await this.membershipRepository.delete(id);
+    // Leaving the org also drops the roles the user held in it.
+    await this.dataSource.transaction(async (manager) => {
+      await manager.delete(Membership, id);
+      await manager.delete(UserRole, {
+        orgId: membership.orgId,
+        userId: membership.userId,
+      });
+    });
   }
 
   private async assertOwnerOrAdmin(
     ctx: RequestContextDto,
-    tenantId: string,
+    orgId: string,
   ): Promise<void> {
     if (ctx.user?.isAdmin === true) return;
 
     const ownership = await this.membershipRepository.findOne({
       where: {
-        tenantId,
+        orgId,
         userId: ctx.user?.id ?? '',
         role: MembershipRole.OWNER,
       },

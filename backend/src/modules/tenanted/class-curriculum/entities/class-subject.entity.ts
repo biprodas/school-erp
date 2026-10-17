@@ -8,16 +8,21 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { OrgScopedEntity } from '~/tenancy/org-scoped.entity';
 import { AcademicYear } from '../../academic-years/entities/academic-year.entity';
 import { Class } from '../../classes/entities/class.entity';
 import { Subject } from '../../subjects/entities/subject.entity';
 
 /** A subject offered to a class in a given academic year. */
 @Entity('class_subjects')
-@Index('uq_class_subject', ['classId', 'subjectId', 'academicYearId'], {
-  unique: true,
-})
-export class ClassSubject {
+@Index(
+  'uq_class_subject',
+  ['orgId', 'classId', 'subjectId', 'academicYearId'],
+  {
+    unique: true,
+  },
+)
+export class ClassSubject extends OrgScopedEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 

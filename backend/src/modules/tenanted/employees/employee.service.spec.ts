@@ -14,6 +14,7 @@ import { EmployeeStatus } from './enums/employee-status.enum';
 
 const makeEmployee = (overrides: Partial<Employee> = {}): Employee => ({
   id: 'emp-1',
+  orgId: 'org-1',
   employeeNumber: 'EMP-001',
   firstName: 'Ada',
   lastName: 'Lovelace',

@@ -15,6 +15,7 @@ const makeStakeholder = (
   overrides: Partial<Stakeholder> = {},
 ): Stakeholder => ({
   id: 'stk-1',
+  orgId: 'org-1',
   name: 'Acme Supplies',
   type: StakeholderType.VENDOR,
   organization: null,

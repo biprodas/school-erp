@@ -7,12 +7,12 @@ Content-Type: application/json
 
 {
   "userId": "00000000-0000-4000-8000-000000000001",
-  "tenantId": "7566502f-082a-44e1-b95b-3e08cfa5b68b",
+  "orgId": "7566502f-082a-44e1-b95b-3e08cfa5b68b",
   "role": "member"
 }
 
-### List memberships for a tenant
-GET http://localhost:3000/api/memberships/tenant/7566502f-082a-44e1-b95b-3e08cfa5b68b
+### List memberships for an organization
+GET http://localhost:3000/api/memberships/organization/7566502f-082a-44e1-b95b-3e08cfa5b68b
 
 ### List memberships for a user
 GET http://localhost:3000/api/memberships/user/00000000-0000-4000-8000-000000000001

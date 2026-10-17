@@ -19,7 +19,7 @@ import { ROUTES } from "~/constants";
 
 const NAV_ITEMS = [
   { title: "Overview", url: ROUTES.PLATFORM_LOGIN_REDIRECT, icon: LayoutDashboard },
-  { title: "Tenants", url: ROUTES.PLATFORM_TENANTS, icon: Building2 },
+  { title: "Organizations", url: ROUTES.PLATFORM_ORGANIZATIONS, icon: Building2 },
   { title: "Users", url: ROUTES.PLATFORM_USERS, icon: ShieldUser },
   { title: "Memberships", url: ROUTES.PLATFORM_MEMBERSHIPS, icon: Users },
 ] as const;

@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
+import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
 import {
   ConflictException,
   ForbiddenException,
@@ -8,11 +8,12 @@ import {
 import { MembershipService } from './membership.service';
 import { Membership } from '../entities/membership.entity';
 import { MembershipRole } from '../enums/membership-role.enum';
-import { TenantService } from 'src/modules/platform/tenants/services/tenant.service';
+import { OrganizationService } from 'src/modules/platform/organizations/services/organization.service';
 import { UserService } from 'src/modules/platform/users/user.service';
 import { OwnerProvisioningService } from '~/tenanted/auth/owner-provisioning.service';
 import { UserStatus } from 'src/modules/platform/users/enums/user-status.enum';
 import { RequestContextDto } from '~/common/dto/request-context.dto';
+import { UserRole } from '~/tenanted/rbac/entities/user-role.entity';
 
 // --- Helpers ---
 
@@ -26,7 +27,7 @@ const makeCtx = (
       protocol: 'http',
       host: 'localhost',
       url: '/test',
-      tenantId: null,
+      orgId: null,
       userId: null,
       user: null,
     } as RequestContextDto,
@@ -55,14 +56,14 @@ const userCtx = (id = 'user-id') =>
     },
   });
 
-const TENANT_ID = 'tenant-1';
-const OTHER_TENANT_ID = 'tenant-2';
+const TENANT_ID = 'org-1';
+const OTHER_TENANT_ID = 'org-2';
 
 const makeMembership = (overrides: Partial<Membership> = {}): Membership =>
   ({
     id: 'mem-1',
     userId: 'user-id',
-    tenantId: TENANT_ID,
+    orgId: TENANT_ID,
     role: MembershipRole.MEMBER,
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -76,6 +77,8 @@ describe('MembershipService', () => {
   let membershipRepo: Record<string, jest.Mock>;
   let tenantService: Record<string, jest.Mock>;
   let userService: Record<string, jest.Mock>;
+  let ownerProvisioning: Record<string, jest.Mock>;
+  let manager: Record<string, jest.Mock>;
 
   beforeEach(async () => {
     membershipRepo = {
@@ -94,20 +97,42 @@ describe('MembershipService', () => {
       findById: jest.fn(),
     };
 
+    ownerProvisioning = {
+      provisionOwner: jest
+        .fn()
+        .mockResolvedValue({ token: 'activation-token' }),
+      sendActivationEmail: jest.fn(),
+    };
+
+    manager = {
+      findOneOrFail: jest.fn((_: unknown, { where }: { where: Membership }) =>
+        Promise.resolve(
+          makeMembership({
+            userId: where.userId,
+            orgId: where.orgId,
+            role: MembershipRole.OWNER,
+            isAdmin: true,
+          }),
+        ),
+      ),
+      delete: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         MembershipService,
         { provide: getRepositoryToken(Membership), useValue: membershipRepo },
-        { provide: TenantService, useValue: tenantService },
-        { provide: UserService, useValue: userService },
         {
-          provide: OwnerProvisioningService,
+          provide: getDataSourceToken(),
           useValue: {
-            provisionOwner: jest
-              .fn()
-              .mockResolvedValue({ token: 'activation-token' }),
+            transaction: jest.fn((cb: (m: typeof manager) => unknown) =>
+              Promise.resolve(cb(manager)),
+            ),
           },
         },
+        { provide: OrganizationService, useValue: tenantService },
+        { provide: UserService, useValue: userService },
+        { provide: OwnerProvisioningService, useValue: ownerProvisioning },
       ],
     }).compile();
 
@@ -117,21 +142,48 @@ describe('MembershipService', () => {
   // ===================== create =====================
 
   describe('create', () => {
-    const dto = { userId: 'target-user', tenantId: TENANT_ID };
+    const dto = { userId: 'target-user', orgId: TENANT_ID };
 
     beforeEach(() => {
-      tenantService.findById.mockResolvedValue({ id: TENANT_ID });
+      tenantService.findById.mockResolvedValue({
+        id: TENANT_ID,
+        slug: 'test-org',
+      });
       userService.findById.mockResolvedValue({ id: 'target-user' });
       membershipRepo.findOne.mockResolvedValue(null); // no duplicate
     });
 
-    it('ADMIN can create membership with OWNER role', async () => {
+    it('ADMIN can create membership with OWNER role (provisioned atomically)', async () => {
       const result = await service.create(superAdminCtx(), {
         ...dto,
         role: MembershipRole.OWNER,
       });
-      expect(result).toBeDefined();
-      expect(membershipRepo.save).toHaveBeenCalled();
+
+      expect(ownerProvisioning.provisionOwner).toHaveBeenCalledWith(manager, {
+        orgId: TENANT_ID,
+        userId: 'target-user',
+      });
+      expect(ownerProvisioning.sendActivationEmail).toHaveBeenCalled();
+      expect(result.membership.role).toBe(MembershipRole.OWNER);
+      expect(result.ownerActivation).toEqual({
+        token: 'activation-token',
+        orgSlug: 'test-org',
+      });
+      // owners are written by provisioning, not the plain repository
+      expect(membershipRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('creates a plain MEMBER without school-admin access', async () => {
+      const result = await service.create(superAdminCtx(), dto);
+
+      expect(membershipRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          role: MembershipRole.MEMBER,
+          isAdmin: false,
+        }),
+      );
+      expect(result.ownerActivation).toBeUndefined();
+      expect(ownerProvisioning.provisionOwner).not.toHaveBeenCalled();
     });
 
     it('Tenant OWNER can create MEMBER membership for their tenant', async () => {
@@ -215,6 +267,7 @@ describe('MembershipService', () => {
         }),
       ).rejects.toThrow(ConflictException);
       expect(membershipRepo.save).not.toHaveBeenCalled();
+      expect(ownerProvisioning.provisionOwner).not.toHaveBeenCalled();
     });
   });
 
@@ -242,14 +295,14 @@ describe('MembershipService', () => {
       membershipRepo.findOne
         // first call: finding the membership
         .mockResolvedValueOnce(
-          makeMembership({ userId: 'other-user', tenantId: TENANT_ID }),
+          makeMembership({ userId: 'other-user', orgId: TENANT_ID }),
         )
         // second call: assertOwnerOrAdmin ownership check
         .mockResolvedValueOnce(
           makeMembership({
             userId: 'owner-id',
             role: MembershipRole.OWNER,
-            tenantId: TENANT_ID,
+            orgId: TENANT_ID,
           }),
         );
 
@@ -261,7 +314,7 @@ describe('MembershipService', () => {
       const ctx = userCtx('user-id');
       membershipRepo.findOne
         .mockResolvedValueOnce(
-          makeMembership({ userId: 'other-user', tenantId: TENANT_ID }),
+          makeMembership({ userId: 'other-user', orgId: TENANT_ID }),
         )
         .mockResolvedValueOnce(null); // no ownership
 
@@ -289,13 +342,13 @@ describe('MembershipService', () => {
       expect(result).toHaveLength(2);
     });
 
-    it('ADMIN can filter by tenantId', async () => {
+    it('ADMIN can filter by orgId', async () => {
       membershipRepo.find.mockResolvedValue([makeMembership()]);
 
-      await service.findAll(superAdminCtx(), { tenantId: TENANT_ID });
+      await service.findAll(superAdminCtx(), { orgId: TENANT_ID });
       expect(membershipRepo.find).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({ tenantId: TENANT_ID }),
+          where: expect.objectContaining({ orgId: TENANT_ID }),
         }),
       );
     });
@@ -324,14 +377,14 @@ describe('MembershipService', () => {
     });
   });
 
-  // ===================== findByTenantId =====================
+  // ===================== findByOrgId =====================
 
-  describe('findByTenantId', () => {
+  describe('findByOrgId', () => {
     it('ADMIN can list any tenant memberships', async () => {
       tenantService.findById.mockResolvedValue({ id: TENANT_ID });
       membershipRepo.find.mockResolvedValue([makeMembership()]);
 
-      const result = await service.findByTenantId(superAdminCtx(), TENANT_ID);
+      const result = await service.findByOrgId(superAdminCtx(), TENANT_ID);
       expect(result).toHaveLength(1);
     });
 
@@ -343,7 +396,7 @@ describe('MembershipService', () => {
       );
       membershipRepo.find.mockResolvedValue([makeMembership()]);
 
-      const result = await service.findByTenantId(ctx, TENANT_ID);
+      const result = await service.findByOrgId(ctx, TENANT_ID);
       expect(result).toHaveLength(1);
     });
 
@@ -352,7 +405,7 @@ describe('MembershipService', () => {
       tenantService.findById.mockResolvedValue({ id: TENANT_ID });
       membershipRepo.findOne.mockResolvedValue(null); // no ownership
 
-      await expect(service.findByTenantId(ctx, TENANT_ID)).rejects.toThrow(
+      await expect(service.findByOrgId(ctx, TENANT_ID)).rejects.toThrow(
         ForbiddenException,
       );
     });
@@ -361,7 +414,7 @@ describe('MembershipService', () => {
       tenantService.findById.mockResolvedValue(null);
 
       await expect(
-        service.findByTenantId(superAdminCtx(), 'bad-tenant'),
+        service.findByOrgId(superAdminCtx(), 'bad-tenant'),
       ).rejects.toThrow(NotFoundException);
     });
   });
@@ -422,14 +475,14 @@ describe('MembershipService', () => {
       membershipRepo.findOne
         // first call: find membership
         .mockResolvedValueOnce(
-          makeMembership({ role: MembershipRole.MEMBER, tenantId: TENANT_ID }),
+          makeMembership({ role: MembershipRole.MEMBER, orgId: TENANT_ID }),
         )
         // second call: assertOwnerOrAdmin
         .mockResolvedValueOnce(
           makeMembership({
             userId: 'owner-id',
             role: MembershipRole.OWNER,
-            tenantId: TENANT_ID,
+            orgId: TENANT_ID,
           }),
         );
       membershipRepo.save.mockImplementation((entity) =>
@@ -446,13 +499,13 @@ describe('MembershipService', () => {
       const ctx = userCtx('owner-id');
       membershipRepo.findOne
         .mockResolvedValueOnce(
-          makeMembership({ role: MembershipRole.MEMBER, tenantId: TENANT_ID }),
+          makeMembership({ role: MembershipRole.MEMBER, orgId: TENANT_ID }),
         )
         .mockResolvedValueOnce(
           makeMembership({
             userId: 'owner-id',
             role: MembershipRole.OWNER,
-            tenantId: TENANT_ID,
+            orgId: TENANT_ID,
           }),
         );
 
@@ -465,13 +518,13 @@ describe('MembershipService', () => {
       const ctx = userCtx('owner-id');
       membershipRepo.findOne
         .mockResolvedValueOnce(
-          makeMembership({ role: MembershipRole.OWNER, tenantId: TENANT_ID }),
+          makeMembership({ role: MembershipRole.OWNER, orgId: TENANT_ID }),
         )
         .mockResolvedValueOnce(
           makeMembership({
             userId: 'owner-id',
             role: MembershipRole.OWNER,
-            tenantId: TENANT_ID,
+            orgId: TENANT_ID,
           }),
         );
 
@@ -483,7 +536,7 @@ describe('MembershipService', () => {
     it('Non-owner cannot update membership', async () => {
       const ctx = userCtx();
       membershipRepo.findOne
-        .mockResolvedValueOnce(makeMembership({ tenantId: TENANT_ID }))
+        .mockResolvedValueOnce(makeMembership({ orgId: TENANT_ID }))
         .mockResolvedValueOnce(null); // no ownership
 
       await expect(
@@ -505,7 +558,7 @@ describe('MembershipService', () => {
       membershipRepo.findOne
         // initial: membership being updated is currently MEMBER
         .mockResolvedValueOnce(
-          makeMembership({ role: MembershipRole.MEMBER, tenantId: TENANT_ID }),
+          makeMembership({ role: MembershipRole.MEMBER, orgId: TENANT_ID }),
         )
         // OWNER guard: another OWNER exists for this tenant
         .mockResolvedValueOnce(
@@ -513,7 +566,7 @@ describe('MembershipService', () => {
             id: 'mem-owner',
             userId: 'other-owner',
             role: MembershipRole.OWNER,
-            tenantId: TENANT_ID,
+            orgId: TENANT_ID,
           }),
         );
 
@@ -528,7 +581,7 @@ describe('MembershipService', () => {
     it('allows promotion to OWNER when there is no current OWNER', async () => {
       membershipRepo.findOne
         .mockResolvedValueOnce(
-          makeMembership({ role: MembershipRole.MEMBER, tenantId: TENANT_ID }),
+          makeMembership({ role: MembershipRole.MEMBER, orgId: TENANT_ID }),
         )
         .mockResolvedValueOnce(null);
       membershipRepo.save.mockImplementation((entity) =>
@@ -545,7 +598,7 @@ describe('MembershipService', () => {
       // membership being updated is already OWNER — OWNER guard should not run
       // (so we do NOT set up a second findOne mock).
       membershipRepo.findOne.mockResolvedValueOnce(
-        makeMembership({ role: MembershipRole.OWNER, tenantId: TENANT_ID }),
+        makeMembership({ role: MembershipRole.OWNER, orgId: TENANT_ID }),
       );
       membershipRepo.save.mockImplementation((entity) =>
         Promise.resolve(entity),
@@ -567,38 +620,46 @@ describe('MembershipService', () => {
       membershipRepo.findOne.mockResolvedValue(makeMembership());
 
       await service.remove(superAdminCtx(), 'mem-1');
-      expect(membershipRepo.delete).toHaveBeenCalledWith('mem-1');
+      expect(manager.delete).toHaveBeenCalledWith(Membership, 'mem-1');
+      expect(manager.delete).toHaveBeenCalledWith(UserRole, {
+        orgId: TENANT_ID,
+        userId: 'user-id',
+      });
     });
 
     it('Tenant OWNER can remove MEMBER from their tenant', async () => {
       const ctx = userCtx('owner-id');
       membershipRepo.findOne
         .mockResolvedValueOnce(
-          makeMembership({ role: MembershipRole.MEMBER, tenantId: TENANT_ID }),
+          makeMembership({ role: MembershipRole.MEMBER, orgId: TENANT_ID }),
         )
         .mockResolvedValueOnce(
           makeMembership({
             userId: 'owner-id',
             role: MembershipRole.OWNER,
-            tenantId: TENANT_ID,
+            orgId: TENANT_ID,
           }),
         );
 
       await service.remove(ctx, 'mem-1');
-      expect(membershipRepo.delete).toHaveBeenCalledWith('mem-1');
+      expect(manager.delete).toHaveBeenCalledWith(Membership, 'mem-1');
+      expect(manager.delete).toHaveBeenCalledWith(UserRole, {
+        orgId: TENANT_ID,
+        userId: 'user-id',
+      });
     });
 
     it('Tenant OWNER cannot remove OWNER membership', async () => {
       const ctx = userCtx('owner-id');
       membershipRepo.findOne
         .mockResolvedValueOnce(
-          makeMembership({ role: MembershipRole.OWNER, tenantId: TENANT_ID }),
+          makeMembership({ role: MembershipRole.OWNER, orgId: TENANT_ID }),
         )
         .mockResolvedValueOnce(
           makeMembership({
             userId: 'owner-id',
             role: MembershipRole.OWNER,
-            tenantId: TENANT_ID,
+            orgId: TENANT_ID,
           }),
         );
 
@@ -610,7 +671,7 @@ describe('MembershipService', () => {
     it('Non-owner cannot remove membership', async () => {
       const ctx = userCtx();
       membershipRepo.findOne
-        .mockResolvedValueOnce(makeMembership({ tenantId: TENANT_ID }))
+        .mockResolvedValueOnce(makeMembership({ orgId: TENANT_ID }))
         .mockResolvedValueOnce(null);
 
       await expect(service.remove(ctx, 'mem-1')).rejects.toThrow(

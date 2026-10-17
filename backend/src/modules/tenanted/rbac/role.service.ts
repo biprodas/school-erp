@@ -4,10 +4,12 @@ import {
   ForbiddenException,
   Injectable,
   Logger,
+  NotFoundException,
 } from '@nestjs/common';
 import { Role } from './entities/role.entity';
 import { RoleRepository } from './role.repository';
 import { UserRoleRepository } from './user-role.repository';
+import { MemberRepository } from '../users/member.repository';
 import { PERMISSION_SET } from './permissions.catalog';
 import { ADMIN_ROLE_NAME } from './system-roles.seed';
 import { CreateRoleDto } from './dto/create-role.dto';
@@ -20,6 +22,7 @@ export class RoleService {
   constructor(
     private readonly roleRepo: RoleRepository,
     private readonly userRoleRepo: UserRoleRepository,
+    private readonly memberRepo: MemberRepository,
   ) {}
 
   findAll(): Promise<Role[]> {
@@ -102,6 +105,10 @@ export class RoleService {
 
   async assignRole(userId: string, roleId: string): Promise<void> {
     await this.roleRepo.findByIdOrFail(roleId);
+    // Users are global accounts: only members of this org can hold its roles.
+    if (!(await this.memberRepo.findByUserId(userId))) {
+      throw new NotFoundException(`User with id "${userId}" not found`);
+    }
     await this.userRoleRepo.assign(userId, roleId);
   }
 

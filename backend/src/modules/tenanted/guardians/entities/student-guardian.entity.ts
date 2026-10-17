@@ -7,13 +7,16 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
+import { OrgScopedEntity } from '~/tenancy/org-scoped.entity';
 import { Student } from '../../students/entities/student.entity';
 import { GuardianRelation } from '../enums/guardian-relation.enum';
 import { Guardian } from './guardian.entity';
 
 @Entity('student_guardians')
-@Index('uq_student_guardian', ['studentId', 'guardianId'], { unique: true })
-export class StudentGuardian {
+@Index('uq_student_guardian', ['orgId', 'studentId', 'guardianId'], {
+  unique: true,
+})
+export class StudentGuardian extends OrgScopedEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 

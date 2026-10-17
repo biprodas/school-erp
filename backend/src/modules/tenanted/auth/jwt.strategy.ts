@@ -2,13 +2,13 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
-import type { RequestWithTenant } from '~/tenancy/tenant.middleware';
+import type { RequestWithOrg } from '~/tenancy/tenant.middleware';
 
-interface TenantJwtPayload {
+export interface TenantJwtPayload {
   sub: string;
   email: string;
-  tenantId?: string;
-  schemaName?: string;
+  orgId?: string;
+  /** School admin flag from the user's membership in `orgId`. */
   isAdmin?: boolean;
 }
 
@@ -27,19 +27,20 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  validate(req: RequestWithTenant, payload: TenantJwtPayload) {
-    // The token must have been issued by the tenant this request resolved to
-    // (header/subdomain/domain). Without this, a token from tenant A would be
-    // accepted against tenant B's schema, including the isAdmin RBAC bypass.
-    if (!payload.tenantId || payload.tenantId !== req.tenantId) {
-      throw new UnauthorizedException('Token does not belong to this tenant');
+  validate(req: RequestWithOrg, payload: TenantJwtPayload) {
+    // The token must have been issued by the organization this request
+    // resolved to (header/subdomain/domain). Without this, a token from org A
+    // would be accepted against org B, including the isAdmin RBAC bypass.
+    if (!payload.orgId || payload.orgId !== req.orgId) {
+      throw new UnauthorizedException(
+        'Token does not belong to this organization',
+      );
     }
 
     return {
       userId: payload.sub,
       email: payload.email,
-      tenantId: payload.tenantId,
-      schemaName: payload.schemaName,
+      orgId: payload.orgId,
       isAdmin: payload.isAdmin === true,
     };
   }

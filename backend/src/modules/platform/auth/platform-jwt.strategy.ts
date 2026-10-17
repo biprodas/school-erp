@@ -8,7 +8,7 @@ interface PlatformJwtPayload {
   email: string;
   status?: string;
   isAdmin?: boolean;
-  tenantId?: string;
+  orgId?: string;
 }
 
 @Injectable()
@@ -30,9 +30,9 @@ export class PlatformJwtStrategy extends PassportStrategy(
 
   validate(payload: PlatformJwtPayload) {
     // Tenant tokens share the signing secret and carry their own `isAdmin`
-    // (tenant admin). Reject them here so a school admin can't pass
+    // (school admin, from the membership). Reject them here so a school admin can't pass
     // PlatformAdminGuard as a platform super-admin.
-    if (payload.tenantId) {
+    if (payload.orgId) {
       throw new UnauthorizedException('Tenant tokens are not valid here');
     }
 

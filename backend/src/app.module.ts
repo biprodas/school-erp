@@ -5,7 +5,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { TenantThrottlerGuard } from '~/common/throttling/tenant-throttler.guard';
 import { PlatformAuthModule } from '~/platform/auth/platform-auth.module';
 import { MembershipModule } from '~/platform/memberships/membership.module';
-import { TenantModule } from '~/platform/tenants/tenant.module';
+import { OrganizationModule } from '~/platform/organizations/organization.module';
 import { UserModule } from '~/platform/users/user.module';
 import { TenantCleanupInterceptor } from '~/tenancy/tenant-cleanup.interceptor';
 import { TenantMiddleware } from '~/tenancy/tenant.middleware';
@@ -67,7 +67,7 @@ const envFilePath = ['.env', `.env.${nodeEnv}`];
     TenancyModule,
     PlatformAuthModule,
     MembershipModule,
-    TenantModule,
+    OrganizationModule,
     UserModule,
     AuthModule,
     TenantUserModule,
@@ -114,8 +114,8 @@ export class AppModule {
         { path: '/info', method: RequestMethod.GET },
         { path: 'health', method: RequestMethod.ALL },
         { path: 'health/*path', method: RequestMethod.ALL },
-        { path: 'tenants', method: RequestMethod.ALL },
-        { path: 'tenants/*path', method: RequestMethod.ALL },
+        { path: 'organizations', method: RequestMethod.ALL },
+        { path: 'organizations/*path', method: RequestMethod.ALL },
         { path: 'memberships', method: RequestMethod.ALL },
         { path: 'memberships/*path', method: RequestMethod.ALL },
         { path: 'platform/auth', method: RequestMethod.ALL },

@@ -4,14 +4,17 @@ import {
   Entity,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
+  Index,
 } from 'typeorm';
+import { OrgScopedEntity } from '~/tenancy/org-scoped.entity';
 
 @Entity('departments')
-export class Department {
+@Index('uq_departments_org_name', ['orgId', 'name'], { unique: true })
+export class Department extends OrgScopedEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'varchar', length: 120, unique: true })
+  @Column({ type: 'varchar', length: 120 })
   name: string;
 
   @Column({ type: 'varchar', length: 40, nullable: true })

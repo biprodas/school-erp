@@ -5,6 +5,7 @@ import { AcademicYear } from './entities/academic-year.entity';
 
 const makeYear = (overrides: Partial<AcademicYear> = {}): AcademicYear => ({
   id: 'ay-1',
+  orgId: 'org-1',
   name: '2025-2026',
   code: null,
   startDate: null,

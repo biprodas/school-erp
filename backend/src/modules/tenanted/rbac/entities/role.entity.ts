@@ -5,7 +5,9 @@ import {
   OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
+  Index,
 } from 'typeorm';
+import { OrgScopedEntity } from '~/tenancy/org-scoped.entity';
 import { UserRole } from './user-role.entity';
 
 /**
@@ -14,11 +16,12 @@ import { UserRole } from './user-role.entity';
  * `permissions` holds keys from the code-defined permission catalog.
  */
 @Entity('roles')
-export class Role {
+@Index('uq_roles_org_name', ['orgId', 'name'], { unique: true })
+export class Role extends OrgScopedEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ unique: true })
+  @Column()
   name: string;
 
   @Column({ type: 'varchar', length: 255, nullable: true })

@@ -10,15 +10,20 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
+  Index,
 } from 'typeorm';
-import { User } from '../../users/entities/user.entity';
+import { OrgScopedEntity } from '~/tenancy/org-scoped.entity';
+import { User } from '~/platform/users/entities/user.entity';
 import { Department } from '../../departments/entities/department.entity';
 import { Designation } from '../../designations/entities/designation.entity';
 import { EmployeeGender } from '../enums/employee-gender.enum';
 import { EmployeeStatus } from '../enums/employee-status.enum';
 
 @Entity('employees')
-export class Employee {
+@Index('uq_employees_org_employee_number', ['orgId', 'employeeNumber'], {
+  unique: true,
+})
+export class Employee extends OrgScopedEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
@@ -26,7 +31,6 @@ export class Employee {
     name: 'employee_number',
     type: 'varchar',
     length: 60,
-    unique: true,
   })
   employeeNumber: string;
 

@@ -1,0 +1,27 @@
+### CREATE A NEW ORGANIZATION
+POST http://localhost:3900/api/organizations
+Content-Type: application/json
+
+{
+  "name": "Acme School",
+  "slug": "acme" 
+}
+
+### GET ALL ORGANIZATIONS
+GET http://localhost:3900/api/organizations
+
+### GET A ORGANIZATION BY ID
+GET http://localhost:3900/api/organizations/7566502f-082a-44e1-b95b-3e08cfa5b68b
+
+### UPDATE A ORGANIZATION (partial — name, domain, status)
+PATCH http://localhost:3900/api/organizations/7566502f-082a-44e1-b95b-3e08cfa5b68b
+Content-Type: application/json
+
+{
+  "name": "Acme Corporation Ltd",
+  "domain": "acme.example.com",
+  "status": "active"
+}
+
+### DELETE A ORGANIZATION
+DELETE http://localhost:3900/api/organizations/7566502f-082a-44e1-b95b-3e08cfa5b68b

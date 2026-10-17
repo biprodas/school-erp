@@ -8,7 +8,7 @@ import {
 import { toast } from "sonner";
 import { api } from "~/lib/api/client";
 import { errorMessage, usePlatformQueryEnabled } from "~/apis/platform/shared";
-import type { OwnerActivation } from "~/apis/platform/tenants/types";
+import type { OwnerActivation } from "~/apis/platform/organizations/types";
 import type {
   CreateMembershipPayload,
   Membership,

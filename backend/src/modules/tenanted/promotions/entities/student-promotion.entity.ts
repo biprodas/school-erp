@@ -6,6 +6,7 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
+import { OrgScopedEntity } from '~/tenancy/org-scoped.entity';
 import { AcademicYear } from '../../academic-years/entities/academic-year.entity';
 import { Class } from '../../classes/entities/class.entity';
 import { Section } from '../../sections/entities/section.entity';
@@ -13,7 +14,7 @@ import { Student } from '../../students/entities/student.entity';
 
 /** An audit record of a student's movement between years/classes/sections. */
 @Entity('student_promotions')
-export class StudentPromotion {
+export class StudentPromotion extends OrgScopedEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 

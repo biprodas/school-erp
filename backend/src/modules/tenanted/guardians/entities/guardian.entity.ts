@@ -9,11 +9,12 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { User } from '../../users/entities/user.entity';
+import { OrgScopedEntity } from '~/tenancy/org-scoped.entity';
+import { User } from '~/platform/users/entities/user.entity';
 import { StudentGuardian } from './student-guardian.entity';
 
 @Entity('guardians')
-export class Guardian {
+export class Guardian extends OrgScopedEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 

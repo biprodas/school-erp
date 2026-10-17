@@ -8,7 +8,7 @@ export class CreateMembershipDto {
 
   @IsUUID()
   @IsNotEmpty()
-  tenantId: string;
+  orgId: string;
 
   @IsOptional()
   @IsEnum(MembershipRole)

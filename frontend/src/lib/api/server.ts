@@ -10,7 +10,7 @@ import { createApiClient, makeHttp } from "./axios";
  */
 const instance = createApiClient(async () => {
   const session = await auth();
-  let tenantSlug = session?.user?.tenant?.slug ?? null;
+  let tenantSlug = session?.user?.organization?.slug ?? null;
   if (!tenantSlug) {
     const host = (await headers()).get("host");
     tenantSlug = getTenantSlugFromHost(host);

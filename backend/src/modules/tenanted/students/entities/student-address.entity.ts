@@ -8,14 +8,15 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { OrgScopedEntity } from '~/tenancy/org-scoped.entity';
 import { AddressType } from '../enums/address-type.enum';
 import { Student } from './student.entity';
 
 @Entity('student_addresses')
-@Index('uq_student_address_type', ['studentId', 'addressType'], {
+@Index('uq_student_address_type', ['orgId', 'studentId', 'addressType'], {
   unique: true,
 })
-export class StudentAddress {
+export class StudentAddress extends OrgScopedEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 

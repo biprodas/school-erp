@@ -5,15 +5,18 @@ import {
   OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
+  Index,
 } from 'typeorm';
+import { OrgScopedEntity } from '~/tenancy/org-scoped.entity';
 import { ClassSection } from './class-section.entity';
 
 @Entity('classes')
-export class Class {
+@Index('uq_classes_org_name', ['orgId', 'name'], { unique: true })
+export class Class extends OrgScopedEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'varchar', length: 120, unique: true })
+  @Column({ type: 'varchar', length: 120 })
   name: string;
 
   @Column({ type: 'varchar', length: 40, nullable: true })

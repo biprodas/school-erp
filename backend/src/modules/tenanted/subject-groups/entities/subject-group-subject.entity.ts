@@ -8,15 +8,16 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { OrgScopedEntity } from '~/tenancy/org-scoped.entity';
 import { Subject } from '../../subjects/entities/subject.entity';
 import { SubjectGroup } from './subject-group.entity';
 
 /** Membership of a {@link Subject} in a {@link SubjectGroup}. */
 @Entity('subject_group_subjects')
-@Index('uq_subject_group_subject', ['subjectGroupId', 'subjectId'], {
+@Index('uq_subject_group_subject', ['orgId', 'subjectGroupId', 'subjectId'], {
   unique: true,
 })
-export class SubjectGroupSubject {
+export class SubjectGroupSubject extends OrgScopedEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 

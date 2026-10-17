@@ -15,6 +15,7 @@ import { StudentGuardianRepository } from './student-guardian.repository';
 
 const makeGuardian = (overrides: Partial<Guardian> = {}): Guardian => ({
   id: 'g-1',
+  orgId: 'org-1',
   name: 'John Roe',
   phone: null,
   email: null,

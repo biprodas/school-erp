@@ -4,18 +4,22 @@ import {
   Entity,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
+  Index,
 } from 'typeorm';
+import { OrgScopedEntity } from '~/tenancy/org-scoped.entity';
 import { SubjectType } from '../enums/subject-type.enum';
 
 @Entity('subjects')
-export class Subject {
+@Index('uq_subjects_org_name', ['orgId', 'name'], { unique: true })
+@Index('uq_subjects_org_code', ['orgId', 'code'], { unique: true })
+export class Subject extends OrgScopedEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'varchar', length: 120, unique: true })
+  @Column({ type: 'varchar', length: 120 })
   name: string;
 
-  @Column({ type: 'varchar', length: 40, nullable: true, unique: true })
+  @Column({ type: 'varchar', length: 40, nullable: true })
   code: string | null;
 
   @Column({ type: 'varchar', length: 16, default: SubjectType.THEORY })

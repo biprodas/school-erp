@@ -7,15 +7,16 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
+import { OrgScopedEntity } from '~/tenancy/org-scoped.entity';
 import { Subject } from '../../subjects/entities/subject.entity';
 import { StudentEnrollment } from './student-enrollment.entity';
 
 /** A subject (typically an elective) chosen by an enrolled student. */
 @Entity('student_subjects')
-@Index('uq_student_subject', ['studentEnrollmentId', 'subjectId'], {
+@Index('uq_student_subject', ['orgId', 'studentEnrollmentId', 'subjectId'], {
   unique: true,
 })
-export class StudentSubject {
+export class StudentSubject extends OrgScopedEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 

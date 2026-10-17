@@ -1,6 +1,6 @@
 # School ERP — Backend API
 
-NestJS 11 API for the multi-tenant School ERP SaaS. It uses TypeORM with PostgreSQL and gives each school (tenant) its own Postgres schema.
+NestJS 11 API for the multi-tenant School ERP SaaS. It uses TypeORM with PostgreSQL. All schools (organizations) share one schema; every school-owned row carries an `org_id`, isolated by the repository layer and by Postgres row-level security.
 
 - API: `http://localhost:3900/api`
 - Swagger: `http://localhost:3900/api/docs`
@@ -29,7 +29,8 @@ The app loads `.env` first, then `.env.${NODE_ENV}` (`.env.development` by defau
 | Variable | Notes |
 |----------|-------|
 | `DB_HOST` / `DB_PORT` / `DB_NAME` | `localhost` / `5433` / `school_erp` for the docker Postgres |
-| `DB_SYNC` | `true` in dev: auto-syncs the public schema and re-syncs every tenant schema on boot. Never in production |
+| `DB_SYNC` | `true` in dev: auto-syncs the schema on boot. Never in production |
+| `DB_APP_USERNAME` / `DB_APP_PASSWORD` | Restricted role the tenant pool uses so row-level security applies. Created automatically in dev; create it yourself in production (LOGIN NOSUPERUSER NOBYPASSRLS, not the table owner) |
 | `JWT_SECRET` | Required, at least 32 characters |
 | `MAIL_HOST` / `MAIL_PORT` | Mailpit at `localhost:1025`. Read sent mail at http://localhost:8025 |
 | `APP_URL` / `ROOT_DOMAIN` | Used to build email links (`{slug}.{ROOT_DOMAIN}`). Dev uses `lvh.me` |
@@ -55,17 +56,18 @@ npx jest -t "creates a student"                                          # singl
 
 ## Architecture
 
-### Multi-tenancy (schema per tenant)
+### Multi-tenancy (shared schema, `org_id` + RLS)
 
-- **Public schema** holds platform data: platform users, tenants and memberships (`src/modules/platform/`). It uses the standard `@nestjs/typeorm` connection.
-- **Tenant schemas** hold school data, one Postgres schema per tenant (`src/modules/tenanted/`).
-- **Tenant resolution:**
-  1. `TenantMiddleware` finds the tenant from the `x-tenant-id` header (the tenant slug), then the subdomain (`acme.lvh.me`), then a custom domain.
-  2. A request-scoped `TENANT_DATASOURCE` sets `search_path` to the tenant's schema.
-  3. `TenantCleanupInterceptor` releases the connection after the response.
-- **Provisioning:** creating a tenant creates its schema, syncs it, seeds the system roles and creates the owner membership. If any step fails, the earlier steps are rolled back.
+- **One `public` schema.** Platform data (users, organizations, memberships, auth tokens) lives in `src/modules/platform/`; school data in `src/modules/tenanted/`. Every tenanted entity extends `OrgScopedEntity`, which adds `org_id` (FK to `organizations`, `ON DELETE CASCADE`).
+- **Users are global.** One login works across schools; per-school admin flag, status and roles live on `memberships` and `user_roles`.
+- **Org resolution:**
+  1. `TenantMiddleware` finds the organization from the `x-tenant-id` header (the slug), then the subdomain (`acme.lvh.me`), then a custom domain, and sets `req.orgId`.
+  2. A request-scoped `TENANT_DATASOURCE` borrows a connection from the restricted-role pool and sets `app.org_id`.
+  3. `TenantCleanupInterceptor` resets it and releases the connection after the response.
+- **Isolation:** `BaseTenantRepository` pins every find/save/update/delete to the org; Postgres RLS policies on `org_id` back it up (query builders must add the `orgId` condition themselves).
+- **Provisioning:** creating an organization inserts it, seeds the system roles and provisions the owner in one transaction. Deleting it cascades to all its data.
 
-Platform and public routes (`tenants`, `memberships`, `platform/auth`, `platform/users`, `public`, `health`, `dev/mail`) are excluded from `TenantMiddleware` in `src/app.module.ts`. If you add a new route of this kind, add it to that list too.
+Platform and public routes (`organizations`, `memberships`, `platform/auth`, `platform/users`, `public`, `health`, `dev/mail`) are excluded from `TenantMiddleware` in `src/app.module.ts`. If you add a new route of this kind, add it to that list too.
 
 ### Auth and RBAC
 
@@ -102,9 +104,9 @@ For the full folder map, see [doc/backend-structure.md](../doc/backend-structure
    ```sql
    UPDATE public.users SET is_admin = true WHERE email = 'you@example.com';
    ```
-4. Log in with `POST /api/platform/auth/login` and create a tenant through `/api/tenants`.
+4. Log in with `POST /api/platform/auth/login` and create an organization through `/api/organizations`.
 5. Tenant APIs are then reachable with an `x-tenant-id: <slug>` header, or through `http://<slug>.lvh.me:3900/api`.
 
 ## Database migrations
 
-There are no migration files yet. Dev relies on `DB_SYNC=true`. Production must use migrations: use `src/database/tenant-migration.datasource.ts` with `typeorm migration:generate` for tenant schemas, and `TenantMigrationService` to apply them across tenants.
+There are no migration files yet. Dev relies on `DB_SYNC=true` (plus the RLS bootstrap in `src/tenancy/rls.ts`). Production must use migrations generated with `src/database/public.datasource.ts` (`typeorm migration:generate`), and they must also create the RLS policies and grants that `rls.ts` applies in dev.

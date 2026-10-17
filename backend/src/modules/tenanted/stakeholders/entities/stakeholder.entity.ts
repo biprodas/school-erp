@@ -8,12 +8,13 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { User } from '../../users/entities/user.entity';
+import { OrgScopedEntity } from '~/tenancy/org-scoped.entity';
+import { User } from '~/platform/users/entities/user.entity';
 import { StakeholderStatus } from '../enums/stakeholder-status.enum';
 import { StakeholderType } from '../enums/stakeholder-type.enum';
 
 @Entity('stakeholders')
-export class Stakeholder {
+export class Stakeholder extends OrgScopedEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 

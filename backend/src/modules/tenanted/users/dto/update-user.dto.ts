@@ -1,5 +1,5 @@
 import { IsEnum, IsOptional, IsString } from 'class-validator';
-import { UserStatus } from '../enums/user-status.enum';
+import { MembershipStatus } from '~/platform/memberships/enums/membership-status.enum';
 
 export class UpdateUserDto {
   @IsOptional()
@@ -7,6 +7,6 @@ export class UpdateUserDto {
   name?: string;
 
   @IsOptional()
-  @IsEnum(UserStatus)
-  status?: UserStatus;
+  @IsEnum(MembershipStatus)
+  status?: MembershipStatus;
 }

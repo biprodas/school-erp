@@ -5,14 +5,17 @@ import {
   Entity,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
+  Index,
 } from 'typeorm';
+import { OrgScopedEntity } from '~/tenancy/org-scoped.entity';
 
 @Entity('academic_years')
-export class AcademicYear {
+@Index('uq_academic_years_org_name', ['orgId', 'name'], { unique: true })
+export class AcademicYear extends OrgScopedEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'varchar', length: 80, unique: true })
+  @Column({ type: 'varchar', length: 80 })
   name: string;
 
   @Column({ type: 'varchar', length: 40, nullable: true })

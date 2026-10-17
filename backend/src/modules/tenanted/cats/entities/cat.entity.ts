@@ -5,9 +5,10 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { OrgScopedEntity } from '~/tenancy/org-scoped.entity';
 
 @Entity('cats')
-export class Cat {
+export class Cat extends OrgScopedEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 

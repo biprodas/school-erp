@@ -1,6 +1,6 @@
 import type {
   PlatformAuthUser,
-  Tenant,
+  Organization,
   TenantAuthUser,
 } from "~/types/user";
 
@@ -39,7 +39,7 @@ export interface TenantAuthData {
   access_token: string;
   token_type: string;
   user: TenantAuthUser;
-  tenant: Tenant;
+  organization: Organization;
 }
 
 /** `data` payload of a successful platform login/register. */

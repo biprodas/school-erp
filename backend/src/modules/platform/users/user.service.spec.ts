@@ -22,7 +22,7 @@ const makeCtx = (
       protocol: 'http',
       host: 'localhost',
       url: '/test',
-      tenantId: null,
+      orgId: null,
       userId: null,
       user: null,
     } as RequestContextDto,

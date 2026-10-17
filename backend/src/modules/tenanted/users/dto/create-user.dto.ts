@@ -9,7 +9,7 @@ import {
   IsUUID,
   MinLength,
 } from 'class-validator';
-import { UserStatus } from '../enums/user-status.enum';
+import { MembershipStatus } from '~/platform/memberships/enums/membership-status.enum';
 
 export class CreateUserDto {
   @IsString()
@@ -33,7 +33,7 @@ export class CreateUserDto {
   @IsOptional()
   roleIds?: string[];
 
-  @IsEnum(UserStatus)
+  @IsEnum(MembershipStatus)
   @IsOptional()
-  status?: UserStatus;
+  status?: MembershipStatus;
 }

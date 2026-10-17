@@ -26,6 +26,15 @@ export const envValidationSchema = Joi.object({
   DB_PASSWORD: Joi.string().required().messages({
     'any.required': 'DB_PASSWORD is required',
   }),
+  // Restricted role for the tenant pool (row-level security applies to it).
+  DB_APP_USERNAME: Joi.string().trim().allow('').optional(),
+  DB_APP_PASSWORD: Joi.string()
+    .allow('')
+    .optional()
+    .when('DB_APP_USERNAME', {
+      is: Joi.string().trim().min(1),
+      then: Joi.string().min(1).required(),
+    }),
   DB_NAME: Joi.string().trim().min(1).required().messages({
     'string.empty': 'DB_NAME is required',
     'any.required': 'DB_NAME is required',

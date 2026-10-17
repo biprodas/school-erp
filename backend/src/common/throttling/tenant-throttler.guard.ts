@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { Key } from '~/common/enums/keys.enum';
-import { RequestWithTenant } from '~/tenancy/tenant.middleware';
+import { RequestWithOrg } from '~/tenancy/tenant.middleware';
 
-type AuthedRequest = RequestWithTenant & {
+type AuthedRequest = RequestWithOrg & {
   user?: { id?: string; userId?: string };
 };
 
@@ -17,14 +17,14 @@ type AuthedRequest = RequestWithTenant & {
  *   - `tenant:u:<userId>`  when a user is authenticated, else
  *   - `tenant:ip:<ip>`     for anonymous / pre-auth traffic (e.g. login).
  *
- * The tenant segment (`req.tenantId`, set by `TenantMiddleware`, which runs
+ * The tenant segment (`req.orgId`, set by `TenantMiddleware`, which runs
  * before guards) isolates each tenant's window; `public` covers platform and
  * tenant-less routes.
  */
 @Injectable()
 export class TenantThrottlerGuard extends ThrottlerGuard {
   protected getTracker(req: AuthedRequest): Promise<string> {
-    const tenant = req.tenantId ?? 'public';
+    const tenant = req.orgId ?? 'public';
 
     const userId = req.user?.id ?? req.user?.userId;
     if (userId) {

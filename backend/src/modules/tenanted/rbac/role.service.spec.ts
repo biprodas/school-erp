@@ -2,16 +2,19 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  NotFoundException,
 } from '@nestjs/common';
 import { RoleService } from './role.service';
 import { RoleRepository } from './role.repository';
 import { UserRoleRepository } from './user-role.repository';
+import { MemberRepository } from '../users/member.repository';
 import { Role } from './entities/role.entity';
 import { PERMISSIONS } from './permissions.catalog';
 import { ADMIN_ROLE_NAME } from './system-roles.seed';
 
 const makeRole = (overrides: Partial<Role> = {}): Role => ({
   id: 'role-1',
+  orgId: 'org-1',
   name: 'teacher',
   description: null,
   permissions: [PERMISSIONS.TASKS_READ],
@@ -26,6 +29,7 @@ describe('RoleService', () => {
   let service: RoleService;
   let roleRepo: Record<string, jest.Mock>;
   let userRoleRepo: Record<string, jest.Mock>;
+  let memberRepo: Record<string, jest.Mock>;
 
   beforeEach(() => {
     roleRepo = {
@@ -43,9 +47,13 @@ describe('RoleService', () => {
       assign: jest.fn(),
       unassign: jest.fn(),
     };
+    memberRepo = {
+      findByUserId: jest.fn().mockResolvedValue({ id: 'm-1', userId: 'u-1' }),
+    };
     service = new RoleService(
       roleRepo as unknown as RoleRepository,
       userRoleRepo as unknown as UserRoleRepository,
+      memberRepo as unknown as MemberRepository,
     );
   });
 
@@ -158,6 +166,27 @@ describe('RoleService', () => {
       await service.unassignRole('u1', 'admin-role');
 
       expect(userRoleRepo.unassign).toHaveBeenCalledWith('u1', 'admin-role');
+    });
+  });
+
+  describe('assignRole', () => {
+    it('assigns a role to a member of the organization', async () => {
+      roleRepo.findByIdOrFail.mockResolvedValue(makeRole());
+
+      await service.assignRole('u-1', 'role-1');
+
+      expect(memberRepo.findByUserId).toHaveBeenCalledWith('u-1');
+      expect(userRoleRepo.assign).toHaveBeenCalledWith('u-1', 'role-1');
+    });
+
+    it('rejects users who are not members of the organization', async () => {
+      roleRepo.findByIdOrFail.mockResolvedValue(makeRole());
+      memberRepo.findByUserId.mockResolvedValue(null);
+
+      await expect(service.assignRole('stranger', 'role-1')).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(userRoleRepo.assign).not.toHaveBeenCalled();
     });
   });
 });

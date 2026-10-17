@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { In } from 'typeorm';
 import { TENANT_DATASOURCE } from '~/tenancy/tenancy.constants';
 import { TenantDataSourceProxy } from '~/tenancy/tenant-datasource.proxy';
 import { BaseTenantRepository } from '~/tenancy/base-tenant.repository';
@@ -13,6 +14,15 @@ export class UserRoleRepository extends BaseTenantRepository<UserRole> {
   /** All assignments for a user, with the related role eagerly loaded. */
   findByUserId(userId: string): Promise<UserRole[]> {
     return this.repo.find({ where: { userId }, relations: { role: true } });
+  }
+
+  /** Assignments (with roles) for several users at once. */
+  findByUserIds(userIds: string[]): Promise<UserRole[]> {
+    if (!userIds.length) return Promise.resolve([]);
+    return this.repo.find({
+      where: { userId: In(userIds) },
+      relations: { role: true },
+    });
   }
 
   findByRoleId(roleId: string): Promise<UserRole[]> {
@@ -38,5 +48,10 @@ export class UserRoleRepository extends BaseTenantRepository<UserRole> {
 
   async unassign(userId: string, roleId: string): Promise<void> {
     await this.repo.delete({ userId, roleId });
+  }
+
+  /** Drops every role a user holds in this org (e.g. when removed from it). */
+  async unassignAll(userId: string): Promise<void> {
+    await this.repo.delete({ userId });
   }
 }

@@ -5,6 +5,7 @@ import { Department } from './entities/department.entity';
 
 const makeDepartment = (overrides: Partial<Department> = {}): Department => ({
   id: 'dept-1',
+  orgId: 'org-1',
   name: 'Mathematics',
   code: null,
   description: null,

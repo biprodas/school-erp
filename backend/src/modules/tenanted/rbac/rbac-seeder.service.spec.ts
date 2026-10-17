@@ -1,4 +1,4 @@
-import { TenantConnectionService } from '~/tenancy/tenant-connection.service';
+import { EntityManager } from 'typeorm';
 import { RbacSeederService } from './rbac-seeder.service';
 import { SYSTEM_ROLES } from './system-roles.seed';
 
@@ -9,46 +9,40 @@ describe('RbacSeederService', () => {
       create: jest.fn((data: unknown) => data),
       save: jest.fn((entity: unknown) => Promise.resolve(entity)),
     };
-    const proxy = {
+    const manager = {
       getRepository: jest.fn().mockReturnValue(roleRepo),
-      release: jest.fn(),
-    };
-    const connectionService = {
-      getScopedConnection: jest.fn().mockResolvedValue(proxy),
-    };
-    const service = new RbacSeederService(
-      connectionService as unknown as TenantConnectionService,
-    );
-    return { service, roleRepo, proxy };
+    } as unknown as EntityManager;
+    return { service: new RbacSeederService(), roleRepo, manager };
   };
 
-  it('seeds every system role into an empty schema and releases the connection', async () => {
-    const { service, roleRepo, proxy } = buildHarness(null);
+  it('seeds every system role for the organization', async () => {
+    const { service, roleRepo, manager } = buildHarness(null);
 
-    await service.seedSystemRoles('tenant_acme');
+    await service.seedSystemRoles(manager, 'org-acme');
 
     expect(roleRepo.save).toHaveBeenCalledTimes(SYSTEM_ROLES.length);
     expect(roleRepo.create).toHaveBeenCalledWith(
-      expect.objectContaining({ isSystem: true }),
+      expect.objectContaining({ isSystem: true, orgId: 'org-acme' }),
     );
-    expect(proxy.release).toHaveBeenCalled();
+    expect(roleRepo.findOne).toHaveBeenCalledWith({
+      where: { orgId: 'org-acme', name: SYSTEM_ROLES[0].name },
+    });
   });
 
   it('is idempotent — skips roles that already exist', async () => {
-    const { service, roleRepo } = buildHarness({ id: 'existing' });
+    const { service, roleRepo, manager } = buildHarness({ id: 'existing' });
 
-    await service.seedSystemRoles('tenant_acme');
+    await service.seedSystemRoles(manager, 'org-acme');
 
     expect(roleRepo.save).not.toHaveBeenCalled();
   });
 
-  it('releases the connection even when seeding fails', async () => {
-    const { service, roleRepo, proxy } = buildHarness(null);
+  it('propagates failures so the creation transaction rolls back', async () => {
+    const { service, roleRepo, manager } = buildHarness(null);
     roleRepo.save.mockRejectedValueOnce(new Error('db error'));
 
-    await expect(service.seedSystemRoles('tenant_acme')).rejects.toThrow(
+    await expect(service.seedSystemRoles(manager, 'org-acme')).rejects.toThrow(
       'db error',
     );
-    expect(proxy.release).toHaveBeenCalled();
   });
 });

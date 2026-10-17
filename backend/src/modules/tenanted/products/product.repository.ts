@@ -20,6 +20,8 @@ export class ProductRepository extends BaseTenantRepository<Product> {
       .select('COUNT(p.id)', 'totalProducts')
       .addSelect('COALESCE(SUM(p.stock), 0)', 'totalStock')
       .addSelect('COALESCE(SUM(p.price * p.stock), 0)', 'totalValue')
+      // Query builders are not auto-scoped; RLS backs this filter up.
+      .where('p.orgId = :orgId', { orgId: this.orgId })
       .getRawOne();
 
     return {

@@ -8,6 +8,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { OrgScopedEntity } from '~/tenancy/org-scoped.entity';
 import { AcademicYear } from '../../academic-years/entities/academic-year.entity';
 import { Class } from '../../classes/entities/class.entity';
 import { SubjectGroup } from '../../subject-groups/entities/subject-group.entity';
@@ -16,10 +17,10 @@ import { SubjectGroup } from '../../subject-groups/entities/subject-group.entity
 @Entity('class_subject_groups')
 @Index(
   'uq_class_subject_group',
-  ['classId', 'subjectGroupId', 'academicYearId'],
+  ['orgId', 'classId', 'subjectGroupId', 'academicYearId'],
   { unique: true },
 )
-export class ClassSubjectGroup {
+export class ClassSubjectGroup extends OrgScopedEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 

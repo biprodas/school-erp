@@ -8,7 +8,6 @@ import { UserController } from 'src/modules/platform/users/user.controller';
 import { UserService } from 'src/modules/platform/users/user.service';
 import { User } from 'src/modules/platform/users/entities/user.entity';
 import { PlatformJwtStrategy } from 'src/modules/platform/auth/platform-jwt.strategy';
-import { PlatformRole } from 'src/modules/platform/users/enums/platform-role.enum';
 import { UserStatus } from 'src/modules/platform/users/enums/user-status.enum';
 import { ConfigService } from '@nestjs/config';
 
@@ -23,7 +22,6 @@ const makeUser = (overrides: Partial<User> = {}): User =>
     id: USER_ID,
     email: 'user@test.com',
     name: 'Test User',
-    role: PlatformRole.USER,
     status: UserStatus.ACTIVE,
     isAdmin: false,
     createdAt: new Date(),
@@ -40,7 +38,6 @@ describe('User E2E', () => {
     jwtService.sign({
       sub: ADMIN_ID,
       email: 'admin@test.com',
-      role: PlatformRole.ADMIN,
       status: UserStatus.ACTIVE,
       isAdmin: true,
     });
@@ -49,7 +46,6 @@ describe('User E2E', () => {
     jwtService.sign({
       sub: id,
       email: 'user@test.com',
-      role: PlatformRole.USER,
       status: UserStatus.ACTIVE,
       isAdmin: false,
     });

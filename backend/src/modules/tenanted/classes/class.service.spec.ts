@@ -8,6 +8,7 @@ import { ClassSection } from './entities/class-section.entity';
 
 const makeClass = (overrides: Partial<Class> = {}): Class => ({
   id: 'cls-1',
+  orgId: 'org-1',
   name: 'Grade 1',
   code: null,
   level: 1,

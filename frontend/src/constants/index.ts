@@ -21,7 +21,7 @@ export const ROUTES = {
   ACTIVATE: "/activate",
 
   // Platform management sections.
-  PLATFORM_TENANTS: "/platform/tenants",
+  PLATFORM_ORGANIZATIONS: "/platform/organizations",
   PLATFORM_USERS: "/platform/users",
   PLATFORM_MEMBERSHIPS: "/platform/memberships",
 } as const;
@@ -43,7 +43,7 @@ export const protectedPrefixes = [
   "/profile",
   "/student",
   "/platform/dashboard",
-  "/platform/tenants",
+  "/platform/organizations",
   "/platform/users",
   "/platform/memberships",
 ];

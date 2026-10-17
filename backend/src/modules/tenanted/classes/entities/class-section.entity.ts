@@ -8,6 +8,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { OrgScopedEntity } from '~/tenancy/org-scoped.entity';
 import { Section } from '../../sections/entities/section.entity';
 import { Class } from './class.entity';
 
@@ -17,8 +18,8 @@ import { Class } from './class.entity';
  * many classes; each (class, section) pair is unique.
  */
 @Entity('class_sections')
-@Index('uq_class_section', ['classId', 'sectionId'], { unique: true })
-export class ClassSection {
+@Index('uq_class_section', ['orgId', 'classId', 'sectionId'], { unique: true })
+export class ClassSection extends OrgScopedEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 

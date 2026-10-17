@@ -1,5 +1,7 @@
 # Tenanted RBAC Module
 
+> **Note (2026-10-17):** this document predates the move from schema-per-tenant to a shared schema with `org_id` + row-level security, tenants → organizations, and one global `users` table. See `CLAUDE.md` (Backend architecture) for the current design.
+
 Technical documentation for the per-tenant access-control layer: **Tenant Users**, **Roles**, **User-Role Assignments**, and **Permission Enforcement**. Tenant-scoped authentication is covered in a separate section at the end.
 
 All paths are relative to `backend/src/`.

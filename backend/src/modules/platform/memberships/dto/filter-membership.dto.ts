@@ -7,5 +7,5 @@ export class FilterMembershipDto {
 
   @IsOptional()
   @IsString()
-  tenantId?: string;
+  orgId?: string;
 }

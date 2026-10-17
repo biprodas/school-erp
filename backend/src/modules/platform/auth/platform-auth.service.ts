@@ -6,7 +6,7 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { IsNull, Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import {
@@ -25,7 +25,8 @@ import { AuthToken } from './entities/auth-token.entity';
 /**
  * Authentication + self-service account operations for platform users:
  * register/login plus email verification, password reset, and change-password.
- * Fully decoupled from the tenant activation/onboarding flow. Anti-enumeration:
+ * Platform-issued tokens have a null `orgId`; school-issued ones are never
+ * redeemable here. Anti-enumeration:
  * forgot/resend never reveal whether an email exists.
  */
 @Injectable()
@@ -246,6 +247,7 @@ export class PlatformAuthService {
       where: {
         tokenHash: hashToken(rawToken),
         type: AuthTokenType.EMAIL_VERIFICATION,
+        orgId: IsNull(),
       },
     });
     if (!record || record.usedAt || record.expiresAt.getTime() < Date.now()) {
@@ -267,6 +269,7 @@ export class PlatformAuthService {
       where: {
         tokenHash: hashToken(rawToken),
         type: AuthTokenType.PASSWORD_RESET,
+        orgId: IsNull(),
       },
     });
     if (!record || record.usedAt || record.expiresAt.getTime() < Date.now()) {

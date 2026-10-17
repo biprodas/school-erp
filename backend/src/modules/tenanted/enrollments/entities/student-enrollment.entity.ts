@@ -9,6 +9,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { OrgScopedEntity } from '~/tenancy/org-scoped.entity';
 import { AcademicYear } from '../../academic-years/entities/academic-year.entity';
 import { Class } from '../../classes/entities/class.entity';
 import { Section } from '../../sections/entities/section.entity';
@@ -18,15 +19,15 @@ import { StudentSubject } from './student-subject.entity';
 
 /** A student's placement (class + section) for one academic year. */
 @Entity('student_enrollments')
-@Index('uq_enrollment_student_year', ['studentId', 'academicYearId'], {
+@Index('uq_enrollment_student_year', ['orgId', 'studentId', 'academicYearId'], {
   unique: true,
 })
 @Index(
   'uq_enrollment_roll',
-  ['academicYearId', 'classId', 'sectionId', 'rollNo'],
+  ['orgId', 'academicYearId', 'classId', 'sectionId', 'rollNo'],
   { unique: true },
 )
-export class StudentEnrollment {
+export class StudentEnrollment extends OrgScopedEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 

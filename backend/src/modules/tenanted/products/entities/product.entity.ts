@@ -5,9 +5,10 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { OrgScopedEntity } from '~/tenancy/org-scoped.entity';
 
 @Entity('products')
-export class Product {
+export class Product extends OrgScopedEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 

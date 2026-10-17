@@ -12,8 +12,10 @@ import {
   OneToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
+  Index,
 } from 'typeorm';
-import { User } from '../../users/entities/user.entity';
+import { OrgScopedEntity } from '~/tenancy/org-scoped.entity';
+import { User } from '~/platform/users/entities/user.entity';
 import { StudentGuardian } from '../../guardians/entities/student-guardian.entity';
 import { AdmissionType } from '../enums/admission-type.enum';
 import { StudentGender } from '../enums/student-gender.enum';
@@ -25,7 +27,10 @@ import { StudentMedicalRecord } from './student-medical-record.entity';
 import { StudentNote } from './student-note.entity';
 
 @Entity('students')
-export class Student {
+@Index('uq_students_org_admission_number', ['orgId', 'admissionNumber'], {
+  unique: true,
+})
+export class Student extends OrgScopedEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
@@ -33,7 +38,6 @@ export class Student {
     name: 'admission_number',
     type: 'varchar',
     length: 60,
-    unique: true,
   })
   admissionNumber: string;
 

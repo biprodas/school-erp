@@ -129,8 +129,8 @@ export default function ProfileView() {
               )}
             </DetailRow>
             <DetailRow label="Admin">{user.isAdmin ? "Yes" : "No"}</DetailRow>
-            {authKind === "tenant" && user.tenant?.slug && (
-              <DetailRow label="Workspace">{user.tenant.slug}</DetailRow>
+            {authKind === "tenant" && user.organization?.slug && (
+              <DetailRow label="Workspace">{user.organization.slug}</DetailRow>
             )}
             <DetailRow label="Status">
               {meQuery.isPending ? (

@@ -29,7 +29,7 @@ describe('PlatformJwtStrategy', () => {
         sub: 'user-1',
         email: 'admin@school.test',
         isAdmin: true,
-        tenantId: 'tenant-a',
+        orgId: 'org-a',
       }),
     ).toThrow(UnauthorizedException);
   });

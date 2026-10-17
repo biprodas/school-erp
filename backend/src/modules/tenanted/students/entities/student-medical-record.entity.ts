@@ -8,11 +8,12 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { OrgScopedEntity } from '~/tenancy/org-scoped.entity';
 import { Student } from './student.entity';
 
 @Entity('student_medical_records')
-@Index('uq_student_medical_record', ['studentId'], { unique: true })
-export class StudentMedicalRecord {
+@Index('uq_student_medical_record', ['orgId', 'studentId'], { unique: true })
+export class StudentMedicalRecord extends OrgScopedEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 

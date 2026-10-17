@@ -5,10 +5,11 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { OrgScopedEntity } from '~/tenancy/org-scoped.entity';
 import { TaskStatus } from './task-status.enum';
 
 @Entity('tasks')
-export class Task {
+export class Task extends OrgScopedEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
