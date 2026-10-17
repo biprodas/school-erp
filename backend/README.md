@@ -52,6 +52,9 @@ npm run test:e2e       # test/*.e2e-spec.ts. Loads .env.development and needs a 
 
 npx jest src/modules/students/services/student.service.spec.ts   # single file
 npx jest -t "creates a student"                                          # single test by name
+
+npm run db:migrate     # apply pending migrations (see "Database migrations")
+npm run db:seed:core   # seed platform accounts (see "Database seeding")
 ```
 
 ## Architecture
@@ -98,6 +101,8 @@ For the full folder map, see [doc/backend-structure.md](../doc/backend-structure
 
 ## First run: creating a platform admin
 
+The quickest way in dev is `npm run db:seed:core`, which creates ready-to-use platform accounts (see [Database seeding](#database-seeding)). To create one by hand instead:
+
 1. Register with `POST /api/platform/auth/register`.
 2. Verify the email from the link in Mailpit (http://localhost:8025).
 3. Promote the account to admin, for example in pgAdmin:
@@ -109,4 +114,117 @@ For the full folder map, see [doc/backend-structure.md](../doc/backend-structure
 
 ## Database migrations
 
-There are no migration files yet. Dev relies on `DB_SYNC=true` (plus the RLS bootstrap in `src/tenancy/rls.ts`). Production must use migrations generated with `src/database/public.datasource.ts` (`typeorm migration:generate`), and they must also create the RLS policies and grants that `rls.ts` applies in dev.
+Migrations are TypeORM classes in `src/migrations/`, run through the CLI data source `src/database/public.datasource.ts`. That data source:
+
+- **Env:** loads the same env files as the app, `.env` and then `.env.${NODE_ENV}`. Variables already set in the shell win, so `DB_NAME=other npm run db:migrate` works.
+- **Role:** connects as the owner (`DB_USERNAME`), so it bypasses RLS.
+- **Tracking:** records applied migrations in the `migrations` table.
+
+```bash
+npm run db:status                               # list migrations, [X] = applied
+npm run db:generate -- src/migrations/AddFooBar # diff entities against the DB and write a migration
+npm run db:create -- src/migrations/BackfillFoo # empty migration for hand-written SQL / data changes
+npm run db:migrate                              # apply pending migrations
+npm run db:rollback                             # undo the last applied migration (repeat to go further back)
+```
+
+### Workflow for a schema change
+
+1. Point your DB at the latest migrations, not at sync: set `DB_SYNC=false` in `.env.development`, then run `npm run db:migrate`. With `DB_SYNC=true` the app has already applied your entity changes, so `db:generate` finds nothing to diff.
+2. Change the entity.
+3. Run `npm run db:generate -- src/migrations/<PascalCaseName>`, then read the generated SQL. TypeORM sometimes drops and recreates a column where you meant a rename. Fix that by hand to keep the data.
+4. Run `npm run db:migrate`, check the app, and confirm `npm run db:rollback` works too.
+5. Commit the migration together with the entity change. Never edit a migration that has already run in a shared environment. Add a new one instead.
+
+### New tenanted tables need RLS in the migration
+
+`db:generate` only creates tables and columns. When you add an entity that extends `OrgScopedEntity` (a NOT NULL `org_id`), the same migration must also enable the `org_isolation` policy on it. In production nothing else will add the policy:
+
+```ts
+// up()
+await queryRunner.query(`ALTER TABLE public."fee_invoices" ENABLE ROW LEVEL SECURITY`);
+await queryRunner.query(
+  `CREATE POLICY org_isolation ON public."fee_invoices"
+     USING (org_id = NULLIF(current_setting('app.org_id', true), '')::uuid)
+     WITH CHECK (org_id = NULLIF(current_setting('app.org_id', true), '')::uuid)`,
+);
+
+// down()
+await queryRunner.query(`DROP POLICY IF EXISTS org_isolation ON public."fee_invoices"`);
+await queryRunner.query(`ALTER TABLE public."fee_invoices" DISABLE ROW LEVEL SECURITY`);
+```
+
+In dev, `TenancyModule` also re-applies RLS and the app-role grants on every boot (`src/tenancy/rls.ts`), so a missing policy only shows up in production. Keep the migration as the source of truth.
+
+### Production
+
+```bash
+npm run build
+NODE_ENV=production npm run db:migrate:prod   # runs dist/migrations with dist/database/public.datasource.js
+```
+
+- Run migrations before starting the new app version. Never set `DB_SYNC=true` in production.
+- Create the restricted app role (`DB_APP_USERNAME`) yourself, with LOGIN NOSUPERUSER NOBYPASSRLS, not as the table owner. Then grant it DML on `public`, including tables created later:
+  ```sql
+  GRANT USAGE ON SCHEMA public TO school_erp_app;
+  GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO school_erp_app;
+  GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO school_erp_app;
+  ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO school_erp_app;
+  ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO school_erp_app;
+  ```
+
+### A dev DB that was built with `DB_SYNC=true`
+
+A synced DB already has the tables, so the initial migration fails on it with "relation already exists". Pick one fix:
+
+- **Reset (simplest):** drop and recreate the database (e.g. `school_erp`) in pgAdmin, then run `npm run db:migrate` and the seeders.
+- **Keep the data:** mark the initial migration as applied, then run `npm run db:migrate`. The RLS migration is idempotent, so it runs fine on a synced DB. First run `npm run db:status` once so TypeORM creates the `migrations` table, then:
+  ```sql
+  INSERT INTO public.migrations ("timestamp", name) VALUES (1792231987093, 'InitialSchema1792231987093');
+  ```
+  Only do this if the synced schema matches the entities. `npm run db:generate -- src/migrations/Check` should then report "No changes".
+
+## Database seeding
+
+Seeders live in `src/database/seeds/` and run through `src/database/seeds/run-seed.ts`:
+
+- **Connection:** they use the CLI data source (owner role, same env files) against the current DB, which must already be migrated or synced.
+- **Production:** they refuse to run when `NODE_ENV=production`, because they contain dev credentials.
+
+```bash
+npm run db:seed:core    # platform user accounts
+```
+
+`core` seeds the platform accounts from `src/database/seeds/data/users.data.ts`:
+
+| Email | Username | Platform role | Platform admin | Password |
+|-------|----------|---------------|----------------|----------|
+| admin@biprodas.dev | sadmin | super_admin | yes | `sadmin@123` |
+| biprodas@biprodas.dev | biprodas | admin | yes | `biprodas@123` |
+| support@biprodas.dev | support | support | no | `support@123` |
+| dev@biprodas.dev | dev | developer | no | `dev@123` |
+| liyana@biprodas.dev | liyana | user | no | `liyana@123` |
+| demo@pitchpool.io | demo | user | no | `demo@123` |
+
+- **Admin flag:** `users.is_admin` (what `PlatformAdminGuard` checks) is set only for `super_admin` and `admin`.
+- **Re-runs:** the seeder is idempotent and matches users by email. New users are created ACTIVE and email-verified. Existing users get username, name, role and admin flag re-synced but keep their current password.
+- **Transactions:** each seeder runs in one transaction, so a failure leaves nothing half-written.
+
+### Adding a seeder
+
+1. Put the data in `src/database/seeds/data/<name>.data.ts` and the logic in `src/database/seeds/<name>.seeder.ts`. Export `async function seedX(ds: DataSource)`, and make it idempotent by looking rows up by a natural key before inserting.
+2. Register it in the `SEEDERS` map in `run-seed.ts`.
+3. Add `"db:seed:<name>": "ts-node src/database/seeds/run-seed.ts <name>"` to `package.json`.
+4. Tenanted data must set `orgId` explicitly, because the owner connection bypasses RLS and the tenant repository scoping. Reuse the existing provisioning code where it fits, for example `RbacSeederService.seedSystemRoles(manager, orgId)` for an org's system roles.
+
+### Fresh local database, end to end
+
+```bash
+docker compose up -d        # from the repo root
+cd backend
+npm run db:migrate          # with DB_SYNC=false
+npm run db:seed:core
+npm run start:dev
+```
+
+Then log in on the platform with `admin@biprodas.dev` / `sadmin@123` (`POST /api/platform/auth/login`).

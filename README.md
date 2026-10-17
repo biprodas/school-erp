@@ -60,6 +60,8 @@ npm run start:dev
 
 Other scripts: `npm run build`, `npm run start`, `npm run start:prod`, `npm test`, `npm run lint`.
 
+Database: `npm run db:migrate` applies migrations, and `npm run db:seed:core` seeds the dev platform accounts. See [backend/README.md](backend/README.md#database-migrations) for the migration workflow, the RLS rules for new tenanted tables, production steps and how to add seeders.
+
 **Stack:** NestJS 11.
 
 ## Documentation
