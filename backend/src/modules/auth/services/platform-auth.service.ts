@@ -11,6 +11,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import {
   EMAIL_VERIFICATION_TTL_MS,
+  HANDOFF_TTL_MS,
   PASSWORD_RESET_TTL_MS,
 } from '~/common/tokens/token-ttl.constants';
 import { generateToken, hashToken } from '~/common/tokens/secure-token.util';
@@ -18,6 +19,10 @@ import { AuthTokenType } from '~/common/tokens/auth-token-type.enum';
 import { MailService } from '~/shared/mail/mail.service';
 import { User } from '~/modules/users/entities/user.entity';
 import { UserStatus } from '~/modules/users/enums/user-status.enum';
+import { Membership } from '~/modules/memberships/entities/membership.entity';
+import { MembershipStatus } from '~/modules/memberships/enums/membership-status.enum';
+import { Organization } from '~/modules/organizations/entities/organization.entity';
+import { OrganizationStatus } from '~/modules/organizations/enums/organization-status.enum';
 import { PlatformRegisterDto } from '../dto/platform-register.dto';
 import { PlatformLoginDto } from '../dto/platform-login.dto';
 import { AuthToken } from '../entities/auth-token.entity';
@@ -36,6 +41,10 @@ export class PlatformAuthService {
     private readonly userRepository: Repository<User>,
     @InjectRepository(AuthToken)
     private readonly tokenRepo: Repository<AuthToken>,
+    @InjectRepository(Membership)
+    private readonly membershipRepo: Repository<Membership>,
+    @InjectRepository(Organization)
+    private readonly organizationRepo: Repository<Organization>,
     private readonly mail: MailService,
     private readonly jwtService: JwtService,
   ) {}
@@ -111,6 +120,45 @@ export class PlatformAuthService {
       throw new UnauthorizedException('User not found');
     }
     return user;
+  }
+
+  // --- Cross-host handoff --------------------------------------------------
+
+  /**
+   * Mint a single-use, short-lived code that signs the caller in to one of
+   * their schools on that school's host (`POST /auth/handoff` there). The
+   * token's `orgId` is the target org, so only that school can redeem it.
+   * Every refusal gives the same answer, so this can't be used to probe
+   * which schools exist or who belongs to them.
+   */
+  async issueHandoff(userId: string, orgId: string) {
+    const [user, organization, membership] = await Promise.all([
+      this.userRepository.findOne({ where: { id: userId } }),
+      this.organizationRepo.findOne({ where: { id: orgId } }),
+      this.membershipRepo.findOne({ where: { orgId, userId } }),
+    ]);
+    if (
+      user?.status !== UserStatus.ACTIVE ||
+      organization?.status !== OrganizationStatus.ACTIVE ||
+      membership?.status !== MembershipStatus.ACTIVE
+    ) {
+      throw new ForbiddenException('You cannot sign in to this school');
+    }
+
+    const rawCode = generateToken();
+    const expiresAt = new Date(Date.now() + HANDOFF_TTL_MS);
+    await this.tokenRepo.save(
+      this.tokenRepo.create({
+        userId,
+        orgId,
+        tokenHash: hashToken(rawCode),
+        type: AuthTokenType.HANDOFF,
+        expiresAt,
+        usedAt: null,
+      }),
+    );
+
+    return { code: rawCode, orgSlug: organization.slug, expiresAt };
   }
 
   // --- Email verification -------------------------------------------------

@@ -47,6 +47,14 @@ export const LoginForm = () => {
   const router = useRouter()
   const searchParams = useSearchParams()
 
+  // A failed cross-host sign-in (`/auth/handoff`) lands here with ?error=handoff.
+  const handoffFailed = searchParams.get("error") === "handoff"
+  useEffect(() => {
+    if (handoffFailed) {
+      toast.error("That sign-in link is invalid or has expired. Please sign in.")
+    }
+  }, [handoffFailed])
+
   // Resolve tenant from the host (subdomain parse, or custom-domain lookup).
   const [detectedSlug, setDetectedSlug] = useState<string | null>(null)
   useEffect(() => {

@@ -157,6 +157,20 @@ export function buildTenantUrl(slug: string, path: string): string {
 }
 
 /**
+ * Absolute cross-host sign-in URL on a tenant's host, e.g.
+ * `http://acme.lvh.me:3000/auth/handoff?code=…&next=/dashboard`. The tenant
+ * host redeems the one-time code for its own session, then goes to `next`.
+ */
+export function buildTenantHandoffUrl(
+  slug: string,
+  code: string,
+  next: string,
+): string {
+  const params = new URLSearchParams({ code, next });
+  return buildTenantUrl(slug, `/auth/handoff?${params}`);
+}
+
+/**
  * Absolute owner-activation URL on a tenant's host, e.g.
  * `http://acme.lvh.me:3000/activate?token=…`.
  */

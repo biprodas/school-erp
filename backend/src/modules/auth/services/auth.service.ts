@@ -120,9 +120,38 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
+    const membership = await this.memberRepo.findByUserId(user.id);
+    this.assertCanSignIn(user, membership);
+    return this.generateToken(user, membership);
+  }
+
+  /**
+   * Redeem a single-use handoff code (issued by the platform for this org)
+   * for a tenant session. The repository is org-scoped, so a code issued for
+   * another school is never found here.
+   */
+  async exchangeHandoff(rawCode: string) {
+    const { user, record } = await this.resolveToken(
+      rawCode,
+      AuthTokenType.HANDOFF,
+      'sign-in',
+    );
+    if (!(await this.authTokenRepo.consume(record.id))) {
+      throw new BadRequestException('Invalid or expired sign-in link');
+    }
+
+    const membership = await this.memberRepo.findByUserId(user.id);
+    this.assertCanSignIn(user, membership);
+    return this.generateToken(user, membership);
+  }
+
+  /** Account and membership checks shared by every way of signing in. */
+  private assertCanSignIn(
+    user: User,
+    membership: Membership | null,
+  ): asserts membership is Membership {
     // Valid credentials but not a member here: same answer as a bad password,
     // so the endpoint doesn't reveal which schools an email belongs to.
-    const membership = await this.memberRepo.findByUserId(user.id);
     if (!membership) {
       throw new UnauthorizedException('Invalid credentials');
     }
@@ -137,8 +166,6 @@ export class AuthService {
     if (membership.status !== MembershipStatus.ACTIVE) {
       throw new UnauthorizedException(`Membership is ${membership.status}`);
     }
-
-    return this.generateToken(user, membership);
   }
 
   async getMe(userId: string) {
@@ -329,7 +356,7 @@ export class AuthService {
   private async resolveToken(
     rawToken: string,
     type: AuthTokenType,
-    label: 'activation' | 'verification' | 'reset',
+    label: 'activation' | 'verification' | 'reset' | 'sign-in',
   ): Promise<{ user: User; record: AuthToken }> {
     const record = await this.authTokenRepo.findByHash(
       hashToken(rawToken),

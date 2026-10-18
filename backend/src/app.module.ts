@@ -1,3 +1,4 @@
+import { ScheduleModule } from '@nestjs/schedule';
 import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
@@ -40,6 +41,13 @@ const envFilePath = ['.env', `.env.${nodeEnv}`];
 
 @Module({
   imports: [
+    // Background jobs (e.g. the custom-domain DNS check). Off under test so
+    // no job fires in the middle of a suite.
+    ScheduleModule.forRoot({
+      cronJobs: process.env.NODE_ENV !== 'test',
+      intervals: process.env.NODE_ENV !== 'test',
+      timeouts: process.env.NODE_ENV !== 'test',
+    }),
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath,

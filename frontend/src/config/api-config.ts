@@ -14,11 +14,13 @@ export const AUTH_ENDPOINTS = {
     login: "/auth/login",
     register: "/auth/register",
     me: "/auth/me",
+    handoff: "/auth/handoff",
   },
   platform: {
     login: "/platform/auth/login",
     register: "/platform/auth/register",
     me: "/platform/auth/me",
+    handoff: "/platform/auth/handoff",
   },
 } as const;
 

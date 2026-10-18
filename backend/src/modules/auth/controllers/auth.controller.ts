@@ -20,6 +20,7 @@ import { ResetPasswordDto } from '../dto/reset-password.dto';
 import { VerifyEmailDto } from '../dto/verify-email.dto';
 import { ResendVerificationDto } from '../dto/resend-verification.dto';
 import { ChangePasswordDto } from '../dto/change-password.dto';
+import { ExchangeHandoffDto } from '../dto/handoff.dto';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { ResponseMessage } from '~/common/decorators/response.decorators';
 
@@ -56,6 +57,15 @@ export class AuthController {
   @ResponseMessage('User logged in.')
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
+  }
+
+  /** Exchange a cross-host handoff code for a session on this school host. */
+  @Post('handoff')
+  @HttpCode(200)
+  @Throttle(AUTH_THROTTLE)
+  @ResponseMessage('User logged in.')
+  exchangeHandoff(@Body() dto: ExchangeHandoffDto) {
+    return this.authService.exchangeHandoff(dto.code);
   }
 
   @Post('forgot-password')

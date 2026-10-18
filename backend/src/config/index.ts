@@ -6,6 +6,7 @@ import mailerConfig from './mailer.config';
 import swaggerConfig from './swagger.config';
 import healthConfig from './health.config';
 import throttleConfig from './throttle.config';
+import domainsConfig from './domains.config';
 
 /**
  * Single place to register config namespaces. Add new `*.config.ts` files and append here.
@@ -18,6 +19,7 @@ export const configLoaders: ConfigFactory[] = [
   swaggerConfig,
   healthConfig,
   throttleConfig,
+  domainsConfig,
 ];
 
 export type {
@@ -29,6 +31,7 @@ export type {
   SwaggerConfig,
   HealthConfig,
   ThrottleConfig,
+  DomainsConfig,
 } from './config.types';
 export { validateEnv, envValidationSchema } from './env.validation';
 export { setupSwagger } from './swagger.setup';

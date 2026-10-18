@@ -21,7 +21,6 @@ model Organization {
   id          String             @id @default(uuid())
   name        String
   slug        String             @unique // subdomain / x-tenant-id
-  domain      String?            @unique // custom domain
   status      OrganizationStatus @default(active)
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @updatedAt
@@ -29,6 +28,27 @@ model Organization {
   memberships Membership[]
 
   @@map("organizations")
+}
+
+// Custom app hosts (doc/domains-and-routing.md). Tenanted (RLS), but the
+// hostname is unique across ALL schools; resolved via the root connection.
+// tenanted
+model OrganizationDomain {
+  id                String    @id @default(uuid())
+  hostname          String    @db.VarChar(253) // lower-case, no port/trailing dot
+  isPrimary         Boolean   @default(false)
+  status            String    @default("pending") @db.VarChar(16) // pending | verified | active | inactive
+  verificationToken String    @db.VarChar(64) // TXT _school-verify.<hostname>
+  verifiedAt        DateTime? @db.Timestamptz
+  tlsStatus         String    @default("pending") @db.VarChar(16) // pending | issued | failed
+  lastCheckedAt     DateTime? @db.Timestamptz
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@unique([hostname], map: "uq_organization_domains_hostname")
+  @@unique([orgId], map: "uq_organization_domains_org_primary") // WHERE is_primary
+  @@index([orgId])
+  @@map("organization_domains")
 }
 
 model User {

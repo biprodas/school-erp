@@ -42,6 +42,24 @@ export class PublicOrganizationController {
     };
   }
 
+  /**
+   * On-demand TLS "ask" endpoint (Caddy `on_demand_tls.ask`): 200 only for a
+   * verified or active custom domain of an active school, so certificates are
+   * never issued for arbitrary hostnames pointed at us.
+   */
+  @Get('tls-check')
+  @ResponseMessage('Domain allowed')
+  async tlsCheck(@Query('domain') domain?: string) {
+    if (!domain) {
+      throw new BadRequestException('domain query parameter is required');
+    }
+    const organization = await this.organizationService.findByDomain(domain);
+    if (!organization || organization.status !== OrganizationStatus.ACTIVE) {
+      throw new NotFoundException('Unknown domain');
+    }
+    return { allowed: true };
+  }
+
   @Get('by-slug')
   @ResponseMessage('Organization resolved')
   async bySlug(@Query('slug') slug?: string) {

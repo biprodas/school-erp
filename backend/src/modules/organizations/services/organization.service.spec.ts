@@ -8,6 +8,10 @@ import {
 } from '@nestjs/common';
 import { OrganizationService } from './organization.service';
 import { Organization } from '../entities/organization.entity';
+import { OrganizationDomain } from '../entities/organization-domain.entity';
+import { DomainStatus } from '../enums/domain-status.enum';
+import { In } from 'typeorm';
+import { tenantDomainCache } from '~/tenancy/tenant-slug.cache';
 import { OrganizationStatus } from '../enums/organization-status.enum';
 import { Membership } from '~/modules/memberships/entities/membership.entity';
 import { MembershipRole } from '~/modules/memberships/enums/membership-role.enum';
@@ -91,6 +95,7 @@ describe('OrganizationService', () => {
   let service: OrganizationService;
   let orgRepo: Record<string, jest.Mock>;
   let membershipRepo: Record<string, jest.Mock>;
+  let domainRepo: Record<string, jest.Mock>;
   let userService: Record<string, jest.Mock>;
   let rbacSeeder: Record<string, jest.Mock>;
   let ownerProvisioning: Record<string, jest.Mock>;
@@ -109,6 +114,11 @@ describe('OrganizationService', () => {
     membershipRepo = {
       findOne: jest.fn(),
       find: jest.fn(),
+    };
+
+    domainRepo = {
+      findOne: jest.fn(),
+      find: jest.fn().mockResolvedValue([]),
     };
 
     userService = {
@@ -166,6 +176,10 @@ describe('OrganizationService', () => {
         OrganizationService,
         { provide: getRepositoryToken(Organization), useValue: orgRepo },
         { provide: getRepositoryToken(Membership), useValue: membershipRepo },
+        {
+          provide: getRepositoryToken(OrganizationDomain),
+          useValue: domainRepo,
+        },
         { provide: getDataSourceToken(), useValue: mockDataSource },
         { provide: RbacSeederService, useValue: rbacSeeder },
         { provide: OwnerProvisioningService, useValue: ownerProvisioning },
@@ -588,6 +602,45 @@ describe('OrganizationService', () => {
       await service.deleteOrganization(superAdminCtx(), ORG_ID);
 
       expect(orgRepo.delete).toHaveBeenCalledWith(ORG_ID);
+    });
+
+    it("drops the org's custom domains from the host cache", async () => {
+      orgRepo.findOne.mockResolvedValue(makeOrg());
+      domainRepo.find.mockResolvedValue([{ hostname: 'erp.test.edu' }]);
+      const invalidate = jest.spyOn(tenantDomainCache, 'invalidate');
+
+      await service.deleteOrganization(superAdminCtx(), ORG_ID);
+
+      expect(invalidate).toHaveBeenCalledWith('erp.test.edu');
+      invalidate.mockRestore();
+    });
+  });
+
+  describe('findByDomain', () => {
+    it('normalizes the host and only matches verified or active domains', async () => {
+      const org = makeOrg();
+      domainRepo.findOne.mockResolvedValue({ org });
+
+      await expect(service.findByDomain(' ERP.Test.edu.:443 ')).resolves.toBe(
+        org,
+      );
+      expect(domainRepo.findOne).toHaveBeenCalledWith({
+        where: {
+          hostname: 'erp.test.edu',
+          status: In([DomainStatus.VERIFIED, DomainStatus.ACTIVE]),
+        },
+        relations: { org: true },
+      });
+    });
+
+    it('returns null for an unknown or unverified host', async () => {
+      domainRepo.findOne.mockResolvedValue(null);
+      await expect(service.findByDomain('erp.test.edu')).resolves.toBeNull();
+    });
+
+    it('returns null for an empty host without querying', async () => {
+      await expect(service.findByDomain('  ')).resolves.toBeNull();
+      expect(domainRepo.findOne).not.toHaveBeenCalled();
     });
   });
 });

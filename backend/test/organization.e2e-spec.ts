@@ -8,6 +8,7 @@ import { getRepositoryToken, getDataSourceToken } from '@nestjs/typeorm';
 import { OrganizationController } from '~/modules/organizations/controllers/organization.controller';
 import { OrganizationService } from '~/modules/organizations/services/organization.service';
 import { Organization } from '~/modules/organizations/entities/organization.entity';
+import { OrganizationDomain } from '~/modules/organizations/entities/organization-domain.entity';
 import { Membership } from '~/modules/memberships/entities/membership.entity';
 import { MembershipRole } from '~/modules/memberships/enums/membership-role.enum';
 import { PlatformJwtStrategy } from '~/modules/auth/strategies/platform-jwt.strategy';
@@ -98,6 +99,13 @@ describe('Organization E2E', () => {
         PlatformJwtStrategy,
         { provide: getRepositoryToken(Organization), useValue: tenantRepo },
         { provide: getRepositoryToken(Membership), useValue: membershipRepo },
+        {
+          provide: getRepositoryToken(OrganizationDomain),
+          useValue: {
+            findOne: jest.fn(),
+            find: jest.fn().mockResolvedValue([]),
+          },
+        },
         {
           provide: getDataSourceToken(),
           useValue: {

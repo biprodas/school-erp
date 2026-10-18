@@ -2,7 +2,7 @@
 
 | Field   | Value                                     |
 | ------- | ----------------------------------------- |
-| Status  | Draft (design accepted, not implemented)  |
+| Status  | Draft (design accepted; sessions and handoff implemented) |
 | Date    | 2026-10-18                                |
 | Related | `prd.md` 5.1, 6.2, 6.3, 6.24, 7.1, 8.1, 11 |
 
@@ -86,12 +86,12 @@ This replaces the current `AUTH_COOKIE_DOMAIN` behavior (one cookie shared acros
 
 **Moving between hosts uses a one-time handoff code**, the same way Slack does:
 
-1. The source host (for example `mydomain.com` after signup, or the "Find your school" email link) asks the backend for a handoff code for `(userId, orgId, targetHost)`.
-2. The code is random, single-use, valid for 60 seconds, and bound to the target host and org. Only its hash is stored (`auth_tokens`, type `handoff`).
-3. The browser is redirected to `https://<targetHost>/auth/handoff?code=…`.
-4. The target host exchanges the code (server-side) for a normal tenant session and sets its own host-only cookie, then redirects to the intended path. Codes that are reused, expired or used on another host are rejected.
+1. The source host (for example `mydomain.com` after signup, or the "Find your school" email link) asks the backend for a handoff code for `(userId, orgId)`: `POST /platform/auth/handoff { orgId }` with a platform session. It is refused (403, same answer in every case) unless the account, the school and the membership are all active.
+2. The code is random, single-use, valid for 60 seconds, and bound to the target school (`auth_tokens.org_id`). Only its hash is stored (`auth_tokens`, type `handoff`).
+3. The browser is redirected to `https://<school host>/auth/handoff?code=…&next=/dashboard`.
+4. That host's route handler (`frontend/src/app/auth/handoff/route.ts`) redeems the code server-side (`POST /auth/handoff` with the school's `x-tenant-id`) for a normal tenant session, sets its own host-only cookie, and redirects to `next` (same-host paths only). Codes that are reused, expired or redeemed by another school are rejected, and the user lands on `/login?error=handoff`. Redemption is atomic (`UPDATE … WHERE used_at IS NULL`), so two concurrent requests can't both use one code.
 
-This works the same for subdomains and custom domains.
+The code is bound to the school, not to one hostname, so it works the same on the school's subdomain and its custom domain.
 
 **Platform admin** lives on `admin.mydomain.com` with its own host-only cookie, separate from the marketing site and from every school. It can be further restricted (IP allowlist, mandatory 2FA) without affecting schools.
 
@@ -169,7 +169,9 @@ model OrganizationSlugHistory {
 // organizations: + onboardingCompletedAt DateTime?, + listedInDirectory Boolean
 ```
 
-These are platform tables read before a tenant is known, so they are **not** `OrgScopedEntity` and not under RLS. They are read through the root connection, the same way as `organizations`.
+**`organization_domains` (implemented, migration `OrganizationDomains`)** extends `OrgScopedEntity`, so it is under RLS and the app role has DML on it. That lets the school's own Settings → Domain screen use the normal tenant repositories. Resolving a host happens before any tenant is known, so `OrganizationService.findByDomain` reads it through the root connection, which bypasses RLS. Unlike other tenanted keys, `hostname` is unique across all schools. The migration moved each existing `organizations.domain` value in as primary, verified and active (lower-cased, trailing dot removed; on a clash the oldest school keeps the hostname), then dropped the column.
+
+**`organization_slug_history`** is a platform table, read before a tenant is known, so it is not `OrgScopedEntity` and not under RLS. It is read through the root connection, like `organizations`. Not implemented yet.
 
 ---
 
@@ -177,29 +179,36 @@ These are platform tables read before a tenant is known, so they are **not** `Or
 
 Backend:
 
-- [ ] Migration: `organization_domains`, `organization_slug_history`, `organizations.onboarding_completed_at`, `organizations.listed_in_directory`; migrate existing `organizations.domain` values into `organization_domains`, then drop the column.
+- [x] Migration: `organization_domains` (with RLS and app-role grant), existing `organizations.domain` values moved in, column dropped.
+- [ ] Migration: `organization_slug_history`, `organizations.onboarding_completed_at`, `organizations.listed_in_directory`.
 - [ ] Shared reserved-slug list and slug validation on signup and rename.
-- [ ] `TenantMiddleware` and `/public/organizations/resolve` read `organization_domains`; slug-history lookups return a redirect target.
-- [ ] Handoff codes: issue (`auth_tokens` type `handoff`) and exchange endpoints.
+- [x] `TenantMiddleware` and `/public/organizations/resolve` read `organization_domains` (only `verified`/`active` domains resolve).
+- [ ] Slug-history lookups return a redirect target.
+- [x] Handoff codes: issue (`POST /platform/auth/handoff`, `auth_tokens` type `handoff`) and exchange (`POST /auth/handoff`) endpoints.
 - [ ] "Find your school" endpoint (email/phone → message with sign-in links), rate-limited, uniform response.
-- [ ] Domain settings endpoints (add, verify, set primary, remove) gated by a plan entitlement, plus the DNS check job.
-- [ ] TLS "ask" endpoint (if Caddy is used).
+- [x] Domain settings endpoints at `/domains` (list, add, `:id/verify`, `:id/primary`, delete), permissions `domains:read` / `domains:manage`.
+- [x] DNS check job (`DomainCheckScheduler`, every 5 minutes): pending domains for 72 hours, verified/active ones hourly; 7 days of failures → `inactive` (`dns_failing_since`).
+- [ ] Gate custom domains by plan (Standard+) once plans and entitlements exist.
+- [ ] Mark a domain `active` (`tls_status = issued`) from the TLS provider's signal; today a verified domain already resolves and gets a certificate.
+- [x] TLS "ask" endpoint: `GET /public/organizations/tls-check?domain=` (200 only for a verified/active domain of an active school).
 - [ ] Exclude the new public routes from `TenantMiddleware` in `app.module.ts`.
 
 Frontend:
 
-- [ ] Drop `AUTH_COOKIE_DOMAIN`; session cookies are host-only.
-- [ ] `/auth/handoff` page and the redirect after signup.
+- [x] Drop `AUTH_COOKIE_DOMAIN`; session cookies are host-only.
+- [x] `/auth/handoff` route handler; platform "Open school" signs members in through it.
+- [ ] Redirect to the school host with a handoff code after signup (needs the self-serve signup flow).
 - [ ] `/api/*` rewrite to the backend; browser client uses relative `/api`.
 - [ ] Onboarding gate in `proxy.ts`.
 - [ ] Move platform admin UI to `admin.<root>`; apex serves marketing only.
-- [ ] Settings → Domain screen with DNS instructions and status.
+- [ ] Settings → Domain screen with DNS instructions and status (API ready: each domain carries its `dnsRecords`).
 - [ ] Primary-domain redirect for the subdomain.
 
 Tests (PRD 11):
 
-- [ ] Tenant resolution for subdomain, custom domain, inactive domain, old slug, reserved slug.
-- [ ] Handoff code: single use, expiry, wrong host, wrong org.
-- [ ] A session from one school host is not accepted on another.
-- [ ] A domain cannot be claimed without the TXT record, and an unverified host gets no certificate.
+- [x] Custom-domain resolution: active vs pending, case/port normalization, hostname unique across schools, one primary per school, cascade on school delete (`test/organization-domain.e2e-spec.ts`).
+- [ ] Tenant resolution for old slug and reserved slug.
+- [x] Handoff code: single use, expiry, concurrent redemption, wrong org (`handoff.spec.ts`, `test/handoff.e2e-spec.ts`).
+- [x] A session from one school host is not accepted on another (`JwtStrategy` org binding, `tenant-isolation.e2e-spec.ts`).
+- [x] A domain cannot be claimed without the TXT record, and an unverified host gets no certificate (`test/domain-settings.e2e-spec.ts`).
 - [ ] "Find your school" response does not reveal whether an account exists.

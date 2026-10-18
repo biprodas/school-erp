@@ -99,14 +99,13 @@ function CreateTenantForm({
   const createOrganization = useCreateOrganization();
   const form = useForm<CreateValues>({
     resolver: zodResolver(createSchema),
-    defaultValues: { name: "", slug: "", domain: "", ownerUserId: "" },
+    defaultValues: { name: "", slug: "", ownerUserId: "" },
   });
 
   const onSubmit = async (values: CreateValues) => {
     const created = await createOrganization.mutateAsync({
       name: values.name,
       slug: values.slug,
-      domain: values.domain?.trim() ? values.domain.trim() : undefined,
       ownerUserId:
         isAdmin && values.ownerUserId ? values.ownerUserId : undefined,
     });
@@ -155,24 +154,6 @@ function CreateTenantForm({
                   Lowercase letters, numbers, and underscores. Used for the
                   subdomain.
                 </FieldDescription>
-                <FieldError errors={[fieldState.error]} />
-              </Field>
-            )}
-          />
-          <Controller
-            name="domain"
-            control={form.control}
-            render={({ field, fieldState }) => (
-              <Field className="gap-1">
-                <FieldLabel htmlFor="tenant-domain">
-                  Custom domain (optional)
-                </FieldLabel>
-                <Input
-                  {...field}
-                  id="tenant-domain"
-                  placeholder="erp.acme.com"
-                  autoComplete="off"
-                />
                 <FieldError errors={[fieldState.error]} />
               </Field>
             )}
@@ -249,7 +230,6 @@ function EditTenantForm({
     resolver: zodResolver(editSchema),
     defaultValues: {
       name: tenant.name,
-      domain: tenant.domain ?? "",
       status: tenant.status,
     },
   });
@@ -260,7 +240,6 @@ function EditTenantForm({
         id: tenant.id,
         payload: {
           name: values.name,
-          domain: values.domain?.trim() ? values.domain.trim() : undefined,
           status: values.status,
         },
       },
@@ -285,24 +264,6 @@ function EditTenantForm({
               <Field className="gap-1">
                 <FieldLabel htmlFor="edit-tenant-name">Name</FieldLabel>
                 <Input {...field} id="edit-tenant-name" />
-                <FieldError errors={[fieldState.error]} />
-              </Field>
-            )}
-          />
-          <Controller
-            name="domain"
-            control={form.control}
-            render={({ field, fieldState }) => (
-              <Field className="gap-1">
-                <FieldLabel htmlFor="edit-tenant-domain">
-                  Custom domain
-                </FieldLabel>
-                <Input
-                  {...field}
-                  id="edit-tenant-domain"
-                  placeholder="erp.acme.com"
-                  autoComplete="off"
-                />
                 <FieldError errors={[fieldState.error]} />
               </Field>
             )}

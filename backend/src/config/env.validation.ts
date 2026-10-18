@@ -76,6 +76,10 @@ export const envValidationSchema = Joi.object({
   MAIL_FROM_NAME: Joi.string().optional(),
   MAIL_FROM_ADDRESS: Joi.string().optional(),
   APP_URL: Joi.string().uri().optional(),
+  ROOT_DOMAIN: Joi.string().hostname().optional(),
+  // Host custom domains CNAME to; defaults to `schools.${ROOT_DOMAIN}`.
+  CUSTOM_DOMAIN_CNAME_TARGET: Joi.string().hostname().optional(),
+  CUSTOM_DOMAIN_MAX_PER_ORG: Joi.number().integer().min(1).default(5),
   // Comma-separated; `https://*.example.com` allows every tenant subdomain.
   CORS_ORIGIN: Joi.string().when('NODE_ENV', {
     is: 'production',

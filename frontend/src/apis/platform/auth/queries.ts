@@ -2,7 +2,11 @@
 
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { api } from "~/lib/api/client";
-import type { ResetPasswordPayload, ResetTokenInfo } from "./types";
+import type {
+  HandoffCode,
+  ResetPasswordPayload,
+  ResetTokenInfo,
+} from "./types";
 
 // ---- Transport (platform surface; no tenant header needed) ----
 
@@ -22,6 +26,10 @@ export const verifyEmail = (token: string) =>
 
 export const resendVerification = (email: string) =>
   api.post<unknown>("/platform/auth/resend-verification", { email });
+
+/** One-time code that signs the caller in to one of their schools on its host. */
+export const issueHandoff = (orgId: string) =>
+  api.post<HandoffCode>("/platform/auth/handoff", { orgId });
 
 // ---- Hooks ----
 

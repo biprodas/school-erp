@@ -9,13 +9,11 @@ export const createOrganizationSchema = z.object({
     .min(3, "Slug must be at least 3 characters")
     .max(63)
     .regex(/^[a-z0-9_]+$/, "Only lowercase letters, numbers, and underscores"),
-  domain: z.string().optional(),
   ownerUserId: z.string().optional(),
 });
 
 export const updateOrganizationSchema = z.object({
   name: z.string().min(3, "Name must be at least 3 characters").max(100),
-  domain: z.string().optional(),
   status: z.enum(ORGANIZATION_STATUSES),
 });
 

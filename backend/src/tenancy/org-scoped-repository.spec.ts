@@ -181,6 +181,23 @@ describe('scopeRepository', () => {
     expect(repo.createQueryBuilder('r')).toBe('qb');
     expect(repo.metadata).toBe(raw.metadata);
   });
+
+  it('runs getters against the raw repository, as TypeORM getters need its manager', () => {
+    // Like TypeORM's Repository: `metadata` is a getter reading `this.manager`.
+    class GetterRepo {
+      manager = { metadata: { deleteDateColumn: 'deletedAt' } };
+      get metadata() {
+        return this.manager.metadata;
+      }
+    }
+    const repo = scopeRepository(
+      new GetterRepo() as unknown as Repository<Row>,
+      ORG,
+    );
+
+    expect(repo.metadata).toEqual({ deleteDateColumn: 'deletedAt' });
+    expect(() => repo.manager).toThrow(/not available/);
+  });
 });
 
 describe('BaseTenantRepository', () => {

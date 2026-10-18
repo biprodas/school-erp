@@ -150,6 +150,10 @@ export const PERMISSIONS = {
   PROMOTIONS_UPDATE: 'promotions:update',
   PROMOTIONS_DELETE: 'promotions:delete',
 
+  // Custom domains (Settings → Domain)
+  DOMAINS_READ: 'domains:read',
+  DOMAINS_MANAGE: 'domains:manage',
+
   // Access control management
   ROLES_READ: 'roles:read',
   ROLES_MANAGE: 'roles:manage',

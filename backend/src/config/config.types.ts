@@ -5,6 +5,7 @@ import type { MailerConfig } from './mailer.config';
 import type { SwaggerConfig } from './swagger.config';
 import type { HealthConfig } from './health.config';
 import type { ThrottleConfig } from './throttle.config';
+import type { DomainsConfig } from './domains.config';
 
 /** Combined shape of all registered namespaces (matches `configLoaders`). */
 export interface RootConfig {
@@ -15,6 +16,7 @@ export interface RootConfig {
   swagger: SwaggerConfig;
   health: HealthConfig;
   throttle: ThrottleConfig;
+  domains: DomainsConfig;
 }
 
 export type {
@@ -25,4 +27,5 @@ export type {
   SwaggerConfig,
   HealthConfig,
   ThrottleConfig,
+  DomainsConfig,
 };

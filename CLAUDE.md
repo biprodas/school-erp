@@ -43,7 +43,7 @@ Local env: the backend reads `.env` and then `.env.${NODE_ENV}` (`.env.developme
 - **Every tenanted entity extends `OrgScopedEntity`** (`src/tenancy/org-scoped.entity.ts`), which adds `org_id` with a cascading FK to `organizations` (deleting an org deletes all its data). Per-org uniqueness must include `orgId`, e.g. `@Index('uq_classes_org_name', ['orgId', 'name'], { unique: true })`. Never put `unique: true` on a tenanted column.
 - **Users are global**: one `users` table (one login across schools). Per-school state lives on `memberships` (`org_id`, `role`, `is_admin` = school admin, `status`) and `user_roles` (org-scoped). `auth_tokens` is shared; `org_id` is null for platform-issued tokens and set for school-issued ones (incl. `activation`).
 - **Request flow**:
-  1. `TenantMiddleware` (applied in `AppModule.configure`) resolves the org from the `x-tenant-id` header (a slug), then the subdomain, then a custom domain. Lookups are cached in memory. It sets `req.orgId` / `req.orgSlug` (`RequestWithOrg`).
+  1. `TenantMiddleware` (applied in `AppModule.configure`) resolves the org from the `x-tenant-id` header (a slug), then the subdomain, then a custom domain (`organization_domains`, only `verified`/`active` rows). Lookups are cached in memory. It sets `req.orgId` / `req.orgSlug` (`RequestWithOrg`).
   2. The request-scoped `TENANT_DATASOURCE` provider (in `TenancyModule`) takes a QueryRunner from the tenant pool, runs `set_config('app.org_id', <orgId>)`, and returns a `TenantDataSourceProxy` (which exposes `orgId`).
   3. The global `TenantCleanupInterceptor` resets the setting and releases the QueryRunner after the response.
 - **Isolation is enforced twice**:
@@ -83,6 +83,7 @@ Local env: the backend reads `.env` and then `.env.${NODE_ENV}` (`.env.developme
 - **Deleting**: entities with a `@DeleteDateColumn` (students, employees, guardians, stakeholders, academic years, student documents and notes) are soft-deleted by `BaseTenantRepository.deleteById`/`remove`, which keeps the history the PRD requires; their unique business keys are partial indexes (`WHERE "deleted_at" IS NULL`). Other entities are hard-deleted.
 - **Constraint races**: "only one" rules (current academic year, primary class teacher, primary guardian) are partial unique indexes as well as service checks; a Postgres unique or FK violation becomes a 409 in `GlobalExceptionFilter`.
 - **Rate limiting**: `TenantThrottlerGuard` is a global guard that limits per tenant plus per user or IP.
+- **Background jobs**: `@nestjs/schedule` (v6; v12 is ESM-only and doesn't load under Jest) is registered in `AppModule` and disabled when `NODE_ENV=test`. Jobs that span schools (e.g. `DomainCheckScheduler`) read through the root connection with `@InjectRepository`; expose a `runOnce()` so tests can drive them.
 - **`.http` files** (e.g. `organization.http`, `auth.http`) next to modules are manual REST-client request samples.
 
 ## Frontend architecture
@@ -92,8 +93,8 @@ Local env: the backend reads `.env` and then `.env.${NODE_ENV}` (`.env.developme
   - A subdomain of `NEXT_PUBLIC_ROOT_DOMAIN` resolves to a tenant slug.
   - Custom domains resolve through a backend public endpoint.
   - The apex or `localhost` is the platform host, which shows the platform/super-admin UI under `app/platform/`.
-- **Auth** (`src/auth.ts`, `src/auth.config.ts`, `src/proxy.ts`): NextAuth v5 with two Credentials providers, tenant and `platform-credentials`.
-  - The session cookie is shared across subdomains via `AUTH_COOKIE_DOMAIN`.
+- **Auth** (`src/auth.ts`, `src/auth.config.ts`, `src/proxy.ts`): NextAuth v5 with three Credentials providers: `tenant-credentials`, `platform-credentials` and `handoff`.
+  - Session cookies are host-only (Auth.js defaults): each school host, subdomain or custom domain, has its own session. Moving between hosts uses a one-time handoff code: `POST /platform/auth/handoff` issues it, and `app/auth/handoff/route.ts` on the school host redeems it (`POST /auth/handoff`) through the `handoff` Credentials provider. See `doc/domains-and-routing.md`.
   - Don't set `AUTH_URL`, because it breaks multi-subdomain login.
 - **API clients**: `src/lib/api/client.ts` (browser) and `src/lib/api/server.ts` (RSC and server actions). Both are built on `createApiClient` in `lib/api/axios.ts`, which injects the bearer token and the `x-tenant-id` header from the session or host, unwraps the envelope, and normalizes errors to `ApiError`.
 - **API modules**: endpoint and query hooks live in `src/apis/{platform,tenanted}/<resource>/`. Query keys are in `lib/api/query-keys.ts`.

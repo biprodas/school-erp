@@ -12,9 +12,10 @@ import { Organization } from '~/modules/organizations/entities/organization.enti
 
 /**
  * One-time auth token for a (global) user — email verification, password
- * reset or org activation, distinguished by {@link type}. `orgId` is null for
- * tokens issued by the platform and set for tokens issued inside a school, so
- * each realm only redeems its own. The raw token is never stored, only its
+ * reset, org activation or cross-host sign-in, distinguished by {@link type}.
+ * `orgId` is the organization that may redeem the token: null for platform
+ * tokens, set for tokens redeemed inside a school (including handoff codes the
+ * platform issues for a school), so each realm only redeems its own. The raw token is never stored, only its
  * sha256 hash. Single-use (`usedAt`) and time-limited (`expiresAt`).
  */
 @Entity('auth_tokens', { schema: 'public' })
@@ -25,7 +26,7 @@ export class AuthToken {
   @Column({ name: 'user_id', type: 'uuid' })
   userId: string;
 
-  /** Issuing organization; null for platform-issued tokens. */
+  /** Redeeming organization; null for platform tokens. */
   @Index()
   @Column({ name: 'org_id', type: 'uuid', nullable: true })
   orgId: string | null;

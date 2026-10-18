@@ -17,7 +17,6 @@ export interface PlatformOrganization {
   id: string;
   name: string;
   slug: string;
-  domain: string | null;
   status: OrganizationStatus;
   createdAt: string;
   updatedAt: string;
@@ -37,13 +36,11 @@ export interface CreateOrganizationResult extends PlatformOrganization {
 export interface CreateOrganizationPayload {
   name: string;
   slug: string;
-  domain?: string;
   ownerUserId?: string;
 }
 
 export interface UpdateOrganizationPayload {
   name?: string;
-  domain?: string;
   status?: OrganizationStatus;
 }
 

@@ -25,3 +25,35 @@ Content-Type: application/json
 
 ### DELETE A ORGANIZATION
 DELETE http://localhost:3900/api/organizations/7566502f-082a-44e1-b95b-3e08cfa5b68b
+### --- Custom domains (Settings → Domain), as a school admin ---
+
+### List the school's domains (each carries the DNS records to create)
+GET http://localhost:3900/api/domains
+x-tenant-id: acme
+Authorization: Bearer <tenant-jwt>
+
+### Add a domain (starts pending)
+POST http://localhost:3900/api/domains
+x-tenant-id: acme
+Authorization: Bearer <tenant-jwt>
+Content-Type: application/json
+
+{ "hostname": "erp.acme-scl.com" }
+
+### Check the DNS records now (verifies when both pass)
+POST http://localhost:3900/api/domains/<domain-id>/verify
+x-tenant-id: acme
+Authorization: Bearer <tenant-jwt>
+
+### Make a verified domain primary
+POST http://localhost:3900/api/domains/<domain-id>/primary
+x-tenant-id: acme
+Authorization: Bearer <tenant-jwt>
+
+### Remove a domain
+DELETE http://localhost:3900/api/domains/<domain-id>
+x-tenant-id: acme
+Authorization: Bearer <tenant-jwt>
+
+### TLS "ask" endpoint for Caddy on-demand TLS (public)
+GET http://localhost:3900/api/public/organizations/tls-check?domain=erp.acme-scl.com

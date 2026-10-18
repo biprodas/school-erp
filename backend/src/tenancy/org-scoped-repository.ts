@@ -140,13 +140,15 @@ export function scopeRepository<T extends ObjectLiteral>(
   orgId: string,
 ): Repository<T> {
   return new Proxy(repo, {
-    get(target, prop, receiver) {
+    get(target, prop) {
       if (typeof prop === 'string' && BLOCKED_MEMBERS.has(prop)) {
         throw new Error(
           `Repository.${prop} is not available on org-scoped repositories`,
         );
       }
-      const value: unknown = Reflect.get(target, prop, receiver);
+      // Getters run against the raw repository: TypeORM's own getters (e.g.
+      // `metadata`) read `this.manager`, which is blocked on the proxy.
+      const value: unknown = Reflect.get(target, prop, target);
       if (typeof prop !== 'string' || typeof value !== 'function') {
         return value;
       }

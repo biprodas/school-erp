@@ -26,10 +26,6 @@ export class Organization {
   @Column({ unique: true })
   slug: string;
 
-  // acme.myapp:com or erp.acme.com
-  @Column({ nullable: true, unique: true })
-  domain: string;
-
   @Column({
     type: 'enum',
     enum: OrganizationStatus,

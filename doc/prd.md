@@ -340,7 +340,7 @@ Each module lists its purpose, priority (**P0** = MVP must-have, delivered acros
 - A scoped teacher can only see attendance and marks for the classes and subjects assigned to them.
 - After 5 failed logins the account is locked for 15 minutes, OTP sending is rate-limited, and the admin can see these events.
 - A role change takes effect on the user's next request without forcing re-login.
-- A session or handoff code issued for one school host is rejected on any other host.
+- A session or handoff code issued for one school is rejected on every other school's host.
 
 ### 6.4 Academic structure — P0
 
@@ -991,7 +991,7 @@ The core workflows in section 7: onboarding a school, inviting staff, importing 
 - Insecure direct object references on students, invoices, documents and exports.
 - Gateway webhook forgery and replay.
 - Session expiry and revocation.
-- A session or handoff code from one school host replayed on another host, reused, or used after expiry.
+- A session or handoff code from one school replayed on another school's host, reused, or used after expiry.
 - Claiming a custom domain without the TXT record, and requesting a certificate for an unverified host.
 - Account enumeration through "Find your school", signup and password reset.
 - Malicious file uploads.

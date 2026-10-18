@@ -9,6 +9,8 @@ import {
 import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
 import { Repository, DataSource, In } from 'typeorm';
 import { Organization } from '../entities/organization.entity';
+import { OrganizationDomain } from '../entities/organization-domain.entity';
+import { RESOLVABLE_DOMAIN_STATUSES } from '../enums/domain-status.enum';
 import { Membership } from '~/modules/memberships/entities/membership.entity';
 import { MembershipRole } from '~/modules/memberships/enums/membership-role.enum';
 import { User } from '~/modules/users/entities/user.entity';
@@ -48,6 +50,8 @@ export class OrganizationService {
     private organizationRepository: Repository<Organization>,
     @InjectRepository(Membership)
     private membershipRepository: Repository<Membership>,
+    @InjectRepository(OrganizationDomain)
+    private domainRepository: Repository<OrganizationDomain>,
     @InjectDataSource()
     private dataSource: DataSource,
     private rbacSeederService: RbacSeederService,
@@ -303,13 +307,19 @@ export class OrganizationService {
     return this.organizationRepository.findOne({ where: { slug } });
   }
 
-  /** Look up an organization by its custom/vanity domain (full host, lowercased). */
-  async findByDomain(domain: string): Promise<Organization | null> {
-    const normalized = domain.split(':')[0].toLowerCase().trim();
-    if (!normalized) return null;
-    return this.organizationRepository.findOne({
-      where: { domain: normalized },
+  /**
+   * Look up an organization by one of its custom domains (full host). Only
+   * verified or active domains resolve; a pending one (DNS ownership not yet
+   * proven) never routes traffic to the school.
+   */
+  async findByDomain(host: string): Promise<Organization | null> {
+    const hostname = normalizeHostname(host);
+    if (!hostname) return null;
+    const domain = await this.domainRepository.findOne({
+      where: { hostname, status: In([...RESOLVABLE_DOMAIN_STATUSES]) },
+      relations: { org: true },
     });
+    return domain?.org ?? null;
   }
 
   /**
@@ -356,12 +366,10 @@ export class OrganizationService {
       await this.assertOwner(ctx, id, 'update this organization');
     }
 
-    const previousDomain = organization.domain;
     Object.assign(organization, dto);
     const saved = await this.organizationRepository.save(organization);
     tenantSlugCache.invalidate(organization.slug);
-    if (previousDomain) tenantDomainCache.invalidate(previousDomain);
-    if (organization.domain) tenantDomainCache.invalidate(organization.domain);
+    await this.invalidateDomainCache(organization.id);
     return saved;
   }
 
@@ -376,10 +384,27 @@ export class OrganizationService {
       throw new NotFoundException('Organization not found');
     }
 
+    // Read the hostnames first: the delete cascades to them.
+    const hostnames = await this.domainHostnames(id);
     await this.organizationRepository.delete(id);
     tenantSlugCache.invalidate(organization.slug);
-    if (organization.domain) tenantDomainCache.invalidate(organization.domain);
+    hostnames.forEach((h) => tenantDomainCache.invalidate(h));
     this.logger.log(`Organization "${organization.slug}" deleted`);
+  }
+
+  private async domainHostnames(orgId: string): Promise<string[]> {
+    const domains = await this.domainRepository.find({
+      where: { orgId },
+      select: { hostname: true },
+    });
+    return domains.map((d) => d.hostname);
+  }
+
+  /** Drops cached host lookups for an org (e.g. after its status changed). */
+  private async invalidateDomainCache(orgId: string): Promise<void> {
+    (await this.domainHostnames(orgId)).forEach((h) =>
+      tenantDomainCache.invalidate(h),
+    );
   }
 
   private async assertOwner(
@@ -400,4 +425,9 @@ export class OrganizationService {
       );
     }
   }
+}
+
+/** `ERP.Acme-Scl.com.:443` → `erp.acme-scl.com`. */
+export function normalizeHostname(host: string): string {
+  return host.trim().split(':')[0].toLowerCase().replace(/\.$/, '');
 }

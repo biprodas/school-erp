@@ -23,7 +23,8 @@ import {
 import { ConfirmDialog } from "~/components/confirm-dialog";
 import { ROUTES } from "~/constants";
 import { formatDate } from "~/lib/format";
-import { buildTenantUrl } from "~/lib/tenant";
+import { buildTenantHandoffUrl, buildTenantUrl } from "~/lib/tenant";
+import { issueHandoff } from "~/apis/platform/auth/queries";
 import { StatusBadge } from "~/features/platform/_components/badges";
 import { PageHeader } from "~/features/platform/_components/page-header";
 import { PlatformGuard } from "~/features/platform/_components/guard";
@@ -41,6 +42,26 @@ import type {
 import { ActivationLinkDialog } from "./activation-link-dialog";
 import { OrganizationFormDialog } from "./organization-form-dialog";
 import { TransferOwnershipDialog } from "./transfer-ownership-dialog";
+
+/**
+ * Open a school's dashboard in a new tab, already signed in when the caller
+ * is an active member (one-time handoff code); otherwise its login page. The
+ * tab is opened synchronously so the popup blocker allows it, then pointed at
+ * the URL once the code arrives.
+ */
+async function openSchool(tenant: PlatformOrganization) {
+  const tab = window.open("", "_blank");
+  if (tab) tab.opener = null;
+  let url = buildTenantUrl(tenant.slug, ROUTES.DEFAULT_LOGIN_REDIRECT);
+  try {
+    const { code } = await issueHandoff(tenant.id);
+    url = buildTenantHandoffUrl(tenant.slug, code, ROUTES.DEFAULT_LOGIN_REDIRECT);
+  } catch {
+    // Not an active member of this school: fall back to its login page.
+  }
+  if (tab) tab.location.href = url;
+  else window.location.assign(url);
+}
 
 export default function PlatformTenantsView() {
   return (
@@ -85,11 +106,6 @@ function TenantsContent() {
         ),
       },
       {
-        accessorKey: "domain",
-        header: "Domain",
-        cell: ({ row }) => row.original.domain ?? "—",
-      },
-      {
         accessorKey: "status",
         header: "Status",
         cell: ({ row }) => <StatusBadge status={row.original.status} />,
@@ -116,13 +132,7 @@ function TenantsContent() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem
-                    onSelect={() =>
-                      window.open(
-                        buildTenantUrl(tenant.slug, ROUTES.DEFAULT_LOGIN_REDIRECT),
-                        "_blank",
-                        "noopener,noreferrer",
-                      )
-                    }
+                    onSelect={() => openSchool(tenant)}
                   >
                     <ExternalLink className="size-4" />
                     Open school

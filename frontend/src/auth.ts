@@ -1,14 +1,12 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import { authConfigForRequest } from "~/auth.config";
+import { authConfig } from "~/auth.config";
 import { AUTH_ENDPOINTS, apiConfig } from "~/config/api-config";
 import { backendPost } from "~/lib/api/backend";
 import type { PlatformAuthData, TenantAuthData } from "~/types/api";
 
-// Request-aware config so the cookie Domain is chosen per host (`.lvh.me` on
-// lvh.me subdomains, host-only on localhost).
-export const { handlers, auth, signIn, signOut } = NextAuth((request) => ({
-  ...authConfigForRequest(request),
+export const { handlers, auth, signIn, signOut } = NextAuth({
+  ...authConfig,
   providers: [
     Credentials({
       id: "tenant-credentials",
@@ -51,6 +49,43 @@ export const { handlers, auth, signIn, signOut } = NextAuth((request) => ({
         }
       },
     }),
+    // Cross-host sign-in: redeems a one-time code issued on another host
+    // (e.g. the platform apex) for a session on this school host. Only used
+    // server-side by `app/auth/handoff/route.ts`.
+    Credentials({
+      id: "handoff",
+      name: "Handoff",
+      credentials: {
+        code: {},
+        tenantSlug: {},
+      },
+      async authorize(credentials) {
+        const code = credentials?.code as string | undefined;
+        const tenantSlug = (credentials?.tenantSlug as string | undefined)?.trim();
+        if (!code || !tenantSlug) return null;
+
+        try {
+          const data = await backendPost<TenantAuthData>(
+            AUTH_ENDPOINTS.tenant.handoff,
+            { code },
+            { tenantSlug },
+          );
+          return {
+            id: data.user.id,
+            email: data.user.email,
+            name: data.user.name,
+            isAdmin: data.user.isAdmin,
+            roles: data.user.roles,
+            accessToken: data.access_token,
+            authKind: "tenant",
+            organization: data.organization,
+          };
+        } catch (err) {
+          console.error("handoff authorize failed:", err);
+          return null;
+        }
+      },
+    }),
     Credentials({
       id: "platform-credentials",
       name: "Platform",
@@ -84,4 +119,4 @@ export const { handlers, auth, signIn, signOut } = NextAuth((request) => ({
       },
     }),
   ],
-}));
+});

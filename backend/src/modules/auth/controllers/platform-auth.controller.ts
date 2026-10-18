@@ -20,6 +20,7 @@ import { ResetPasswordDto } from '../dto/reset-password.dto';
 import { VerifyEmailDto } from '../dto/verify-email.dto';
 import { ResendVerificationDto } from '../dto/resend-verification.dto';
 import { ChangePasswordDto } from '../dto/change-password.dto';
+import { IssueHandoffDto } from '../dto/handoff.dto';
 import { PlatformAuthService } from '../services/platform-auth.service';
 import { ResponseMessage } from '~/common/decorators/response.decorators';
 
@@ -109,6 +110,18 @@ export class PlatformAuthController {
       dto.newPassword,
     );
     return {};
+  }
+
+  /** Code that signs the caller in to one of their schools on its host. */
+  @Post('handoff')
+  @HttpCode(200)
+  @UseGuards(PlatformJwtAuthGuard)
+  @ResponseMessage('Sign-in code issued.')
+  issueHandoff(
+    @RequestContext() ctx: RequestContextDto,
+    @Body() dto: IssueHandoffDto,
+  ) {
+    return this.platformAuthService.issueHandoff(ctx.userId!, dto.orgId);
   }
 
   @Get('me')

@@ -6,6 +6,8 @@ import type { StringValue } from 'ms';
 import { PassportModule } from '@nestjs/passport';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from '~/modules/users/entities/user.entity';
+import { Membership } from '~/modules/memberships/entities/membership.entity';
+import { Organization } from '~/modules/organizations/entities/organization.entity';
 import { UserModule } from '~/modules/users/user.module';
 import { RbacModule } from '~/modules/rbac/rbac.module';
 import { AuthToken } from './entities/auth-token.entity';
@@ -27,7 +29,7 @@ import { OwnerProvisioningService } from './services/owner-provisioning.service'
  */
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, AuthToken]),
+    TypeOrmModule.forFeature([User, AuthToken, Membership, Organization]),
     PassportModule,
     UserModule,
     RbacModule,
