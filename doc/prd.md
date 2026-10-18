@@ -3,7 +3,7 @@
 | Field        | Value                                                  |
 | ------------ | ------------------------------------------------------ |
 | Product      | School ERP: multi-tenant school management SaaS       |
-| Version      | 1.1                                                    |
+| Version      | 1.2                                                    |
 | Date         | 2026-10-18                                             |
 | Status       | Draft                                                  |
 | Market focus | Bangladesh first, built so it can go global            |
@@ -199,10 +199,12 @@ Legend: **F** = full, **W** = create/edit within scope, **R** = read-only, **O**
 
 - **Tenant = school (organization).** Every school-owned record is tied to exactly one organization and isolated at both the application and the database layer. Cross-tenant access is impossible by construction and covered by automated tests.
 - **Global identity.** A person has one account (email or phone number). That account can hold memberships in several schools, each with its own roles; for example, a teacher who works at two schools, or a guardian whose children attend different schools.
-- **Addressing:**
-  - Every school gets a subdomain, `<slug>.<product-domain>`.
-  - Standard and higher plans can map a custom domain (`erp.myschool.edu.bd`) with automatic TLS.
-  - A school can also be selected after login when a user belongs to several.
+- **Addressing** (design: `domains-and-routing.md`):
+  - The product domain (`<product-domain>`) hosts the marketing site, school signup and "Find your school". The platform admin lives on its own host, `admin.<product-domain>`.
+  - Every school gets a subdomain, `<slug>.<product-domain>`. The slug is human-readable, chosen at signup, unique, and checked against a reserved list. A renamed slug keeps redirecting for 12 months.
+  - Standard and higher plans can map a custom **app host** (`erp.myschool.edu.bd`) with ownership verification and automatic TLS. The school's apex domain (`myschool.edu.bd`) stays the school's own website; hosting it is out of scope for v1.
+  - Every school host, subdomain or custom, serves the same routes: `/` school home, `/login`, `/activate`, `/onboarding`, `/dashboard`, `/student`. The subdomain keeps working when a custom domain is active, and can redirect to it.
+  - A user who belongs to several schools signs in on each school's host. "Find your school" sends them links to every school where they have an active membership.
 - **Branches (campuses):**
   - A school group is a parent organization with several branch organizations.
   - Group-level users see consolidated dashboards and can switch branches.
@@ -276,8 +278,10 @@ Each module lists its purpose, priority (**P0** = MVP must-have, delivered acros
 
 **Features**
 
-- Self-serve signup: school name, type (school/college/madrasa/coaching/English-medium), owner name, email, phone, slug.
-- Verification by email link plus SMS OTP.
+- Self-serve signup on the product domain: school name, type (school/college/madrasa/coaching/English-medium), owner name, email, phone, slug. The slug is suggested from the school name, editable, and checked for availability live.
+- Verification by email link plus SMS OTP. The school is created only after verification, then the owner is moved to the school's host already signed in and lands on the setup wizard.
+- Until the owner completes (or skips) the wizard, school admins are sent to it on sign-in and other users see a "school is being set up" page.
+- **Find your school:** a user enters their email or phone and receives sign-in links for every school where they have an active membership. They can also type the school's address. A public directory search is opt-in per school (P1).
 - A guided setup wizard with a progress checklist. Each step can be skipped and resumed:
   1. School profile: logo, address, EIIN, contact, principal's signature, currency, time zone, language, week start, weekend days.
   2. Academic session: start and end dates.
@@ -298,6 +302,8 @@ Each module lists its purpose, priority (**P0** = MVP must-have, delivered acros
 **Acceptance criteria**
 
 - A school can finish signup, academic setup and import 500 students in under 60 minutes using the templates.
+- A reserved or taken slug is rejected at signup with a suggested alternative, and an unverified signup never reserves a slug.
+- "Find your school" gives the same response whether or not the email or phone has an account.
 - Excel import validates every row (required fields, duplicates, date formats, phone format), shows the errors inline, and imports only the valid rows or nothing, as the admin chooses.
 - The setup checklist shows completion percentage and links to each unfinished step.
 
@@ -312,6 +318,7 @@ Each module lists its purpose, priority (**P0** = MVP must-have, delivered acros
 - Optional TOTP two-factor authentication; mandatory for admins and accountants on Premium.
 - Google / Microsoft sign-in (P1).
 - Session management: list active devices, log out everywhere, idle timeout set by the admin.
+- Sessions are per school host. Signing in to one school never signs the user out of another. Moving between hosts (after signup, from "Find your school") uses a single-use, short-lived handoff code.
 - Role-based access control:
   - Permissions use `resource:action` keys, for example `fees:collect` and `results:publish`.
   - System roles: Admin, Principal, Accountant, Teacher, Class Teacher, Receptionist, Librarian, Student, Guardian.
@@ -333,6 +340,7 @@ Each module lists its purpose, priority (**P0** = MVP must-have, delivered acros
 - A scoped teacher can only see attendance and marks for the classes and subjects assigned to them.
 - After 5 failed logins the account is locked for 15 minutes, OTP sending is rate-limited, and the admin can see these events.
 - A role change takes effect on the user's next request without forcing re-login.
+- A session or handoff code issued for one school host is rejected on any other host.
 
 ### 6.4 Academic structure — P0
 
@@ -764,6 +772,9 @@ Each module lists its purpose, priority (**P0** = MVP must-have, delivered acros
 - Custom fields on student, guardian, employee and admission entities: text, number, date, select or file. These appear on forms, filters and exports.
 - Document and print template editors: report card, ID card, certificates, receipts, admit card.
 - Notification preferences and SMS sender ID.
+- Custom domain (Standard+): add an app host, see the CNAME and TXT records to create, track verification and certificate status, set it as primary, or remove it.
+- School address: change the slug (rate-limited; the old address redirects for 12 months).
+- Public school home page: what appears on `/` (profile, contact, public notices) and whether the school is listed in the directory.
 - Data export: a full export of the school's data at any time (CSV/Excel plus a files archive).
 - Audit log viewer for admins.
 
@@ -775,10 +786,10 @@ These end-to-end flows cut across modules. They drive screen design, API design 
 
 ### 7.1 Onboard a school
 
-1. The owner signs up with the school name, type, email, phone and slug, and verifies by email link and SMS OTP.
+1. On the product domain, the owner signs up with the school name, type, email, phone and slug, and verifies by email link and SMS OTP.
 2. The platform provisions the organization in one transaction: default roles, settings and the owner's admin membership.
-3. The owner works through the setup wizard (6.2): profile, session, shifts, classes, sections, subjects, grading, fee heads.
-4. The owner invites staff, who activate their accounts from the invite link.
+3. The owner is moved to `<slug>.<product-domain>` already signed in and works through the setup wizard (6.2): profile, session, shifts, classes, sections, subjects, grading, fee heads.
+4. The owner invites staff, who activate their accounts from the invite link on the school's host.
 5. The admin uploads students and guardians from the Excel template, reviews the row-level validation preview, and confirms.
 6. The setup checklist reaches 100% and the school is ready for daily operations.
 
@@ -828,6 +839,8 @@ These end-to-end flows cut across modules. They drive screen design, API design 
 - Passwords are hashed with Argon2/bcrypt. OTPs are short-lived and rate-limited. JWT access tokens are short-lived, with rotating refresh tokens.
 - OWASP ASVS Level 2 controls apply: input validation, output encoding, CSRF protection, secure headers, and file-upload scanning and type checks.
 - Every endpoint is protected by RBAC, deny by default.
+- Session cookies are host-only, so no cookie is shared between schools or with the product domain. Browsers reach the API through the same host they are on, so custom domains need no CORS entries.
+- A custom domain is served only after DNS ownership verification (TXT record), and TLS certificates are issued only for verified domains.
 - Rate limiting is applied per tenant, per user and per IP.
 - An immutable audit log records authentication events, permission changes, financial transactions, mark changes and data exports. It is kept for 7 years.
 - Penetration testing runs before GA and annually after that. A responsible-disclosure policy is published.
@@ -924,7 +937,7 @@ This is a conceptual model only. The detailed schema will be designed separately
 
 | Domain          | Key entities                                                                                     |
 | --------------- | ------------------------------------------------------------------------------------------------ |
-| Platform        | Organization (school), Branch group, Group template, Plan, Subscription, Platform invoice, Feature flag, Platform user |
+| Platform        | Organization (school), Organization domain, Slug history, Branch group, Group template, Plan, Subscription, Platform invoice, Feature flag, Platform user |
 | Identity        | User (global account), Membership (user ↔ school), Role, Permission, Session, Audit log            |
 | Academic        | Academic session, Term, Shift, Class, Section, Group, Subject, Curriculum, Teacher assignment, Room, Period, Timetable entry, Course, Batch, Batch enrollment |
 | Students        | Student, Guardian, Student–guardian link, Enrollment, Document, Health record, Note, Promotion, Certificate |
@@ -947,7 +960,7 @@ Every school-owned entity carries the organization ID, and its uniqueness constr
 ### 11.1 Unit tests
 
 - Permission evaluation, including scope rules (own classes, sections, subjects).
-- Tenant scope resolution (header, subdomain, custom domain).
+- Tenant scope resolution (header, subdomain, custom domain, inactive domain, renamed slug, reserved slug).
 - Grade, GPA and tabulation rules: the BD GPA regression suite (4th-subject bonus, F in a compulsory subject, component pass, grace marks), and one suite per grading template.
 - Fee calculations: discounts, late fines, invoice generation, payment allocation, outstanding balances.
 - Attendance summaries and percentages.
@@ -978,6 +991,9 @@ The core workflows in section 7: onboarding a school, inviting staff, importing 
 - Insecure direct object references on students, invoices, documents and exports.
 - Gateway webhook forgery and replay.
 - Session expiry and revocation.
+- A session or handoff code from one school host replayed on another host, reused, or used after expiry.
+- Claiming a custom domain without the TXT record, and requesting a certificate for an unverified host.
+- Account enumeration through "Find your school", signup and password reset.
 - Malicious file uploads.
 - Abuse of bulk actions, OTP sending and rate-limited endpoints.
 
@@ -1016,6 +1032,7 @@ These are deliberately excluded so the MVP stays shippable. Requests for them go
 - Board registration and BANBEIS/EMIS exports.
 - Custom report builder and multi-branch analytics.
 - AI features.
+- Hosting the school's own website on its apex domain (a page builder or CMS). Custom domains cover the app host only.
 - Full double-entry accounting and statutory financial statements.
 
 ### 12.2 Indicative timeline
