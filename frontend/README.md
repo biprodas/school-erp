@@ -83,7 +83,7 @@ See `.env.example`.
 | `src/app/(main)/` | Public marketing / landing pages |
 | `src/app/(auth)/` | Login, signup, activate, verify-email, forgot/reset password |
 | `src/app/(dashboard)/` | Tenant staff dashboard (`/dashboard`, `/profile`) |
-| `src/app/(dashboard)/_components/sidebar-nav.tsx` | Staff sidebar tree. Keep it in sync with [doc/menu-structure.md](../doc/menu-structure.md). Role gating lives in `src/lib/sidebar-nav.ts` |
+| `src/app/(dashboard)/_components/sidebar-nav.tsx` | Staff sidebar tree. Role gating lives in `src/lib/sidebar-nav.ts` |
 | `src/app/student/` | Student portal |
 | `src/app/platform/` | Platform admin: tenants, users, memberships |
 | `src/app/api/auth/` | NextAuth route handler |
@@ -111,4 +111,4 @@ See `package.json` for exact versions.
 ## Notes
 
 - `next.config.ts` sets `allowedDevOrigins` to `lvh.me` and `*.lvh.me`. Without it, HMR and client chunks are blocked on tenant subdomains and pages don't hydrate.
-- Docs: [menu structure](../doc/menu-structure.md), [features](../doc/features.md), [repository README](../README.md), [backend README](../backend/README.md).
+- Docs: [PRD](../doc/prd.md), [repository README](../README.md), [backend README](../backend/README.md).

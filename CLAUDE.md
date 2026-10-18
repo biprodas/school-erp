@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-Monorepo for a multi-tenant School ERP SaaS. `backend/` is a NestJS 11 API (TypeORM + PostgreSQL), `frontend/` is a Next.js 16 App Router app (React 19, Tailwind v4, shadcn/radix UI, TanStack Query, NextAuth v5). The two are separate npm projects with no root workspace, so run commands from inside each directory. `doc/` holds product and design docs (menu IA, features, DB designs, RBAC/platform-admin user stories). `doc/backend-structure.md` maps the backend folder layout.
+Monorepo for a multi-tenant School ERP SaaS. `backend/` is a NestJS 11 API (TypeORM + PostgreSQL), `frontend/` is a Next.js 16 App Router app (React 19, Tailwind v4, shadcn/radix UI, TanStack Query, NextAuth v5). The two are separate npm projects with no root workspace, so run commands from inside each directory. `doc/` holds product and design docs: `prd.md` (the product spec and source of truth), DB designs (`db-schema.md`, `academic-db.md`, `student-db.md`) and an example frontend menu.
 
 `frontend/CLAUDE.md` → `frontend/AGENTS.md` warns that this Next.js version has breaking changes compared with your training data. Read the relevant guide in `frontend/node_modules/next/dist/docs/` before writing frontend code. For example, middleware now lives in `src/proxy.ts`, not `middleware.ts`.
 
@@ -91,7 +91,7 @@ Local env: the backend reads `.env` and then `.env.${NODE_ENV}` (`.env.developme
 - **API clients**: `src/lib/api/client.ts` (browser) and `src/lib/api/server.ts` (RSC and server actions). Both are built on `createApiClient` in `lib/api/axios.ts`, which injects the bearer token and the `x-tenant-id` header from the session or host, unwraps the envelope, and normalizes errors to `ApiError`.
 - **API modules**: endpoint and query hooks live in `src/apis/{platform,tenanted}/<resource>/`. Query keys are in `lib/api/query-keys.ts`.
 - **Routes**:
-  - `app/(dashboard)`: tenant staff dashboard. Its sidebar is defined in `(dashboard)/_components/sidebar-nav.tsx` and documented in `doc/menu-structure.md`, so keep the two in sync. Sidebar items can be role-gated (`lib/sidebar-nav.ts`).
+  - `app/(dashboard)`: tenant staff dashboard. Its sidebar is defined in `(dashboard)/_components/sidebar-nav.tsx`. Sidebar items can be role-gated (`lib/sidebar-nav.ts`).
   - `app/student`: student portal.
   - `app/platform`: platform admin.
   - `app/(auth)` and `app/(main)`: auth and marketing pages.
