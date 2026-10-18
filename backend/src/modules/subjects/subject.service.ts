@@ -1,4 +1,5 @@
 import { ConflictException, Injectable, Logger } from '@nestjs/common';
+import { FindOptionsWhere } from 'typeorm';
 import { CreateSubjectDto } from './dto/create-subject.dto';
 import { FilterSubjectDto } from './dto/filter-subject.dto';
 import { UpdateSubjectDto } from './dto/update-subject.dto';
@@ -14,7 +15,7 @@ export class SubjectService {
   constructor(private readonly subjectRepo: SubjectRepository) {}
 
   findFiltered(filter: FilterSubjectDto): Promise<Paginated<Subject>> {
-    const where: Record<string, any> = {};
+    const where: FindOptionsWhere<Subject> = {};
     if (filter.id) where.id = filter.id;
     if (filter.name) where.name = filter.name;
     if (filter.type) where.type = filter.type;

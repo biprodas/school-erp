@@ -13,7 +13,7 @@ export class StudentSubjectRepository extends BaseTenantRepository<StudentSubjec
   findByEnrollment(enrollmentId: string): Promise<StudentSubject[]> {
     return this.repo.find({
       where: { studentEnrollmentId: enrollmentId },
-      relations: ['subject'],
+      relations: { subject: true },
       order: { createdAt: 'ASC' },
     });
   }
@@ -26,6 +26,6 @@ export class StudentSubjectRepository extends BaseTenantRepository<StudentSubjec
   }
 
   findByIdWithSubject(id: string): Promise<StudentSubject | null> {
-    return this.repo.findOne({ where: { id }, relations: ['subject'] });
+    return this.repo.findOne({ where: { id }, relations: { subject: true } });
   }
 }

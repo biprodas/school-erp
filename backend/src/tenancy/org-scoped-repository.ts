@@ -6,14 +6,25 @@ export const ORG_ID_PROPERTY = 'orgId';
 
 type Where = Record<string, unknown> | Record<string, unknown>[] | undefined;
 
+/**
+ * Drops keys whose value is `undefined`. TypeORM 1.x throws on `undefined`
+ * in `where`; an unset optional filter means "no filter on that column".
+ * `null` is kept (and still throws): match NULL with `IsNull()`.
+ */
+function withoutUndefined(where: Record<string, unknown>) {
+  return Object.fromEntries(
+    Object.entries(where).filter(([, value]) => value !== undefined),
+  );
+}
+
 /** Adds (or overrides) `orgId` on a where clause; arrays get it on every OR branch. */
 export function scopeWhere(where: Where, orgId: string): Where {
   if (Array.isArray(where)) {
     return where.length
-      ? where.map((w) => ({ ...w, [ORG_ID_PROPERTY]: orgId }))
+      ? where.map((w) => ({ ...withoutUndefined(w), [ORG_ID_PROPERTY]: orgId }))
       : [{ [ORG_ID_PROPERTY]: orgId }];
   }
-  return { ...(where ?? {}), [ORG_ID_PROPERTY]: orgId };
+  return { ...withoutUndefined(where ?? {}), [ORG_ID_PROPERTY]: orgId };
 }
 
 /**
@@ -81,7 +92,6 @@ const FIND_OPTIONS_METHODS = new Set([
   'findAndCount',
   'count',
   'exists',
-  'exist',
 ]);
 const WHERE_METHODS = new Set([
   'findBy',
@@ -103,11 +113,9 @@ const LOADED_ENTITY_METHODS = new Set(['remove', 'softRemove', 'recover']);
  * here. Use the scoped methods above, or `createQueryBuilder` with an
  * explicit `alias.orgId = :orgId` condition.
  */
-const BLOCKED_MEMBERS = new Set([
+export const BLOCKED_MEMBERS = new Set([
   'upsert',
   'preload',
-  'findByIds',
-  'findOneById',
   'updateAll',
   'deleteAll',
   'clear',
@@ -116,6 +124,31 @@ const BLOCKED_MEMBERS = new Set([
   'extend',
   'manager',
 ]);
+/** Repository methods that never touch rows of another org on their own. */
+const SAFE_MEMBERS = new Set(['createQueryBuilder', 'hasId', 'getId', 'merge']);
+
+/** Every Repository method name this proxy has a rule for. */
+export const CLASSIFIED_MEMBERS = new Set([
+  ...FIND_OPTIONS_METHODS,
+  ...WHERE_METHODS,
+  ...AGGREGATE_METHODS,
+  ...ARITHMETIC_METHODS,
+  ...CRITERIA_METHODS,
+  ...WRITE_METHODS,
+  ...LOADED_ENTITY_METHODS,
+  ...BLOCKED_MEMBERS,
+  ...SAFE_MEMBERS,
+  'update',
+]);
+
+/**
+ * True for methods defined by TypeORM's `Repository`. Those must be
+ * classified above: a method added by a future TypeORM release throws until
+ * someone decides how to scope it, instead of silently running unscoped.
+ */
+function isRepositoryMethod(prop: string): boolean {
+  return prop !== 'constructor' && Object.hasOwn(Repository.prototype, prop);
+}
 
 /**
  * Wraps a TypeORM repository so every common read/write is pinned to one
@@ -129,6 +162,8 @@ const BLOCKED_MEMBERS = new Set([
  *   pinned to the org.
  * - remove/softRemove/recover: entities must belong to the org.
  * - upsert/preload/query/manager and other unscoped escape hatches throw.
+ * - Any other TypeORM Repository method throws too (fail-closed), except the
+ *   row-free helpers in SAFE_MEMBERS.
  *
  * `createQueryBuilder` is NOT rewritten (a later `.where()` would drop an
  * injected condition) — add `alias.orgId = :orgId` yourself; RLS still
@@ -189,6 +224,11 @@ export function scopeRepository<T extends ObjectLiteral>(
       if (LOADED_ENTITY_METHODS.has(prop)) {
         return (data: unknown, ...rest: unknown[]) =>
           call(assertSameOrg(data, orgId), ...rest);
+      }
+      if (!SAFE_MEMBERS.has(prop) && isRepositoryMethod(prop)) {
+        throw new Error(
+          `Repository.${prop} has no org-scoping rule; classify it in org-scoped-repository.ts`,
+        );
       }
       return method.bind(target) as unknown;
     },

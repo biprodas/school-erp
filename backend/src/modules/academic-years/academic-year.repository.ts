@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { Not } from 'typeorm';
+import { FindOptionsWhere, Not } from 'typeorm';
 import { TENANT_DATASOURCE } from '~/tenancy/tenancy.constants';
 import { TenantDataSourceProxy } from '~/tenancy/tenant-datasource.proxy';
 import { BaseTenantRepository } from '~/tenancy/base-tenant.repository';
@@ -18,7 +18,7 @@ export class AcademicYearRepository extends BaseTenantRepository<AcademicYear> {
   }
 
   findFiltered(
-    where: Record<string, any>,
+    where: FindOptionsWhere<AcademicYear>,
     page: PaginationQueryDto,
   ): Promise<Paginated<AcademicYear>> {
     return this.findPage({ where, order: { createdAt: 'DESC' } }, page);

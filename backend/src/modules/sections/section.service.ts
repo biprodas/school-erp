@@ -1,4 +1,5 @@
 import { ConflictException, Injectable, Logger } from '@nestjs/common';
+import { FindOptionsWhere } from 'typeorm';
 import { CreateSectionDto } from './dto/create-section.dto';
 import { FilterSectionDto } from './dto/filter-section.dto';
 import { UpdateSectionDto } from './dto/update-section.dto';
@@ -13,7 +14,7 @@ export class SectionService {
   constructor(private readonly sectionRepo: SectionRepository) {}
 
   findFiltered(filter: FilterSectionDto): Promise<Paginated<Section>> {
-    const where: Record<string, any> = {};
+    const where: FindOptionsWhere<Section> = {};
     if (filter.id) where.id = filter.id;
     if (filter.name) where.name = filter.name;
     if (filter.isActive !== undefined) where.isActive = filter.isActive;

@@ -4,6 +4,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { FindOptionsWhere } from 'typeorm';
 import { SubjectService } from '~/modules/subjects/subject.service';
 import { AttachGroupSubjectDto } from '../dto/attach-group-subject.dto';
 import { CreateSubjectGroupDto } from '../dto/create-subject-group.dto';
@@ -31,7 +32,7 @@ export class SubjectGroupService {
   findFiltered(
     filter: FilterSubjectGroupDto,
   ): Promise<Paginated<SubjectGroup>> {
-    const where: Record<string, any> = {};
+    const where: FindOptionsWhere<SubjectGroup> = {};
     if (filter.id) where.id = filter.id;
     if (filter.name) where.name = filter.name;
     if (filter.isActive !== undefined) where.isActive = filter.isActive;

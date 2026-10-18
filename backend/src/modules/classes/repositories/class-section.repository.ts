@@ -13,13 +13,13 @@ export class ClassSectionRepository extends BaseTenantRepository<ClassSection> {
   findByClass(classId: string): Promise<ClassSection[]> {
     return this.repo.find({
       where: { classId },
-      relations: ['section'],
+      relations: { section: true },
       order: { createdAt: 'ASC' },
     });
   }
 
   findByIdWithSection(id: string): Promise<ClassSection | null> {
-    return this.repo.findOne({ where: { id }, relations: ['section'] });
+    return this.repo.findOne({ where: { id }, relations: { section: true } });
   }
 
   findLink(classId: string, sectionId: string): Promise<ClassSection | null> {

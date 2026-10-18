@@ -3,7 +3,10 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import type { DbConfig } from '../config/db.config';
 import { ALL_ENTITIES_GLOBS } from '~/tenancy/tenant.datasource';
-import { PUBLIC_SCHEMA } from './database.constants';
+import {
+  INVALID_WHERE_VALUES_BEHAVIOR,
+  PUBLIC_SCHEMA,
+} from './database.constants';
 
 @Module({
   imports: [
@@ -32,6 +35,7 @@ import { PUBLIC_SCHEMA } from './database.constants';
           autoLoadEntities: true,
           synchronize: db.sync && !isProduction,
           logging: db.logging,
+          invalidWhereValuesBehavior: INVALID_WHERE_VALUES_BEHAVIOR,
           ...(db.ssl ? { ssl: { rejectUnauthorized: false } } : {}),
           extra: {
             max: 10,

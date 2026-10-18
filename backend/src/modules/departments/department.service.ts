@@ -1,4 +1,5 @@
 import { ConflictException, Injectable, Logger } from '@nestjs/common';
+import { FindOptionsWhere } from 'typeorm';
 import { CreateDepartmentDto } from './dto/create-department.dto';
 import { FilterDepartmentDto } from './dto/filter-department.dto';
 import { UpdateDepartmentDto } from './dto/update-department.dto';
@@ -13,7 +14,7 @@ export class DepartmentService {
   constructor(private readonly departmentRepo: DepartmentRepository) {}
 
   findFiltered(filter: FilterDepartmentDto): Promise<Paginated<Department>> {
-    const where: Record<string, any> = {};
+    const where: FindOptionsWhere<Department> = {};
     if (filter.id) where.id = filter.id;
     if (filter.name) where.name = filter.name;
     if (filter.isActive !== undefined) where.isActive = filter.isActive;

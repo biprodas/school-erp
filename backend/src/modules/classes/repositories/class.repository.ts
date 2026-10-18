@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { FindOptionsRelations, FindOptionsWhere } from 'typeorm';
 import { TENANT_DATASOURCE } from '~/tenancy/tenancy.constants';
 import { TenantDataSourceProxy } from '~/tenancy/tenant-datasource.proxy';
 import { BaseTenantRepository } from '~/tenancy/base-tenant.repository';
@@ -6,7 +7,9 @@ import { Class } from '../entities/class.entity';
 import { PaginationQueryDto } from '~/common/dto/pagination-query.dto';
 import { Paginated } from '~/common/dto/paginated.dto';
 
-const SECTION_RELATIONS = ['classSections', 'classSections.section'];
+const SECTION_RELATIONS: FindOptionsRelations<Class> = {
+  classSections: { section: true },
+};
 
 @Injectable()
 export class ClassRepository extends BaseTenantRepository<Class> {
@@ -23,7 +26,7 @@ export class ClassRepository extends BaseTenantRepository<Class> {
   }
 
   findFiltered(
-    where: Record<string, any>,
+    where: FindOptionsWhere<Class>,
     page: PaginationQueryDto,
   ): Promise<Paginated<Class>> {
     return this.findPage(

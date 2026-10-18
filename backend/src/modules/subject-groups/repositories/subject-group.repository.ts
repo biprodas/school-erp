@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { FindOptionsWhere } from 'typeorm';
 import { TENANT_DATASOURCE } from '~/tenancy/tenancy.constants';
 import { TenantDataSourceProxy } from '~/tenancy/tenant-datasource.proxy';
 import { BaseTenantRepository } from '~/tenancy/base-tenant.repository';
@@ -19,12 +20,12 @@ export class SubjectGroupRepository extends BaseTenantRepository<SubjectGroup> {
   findByIdWithSubjects(id: string): Promise<SubjectGroup | null> {
     return this.repo.findOne({
       where: { id },
-      relations: ['subjectLinks', 'subjectLinks.subject'],
+      relations: { subjectLinks: { subject: true } },
     });
   }
 
   findFiltered(
-    where: Record<string, any>,
+    where: FindOptionsWhere<SubjectGroup>,
     page: PaginationQueryDto,
   ): Promise<Paginated<SubjectGroup>> {
     return this.findPage({ where, order: { name: 'ASC' } }, page);

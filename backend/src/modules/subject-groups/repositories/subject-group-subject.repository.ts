@@ -13,7 +13,7 @@ export class SubjectGroupSubjectRepository extends BaseTenantRepository<SubjectG
   findByGroup(subjectGroupId: string): Promise<SubjectGroupSubject[]> {
     return this.repo.find({
       where: { subjectGroupId },
-      relations: ['subject'],
+      relations: { subject: true },
       order: { displayOrder: 'ASC', createdAt: 'ASC' },
     });
   }
@@ -26,6 +26,6 @@ export class SubjectGroupSubjectRepository extends BaseTenantRepository<SubjectG
   }
 
   findByIdWithSubject(id: string): Promise<SubjectGroupSubject | null> {
-    return this.repo.findOne({ where: { id }, relations: ['subject'] });
+    return this.repo.findOne({ where: { id }, relations: { subject: true } });
   }
 }

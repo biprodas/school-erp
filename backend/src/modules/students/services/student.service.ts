@@ -5,6 +5,7 @@ import {
   Injectable,
   Logger,
 } from '@nestjs/common';
+import { FindOptionsWhere } from 'typeorm';
 import { RoleService } from '~/modules/rbac/services/role.service';
 import { OrgUserService } from '~/modules/users/services/org-user.service';
 import { CreateStudentDto } from '../dto/create-student.dto';
@@ -31,7 +32,7 @@ export class StudentService {
   ) {}
 
   findFiltered(filter: FilterStudentDto): Promise<Paginated<Student>> {
-    const where: Record<string, any> = {};
+    const where: FindOptionsWhere<Student> = {};
     if (filter.id) where.id = filter.id;
     if (filter.admissionNumber) where.admissionNumber = filter.admissionNumber;
     if (filter.firstName) where.firstName = filter.firstName;

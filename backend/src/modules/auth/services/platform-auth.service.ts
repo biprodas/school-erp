@@ -78,15 +78,15 @@ export class PlatformAuthService {
   async login(dto: PlatformLoginDto) {
     const user = await this.userRepository.findOne({
       where: { email: dto.email },
-      select: [
-        'id',
-        'email',
-        'password',
-        'name',
-        'status',
-        'isAdmin',
-        'emailVerifiedAt',
-      ],
+      select: {
+        id: true,
+        email: true,
+        password: true,
+        name: true,
+        status: true,
+        isAdmin: true,
+        emailVerifiedAt: true,
+      },
     });
 
     if (!user) {
@@ -114,7 +114,7 @@ export class PlatformAuthService {
   async getProfile(userId: string) {
     const user = await this.userRepository.findOne({
       where: { id: userId },
-      relations: ['memberships'],
+      relations: { memberships: true },
     });
     if (!user) {
       throw new UnauthorizedException('User not found');
@@ -251,7 +251,14 @@ export class PlatformAuthService {
   ): Promise<void> {
     const user = await this.userRepository.findOne({
       where: { id: userId },
-      select: ['id', 'email', 'password', 'name', 'status', 'isAdmin'],
+      select: {
+        id: true,
+        email: true,
+        password: true,
+        name: true,
+        status: true,
+        isAdmin: true,
+      },
     });
     if (!user) {
       throw new UnauthorizedException('User not found');

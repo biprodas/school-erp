@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { FindOptionsWhere } from 'typeorm';
 import { TENANT_DATASOURCE } from '~/tenancy/tenancy.constants';
 import { TenantDataSourceProxy } from '~/tenancy/tenant-datasource.proxy';
 import { BaseTenantRepository } from '~/tenancy/base-tenant.repository';
@@ -17,7 +18,7 @@ export class DesignationRepository extends BaseTenantRepository<Designation> {
   }
 
   findFiltered(
-    where: Record<string, any>,
+    where: FindOptionsWhere<Designation>,
     page: PaginationQueryDto,
   ): Promise<Paginated<Designation>> {
     return this.findPage({ where, order: { createdAt: 'DESC' } }, page);

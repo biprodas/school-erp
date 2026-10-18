@@ -1,6 +1,10 @@
 import { ForbiddenException } from '@nestjs/common';
 import { In, Repository } from 'typeorm';
-import { scopeRepository, scopeWhere } from './org-scoped-repository';
+import {
+  CLASSIFIED_MEMBERS,
+  scopeRepository,
+  scopeWhere,
+} from './org-scoped-repository';
 import { BaseTenantRepository } from './base-tenant.repository';
 import { TenantDataSourceProxy } from './tenant-datasource.proxy';
 
@@ -180,6 +184,52 @@ describe('scopeRepository', () => {
   it('passes other members through untouched', () => {
     expect(repo.createQueryBuilder('r')).toBe('qb');
     expect(repo.metadata).toBe(raw.metadata);
+  });
+
+  it('drops undefined where values but keeps null', async () => {
+    await repo.findOneBy({ name: undefined });
+    expect(raw.findOneBy).toHaveBeenCalledWith({ orgId: ORG });
+
+    await repo.find({ where: [{ name: undefined }, { id: '1' }] });
+    expect(raw.find).toHaveBeenLastCalledWith({
+      where: [{ orgId: ORG }, { id: '1', orgId: ORG }],
+    });
+
+    await repo.findOneBy({ name: null } as unknown as Partial<Row>);
+    expect(raw.findOneBy).toHaveBeenLastCalledWith({ name: null, orgId: ORG });
+  });
+
+  it('classifies every TypeORM Repository method', () => {
+    // Fails when a TypeORM upgrade adds a method: decide whether it is
+    // scoped, blocked or safe in org-scoped-repository.ts.
+    const methods = Object.getOwnPropertyNames(Repository.prototype).filter(
+      (name) =>
+        name !== 'constructor' &&
+        typeof Object.getOwnPropertyDescriptor(Repository.prototype, name)
+          ?.value === 'function',
+    );
+    expect(methods.filter((name) => !CLASSIFIED_MEMBERS.has(name))).toEqual([]);
+  });
+
+  it('throws on an unclassified Repository method instead of running it unscoped', () => {
+    const descriptor = { value: jest.fn(), configurable: true };
+    Object.defineProperty(
+      Repository.prototype,
+      'newUnscopedMethod',
+      descriptor,
+    );
+    try {
+      const proxied = scopeRepository(
+        Object.assign(makeRepo(), {
+          newUnscopedMethod: descriptor.value,
+        }) as unknown as Repository<Row>,
+        ORG,
+      ) as unknown as Record<string, unknown>;
+      expect(() => proxied.newUnscopedMethod).toThrow(/no org-scoping rule/);
+    } finally {
+      delete (Repository.prototype as unknown as Record<string, unknown>)
+        .newUnscopedMethod;
+    }
   });
 
   it('runs getters against the raw repository, as TypeORM getters need its manager', () => {

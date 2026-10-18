@@ -13,7 +13,7 @@ export class StudentGuardianRepository extends BaseTenantRepository<StudentGuard
   findByStudent(studentId: string): Promise<StudentGuardian[]> {
     return this.repo.find({
       where: { studentId },
-      relations: ['guardian'],
+      relations: { guardian: true },
       order: { createdAt: 'ASC' },
     });
   }

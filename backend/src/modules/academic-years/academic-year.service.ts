@@ -1,4 +1,5 @@
 import { ConflictException, Inject, Injectable, Logger } from '@nestjs/common';
+import { FindOptionsWhere } from 'typeorm';
 import { CreateAcademicYearDto } from './dto/create-academic-year.dto';
 import { FilterAcademicYearDto } from './dto/filter-academic-year.dto';
 import { UpdateAcademicYearDto } from './dto/update-academic-year.dto';
@@ -20,7 +21,7 @@ export class AcademicYearService {
   findFiltered(
     filter: FilterAcademicYearDto,
   ): Promise<Paginated<AcademicYear>> {
-    const where: Record<string, any> = {};
+    const where: FindOptionsWhere<AcademicYear> = {};
     if (filter.id) where.id = filter.id;
     if (filter.name) where.name = filter.name;
     if (filter.isCurrent !== undefined) where.isCurrent = filter.isCurrent;

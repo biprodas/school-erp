@@ -5,6 +5,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { FindOptionsWhere } from 'typeorm';
 import { AcademicYearService } from '~/modules/academic-years/academic-year.service';
 import { ClassService } from '~/modules/classes/services/class.service';
 import { ClassSubjectService } from '~/modules/class-curriculum/services/class-subject.service';
@@ -42,7 +43,7 @@ export class EnrollmentService {
   findFiltered(
     filter: FilterEnrollmentDto,
   ): Promise<Paginated<StudentEnrollment>> {
-    const where: Record<string, any> = {};
+    const where: FindOptionsWhere<StudentEnrollment> = {};
     if (filter.id) where.id = filter.id;
     if (filter.studentId) where.studentId = filter.studentId;
     if (filter.academicYearId) where.academicYearId = filter.academicYearId;

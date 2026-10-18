@@ -6,6 +6,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { FindOptionsWhere } from 'typeorm';
 import { RoleService } from '~/modules/rbac/services/role.service';
 import { OrgUserService } from '~/modules/users/services/org-user.service';
 import { CreateStakeholderDto } from './dto/create-stakeholder.dto';
@@ -32,7 +33,7 @@ export class StakeholderService {
   ) {}
 
   findFiltered(filter: FilterStakeholderDto): Promise<Paginated<Stakeholder>> {
-    const where: Record<string, any> = {};
+    const where: FindOptionsWhere<Stakeholder> = {};
     if (filter.id) where.id = filter.id;
     if (filter.type) where.type = filter.type;
     if (filter.status) where.status = filter.status;

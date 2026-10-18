@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { FindOptionsWhere } from 'typeorm';
 import { TENANT_DATASOURCE } from '~/tenancy/tenancy.constants';
 import { TenantDataSourceProxy } from '~/tenancy/tenant-datasource.proxy';
 import { BaseTenantRepository } from '~/tenancy/base-tenant.repository';
@@ -13,7 +14,7 @@ export class GuardianRepository extends BaseTenantRepository<Guardian> {
   }
 
   findByIdWithUser(id: string): Promise<Guardian | null> {
-    return this.repo.findOne({ where: { id }, relations: ['user'] });
+    return this.repo.findOne({ where: { id }, relations: { user: true } });
   }
 
   findByUserId(userId: string): Promise<Guardian | null> {
@@ -21,13 +22,13 @@ export class GuardianRepository extends BaseTenantRepository<Guardian> {
   }
 
   findFiltered(
-    where: Record<string, any>,
+    where: FindOptionsWhere<Guardian>,
     page: PaginationQueryDto,
   ): Promise<Paginated<Guardian>> {
     return this.findPage(
       {
         where,
-        relations: ['user'],
+        relations: { user: true },
         order: { createdAt: 'DESC' },
       },
       page,

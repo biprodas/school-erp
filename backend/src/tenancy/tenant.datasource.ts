@@ -1,5 +1,6 @@
 import type { DataSourceOptions } from 'typeorm';
 import type { DbConfig } from '../config/db.config';
+import { INVALID_WHERE_VALUES_BEHAVIOR } from '../database/database.constants';
 
 /** Every entity lives in the shared `public` schema. */
 export const ALL_ENTITIES_GLOBS = [
@@ -26,6 +27,7 @@ export function createTenantPoolDataSourceOptions(
     entities: ALL_ENTITIES_GLOBS,
     synchronize: false,
     logging: db.logging,
+    invalidWhereValuesBehavior: INVALID_WHERE_VALUES_BEHAVIOR,
     ...(db.ssl ? { ssl: { rejectUnauthorized: false } } : {}),
     extra: {
       max: db.tenantPoolSize,

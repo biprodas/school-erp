@@ -4,6 +4,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { FindOptionsWhere } from 'typeorm';
 import { SectionService } from '~/modules/sections/section.service';
 import { AttachSectionDto } from '../dto/attach-section.dto';
 import { CreateClassDto } from '../dto/create-class.dto';
@@ -29,7 +30,7 @@ export class ClassService {
   // --- Class CRUD ------------------------------------------------------
 
   findFiltered(filter: FilterClassDto): Promise<Paginated<Class>> {
-    const where: Record<string, any> = {};
+    const where: FindOptionsWhere<Class> = {};
     if (filter.id) where.id = filter.id;
     if (filter.name) where.name = filter.name;
     if (filter.isActive !== undefined) where.isActive = filter.isActive;

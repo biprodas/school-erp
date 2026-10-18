@@ -1,7 +1,10 @@
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { DataSource, DataSourceOptions } from 'typeorm';
-import { PUBLIC_SCHEMA } from './database.constants';
+import {
+  INVALID_WHERE_VALUES_BEHAVIOR,
+  PUBLIC_SCHEMA,
+} from './database.constants';
 
 /**
  * DataSource used by the TypeORM CLI (`npm run migration:*`). It connects as
@@ -31,6 +34,7 @@ export const publicDataSourceOptions: DataSourceOptions = {
   migrationsTableName: 'migrations',
   synchronize: false,
   logging: process.env.DB_LOGGING === 'true' ? ['query', 'error'] : ['error'],
+  invalidWhereValuesBehavior: INVALID_WHERE_VALUES_BEHAVIOR,
   ...(process.env.DB_SSL === 'true'
     ? { ssl: { rejectUnauthorized: false } }
     : {}),

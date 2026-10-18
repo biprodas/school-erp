@@ -6,6 +6,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { FindOptionsWhere } from 'typeorm';
 import { RoleService } from '~/modules/rbac/services/role.service';
 import { OrgUserService } from '~/modules/users/services/org-user.service';
 import { DepartmentService } from '~/modules/departments/department.service';
@@ -34,7 +35,7 @@ export class EmployeeService {
   ) {}
 
   findFiltered(filter: FilterEmployeeDto): Promise<Paginated<Employee>> {
-    const where: Record<string, any> = {};
+    const where: FindOptionsWhere<Employee> = {};
     if (filter.id) where.id = filter.id;
     if (filter.employeeNumber) where.employeeNumber = filter.employeeNumber;
     if (filter.departmentId) where.departmentId = filter.departmentId;

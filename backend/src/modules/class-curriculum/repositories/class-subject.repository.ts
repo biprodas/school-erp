@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { FindOptionsRelations, FindOptionsWhere } from 'typeorm';
 import { TENANT_DATASOURCE } from '~/tenancy/tenancy.constants';
 import { TenantDataSourceProxy } from '~/tenancy/tenant-datasource.proxy';
 import { BaseTenantRepository } from '~/tenancy/base-tenant.repository';
@@ -6,7 +7,11 @@ import { ClassSubject } from '../entities/class-subject.entity';
 import { PaginationQueryDto } from '~/common/dto/pagination-query.dto';
 import { Paginated } from '~/common/dto/paginated.dto';
 
-const RELATIONS = ['schoolClass', 'subject', 'academicYear'];
+const RELATIONS: FindOptionsRelations<ClassSubject> = {
+  schoolClass: true,
+  subject: true,
+  academicYear: true,
+};
 
 @Injectable()
 export class ClassSubjectRepository extends BaseTenantRepository<ClassSubject> {
@@ -35,13 +40,13 @@ export class ClassSubjectRepository extends BaseTenantRepository<ClassSubject> {
   ): Promise<string[]> {
     const rows = await this.repo.find({
       where: { classId, academicYearId },
-      select: ['subjectId'],
+      select: { subjectId: true },
     });
     return rows.map((r) => r.subjectId);
   }
 
   findFiltered(
-    where: Record<string, any>,
+    where: FindOptionsWhere<ClassSubject>,
     page: PaginationQueryDto,
   ): Promise<Paginated<ClassSubject>> {
     return this.findPage(

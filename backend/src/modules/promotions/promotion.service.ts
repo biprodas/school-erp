@@ -1,4 +1,5 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { FindOptionsWhere } from 'typeorm';
 import { AcademicYearService } from '~/modules/academic-years/academic-year.service';
 import { ClassService } from '~/modules/classes/services/class.service';
 import { SectionService } from '~/modules/sections/section.service';
@@ -24,7 +25,7 @@ export class PromotionService {
   findFiltered(
     filter: FilterPromotionDto,
   ): Promise<Paginated<StudentPromotion>> {
-    const where: Record<string, any> = {};
+    const where: FindOptionsWhere<StudentPromotion> = {};
     if (filter.id) where.id = filter.id;
     if (filter.studentId) where.studentId = filter.studentId;
     if (filter.fromYearId) where.fromYearId = filter.fromYearId;
