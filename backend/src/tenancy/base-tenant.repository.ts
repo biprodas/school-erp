@@ -1,4 +1,9 @@
 import { Inject, NotFoundException } from '@nestjs/common';
+import { Paginated } from '~/common/dto/paginated.dto';
+import {
+  DEFAULT_PAGE_SIZE,
+  PaginationQueryDto,
+} from '~/common/dto/pagination-query.dto';
 import {
   DeepPartial,
   FindManyOptions,
@@ -27,9 +32,9 @@ import { ORG_ID_PROPERTY, scopeRepository } from './org-scoped-repository';
  * Usage:
  * ```ts
  * @Injectable()
- * export class CatRepository extends BaseTenantRepository<Cat> {
+ * export class DepartmentRepository extends BaseTenantRepository<Department> {
  *   constructor(@Inject(TENANT_DATASOURCE) ds: TenantDataSourceProxy) {
- *     super(ds, Cat, 'Cat');
+ *     super(ds, Department, 'Department');
  *   }
  * }
  * ```
@@ -83,6 +88,19 @@ export abstract class BaseTenantRepository<T extends ObjectLiteral> {
     return this.repo.findAndCount(options);
   }
 
+  /** One page of `find(options)` plus the total count for `meta`. */
+  async findPage(
+    options: FindManyOptions<T>,
+    { page = 1, limit = DEFAULT_PAGE_SIZE }: PaginationQueryDto = {},
+  ): Promise<Paginated<T>> {
+    const [items, total] = await this.repo.findAndCount({
+      ...options,
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+    return new Paginated(items, total, { page, limit });
+  }
+
   async count(options?: FindManyOptions<T>): Promise<number> {
     return this.repo.count(options);
   }
@@ -100,11 +118,26 @@ export abstract class BaseTenantRepository<T extends ObjectLiteral> {
     return this.repo.save(entity);
   }
 
+  /**
+   * Entities with a `@DeleteDateColumn` are soft-deleted (the row keeps its
+   * history and children; default finds stop returning it). Others are
+   * deleted for good.
+   */
+  get isSoftDeletable(): boolean {
+    return !!this.repo.metadata.deleteDateColumn;
+  }
+
   async remove(entity: T): Promise<T> {
-    return this.repo.remove(entity);
+    return this.isSoftDeletable
+      ? this.repo.softRemove(entity)
+      : this.repo.remove(entity);
   }
 
   async deleteById(id: string): Promise<void> {
-    await this.repo.delete(id);
+    if (this.isSoftDeletable) {
+      await this.repo.softDelete(id);
+    } else {
+      await this.repo.delete(id);
+    }
   }
 }

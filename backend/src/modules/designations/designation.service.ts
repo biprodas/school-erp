@@ -4,6 +4,7 @@ import { FilterDesignationDto } from './dto/filter-designation.dto';
 import { UpdateDesignationDto } from './dto/update-designation.dto';
 import { Designation } from './entities/designation.entity';
 import { DesignationRepository } from './designation.repository';
+import { Paginated } from '~/common/dto/paginated.dto';
 
 @Injectable()
 export class DesignationService {
@@ -11,12 +12,12 @@ export class DesignationService {
 
   constructor(private readonly designationRepo: DesignationRepository) {}
 
-  async findFiltered(filter: FilterDesignationDto): Promise<Designation[]> {
+  findFiltered(filter: FilterDesignationDto): Promise<Paginated<Designation>> {
     const where: Record<string, any> = {};
     if (filter.id) where.id = filter.id;
     if (filter.title) where.title = filter.title;
     if (filter.isActive !== undefined) where.isActive = filter.isActive;
-    return this.designationRepo.findFiltered(where);
+    return this.designationRepo.findFiltered(where, filter);
   }
 
   async findById(id: string): Promise<Designation> {

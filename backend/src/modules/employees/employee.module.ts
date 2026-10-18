@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
-import { RbacModule } from '../rbac/rbac.module';
-import { UserModule } from '../users/user.module';
-import { DepartmentModule } from '../departments/department.module';
-import { DesignationModule } from '../designations/designation.module';
+import { RbacModule } from '~/modules/rbac/rbac.module';
+import { UserModule } from '~/modules/users/user.module';
+import { DepartmentModule } from '~/modules/departments/department.module';
+import { DesignationModule } from '~/modules/designations/designation.module';
 import { EmployeeController } from './employee.controller';
 import { EmployeeRepository } from './employee.repository';
 import { EmployeeService } from './employee.service';

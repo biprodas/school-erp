@@ -11,14 +11,15 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiHeader, ApiTags } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { PermissionsGuard } from '../rbac/permissions.guard';
-import { PERMISSIONS } from '../rbac/permissions.catalog';
-import { RequirePermissions } from '../rbac/require-permissions.decorator';
+import { JwtAuthGuard } from '~/modules/auth/guards/jwt-auth.guard';
+import { PermissionsGuard } from '~/modules/rbac/guards/permissions.guard';
+import { PERMISSIONS } from '~/modules/rbac/permissions.catalog';
+import { RequirePermissions } from '~/modules/rbac/decorators/require-permissions.decorator';
 import { CreateAcademicYearDto } from './dto/create-academic-year.dto';
 import { FilterAcademicYearDto } from './dto/filter-academic-year.dto';
 import { UpdateAcademicYearDto } from './dto/update-academic-year.dto';
 import { AcademicYearService } from './academic-year.service';
+import { ResponseMessage } from '~/common/decorators/response.decorators';
 
 @ApiTags('Tenant / Academic Years')
 @ApiBearerAuth('tenant-jwt')
@@ -34,63 +35,39 @@ export class AcademicYearController {
 
   @Get()
   @RequirePermissions(PERMISSIONS.ACADEMIC_YEARS_READ)
-  async findAll(@Query() filter: FilterAcademicYearDto) {
-    const academicYears = await this.academicYearService.findFiltered(filter);
-    return {
-      success: true,
-      statusCode: 200,
-      message: 'List of academic years',
-      data: academicYears,
-    };
+  @ResponseMessage('List of academic years')
+  findAll(@Query() filter: FilterAcademicYearDto) {
+    return this.academicYearService.findFiltered(filter);
   }
 
   @Post()
   @RequirePermissions(PERMISSIONS.ACADEMIC_YEARS_CREATE)
-  async create(@Body() dto: CreateAcademicYearDto) {
-    const academicYear = await this.academicYearService.create(dto);
-    return {
-      success: true,
-      statusCode: 201,
-      message: `Academic year created. ID: ${academicYear.id}`,
-      data: academicYear,
-    };
+  @ResponseMessage('Academic year created')
+  create(@Body() dto: CreateAcademicYearDto) {
+    return this.academicYearService.create(dto);
   }
 
   @Get(':id')
   @RequirePermissions(PERMISSIONS.ACADEMIC_YEARS_READ)
-  async findOne(@Param('id', ParseUUIDPipe) id: string) {
-    const academicYear = await this.academicYearService.findById(id);
-    return {
-      success: true,
-      statusCode: 200,
-      message: `Academic year found. ID: ${academicYear.id}`,
-      data: academicYear,
-    };
+  @ResponseMessage('Academic year found')
+  findOne(@Param('id', ParseUUIDPipe) id: string) {
+    return this.academicYearService.findById(id);
   }
 
   @Patch(':id')
   @RequirePermissions(PERMISSIONS.ACADEMIC_YEARS_UPDATE)
-  async update(
+  @ResponseMessage('Academic year updated')
+  update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateAcademicYearDto,
   ) {
-    const academicYear = await this.academicYearService.update(id, dto);
-    return {
-      success: true,
-      statusCode: 200,
-      message: `Academic year updated. ID: ${academicYear.id}`,
-      data: academicYear,
-    };
+    return this.academicYearService.update(id, dto);
   }
 
   @Delete(':id')
   @RequirePermissions(PERMISSIONS.ACADEMIC_YEARS_DELETE)
+  @ResponseMessage('Academic year deleted')
   async remove(@Param('id', ParseUUIDPipe) id: string) {
     await this.academicYearService.remove(id);
-    return {
-      success: true,
-      statusCode: 200,
-      message: `Academic year deleted. ID: ${id}`,
-    };
   }
 }

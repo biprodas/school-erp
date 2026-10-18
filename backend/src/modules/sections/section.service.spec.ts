@@ -25,7 +25,7 @@ describe('SectionService', () => {
       findByName: jest.fn(),
       findFiltered: jest.fn(),
       findByIdOrFail: jest.fn(),
-      saveNew: jest.fn((data) =>
+      saveNew: jest.fn((data: Partial<Section>) =>
         Promise.resolve(makeSection({ id: 'new-sec', ...data })),
       ),
       save: jest.fn((entity) => Promise.resolve(entity)),

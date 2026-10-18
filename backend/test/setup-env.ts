@@ -1,4 +1,3 @@
-import { config } from 'dotenv';
-import { resolve } from 'path';
+import { loadE2eEnv } from './e2e-env';
 
-config({ path: resolve(__dirname, '..', '.env.development') });
+loadE2eEnv();

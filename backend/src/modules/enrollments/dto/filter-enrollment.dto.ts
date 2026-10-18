@@ -1,7 +1,8 @@
 import { IsEnum, IsOptional, IsUUID } from 'class-validator';
 import { StudentEnrollmentStatus } from '../enums/student-enrollment-status.enum';
+import { PaginationQueryDto } from '~/common/dto/pagination-query.dto';
 
-export class FilterEnrollmentDto {
+export class FilterEnrollmentDto extends PaginationQueryDto {
   @IsOptional()
   @IsUUID('4')
   id?: string;

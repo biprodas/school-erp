@@ -3,6 +3,8 @@ import { TENANT_DATASOURCE } from '~/tenancy/tenancy.constants';
 import { TenantDataSourceProxy } from '~/tenancy/tenant-datasource.proxy';
 import { BaseTenantRepository } from '~/tenancy/base-tenant.repository';
 import { Employee } from './entities/employee.entity';
+import { PaginationQueryDto } from '~/common/dto/pagination-query.dto';
+import { Paginated } from '~/common/dto/paginated.dto';
 
 const RELATIONS = ['department', 'designation', 'user'];
 
@@ -24,11 +26,17 @@ export class EmployeeRepository extends BaseTenantRepository<Employee> {
     return this.repo.findOne({ where: { userId } });
   }
 
-  findFiltered(where: Record<string, any>): Promise<Employee[]> {
-    return this.repo.find({
-      where,
-      relations: RELATIONS,
-      order: { createdAt: 'DESC' },
-    });
+  findFiltered(
+    where: Record<string, any>,
+    page: PaginationQueryDto,
+  ): Promise<Paginated<Employee>> {
+    return this.findPage(
+      {
+        where,
+        relations: RELATIONS,
+        order: { createdAt: 'DESC' },
+      },
+      page,
+    );
   }
 }

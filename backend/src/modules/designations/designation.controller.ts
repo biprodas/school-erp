@@ -11,14 +11,15 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiHeader, ApiTags } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { PermissionsGuard } from '../rbac/permissions.guard';
-import { PERMISSIONS } from '../rbac/permissions.catalog';
-import { RequirePermissions } from '../rbac/require-permissions.decorator';
+import { JwtAuthGuard } from '~/modules/auth/guards/jwt-auth.guard';
+import { PermissionsGuard } from '~/modules/rbac/guards/permissions.guard';
+import { PERMISSIONS } from '~/modules/rbac/permissions.catalog';
+import { RequirePermissions } from '~/modules/rbac/decorators/require-permissions.decorator';
 import { CreateDesignationDto } from './dto/create-designation.dto';
 import { FilterDesignationDto } from './dto/filter-designation.dto';
 import { UpdateDesignationDto } from './dto/update-designation.dto';
 import { DesignationService } from './designation.service';
+import { ResponseMessage } from '~/common/decorators/response.decorators';
 
 @ApiTags('Tenant / Designations')
 @ApiBearerAuth('tenant-jwt')
@@ -34,63 +35,39 @@ export class DesignationController {
 
   @Get()
   @RequirePermissions(PERMISSIONS.DESIGNATIONS_READ)
-  async findAll(@Query() filter: FilterDesignationDto) {
-    const designations = await this.designationService.findFiltered(filter);
-    return {
-      success: true,
-      statusCode: 200,
-      message: 'List of designations',
-      data: designations,
-    };
+  @ResponseMessage('List of designations')
+  findAll(@Query() filter: FilterDesignationDto) {
+    return this.designationService.findFiltered(filter);
   }
 
   @Post()
   @RequirePermissions(PERMISSIONS.DESIGNATIONS_CREATE)
-  async create(@Body() dto: CreateDesignationDto) {
-    const designation = await this.designationService.create(dto);
-    return {
-      success: true,
-      statusCode: 201,
-      message: `Designation created. ID: ${designation.id}`,
-      data: designation,
-    };
+  @ResponseMessage('Designation created')
+  create(@Body() dto: CreateDesignationDto) {
+    return this.designationService.create(dto);
   }
 
   @Get(':id')
   @RequirePermissions(PERMISSIONS.DESIGNATIONS_READ)
-  async findOne(@Param('id', ParseUUIDPipe) id: string) {
-    const designation = await this.designationService.findById(id);
-    return {
-      success: true,
-      statusCode: 200,
-      message: `Designation found. ID: ${designation.id}`,
-      data: designation,
-    };
+  @ResponseMessage('Designation found')
+  findOne(@Param('id', ParseUUIDPipe) id: string) {
+    return this.designationService.findById(id);
   }
 
   @Patch(':id')
   @RequirePermissions(PERMISSIONS.DESIGNATIONS_UPDATE)
-  async update(
+  @ResponseMessage('Designation updated')
+  update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateDesignationDto,
   ) {
-    const designation = await this.designationService.update(id, dto);
-    return {
-      success: true,
-      statusCode: 200,
-      message: `Designation updated. ID: ${designation.id}`,
-      data: designation,
-    };
+    return this.designationService.update(id, dto);
   }
 
   @Delete(':id')
   @RequirePermissions(PERMISSIONS.DESIGNATIONS_DELETE)
+  @ResponseMessage('Designation deleted')
   async remove(@Param('id', ParseUUIDPipe) id: string) {
     await this.designationService.remove(id);
-    return {
-      success: true,
-      statusCode: 200,
-      message: `Designation deleted. ID: ${id}`,
-    };
   }
 }

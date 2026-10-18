@@ -9,7 +9,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { OrgScopedEntity } from '~/tenancy/org-scoped.entity';
-import { Subject } from '../../subjects/entities/subject.entity';
+import { Subject } from '~/modules/subjects/entities/subject.entity';
 import { SubjectGroup } from './subject-group.entity';
 
 /** Membership of a {@link Subject} in a {@link SubjectGroup}. */

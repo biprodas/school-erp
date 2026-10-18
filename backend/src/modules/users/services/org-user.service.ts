@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  Inject,
   Injectable,
   Logger,
   NotFoundException,
@@ -7,14 +8,15 @@ import {
 import * as bcrypt from 'bcrypt';
 import { Membership } from '~/modules/memberships/entities/membership.entity';
 import { MembershipStatus } from '~/modules/memberships/enums/membership-status.enum';
-import { UserStatus } from '~/modules/users/enums/user-status.enum';
-import { RoleRepository } from '../../rbac/role.repository';
-import { UserRoleRepository } from '../../rbac/user-role.repository';
+import { UserStatus } from '../enums/user-status.enum';
+import { RoleService } from '~/modules/rbac/services/role.service';
 import { AccountRepository } from '../repositories/account.repository';
 import { MemberRepository } from '../repositories/member.repository';
 import { CreateOrgUserDto } from '../dto/create-org-user.dto';
 import { FilterOrgUserDto } from '../dto/filter-org-user.dto';
 import { UpdateOrgUserDto } from '../dto/update-org-user.dto';
+import { TENANT_DATASOURCE } from '~/tenancy/tenancy.constants';
+import { TenantDataSourceProxy } from '~/tenancy/tenant-datasource.proxy';
 
 /**
  * A member of the current organization: the global user account merged with
@@ -46,12 +48,12 @@ export class OrgUserService {
   constructor(
     private readonly accountRepo: AccountRepository,
     private readonly memberRepo: MemberRepository,
-    private readonly roleRepo: RoleRepository,
-    private readonly userRoleRepo: UserRoleRepository,
+    private readonly roleService: RoleService,
+    @Inject(TENANT_DATASOURCE) private readonly ds: TenantDataSourceProxy,
   ) {}
 
   private async serialize(members: Membership[]): Promise<SerializedUser[]> {
-    const assignments = await this.userRoleRepo.findByUserIds(
+    const assignments = await this.roleService.findAssignments(
       members.map((m) => m.userId),
     );
     return members.map((m) => ({
@@ -79,8 +81,7 @@ export class OrgUserService {
 
     let userIds: string[] | undefined;
     if (roleId) {
-      const assignments = await this.userRoleRepo.findByRoleId(roleId);
-      userIds = assignments.map((a) => a.userId);
+      userIds = await this.roleService.findUserIdsWithRole(roleId);
       if (!userIds.length) return [];
     }
 
@@ -107,48 +108,56 @@ export class OrgUserService {
     return member;
   }
 
+  /** Gives a member of this org a role (users are global accounts). */
+  async assignRole(userId: string, roleId: string): Promise<void> {
+    await this.getMemberOrFail(userId);
+    await this.roleService.assignRole(userId, roleId);
+  }
+
   /**
    * Adds a user to this school. A brand-new email creates the global
    * account with the given password; an existing account is linked as-is
    * (its password is never changed from here).
    */
-  async create(dto: CreateOrgUserDto): Promise<SerializedUser> {
-    this.logger.log(`${this.create.name} Service Called`);
+  create(dto: CreateOrgUserDto): Promise<SerializedUser> {
+    return this.ds.runInTransaction(async () => {
+      this.logger.log(`${this.create.name} Service Called`);
 
-    // Validate the requested roles up front so we never create a member
-    // and then fail half-way through assigning roles.
-    const roleIds = [...new Set(dto.roleIds ?? [])];
-    for (const roleId of roleIds) {
-      await this.roleRepo.findByIdOrFail(roleId);
-    }
-
-    let account = await this.accountRepo.findByEmail(dto.email);
-    if (account) {
-      const existing = await this.memberRepo.findByUserId(account.id);
-      if (existing) {
-        throw new ConflictException(
-          'User is already a member of this organization',
-        );
+      // Validate the requested roles up front so we never create a member
+      // and then fail half-way through assigning roles.
+      const roleIds = [...new Set(dto.roleIds ?? [])];
+      for (const roleId of roleIds) {
+        await this.roleService.findById(roleId);
       }
-    } else {
-      account = await this.accountRepo.saveNew({
-        name: dto.name,
-        email: dto.email,
-        password: await bcrypt.hash(dto.password, 10),
-        status: UserStatus.ACTIVE,
+
+      let account = await this.accountRepo.findByEmail(dto.email);
+      if (account) {
+        const existing = await this.memberRepo.findByUserId(account.id);
+        if (existing) {
+          throw new ConflictException(
+            'User is already a member of this organization',
+          );
+        }
+      } else {
+        account = await this.accountRepo.saveNew({
+          name: dto.name,
+          email: dto.email,
+          password: await bcrypt.hash(dto.password, 10),
+          status: UserStatus.ACTIVE,
+        });
+      }
+
+      await this.memberRepo.saveNew({
+        userId: account.id,
+        status: dto.status ?? MembershipStatus.ACTIVE,
       });
-    }
 
-    await this.memberRepo.saveNew({
-      userId: account.id,
-      status: dto.status ?? MembershipStatus.ACTIVE,
+      for (const roleId of roleIds) {
+        await this.roleService.assignRole(account.id, roleId);
+      }
+
+      return this.findById(account.id);
     });
-
-    for (const roleId of roleIds) {
-      await this.userRoleRepo.assign(account.id, roleId);
-    }
-
-    return this.findById(account.id);
   }
 
   async update(id: string, dto: UpdateOrgUserDto): Promise<SerializedUser> {
@@ -167,12 +176,14 @@ export class OrgUserService {
   }
 
   /** Removes the user from this org (membership + role assignments only). */
-  async remove(id: string): Promise<void> {
-    this.logger.log(`${this.remove.name} Service Called`);
+  remove(id: string): Promise<void> {
+    return this.ds.runInTransaction(async () => {
+      this.logger.log(`${this.remove.name} Service Called`);
 
-    const member = await this.getMemberOrFail(id);
-    await this.userRoleRepo.unassignAll(id);
-    await this.memberRepo.deleteById(member.id);
+      const member = await this.getMemberOrFail(id);
+      await this.roleService.unassignAll(id);
+      await this.memberRepo.deleteById(member.id);
+    });
   }
 
   async getProfile(userId: string): Promise<SerializedUser> {

@@ -8,6 +8,7 @@ import {
 import { ApiTags } from '@nestjs/swagger';
 import { OrganizationStatus } from '../enums/organization-status.enum';
 import { OrganizationService } from '../services/organization.service';
+import { ResponseMessage } from '~/common/decorators/response.decorators';
 
 /**
  * Public, unauthenticated organization discovery for the frontend.
@@ -23,6 +24,7 @@ export class PublicOrganizationController {
   constructor(private readonly organizationService: OrganizationService) {}
 
   @Get('resolve')
+  @ResponseMessage('Organization resolved')
   async resolve(@Query('host') host?: string) {
     if (!host) {
       throw new BadRequestException('host query parameter is required');
@@ -34,18 +36,14 @@ export class PublicOrganizationController {
     }
 
     return {
-      success: true,
-      statusCode: 200,
-      message: 'Organization resolved',
-      data: {
-        slug: organization.slug,
-        name: organization.name,
-        status: organization.status,
-      },
+      slug: organization.slug,
+      name: organization.name,
+      status: organization.status,
     };
   }
 
   @Get('by-slug')
+  @ResponseMessage('Organization resolved')
   async bySlug(@Query('slug') slug?: string) {
     if (!slug) {
       throw new BadRequestException('slug query parameter is required');
@@ -57,14 +55,9 @@ export class PublicOrganizationController {
     }
 
     return {
-      success: true,
-      statusCode: 200,
-      message: 'Organization resolved',
-      data: {
-        slug: organization.slug,
-        name: organization.name,
-        status: organization.status,
-      },
+      slug: organization.slug,
+      name: organization.name,
+      status: organization.status,
     };
   }
 }

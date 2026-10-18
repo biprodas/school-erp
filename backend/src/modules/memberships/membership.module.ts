@@ -3,16 +3,16 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Membership } from './entities/membership.entity';
 import { MembershipService } from './services/membership.service';
 import { MembershipController } from './controllers/membership.controller';
-import { OrganizationModule } from 'src/modules/organizations/organization.module';
-import { UserModule } from 'src/modules/users/user.module';
-import { RbacModule } from '~/modules/rbac/rbac.module';
+import { OrganizationModule } from '~/modules/organizations/organization.module';
+import { UserModule } from '~/modules/users/user.module';
+import { AuthModule } from '~/modules/auth/auth.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Membership]),
     OrganizationModule,
     UserModule,
-    RbacModule,
+    AuthModule,
   ],
   controllers: [MembershipController],
   providers: [MembershipService],

@@ -8,7 +8,7 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { AuthTokenType } from '~/common/tokens/auth-token-type.enum';
-import { Organization } from 'src/modules/organizations/entities/organization.entity';
+import { Organization } from '~/modules/organizations/entities/organization.entity';
 
 /**
  * One-time auth token for a (global) user — email verification, password

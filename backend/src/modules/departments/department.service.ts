@@ -4,6 +4,7 @@ import { FilterDepartmentDto } from './dto/filter-department.dto';
 import { UpdateDepartmentDto } from './dto/update-department.dto';
 import { Department } from './entities/department.entity';
 import { DepartmentRepository } from './department.repository';
+import { Paginated } from '~/common/dto/paginated.dto';
 
 @Injectable()
 export class DepartmentService {
@@ -11,12 +12,12 @@ export class DepartmentService {
 
   constructor(private readonly departmentRepo: DepartmentRepository) {}
 
-  async findFiltered(filter: FilterDepartmentDto): Promise<Department[]> {
+  findFiltered(filter: FilterDepartmentDto): Promise<Paginated<Department>> {
     const where: Record<string, any> = {};
     if (filter.id) where.id = filter.id;
     if (filter.name) where.name = filter.name;
     if (filter.isActive !== undefined) where.isActive = filter.isActive;
-    return this.departmentRepo.findFiltered(where);
+    return this.departmentRepo.findFiltered(where, filter);
   }
 
   async findById(id: string): Promise<Department> {

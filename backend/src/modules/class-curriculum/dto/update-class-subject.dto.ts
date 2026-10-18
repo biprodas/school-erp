@@ -1,22 +1,11 @@
-import { IsBoolean, IsInt, IsOptional, Min } from 'class-validator';
+import { OmitType, PartialType } from '@nestjs/swagger';
+import { CreateClassSubjectDto } from './create-class-subject.dto';
 
-export class UpdateClassSubjectDto {
-  @IsOptional()
-  @IsBoolean()
-  isCompulsory?: boolean;
-
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  weeklyClasses?: number;
-
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  passMarks?: number;
-
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  fullMarks?: number;
-}
+/** The class, subject and year identify the row and cannot change. */
+export class UpdateClassSubjectDto extends PartialType(
+  OmitType(CreateClassSubjectDto, [
+    'classId',
+    'subjectId',
+    'academicYearId',
+  ] as const),
+) {}

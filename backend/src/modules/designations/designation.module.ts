@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { RbacModule } from '../rbac/rbac.module';
+import { RbacModule } from '~/modules/rbac/rbac.module';
 import { DesignationController } from './designation.controller';
 import { DesignationRepository } from './designation.repository';
 import { DesignationService } from './designation.service';
@@ -8,6 +8,6 @@ import { DesignationService } from './designation.service';
   imports: [RbacModule],
   controllers: [DesignationController],
   providers: [DesignationRepository, DesignationService],
-  exports: [DesignationService, DesignationRepository],
+  exports: [DesignationService],
 })
 export class DesignationModule {}

@@ -1,3 +1,4 @@
+import { Exclude } from 'class-transformer';
 import {
   AfterInsert,
   AfterRemove,
@@ -12,7 +13,7 @@ import {
 } from 'typeorm';
 import { PlatformRole } from '../enums/platform-role.enum';
 import { UserStatus } from '../enums/user-status.enum';
-import { Membership } from 'src/modules/memberships/entities/membership.entity';
+import { Membership } from '~/modules/memberships/entities/membership.entity';
 
 @Entity('users', { schema: 'public' })
 export class User {
@@ -22,7 +23,12 @@ export class User {
   @Column({ unique: true })
   email: string;
 
-  /** Never returned by default queries — use { select: [..., 'password'] } explicitly */
+  /**
+   * Never returned by default queries — use { select: [..., 'password'] }
+   * explicitly. Also stripped from API responses in case such an entity is
+   * ever returned (ClassSerializerInterceptor honours @Exclude).
+   */
+  @Exclude({ toPlainOnly: true })
   @Column({ select: false })
   password: string;
 

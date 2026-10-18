@@ -1,12 +1,12 @@
 import { Module } from '@nestjs/common';
-import { RbacModule } from '../rbac/rbac.module';
-import { StudentModule } from '../students/student.module';
-import { UserModule } from '../users/user.module';
-import { GuardianController } from './guardian.controller';
-import { GuardianRepository } from './guardian.repository';
-import { GuardianService } from './guardian.service';
-import { StudentGuardianController } from './student-guardian.controller';
-import { StudentGuardianRepository } from './student-guardian.repository';
+import { RbacModule } from '~/modules/rbac/rbac.module';
+import { StudentModule } from '~/modules/students/student.module';
+import { UserModule } from '~/modules/users/user.module';
+import { GuardianController } from './controllers/guardian.controller';
+import { GuardianRepository } from './repositories/guardian.repository';
+import { GuardianService } from './services/guardian.service';
+import { StudentGuardianController } from './controllers/student-guardian.controller';
+import { StudentGuardianRepository } from './repositories/student-guardian.repository';
 
 @Module({
   imports: [RbacModule, UserModule, StudentModule],

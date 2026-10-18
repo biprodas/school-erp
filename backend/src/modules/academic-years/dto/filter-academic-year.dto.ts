@@ -6,6 +6,7 @@ import {
   IsUUID,
   MaxLength,
 } from 'class-validator';
+import { PaginationQueryDto } from '~/common/dto/pagination-query.dto';
 
 const toBoolean = ({ value }: { value: unknown }): unknown => {
   if (value === 'true' || value === true) return true;
@@ -13,7 +14,7 @@ const toBoolean = ({ value }: { value: unknown }): unknown => {
   return value;
 };
 
-export class FilterAcademicYearDto {
+export class FilterAcademicYearDto extends PaginationQueryDto {
   @IsOptional()
   @IsUUID('4')
   id?: string;

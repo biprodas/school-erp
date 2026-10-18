@@ -18,6 +18,7 @@ import { CreateOrganizationDto } from '../dto/create-organization.dto';
 import { TransferOwnershipDto } from '../dto/transfer-ownership.dto';
 import { UpdateOrganizationDto } from '../dto/update-organization.dto';
 import { OrganizationService } from '../services/organization.service';
+import { ResponseMessage } from '~/common/decorators/response.decorators';
 
 @ApiTags('Platform / Organizations')
 @ApiBearerAuth('platform-jwt')
@@ -27,37 +28,22 @@ export class OrganizationController {
   constructor(private organizationService: OrganizationService) {}
 
   @Get()
-  async findAll(@RequestContext() ctx: RequestContextDto) {
-    const organizations =
-      await this.organizationService.getAllOrganizations(ctx);
-
-    return {
-      success: true,
-      statusCode: 200,
-      message: `List of organizations`,
-      data: organizations,
-    };
+  @ResponseMessage('List of organizations')
+  findAll(@RequestContext() ctx: RequestContextDto) {
+    return this.organizationService.getAllOrganizations(ctx);
   }
 
   @Get(':id')
-  async findOne(
+  @ResponseMessage('Organization found')
+  findOne(
     @RequestContext() ctx: RequestContextDto,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    const organization = await this.organizationService.findByIdForUser(
-      ctx,
-      id,
-    );
-
-    return {
-      success: true,
-      statusCode: 200,
-      message: `Organization found`,
-      data: organization,
-    };
+    return this.organizationService.findByIdForUser(ctx, id);
   }
 
   @Post()
+  @ResponseMessage('Organization created successfully')
   async create(
     @RequestContext() ctx: RequestContextDto,
     @Body() createOrganizationDto: CreateOrganizationDto,
@@ -68,36 +54,26 @@ export class OrganizationController {
         createOrganizationDto,
       );
 
-    return {
-      success: true,
-      statusCode: 201,
-      message: `Organization created successfully`,
-      data: { ...organization, activation: ownerActivation ?? null },
-    };
+    return { ...organization, activation: ownerActivation ?? null };
   }
 
   @Patch(':id')
-  async update(
+  @ResponseMessage('Organization updated successfully')
+  update(
     @RequestContext() ctx: RequestContextDto,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateOrganizationDto: UpdateOrganizationDto,
   ) {
-    const organization = await this.organizationService.updateOrganization(
+    return this.organizationService.updateOrganization(
       ctx,
       id,
       updateOrganizationDto,
     );
-
-    return {
-      success: true,
-      statusCode: 200,
-      message: `Organization updated successfully`,
-      data: organization,
-    };
   }
 
   @Post(':id/transfer-ownership')
   @UseGuards(PlatformAdminGuard)
+  @ResponseMessage('Organization ownership transferred')
   async transferOwnership(
     @RequestContext() ctx: RequestContextDto,
     @Param('id', ParseUUIDPipe) id: string,
@@ -106,44 +82,25 @@ export class OrganizationController {
     const { membership, ownerActivation } =
       await this.organizationService.transferOwnership(ctx, id, dto);
 
-    return {
-      success: true,
-      statusCode: 200,
-      message: 'Organization ownership transferred',
-      data: { ...membership, activation: ownerActivation ?? null },
-    };
+    return { ...membership, activation: ownerActivation ?? null };
   }
 
   @Post(':id/owner/activation-link')
-  async reissueOwnerActivation(
+  @ResponseMessage('Owner activation link issued')
+  reissueOwnerActivation(
     @RequestContext() ctx: RequestContextDto,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    const activation = await this.organizationService.reissueOwnerActivation(
-      ctx,
-      id,
-    );
-
-    return {
-      success: true,
-      statusCode: 200,
-      message: 'Owner activation link issued',
-      data: activation,
-    };
+    return this.organizationService.reissueOwnerActivation(ctx, id);
   }
 
   @Delete(':id')
   @UseGuards(PlatformAdminGuard)
+  @ResponseMessage('Organization deleted successfully')
   async remove(
     @RequestContext() ctx: RequestContextDto,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
     await this.organizationService.deleteOrganization(ctx, id);
-
-    return {
-      success: true,
-      statusCode: 200,
-      message: `Organization deleted successfully`,
-    };
   }
 }

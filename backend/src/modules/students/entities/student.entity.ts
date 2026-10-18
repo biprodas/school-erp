@@ -16,7 +16,7 @@ import {
 } from 'typeorm';
 import { OrgScopedEntity } from '~/tenancy/org-scoped.entity';
 import { User } from '~/modules/users/entities/user.entity';
-import { StudentGuardian } from '../../guardians/entities/student-guardian.entity';
+import { StudentGuardian } from '~/modules/guardians/entities/student-guardian.entity';
 import { AdmissionType } from '../enums/admission-type.enum';
 import { StudentGender } from '../enums/student-gender.enum';
 import { StudentStatus } from '../enums/student-status.enum';
@@ -27,8 +27,10 @@ import { StudentMedicalRecord } from './student-medical-record.entity';
 import { StudentNote } from './student-note.entity';
 
 @Entity('students')
+// Partial: a soft-deleted student doesn't block reusing the number.
 @Index('uq_students_org_admission_number', ['orgId', 'admissionNumber'], {
   unique: true,
+  where: '"deleted_at" IS NULL',
 })
 export class Student extends OrgScopedEntity {
   @PrimaryGeneratedColumn('uuid')

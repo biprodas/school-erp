@@ -5,13 +5,13 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Not, Repository } from 'typeorm';
+import { DataSource, Not, Repository, FindOptionsWhere } from 'typeorm';
 import { RequestContextDto } from '~/common/dto/request-context.dto';
 import {
   OwnerActivation,
   OrganizationService,
-} from 'src/modules/organizations/services/organization.service';
-import { UserService } from 'src/modules/users/services/user.service';
+} from '~/modules/organizations/services/organization.service';
+import { UserService } from '~/modules/users/services/user.service';
 import { OwnerProvisioningService } from '~/modules/auth/services/owner-provisioning.service';
 import { UserRole } from '~/modules/rbac/entities/user-role.entity';
 import { CreateMembershipDto } from '../dto/create-membership.dto';
@@ -134,7 +134,7 @@ export class MembershipService {
   ): Promise<Membership[]> {
     const { userId, orgId } = dto;
 
-    const reqQuery: any = {};
+    const reqQuery: FindOptionsWhere<Membership> = {};
     if (userId) reqQuery.userId = userId;
     if (orgId) reqQuery.orgId = orgId;
 

@@ -1,20 +1,23 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
+import { App } from 'supertest/types';
 import { JwtModule, JwtService } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { getRepositoryToken, getDataSourceToken } from '@nestjs/typeorm';
-import { OrganizationController } from 'src/modules/organizations/controllers/organization.controller';
-import { OrganizationService } from 'src/modules/organizations/services/organization.service';
-import { Organization } from 'src/modules/organizations/entities/organization.entity';
-import { Membership } from 'src/modules/memberships/entities/membership.entity';
-import { MembershipRole } from 'src/modules/memberships/enums/membership-role.enum';
-import { PlatformJwtStrategy } from 'src/modules/auth/strategies/platform-jwt.strategy';
-import { UserStatus } from 'src/modules/users/enums/user-status.enum';
-import { UserService } from 'src/modules/users/services/user.service';
-import { RbacSeederService } from '~/modules/rbac/rbac-seeder.service';
+import { OrganizationController } from '~/modules/organizations/controllers/organization.controller';
+import { OrganizationService } from '~/modules/organizations/services/organization.service';
+import { Organization } from '~/modules/organizations/entities/organization.entity';
+import { Membership } from '~/modules/memberships/entities/membership.entity';
+import { MembershipRole } from '~/modules/memberships/enums/membership-role.enum';
+import { PlatformJwtStrategy } from '~/modules/auth/strategies/platform-jwt.strategy';
+import { UserStatus } from '~/modules/users/enums/user-status.enum';
+import { UserService } from '~/modules/users/services/user.service';
+import { RbacSeederService } from '~/modules/rbac/services/rbac-seeder.service';
 import { OwnerProvisioningService } from '~/modules/auth/services/owner-provisioning.service';
 import { ConfigService } from '@nestjs/config';
+import { Reflector } from '@nestjs/core';
+import { ResponseEnvelopeInterceptor } from '~/common/interceptors/response-envelope.interceptor';
 
 const JWT_SECRET = 'test-secret-key-for-e2e-testing-32chars!';
 
@@ -36,7 +39,7 @@ const makeTenant = (overrides: Partial<Organization> = {}): Organization =>
   }) as Organization;
 
 describe('Organization E2E', () => {
-  let app: INestApplication;
+  let app: INestApplication<App>;
   let jwtService: JwtService;
   let tenantRepo: Record<string, jest.Mock>;
   let membershipRepo: Record<string, jest.Mock>;
@@ -68,13 +71,16 @@ describe('Organization E2E', () => {
     membershipRepo = {
       findOne: jest.fn(),
       find: jest.fn(),
-      create: jest.fn((data) => ({ ...data })),
+      create: jest.fn((data: object) => ({ ...data })),
       save: jest.fn((entity) => Promise.resolve(entity)),
     };
 
     const manager = {
       findOne: jest.fn().mockResolvedValue(null),
-      create: jest.fn((_, data) => ({ id: TENANT_ID, ...data })),
+      create: jest.fn((_: unknown, data: object) => ({
+        id: TENANT_ID,
+        ...data,
+      })),
       save: jest.fn((entity) => Promise.resolve(entity)),
     };
 
@@ -94,7 +100,11 @@ describe('Organization E2E', () => {
         { provide: getRepositoryToken(Membership), useValue: membershipRepo },
         {
           provide: getDataSourceToken(),
-          useValue: { transaction: jest.fn(async (cb: any) => cb(manager)) },
+          useValue: {
+            transaction: jest.fn((cb: (m: typeof manager) => unknown) =>
+              Promise.resolve(cb(manager)),
+            ),
+          },
         },
         {
           provide: RbacSeederService,
@@ -132,6 +142,9 @@ describe('Organization E2E', () => {
     app.useGlobalPipes(
       new ValidationPipe({ whitelist: true, transform: true }),
     );
+    app.useGlobalInterceptors(
+      new ResponseEnvelopeInterceptor(app.get(Reflector)),
+    );
     await app.init();
 
     jwtService = module.get<JwtService>(JwtService);
@@ -163,7 +176,7 @@ describe('Organization E2E', () => {
         .set('Authorization', `Bearer ${adminToken()}`)
         .expect(200);
 
-      expect(res.body.data).toHaveLength(2);
+      expect((res.body as { data: unknown[] }).data).toHaveLength(2);
     });
 
     it('Regular USER sees only tenants with membership', async () => {
@@ -175,7 +188,7 @@ describe('Organization E2E', () => {
         .set('Authorization', `Bearer ${userToken()}`)
         .expect(200);
 
-      expect(res.body.data).toHaveLength(1);
+      expect((res.body as { data: unknown[] }).data).toHaveLength(1);
     });
   });
 
@@ -234,7 +247,7 @@ describe('Organization E2E', () => {
         .send({ name: 'New School', slug: 'new_school' })
         .expect(201);
 
-      expect(res.body.success).toBe(true);
+      expect((res.body as { success: boolean }).success).toBe(true);
     });
   });
 

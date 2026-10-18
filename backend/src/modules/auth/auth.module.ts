@@ -5,9 +5,9 @@ import type { SignOptions } from 'jsonwebtoken';
 import type { StringValue } from 'ms';
 import { PassportModule } from '@nestjs/passport';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { User } from '../users/entities/user.entity';
-import { UserModule } from '../users/user.module';
-import { RbacModule } from '../rbac/rbac.module';
+import { User } from '~/modules/users/entities/user.entity';
+import { UserModule } from '~/modules/users/user.module';
+import { RbacModule } from '~/modules/rbac/rbac.module';
 import { AuthToken } from './entities/auth-token.entity';
 import { AuthController } from './controllers/auth.controller';
 import { PlatformAuthController } from './controllers/platform-auth.controller';
@@ -16,6 +16,7 @@ import { PlatformAuthService } from './services/platform-auth.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { PlatformJwtStrategy } from './strategies/platform-jwt.strategy';
 import { AuthTokenRepository } from './repositories/auth-token.repository';
+import { OwnerProvisioningService } from './services/owner-provisioning.service';
 
 /**
  * Both auth realms, sharing one JWT signing config:
@@ -53,7 +54,8 @@ import { AuthTokenRepository } from './repositories/auth-token.repository';
     AuthService,
     JwtStrategy,
     AuthTokenRepository,
+    OwnerProvisioningService,
   ],
-  exports: [PlatformAuthService],
+  exports: [PlatformAuthService, OwnerProvisioningService],
 })
 export class AuthModule {}

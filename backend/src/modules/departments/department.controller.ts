@@ -11,14 +11,15 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiHeader, ApiTags } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { PermissionsGuard } from '../rbac/permissions.guard';
-import { PERMISSIONS } from '../rbac/permissions.catalog';
-import { RequirePermissions } from '../rbac/require-permissions.decorator';
+import { JwtAuthGuard } from '~/modules/auth/guards/jwt-auth.guard';
+import { PermissionsGuard } from '~/modules/rbac/guards/permissions.guard';
+import { PERMISSIONS } from '~/modules/rbac/permissions.catalog';
+import { RequirePermissions } from '~/modules/rbac/decorators/require-permissions.decorator';
 import { CreateDepartmentDto } from './dto/create-department.dto';
 import { FilterDepartmentDto } from './dto/filter-department.dto';
 import { UpdateDepartmentDto } from './dto/update-department.dto';
 import { DepartmentService } from './department.service';
+import { ResponseMessage } from '~/common/decorators/response.decorators';
 
 @ApiTags('Tenant / Departments')
 @ApiBearerAuth('tenant-jwt')
@@ -34,63 +35,39 @@ export class DepartmentController {
 
   @Get()
   @RequirePermissions(PERMISSIONS.DEPARTMENTS_READ)
-  async findAll(@Query() filter: FilterDepartmentDto) {
-    const departments = await this.departmentService.findFiltered(filter);
-    return {
-      success: true,
-      statusCode: 200,
-      message: 'List of departments',
-      data: departments,
-    };
+  @ResponseMessage('List of departments')
+  findAll(@Query() filter: FilterDepartmentDto) {
+    return this.departmentService.findFiltered(filter);
   }
 
   @Post()
   @RequirePermissions(PERMISSIONS.DEPARTMENTS_CREATE)
-  async create(@Body() dto: CreateDepartmentDto) {
-    const department = await this.departmentService.create(dto);
-    return {
-      success: true,
-      statusCode: 201,
-      message: `Department created. ID: ${department.id}`,
-      data: department,
-    };
+  @ResponseMessage('Department created')
+  create(@Body() dto: CreateDepartmentDto) {
+    return this.departmentService.create(dto);
   }
 
   @Get(':id')
   @RequirePermissions(PERMISSIONS.DEPARTMENTS_READ)
-  async findOne(@Param('id', ParseUUIDPipe) id: string) {
-    const department = await this.departmentService.findById(id);
-    return {
-      success: true,
-      statusCode: 200,
-      message: `Department found. ID: ${department.id}`,
-      data: department,
-    };
+  @ResponseMessage('Department found')
+  findOne(@Param('id', ParseUUIDPipe) id: string) {
+    return this.departmentService.findById(id);
   }
 
   @Patch(':id')
   @RequirePermissions(PERMISSIONS.DEPARTMENTS_UPDATE)
-  async update(
+  @ResponseMessage('Department updated')
+  update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateDepartmentDto,
   ) {
-    const department = await this.departmentService.update(id, dto);
-    return {
-      success: true,
-      statusCode: 200,
-      message: `Department updated. ID: ${department.id}`,
-      data: department,
-    };
+    return this.departmentService.update(id, dto);
   }
 
   @Delete(':id')
   @RequirePermissions(PERMISSIONS.DEPARTMENTS_DELETE)
+  @ResponseMessage('Department deleted')
   async remove(@Param('id', ParseUUIDPipe) id: string) {
     await this.departmentService.remove(id);
-    return {
-      success: true,
-      statusCode: 200,
-      message: `Department deleted. ID: ${id}`,
-    };
   }
 }

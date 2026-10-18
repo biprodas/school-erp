@@ -1,27 +1,7 @@
-import {
-  IsEnum,
-  IsOptional,
-  IsString,
-  IsUUID,
-  MaxLength,
-} from 'class-validator';
-import { StudentEnrollmentStatus } from '../enums/student-enrollment-status.enum';
+import { OmitType, PartialType } from '@nestjs/swagger';
+import { CreateEnrollmentDto } from './create-enrollment.dto';
 
-export class UpdateEnrollmentDto {
-  @IsOptional()
-  @IsUUID('4')
-  classId?: string;
-
-  @IsOptional()
-  @IsUUID('4')
-  sectionId?: string;
-
-  @IsOptional()
-  @IsString()
-  @MaxLength(40)
-  rollNo?: string;
-
-  @IsOptional()
-  @IsEnum(StudentEnrollmentStatus)
-  status?: StudentEnrollmentStatus;
-}
+/** The student and year identify the enrollment and cannot change. */
+export class UpdateEnrollmentDto extends PartialType(
+  OmitType(CreateEnrollmentDto, ['studentId', 'academicYearId'] as const),
+) {}

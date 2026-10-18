@@ -1,16 +1,16 @@
 import { Module } from '@nestjs/common';
-import { RbacModule } from '../rbac/rbac.module';
-import { AcademicYearModule } from '../academic-years/academic-year.module';
-import { ClassModule } from '../classes/class.module';
-import { EmployeeModule } from '../employees/employee.module';
-import { SectionModule } from '../sections/section.module';
-import { SubjectModule } from '../subjects/subject.module';
-import { ClassTeacherController } from './class-teacher.controller';
-import { SubjectTeacherController } from './subject-teacher.controller';
-import { ClassTeacherRepository } from './class-teacher.repository';
-import { SubjectTeacherRepository } from './subject-teacher.repository';
-import { ClassTeacherService } from './class-teacher.service';
-import { SubjectTeacherService } from './subject-teacher.service';
+import { RbacModule } from '~/modules/rbac/rbac.module';
+import { AcademicYearModule } from '~/modules/academic-years/academic-year.module';
+import { ClassModule } from '~/modules/classes/class.module';
+import { EmployeeModule } from '~/modules/employees/employee.module';
+import { SectionModule } from '~/modules/sections/section.module';
+import { SubjectModule } from '~/modules/subjects/subject.module';
+import { ClassTeacherController } from './controllers/class-teacher.controller';
+import { SubjectTeacherController } from './controllers/subject-teacher.controller';
+import { ClassTeacherRepository } from './repositories/class-teacher.repository';
+import { SubjectTeacherRepository } from './repositories/subject-teacher.repository';
+import { ClassTeacherService } from './services/class-teacher.service';
+import { SubjectTeacherService } from './services/subject-teacher.service';
 
 @Module({
   imports: [

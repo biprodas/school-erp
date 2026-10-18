@@ -8,13 +8,18 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { OrgScopedEntity } from '~/tenancy/org-scoped.entity';
-import { Student } from '../../students/entities/student.entity';
+import { Student } from '~/modules/students/entities/student.entity';
 import { GuardianRelation } from '../enums/guardian-relation.enum';
 import { Guardian } from './guardian.entity';
 
 @Entity('student_guardians')
 @Index('uq_student_guardian', ['orgId', 'studentId', 'guardianId'], {
   unique: true,
+})
+// At most one primary guardian per student.
+@Index('uq_student_guardians_org_primary', ['orgId', 'studentId'], {
+  unique: true,
+  where: '"is_primary"',
 })
 export class StudentGuardian extends OrgScopedEntity {
   @PrimaryGeneratedColumn('uuid')

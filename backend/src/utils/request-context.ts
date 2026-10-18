@@ -3,13 +3,7 @@ import { plainToClass } from 'class-transformer';
 import { RequestContextDto } from '~/common/dto/request-context.dto';
 import { Key } from '~/common/enums/keys.enum';
 import type { RequestWithOrg } from '~/tenancy/tenant.middleware';
-import { UserDto } from 'src/modules/users/dto/user.dto';
-
-declare module 'express' {
-  export interface Request {
-    user: UserDto;
-  }
-}
+import { UserDto } from '~/modules/users/dto/user.dto';
 
 // Creates a RequestContext object from Request
 export function createRequestContext(request: Request): RequestContextDto {
@@ -25,13 +19,12 @@ export function createRequestContext(request: Request): RequestContextDto {
 
   ctx.orgId = (request as RequestWithOrg).orgId ?? null;
 
-  const authUser = request.user as (UserDto & { userId?: string }) | undefined;
+  const authUser = request.user;
   if (authUser) {
-    const id = authUser.id ?? authUser.userId;
-    ctx.userId = id ?? null;
+    ctx.userId = authUser.userId;
     ctx.user = plainToClass(
       UserDto,
-      { ...authUser, id: id ?? '' },
+      { ...authUser, id: authUser.userId },
       { excludeExtraneousValues: true },
     );
   } else {

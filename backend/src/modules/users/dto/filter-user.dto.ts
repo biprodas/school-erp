@@ -1,12 +1,22 @@
-import { IsOptional } from 'class-validator';
+import {
+  IsEmail,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+} from 'class-validator';
 
 export class FilterUserDto {
   @IsOptional()
-  id: string;
+  @IsUUID()
+  id?: string;
 
   @IsOptional()
-  name: string;
+  @IsString()
+  @MaxLength(255)
+  name?: string;
 
   @IsOptional()
-  email: string;
+  @IsEmail()
+  email?: string;
 }

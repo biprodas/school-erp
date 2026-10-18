@@ -1,12 +1,13 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { AcademicYearRepository } from '../academic-years/academic-year.repository';
-import { ClassRepository } from '../classes/class.repository';
-import { SectionRepository } from '../sections/section.repository';
-import { StudentService } from '../students/services/student.service';
+import { AcademicYearService } from '~/modules/academic-years/academic-year.service';
+import { ClassService } from '~/modules/classes/services/class.service';
+import { SectionService } from '~/modules/sections/section.service';
+import { StudentService } from '~/modules/students/services/student.service';
 import { CreatePromotionDto } from './dto/create-promotion.dto';
 import { FilterPromotionDto } from './dto/filter-promotion.dto';
 import { StudentPromotion } from './entities/student-promotion.entity';
 import { PromotionRepository } from './promotion.repository';
+import { Paginated } from '~/common/dto/paginated.dto';
 
 @Injectable()
 export class PromotionService {
@@ -15,18 +16,20 @@ export class PromotionService {
   constructor(
     private readonly promotionRepo: PromotionRepository,
     private readonly studentService: StudentService,
-    private readonly academicYearRepo: AcademicYearRepository,
-    private readonly classRepo: ClassRepository,
-    private readonly sectionRepo: SectionRepository,
+    private readonly academicYearService: AcademicYearService,
+    private readonly classService: ClassService,
+    private readonly sectionService: SectionService,
   ) {}
 
-  async findFiltered(filter: FilterPromotionDto): Promise<StudentPromotion[]> {
+  findFiltered(
+    filter: FilterPromotionDto,
+  ): Promise<Paginated<StudentPromotion>> {
     const where: Record<string, any> = {};
     if (filter.id) where.id = filter.id;
     if (filter.studentId) where.studentId = filter.studentId;
     if (filter.fromYearId) where.fromYearId = filter.fromYearId;
     if (filter.toYearId) where.toYearId = filter.toYearId;
-    return this.promotionRepo.findFiltered(where);
+    return this.promotionRepo.findFiltered(where, filter);
   }
 
   async findById(id: string): Promise<StudentPromotion> {
@@ -39,15 +42,15 @@ export class PromotionService {
 
   async create(dto: CreatePromotionDto): Promise<StudentPromotion> {
     await this.studentService.findById(dto.studentId);
-    await this.academicYearRepo.findByIdOrFail(dto.fromYearId);
-    await this.academicYearRepo.findByIdOrFail(dto.toYearId);
-    await this.classRepo.findByIdOrFail(dto.fromClassId);
-    await this.classRepo.findByIdOrFail(dto.toClassId);
+    await this.academicYearService.findById(dto.fromYearId);
+    await this.academicYearService.findById(dto.toYearId);
+    await this.classService.findById(dto.fromClassId);
+    await this.classService.findById(dto.toClassId);
     if (dto.fromSectionId) {
-      await this.sectionRepo.findByIdOrFail(dto.fromSectionId);
+      await this.sectionService.findById(dto.fromSectionId);
     }
     if (dto.toSectionId) {
-      await this.sectionRepo.findByIdOrFail(dto.toSectionId);
+      await this.sectionService.findById(dto.toSectionId);
     }
 
     const created = await this.promotionRepo.saveNew({

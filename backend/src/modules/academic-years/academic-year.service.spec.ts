@@ -2,6 +2,7 @@ import { ConflictException, NotFoundException } from '@nestjs/common';
 import { AcademicYearRepository } from './academic-year.repository';
 import { AcademicYearService } from './academic-year.service';
 import { AcademicYear } from './entities/academic-year.entity';
+import { fakeTenantDataSource } from '~/tenancy/tenant-datasource.testing';
 
 const makeYear = (overrides: Partial<AcademicYear> = {}): AcademicYear => ({
   id: 'ay-1',
@@ -28,7 +29,7 @@ describe('AcademicYearService', () => {
       findFiltered: jest.fn(),
       findByIdOrFail: jest.fn(),
       clearCurrent: jest.fn(),
-      saveNew: jest.fn((data) =>
+      saveNew: jest.fn((data: Partial<AcademicYear>) =>
         Promise.resolve(makeYear({ id: 'new-ay', ...data })),
       ),
       save: jest.fn((entity) => Promise.resolve(entity)),
@@ -37,6 +38,7 @@ describe('AcademicYearService', () => {
 
     service = new AcademicYearService(
       repo as unknown as AcademicYearRepository,
+      fakeTenantDataSource(),
     );
   });
 

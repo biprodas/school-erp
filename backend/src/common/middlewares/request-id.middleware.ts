@@ -1,20 +1,24 @@
-import { Request, Response } from 'express';
-import { v4 as uuidv4, validate } from 'uuid';
-import { Key } from '~/common/enums/keys.enum';
+import { randomUUID } from 'node:crypto';
+import type { NextFunction, Request, Response } from 'express';
+import { Key } from '../enums/keys.enum';
 
-export const RequestIdMiddleware = (
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Makes sure every request has a UUID `x-request-id` (keeping a valid one
+ * from the client or a proxy) and echoes it on the response. Logs, error
+ * bodies and the request context all use it.
+ */
+export function RequestIdMiddleware(
   req: Request,
   res: Response,
-  next: () => void,
-): void => {
-  // set request id, if not being set yet
-  if (
-    !req.headers[Key.RequestIdTokenHeader] ||
-    !validate(req.header(Key.RequestIdTokenHeader))
-  ) {
-    req.headers[Key.RequestIdTokenHeader] = uuidv4();
-  }
-  // set res id in response from req
-  res.set(Key.RequestIdTokenHeader, req.headers[Key.RequestIdTokenHeader]);
+  next: NextFunction,
+): void {
+  const incoming = req.header(Key.RequestIdTokenHeader);
+  const requestId =
+    incoming && UUID_PATTERN.test(incoming) ? incoming : randomUUID();
+  req.headers[Key.RequestIdTokenHeader] = requestId;
+  res.set(Key.RequestIdTokenHeader, requestId);
   next();
-};
+}

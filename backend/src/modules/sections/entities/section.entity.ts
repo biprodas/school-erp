@@ -8,7 +8,7 @@ import {
   Index,
 } from 'typeorm';
 import { OrgScopedEntity } from '~/tenancy/org-scoped.entity';
-import { ClassSection } from '../../classes/entities/class-section.entity';
+import { ClassSection } from '~/modules/classes/entities/class-section.entity';
 
 @Entity('sections')
 @Index('uq_sections_org_name', ['orgId', 'name'], { unique: true })

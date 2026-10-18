@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import type { RequestWithOrg } from '~/tenancy/tenant.middleware';
+import type { AuthUser } from '~/common/auth/auth-user';
 
 export interface TenantJwtPayload {
   sub: string;
@@ -27,7 +28,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  validate(req: RequestWithOrg, payload: TenantJwtPayload) {
+  validate(req: RequestWithOrg, payload: TenantJwtPayload): AuthUser {
     // The token must have been issued by the organization this request
     // resolved to (header/subdomain/domain). Without this, a token from org A
     // would be accepted against org B, including the isAdmin RBAC bypass.

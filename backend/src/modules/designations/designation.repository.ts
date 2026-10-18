@@ -3,6 +3,8 @@ import { TENANT_DATASOURCE } from '~/tenancy/tenancy.constants';
 import { TenantDataSourceProxy } from '~/tenancy/tenant-datasource.proxy';
 import { BaseTenantRepository } from '~/tenancy/base-tenant.repository';
 import { Designation } from './entities/designation.entity';
+import { PaginationQueryDto } from '~/common/dto/pagination-query.dto';
+import { Paginated } from '~/common/dto/paginated.dto';
 
 @Injectable()
 export class DesignationRepository extends BaseTenantRepository<Designation> {
@@ -14,7 +16,10 @@ export class DesignationRepository extends BaseTenantRepository<Designation> {
     return this.repo.findOne({ where: { title } });
   }
 
-  findFiltered(where: Record<string, any>): Promise<Designation[]> {
-    return this.repo.find({ where, order: { createdAt: 'DESC' } });
+  findFiltered(
+    where: Record<string, any>,
+    page: PaginationQueryDto,
+  ): Promise<Paginated<Designation>> {
+    return this.findPage({ where, order: { createdAt: 'DESC' } }, page);
   }
 }

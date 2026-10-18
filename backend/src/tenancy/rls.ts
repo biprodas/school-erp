@@ -51,8 +51,41 @@ export async function ensureAppRole(
 }
 
 /**
+ * Global tables the tenant pool uses besides the org-scoped ones: accounts
+ * (sign-in, password and profile flows) and auth tokens.
+ */
+export const APP_ROLE_GLOBAL_TABLES = ['users', 'auth_tokens'];
+
+/**
+ * Gives the restricted app role DML on exactly the tables tenant requests
+ * use, and nothing else (no `organizations`, no `migrations`, no future
+ * tables by default). Mirrors the AppRoleGrants migration.
+ */
+async function grantAppRole(
+  ds: DataSource,
+  appRole: string,
+  orgTables: string[],
+): Promise<void> {
+  const role = quoteIdent(appRole);
+  const tables = [...orgTables, ...APP_ROLE_GLOBAL_TABLES]
+    .map((t) => `public.${quoteIdent(t)}`)
+    .join(', ');
+  await ds.query(`GRANT USAGE ON SCHEMA public TO ${role}`);
+  await ds.query(`REVOKE ALL ON ALL TABLES IN SCHEMA public FROM ${role}`);
+  await ds.query(
+    `ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON TABLES FROM ${role}`,
+  );
+  await ds.query(
+    `GRANT SELECT, INSERT, UPDATE, DELETE ON ${tables} TO ${role}`,
+  );
+  await ds.query(
+    `GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO ${role}`,
+  );
+}
+
+/**
  * Idempotently (re)applies row-level security to every org-scoped table and
- * grants the app role DML on the public schema. Run with the owner (root)
+ * grants the app role DML on the tables tenant requests use. Run with the owner (root)
  * connection after the schema is synchronized.
  *
  * Policies use `ENABLE` (not `FORCE`), so the table owner — the root
@@ -78,14 +111,7 @@ export async function applyRowLevelSecurity(
   }
 
   if (appRole) {
-    const role = quoteIdent(appRole);
-    await ds.query(`GRANT USAGE ON SCHEMA public TO ${role}`);
-    await ds.query(
-      `GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO ${role}`,
-    );
-    await ds.query(
-      `GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO ${role}`,
-    );
+    await grantAppRole(ds, appRole, tables);
   }
 
   logger.log(`Row-level security applied to ${tables.length} table(s)`);

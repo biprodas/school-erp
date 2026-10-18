@@ -1,7 +1,8 @@
+import { OrganizationStatus } from '~/modules/organizations/enums/organization-status.enum';
 export interface CachedTenant {
   id: string;
   slug: string;
-  status: string;
+  status: OrganizationStatus;
   expiresAt: number;
 }
 

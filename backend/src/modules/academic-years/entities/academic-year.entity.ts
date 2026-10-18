@@ -10,7 +10,16 @@ import {
 import { OrgScopedEntity } from '~/tenancy/org-scoped.entity';
 
 @Entity('academic_years')
-@Index('uq_academic_years_org_name', ['orgId', 'name'], { unique: true })
+// Partial: a soft-deleted year doesn't block reusing its name.
+@Index('uq_academic_years_org_name', ['orgId', 'name'], {
+  unique: true,
+  where: '"deleted_at" IS NULL',
+})
+// At most one current year per school, even under concurrent updates.
+@Index('uq_academic_years_org_current', ['orgId'], {
+  unique: true,
+  where: '"is_current" AND "deleted_at" IS NULL',
+})
 export class AcademicYear extends OrgScopedEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;

@@ -1,15 +1,18 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
+import { App } from 'supertest/types';
 import { JwtModule, JwtService } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { PlatformUserController } from 'src/modules/users/controllers/platform-user.controller';
-import { UserService } from 'src/modules/users/services/user.service';
-import { User } from 'src/modules/users/entities/user.entity';
-import { PlatformJwtStrategy } from 'src/modules/auth/strategies/platform-jwt.strategy';
-import { UserStatus } from 'src/modules/users/enums/user-status.enum';
+import { PlatformUserController } from '~/modules/users/controllers/platform-user.controller';
+import { UserService } from '~/modules/users/services/user.service';
+import { User } from '~/modules/users/entities/user.entity';
+import { PlatformJwtStrategy } from '~/modules/auth/strategies/platform-jwt.strategy';
+import { UserStatus } from '~/modules/users/enums/user-status.enum';
 import { ConfigService } from '@nestjs/config';
+import { Reflector } from '@nestjs/core';
+import { ResponseEnvelopeInterceptor } from '~/common/interceptors/response-envelope.interceptor';
 
 const JWT_SECRET = 'test-secret-key-for-e2e-testing-32chars!';
 
@@ -30,7 +33,7 @@ const makeUser = (overrides: Partial<User> = {}): User =>
   }) as User;
 
 describe('User E2E', () => {
-  let app: INestApplication;
+  let app: INestApplication<App>;
   let jwtService: JwtService;
   let userRepo: Record<string, jest.Mock>;
 
@@ -54,7 +57,7 @@ describe('User E2E', () => {
     userRepo = {
       findOne: jest.fn(),
       find: jest.fn(),
-      create: jest.fn((data) => ({ id: OTHER_USER_ID, ...data })),
+      create: jest.fn((data: object) => ({ id: OTHER_USER_ID, ...data })),
       save: jest.fn((entity) => Promise.resolve(entity)),
       delete: jest.fn(),
     };
@@ -85,6 +88,9 @@ describe('User E2E', () => {
     app.useGlobalPipes(
       new ValidationPipe({ whitelist: true, transform: true }),
     );
+    app.useGlobalInterceptors(
+      new ResponseEnvelopeInterceptor(app.get(Reflector)),
+    );
     await app.init();
 
     jwtService = module.get<JwtService>(JwtService);
@@ -113,7 +119,7 @@ describe('User E2E', () => {
         .set('Authorization', `Bearer ${adminToken()}`)
         .expect(200);
 
-      expect(res.body.data).toHaveLength(1);
+      expect((res.body as { data: unknown[] }).data).toHaveLength(1);
     });
 
     it('Regular USER gets 403', () => {

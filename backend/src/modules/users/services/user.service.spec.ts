@@ -73,7 +73,7 @@ describe('UserService', () => {
     userRepo = {
       findOne: jest.fn(),
       find: jest.fn(),
-      create: jest.fn((data) => ({ id: 'new-user-id', ...data })),
+      create: jest.fn((data: object) => ({ id: 'new-user-id', ...data })),
       save: jest.fn((entity) => Promise.resolve(entity)),
       delete: jest.fn(),
     };
@@ -129,7 +129,9 @@ describe('UserService', () => {
       expect(userRepo.create).toHaveBeenCalled();
 
       // Verify password was hashed (not plain text)
-      const createArg = userRepo.create.mock.calls[0][0];
+      const [[createArg]] = userRepo.create.mock.calls as [
+        [{ password: string; status: UserStatus }],
+      ];
       expect(createArg.password).not.toBe('password123');
     });
 
@@ -148,7 +150,9 @@ describe('UserService', () => {
 
       await service.createPlatformUser(superAdminCtx(), dto);
 
-      const createArg = userRepo.create.mock.calls[0][0];
+      const [[createArg]] = userRepo.create.mock.calls as [
+        [{ password: string; status: UserStatus }],
+      ];
       expect(createArg.status).toBe(UserStatus.ACTIVE);
     });
   });

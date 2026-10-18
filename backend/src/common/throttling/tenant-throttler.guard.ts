@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ThrottlerGuard } from '@nestjs/throttler';
-import { Key } from '~/common/enums/keys.enum';
+import { Key } from '../enums/keys.enum';
 import { RequestWithOrg } from '~/tenancy/tenant.middleware';
 
 type AuthedRequest = RequestWithOrg & {
@@ -32,8 +32,7 @@ export class TenantThrottlerGuard extends ThrottlerGuard {
     }
 
     const forwarded = req.headers[Key.ForwardedForTokenHeader] as
-      | string
-      | undefined;
+      string | undefined;
     const ip = forwarded?.split(',')[0]?.trim() || req.ip || 'unknown';
     return Promise.resolve(`${tenant}:ip:${ip}`);
   }

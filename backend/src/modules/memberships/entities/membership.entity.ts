@@ -8,8 +8,8 @@ import {
   JoinColumn,
   Index,
 } from 'typeorm';
-import { Organization } from 'src/modules/organizations/entities/organization.entity';
-import { User } from 'src/modules/users/entities/user.entity';
+import { Organization } from '~/modules/organizations/entities/organization.entity';
+import { User } from '~/modules/users/entities/user.entity';
 import { MembershipRole } from '../enums/membership-role.enum';
 import { MembershipStatus } from '../enums/membership-status.enum';
 

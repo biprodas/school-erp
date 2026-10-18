@@ -1,7 +1,12 @@
-import { IsBoolean, IsOptional } from 'class-validator';
+import { OmitType, PartialType } from '@nestjs/swagger';
+import { CreateClassTeacherDto } from './create-class-teacher.dto';
 
-export class UpdateClassTeacherDto {
-  @IsOptional()
-  @IsBoolean()
-  isPrimary?: boolean;
-}
+/** The class-section, teacher and year identify the row and cannot change. */
+export class UpdateClassTeacherDto extends PartialType(
+  OmitType(CreateClassTeacherDto, [
+    'classId',
+    'sectionId',
+    'employeeId',
+    'academicYearId',
+  ] as const),
+) {}

@@ -9,9 +9,9 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { OrgScopedEntity } from '~/tenancy/org-scoped.entity';
-import { AcademicYear } from '../../academic-years/entities/academic-year.entity';
-import { Class } from '../../classes/entities/class.entity';
-import { SubjectGroup } from '../../subject-groups/entities/subject-group.entity';
+import { AcademicYear } from '~/modules/academic-years/entities/academic-year.entity';
+import { Class } from '~/modules/classes/entities/class.entity';
+import { SubjectGroup } from '~/modules/subject-groups/entities/subject-group.entity';
 
 /** A subject group made available to a class in a given academic year. */
 @Entity('class_subject_groups')

@@ -15,5 +15,6 @@
     "^~/tenancy/(.*)$": "<rootDir>/../src/tenancy/$1",
     "^~/modules/(.*)$": "<rootDir>/../src/modules/$1",
     "^src/(.*)$": "<rootDir>/../src/$1"
-  }
+  },
+  "globalSetup": "./global-setup.ts"
 }

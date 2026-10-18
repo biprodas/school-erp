@@ -4,6 +4,7 @@ import { FilterSectionDto } from './dto/filter-section.dto';
 import { UpdateSectionDto } from './dto/update-section.dto';
 import { Section } from './entities/section.entity';
 import { SectionRepository } from './section.repository';
+import { Paginated } from '~/common/dto/paginated.dto';
 
 @Injectable()
 export class SectionService {
@@ -11,12 +12,12 @@ export class SectionService {
 
   constructor(private readonly sectionRepo: SectionRepository) {}
 
-  async findFiltered(filter: FilterSectionDto): Promise<Section[]> {
+  findFiltered(filter: FilterSectionDto): Promise<Paginated<Section>> {
     const where: Record<string, any> = {};
     if (filter.id) where.id = filter.id;
     if (filter.name) where.name = filter.name;
     if (filter.isActive !== undefined) where.isActive = filter.isActive;
-    return this.sectionRepo.findFiltered(where);
+    return this.sectionRepo.findFiltered(where, filter);
   }
 
   async findById(id: string): Promise<Section> {

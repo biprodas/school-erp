@@ -1,19 +1,22 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
+import { App } from 'supertest/types';
 import { JwtModule, JwtService } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
-import { MembershipController } from 'src/modules/memberships/controllers/membership.controller';
-import { MembershipService } from 'src/modules/memberships/services/membership.service';
-import { Membership } from 'src/modules/memberships/entities/membership.entity';
-import { MembershipRole } from 'src/modules/memberships/enums/membership-role.enum';
-import { OrganizationService } from 'src/modules/organizations/services/organization.service';
-import { UserService } from 'src/modules/users/services/user.service';
-import { PlatformJwtStrategy } from 'src/modules/auth/strategies/platform-jwt.strategy';
-import { UserStatus } from 'src/modules/users/enums/user-status.enum';
+import { MembershipController } from '~/modules/memberships/controllers/membership.controller';
+import { MembershipService } from '~/modules/memberships/services/membership.service';
+import { Membership } from '~/modules/memberships/entities/membership.entity';
+import { MembershipRole } from '~/modules/memberships/enums/membership-role.enum';
+import { OrganizationService } from '~/modules/organizations/services/organization.service';
+import { UserService } from '~/modules/users/services/user.service';
+import { PlatformJwtStrategy } from '~/modules/auth/strategies/platform-jwt.strategy';
+import { UserStatus } from '~/modules/users/enums/user-status.enum';
 import { ConfigService } from '@nestjs/config';
 import { OwnerProvisioningService } from '~/modules/auth/services/owner-provisioning.service';
+import { Reflector } from '@nestjs/core';
+import { ResponseEnvelopeInterceptor } from '~/common/interceptors/response-envelope.interceptor';
 
 const JWT_SECRET = 'test-secret-key-for-e2e-testing-32chars!';
 
@@ -37,7 +40,7 @@ const makeMembership = (overrides: Partial<Membership> = {}): Membership =>
   }) as Membership;
 
 describe('Membership E2E', () => {
-  let app: INestApplication;
+  let app: INestApplication<App>;
   let jwtService: JwtService;
   let membershipRepo: Record<string, jest.Mock>;
   let tenantServiceMock: Record<string, jest.Mock>;
@@ -63,7 +66,7 @@ describe('Membership E2E', () => {
     membershipRepo = {
       findOne: jest.fn(),
       find: jest.fn(),
-      create: jest.fn((data) => ({ id: MEMBERSHIP_ID, ...data })),
+      create: jest.fn((data: object) => ({ id: MEMBERSHIP_ID, ...data })),
       save: jest.fn((entity) => Promise.resolve(entity)),
       delete: jest.fn(),
     };
@@ -94,8 +97,10 @@ describe('Membership E2E', () => {
         {
           provide: getDataSourceToken(),
           useValue: {
-            transaction: jest.fn(async (cb: any) =>
-              cb({ delete: jest.fn(), findOneOrFail: jest.fn() }),
+            transaction: jest.fn((cb: (m: object) => unknown) =>
+              Promise.resolve(
+                cb({ delete: jest.fn(), findOneOrFail: jest.fn() }),
+              ),
             ),
           },
         },
@@ -118,6 +123,9 @@ describe('Membership E2E', () => {
     app = module.createNestApplication();
     app.useGlobalPipes(
       new ValidationPipe({ whitelist: true, transform: true }),
+    );
+    app.useGlobalInterceptors(
+      new ResponseEnvelopeInterceptor(app.get(Reflector)),
     );
     await app.init();
 
@@ -154,7 +162,7 @@ describe('Membership E2E', () => {
         .set('Authorization', `Bearer ${adminToken()}`)
         .expect(200);
 
-      expect(res.body.data).toHaveLength(1);
+      expect((res.body as { data: unknown[] }).data).toHaveLength(1);
     });
 
     it('Regular USER sees only own memberships', async () => {
@@ -167,7 +175,7 @@ describe('Membership E2E', () => {
         .set('Authorization', `Bearer ${userToken()}`)
         .expect(200);
 
-      expect(res.body.data).toHaveLength(1);
+      expect((res.body as { data: unknown[] }).data).toHaveLength(1);
     });
 
     it('Regular USER querying another userId gets 403', () => {

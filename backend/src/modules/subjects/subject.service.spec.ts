@@ -29,7 +29,7 @@ describe('SubjectService', () => {
       findByCode: jest.fn(),
       findFiltered: jest.fn(),
       findByIdOrFail: jest.fn(),
-      saveNew: jest.fn((data) =>
+      saveNew: jest.fn((data: Partial<Subject>) =>
         Promise.resolve(makeSubject({ id: 'new-sub', ...data })),
       ),
       save: jest.fn((entity) => Promise.resolve(entity)),

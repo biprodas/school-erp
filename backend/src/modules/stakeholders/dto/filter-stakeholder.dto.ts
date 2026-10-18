@@ -7,8 +7,9 @@ import {
 } from 'class-validator';
 import { StakeholderStatus } from '../enums/stakeholder-status.enum';
 import { StakeholderType } from '../enums/stakeholder-type.enum';
+import { PaginationQueryDto } from '~/common/dto/pagination-query.dto';
 
-export class FilterStakeholderDto {
+export class FilterStakeholderDto extends PaginationQueryDto {
   @IsOptional()
   @IsUUID('4')
   id?: string;

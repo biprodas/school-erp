@@ -11,6 +11,15 @@ const optionalTcpPort = Joi.any().custom((value, helpers) => {
 
 export const envValidationSchema = Joi.object({
   NODE_ENV: Joi.string().valid('development', 'staging', 'production', 'test'),
+  LOG_LEVEL: Joi.string().valid(
+    'fatal',
+    'error',
+    'warn',
+    'info',
+    'debug',
+    'trace',
+    'silent',
+  ),
   HOST: Joi.string(),
   VERSION: Joi.string(),
   NAME: Joi.string(),
@@ -67,7 +76,12 @@ export const envValidationSchema = Joi.object({
   MAIL_FROM_NAME: Joi.string().optional(),
   MAIL_FROM_ADDRESS: Joi.string().optional(),
   APP_URL: Joi.string().uri().optional(),
-  CORS_ORIGIN: Joi.string().optional(),
+  // Comma-separated; `https://*.example.com` allows every tenant subdomain.
+  CORS_ORIGIN: Joi.string().when('NODE_ENV', {
+    is: 'production',
+    then: Joi.required(),
+    otherwise: Joi.optional(),
+  }),
   SWAGGER_ENABLED: Joi.boolean().default(true),
   SWAGGER_PATH: Joi.string().default('api/docs'),
   SWAGGER_TITLE: Joi.string().optional(),
@@ -92,11 +106,12 @@ export const envValidationSchema = Joi.object({
 export function validateEnv(
   config: Record<string, unknown>,
 ): Record<string, unknown> {
-  const { error, value } = envValidationSchema.validate(config, {
+  const result = envValidationSchema.validate(config, {
     abortEarly: false,
     convert: true,
     allowUnknown: true,
   });
+  const { error } = result;
 
   if (error) {
     const lines = error.details.map(
@@ -105,5 +120,5 @@ export function validateEnv(
     throw new Error(`Environment validation failed:\n${lines.join('\n')}`);
   }
 
-  return value as Record<string, unknown>;
+  return result.value as Record<string, unknown>;
 }

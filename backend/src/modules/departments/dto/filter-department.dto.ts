@@ -6,8 +6,9 @@ import {
   IsUUID,
   MaxLength,
 } from 'class-validator';
+import { PaginationQueryDto } from '~/common/dto/pagination-query.dto';
 
-export class FilterDepartmentDto {
+export class FilterDepartmentDto extends PaginationQueryDto {
   @IsOptional()
   @IsUUID('4')
   id?: string;

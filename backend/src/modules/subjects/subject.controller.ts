@@ -11,14 +11,15 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiHeader, ApiTags } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { PermissionsGuard } from '../rbac/permissions.guard';
-import { PERMISSIONS } from '../rbac/permissions.catalog';
-import { RequirePermissions } from '../rbac/require-permissions.decorator';
+import { JwtAuthGuard } from '~/modules/auth/guards/jwt-auth.guard';
+import { PermissionsGuard } from '~/modules/rbac/guards/permissions.guard';
+import { PERMISSIONS } from '~/modules/rbac/permissions.catalog';
+import { RequirePermissions } from '~/modules/rbac/decorators/require-permissions.decorator';
 import { CreateSubjectDto } from './dto/create-subject.dto';
 import { FilterSubjectDto } from './dto/filter-subject.dto';
 import { UpdateSubjectDto } from './dto/update-subject.dto';
 import { SubjectService } from './subject.service';
+import { ResponseMessage } from '~/common/decorators/response.decorators';
 
 @ApiTags('Tenant / Subjects')
 @ApiBearerAuth('tenant-jwt')
@@ -34,63 +35,39 @@ export class SubjectController {
 
   @Get()
   @RequirePermissions(PERMISSIONS.SUBJECTS_READ)
-  async findAll(@Query() filter: FilterSubjectDto) {
-    const subjects = await this.subjectService.findFiltered(filter);
-    return {
-      success: true,
-      statusCode: 200,
-      message: 'List of subjects',
-      data: subjects,
-    };
+  @ResponseMessage('List of subjects')
+  findAll(@Query() filter: FilterSubjectDto) {
+    return this.subjectService.findFiltered(filter);
   }
 
   @Post()
   @RequirePermissions(PERMISSIONS.SUBJECTS_CREATE)
-  async create(@Body() dto: CreateSubjectDto) {
-    const subject = await this.subjectService.create(dto);
-    return {
-      success: true,
-      statusCode: 201,
-      message: `Subject created. ID: ${subject.id}`,
-      data: subject,
-    };
+  @ResponseMessage('Subject created')
+  create(@Body() dto: CreateSubjectDto) {
+    return this.subjectService.create(dto);
   }
 
   @Get(':id')
   @RequirePermissions(PERMISSIONS.SUBJECTS_READ)
-  async findOne(@Param('id', ParseUUIDPipe) id: string) {
-    const subject = await this.subjectService.findById(id);
-    return {
-      success: true,
-      statusCode: 200,
-      message: `Subject found. ID: ${subject.id}`,
-      data: subject,
-    };
+  @ResponseMessage('Subject found')
+  findOne(@Param('id', ParseUUIDPipe) id: string) {
+    return this.subjectService.findById(id);
   }
 
   @Patch(':id')
   @RequirePermissions(PERMISSIONS.SUBJECTS_UPDATE)
-  async update(
+  @ResponseMessage('Subject updated')
+  update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateSubjectDto,
   ) {
-    const subject = await this.subjectService.update(id, dto);
-    return {
-      success: true,
-      statusCode: 200,
-      message: `Subject updated. ID: ${subject.id}`,
-      data: subject,
-    };
+    return this.subjectService.update(id, dto);
   }
 
   @Delete(':id')
   @RequirePermissions(PERMISSIONS.SUBJECTS_DELETE)
+  @ResponseMessage('Subject deleted')
   async remove(@Param('id', ParseUUIDPipe) id: string) {
     await this.subjectService.remove(id);
-    return {
-      success: true,
-      statusCode: 200,
-      message: `Subject deleted. ID: ${id}`,
-    };
   }
 }

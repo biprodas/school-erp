@@ -10,13 +10,14 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiHeader, ApiTags } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
-import { PERMISSIONS } from '../../rbac/permissions.catalog';
-import { PermissionsGuard } from '../../rbac/permissions.guard';
-import { RequirePermissions } from '../../rbac/require-permissions.decorator';
+import { JwtAuthGuard } from '~/modules/auth/guards/jwt-auth.guard';
+import { PERMISSIONS } from '~/modules/rbac/permissions.catalog';
+import { PermissionsGuard } from '~/modules/rbac/guards/permissions.guard';
+import { RequirePermissions } from '~/modules/rbac/decorators/require-permissions.decorator';
 import { CreateStudentAddressDto } from '../dto/create-student-address.dto';
 import { UpdateStudentAddressDto } from '../dto/update-student-address.dto';
 import { StudentAddressService } from '../services/student-address.service';
+import { ResponseMessage } from '~/common/decorators/response.decorators';
 
 @ApiTags('Tenant / Students')
 @ApiBearerAuth('tenant-jwt')
@@ -32,58 +33,39 @@ export class StudentAddressController {
 
   @Get()
   @RequirePermissions(PERMISSIONS.STUDENTS_READ)
-  async list(@Param('studentId', ParseUUIDPipe) studentId: string) {
-    const addresses = await this.addressService.listForStudent(studentId);
-    return {
-      success: true,
-      statusCode: 200,
-      message: `Addresses of student ${studentId}`,
-      data: addresses,
-    };
+  @ResponseMessage('Addresses')
+  list(@Param('studentId', ParseUUIDPipe) studentId: string) {
+    return this.addressService.listForStudent(studentId);
   }
 
   @Post()
   @RequirePermissions(PERMISSIONS.STUDENTS_CREATE)
-  async create(
+  @ResponseMessage('Address added')
+  create(
     @Param('studentId', ParseUUIDPipe) studentId: string,
     @Body() dto: CreateStudentAddressDto,
   ) {
-    const address = await this.addressService.create(studentId, dto);
-    return {
-      success: true,
-      statusCode: 201,
-      message: `Address added to student ${studentId}. ID: ${address.id}`,
-      data: address,
-    };
+    return this.addressService.create(studentId, dto);
   }
 
   @Patch(':addressId')
   @RequirePermissions(PERMISSIONS.STUDENTS_UPDATE)
-  async update(
+  @ResponseMessage('Address updated')
+  update(
     @Param('studentId', ParseUUIDPipe) studentId: string,
     @Param('addressId', ParseUUIDPipe) addressId: string,
     @Body() dto: UpdateStudentAddressDto,
   ) {
-    const address = await this.addressService.update(studentId, addressId, dto);
-    return {
-      success: true,
-      statusCode: 200,
-      message: `Address updated. ID: ${address.id}`,
-      data: address,
-    };
+    return this.addressService.update(studentId, addressId, dto);
   }
 
   @Delete(':addressId')
   @RequirePermissions(PERMISSIONS.STUDENTS_DELETE)
+  @ResponseMessage('Address removed')
   async remove(
     @Param('studentId', ParseUUIDPipe) studentId: string,
     @Param('addressId', ParseUUIDPipe) addressId: string,
   ) {
     await this.addressService.remove(studentId, addressId);
-    return {
-      success: true,
-      statusCode: 200,
-      message: `Address removed. ID: ${addressId}`,
-    };
   }
 }

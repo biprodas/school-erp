@@ -3,37 +3,39 @@ import {
   ConflictException,
   NotFoundException,
 } from '@nestjs/common';
-import { RoleRepository } from '../../rbac/role.repository';
-import { OrgUserService } from '../../users/services/org-user.service';
+import { RoleService } from '~/modules/rbac/services/role.service';
+import { OrgUserService } from '~/modules/users/services/org-user.service';
 import { StudentRepository } from '../repositories/student.repository';
 import { StudentService } from './student.service';
 import { Student } from '../entities/student.entity';
 import { StudentStatus } from '../enums/student-status.enum';
+import { fakeTenantDataSource } from '~/tenancy/tenant-datasource.testing';
 
-const makeStudent = (overrides: Partial<Student> = {}): Student => ({
-  id: 'student-1',
-  orgId: 'org-1',
-  admissionNumber: 'ADM-001',
-  firstName: 'Ada',
-  lastName: 'Lovelace',
-  fullName: 'Ada Lovelace',
-  dob: null,
-  gender: null,
-  address: null,
-  status: StudentStatus.ACTIVE,
-  userId: null,
-  guardians: [],
-  createdAt: new Date(),
-  updatedAt: new Date(),
-  syncFullName: () => {},
-  ...overrides,
-});
+const makeStudent = (overrides: Partial<Student> = {}): Student =>
+  ({
+    id: 'student-1',
+    orgId: 'org-1',
+    admissionNumber: 'ADM-001',
+    firstName: 'Ada',
+    lastName: 'Lovelace',
+    fullName: 'Ada Lovelace',
+    dob: null,
+    gender: null,
+    address: null,
+    status: StudentStatus.ACTIVE,
+    userId: null,
+    guardians: [],
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    syncFullName: () => {},
+    ...overrides,
+  }) as Student;
 
 describe('StudentService', () => {
   let service: StudentService;
   let studentRepo: Record<string, jest.Mock>;
   let userService: Record<string, jest.Mock>;
-  let roleRepo: Record<string, jest.Mock>;
+  let roleService: Record<string, jest.Mock>;
 
   beforeEach(() => {
     studentRepo = {
@@ -42,7 +44,7 @@ describe('StudentService', () => {
       findByAdmissionNumber: jest.fn(),
       findByUserId: jest.fn(),
       findFiltered: jest.fn(),
-      saveNew: jest.fn((data) =>
+      saveNew: jest.fn((data: Partial<Student>) =>
         Promise.resolve(makeStudent({ id: 'new-student', ...data })),
       ),
       save: jest.fn((entity) => Promise.resolve(entity)),
@@ -52,14 +54,15 @@ describe('StudentService', () => {
       findById: jest.fn(),
       create: jest.fn(),
     };
-    roleRepo = {
-      findByName: jest.fn(),
+    roleService = {
+      findSystemRole: jest.fn(),
     };
 
     service = new StudentService(
       studentRepo as unknown as StudentRepository,
       userService as unknown as OrgUserService,
-      roleRepo as unknown as RoleRepository,
+      roleService as unknown as RoleService,
+      fakeTenantDataSource(),
     );
   });
 
@@ -113,7 +116,7 @@ describe('StudentService', () => {
 
     it('provisions a new user with the student role when createUser is set', async () => {
       studentRepo.findByAdmissionNumber.mockResolvedValue(null);
-      roleRepo.findByName.mockResolvedValue({ id: 'role-student' });
+      roleService.findSystemRole.mockResolvedValue({ id: 'role-student' });
       userService.create.mockResolvedValue({ id: 'new-user' });
       studentRepo.findByIdOrFail.mockResolvedValue(
         makeStudent({ id: 'new-student', userId: 'new-user' }),
@@ -126,7 +129,7 @@ describe('StudentService', () => {
         createUser: { email: 'linus@example.com', password: 'secret123' },
       });
 
-      expect(roleRepo.findByName).toHaveBeenCalledWith('student');
+      expect(roleService.findSystemRole).toHaveBeenCalledWith('student');
       expect(userService.create).toHaveBeenCalledWith({
         name: 'Linus Torvalds',
         email: 'linus@example.com',
@@ -184,7 +187,7 @@ describe('StudentService', () => {
 
     it('rejects when the student system role is missing', async () => {
       studentRepo.findByAdmissionNumber.mockResolvedValue(null);
-      roleRepo.findByName.mockResolvedValue(null);
+      roleService.findSystemRole.mockRejectedValue(new NotFoundException());
 
       await expect(
         service.create({
@@ -236,18 +239,24 @@ describe('StudentService', () => {
   });
 
   describe('findFiltered', () => {
-    it('passes only provided filters to the repository', async () => {
+    it('passes only provided filters, plus the page, to the repository', async () => {
       studentRepo.findFiltered.mockResolvedValue([]);
-
-      await service.findFiltered({
+      const filter = {
         status: StudentStatus.ACTIVE,
         firstName: 'Ada',
-      });
+        page: 2,
+        limit: 10,
+      };
 
-      expect(studentRepo.findFiltered).toHaveBeenCalledWith({
-        status: StudentStatus.ACTIVE,
-        firstName: 'Ada',
-      });
+      await service.findFiltered(filter);
+
+      expect(studentRepo.findFiltered).toHaveBeenCalledWith(
+        {
+          status: StudentStatus.ACTIVE,
+          firstName: 'Ada',
+        },
+        filter,
+      );
     });
   });
 });
