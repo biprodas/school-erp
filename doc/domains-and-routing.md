@@ -29,7 +29,7 @@ School route tree:
 | ------------- | --------------------------- | ----------------------------------------------------------- |
 | `/`           | Public                      | School home: name, logo, contact, notices marked public, login button |
 | `/login`      | Everyone                    | Staff, students and guardians share one login page          |
-| `/activate`   | Invited users               | Set password from an invite link or OTP                     |
+| `/activate`   | Invited users               | Set password from an invite link (SMS OTP from Phase 1b)    |
 | `/onboarding` | Owner and school admins     | Setup wizard (PRD 6.2) until setup is complete              |
 | `/dashboard`  | Staff                       | Staff dashboard                                             |
 | `/student`    | Students and guardians      | Portal                                                      |
@@ -52,7 +52,7 @@ School route tree:
 
 An open search by school name would let anyone list every customer, so it is not the primary path.
 
-1. **"Enter your email or phone"** (primary). We send a message listing the schools where that account has an active membership, each with a sign-in link. The response is the same whether or not the account exists ("If you have an account, we've sent you a link"), so it can't be used to discover accounts. Rate-limited per IP and per recipient.
+1. **"Enter your email"** (primary; phone is accepted from Phase 1b, when SMS is available). We send a message listing the schools where that account has an active membership, each with a sign-in link. The response is the same whether or not the account exists ("If you have an account, we've sent you a link"), so it can't be used to discover accounts. Rate-limited per IP and per recipient.
 2. **"Enter your school's address"**: a `____.mydomain.com` input that checks the slug and redirects.
 3. **Directory search** (optional, P1): only schools that opt in are listed; minimum 3 characters; returns name, logo, district and URL only; rate-limited.
 
@@ -61,16 +61,16 @@ An open search by school name would let anyone list every customer, so it is not
 ## 4. Signup and onboarding
 
 ```
-mydomain.com/signup ──► verify email + SMS OTP ──► provision org (one transaction)
+mydomain.com/signup ──► verify email (+ SMS OTP from 1b) ──► provision org (one transaction)
         ──► redirect to acme.mydomain.com/auth/handoff?code=… ──► /onboarding ──► /dashboard
 ```
 
 1. On `mydomain.com/signup` the owner enters the school name, type, slug, owner name, email and phone.
-2. Email link and SMS OTP verification. The org is not created until both pass, so unverified signups don't consume slugs.
+2. Email link verification (Phase 1a). Phase 1b adds an SMS OTP for the owner's phone. The org is not created until every required check passes, so unverified signups don't consume slugs.
 3. `OrganizationService` creates the org, seeds system roles and provisions the owner (OWNER membership, `isAdmin`) in one transaction.
 4. The owner is sent to the school host with a one-time handoff code (section 5) and lands on `/onboarding` already signed in.
 5. **Onboarding gate**: `organizations.onboarding_completed_at` is null until the owner finishes or explicitly skips the required wizard steps. While it is null, `proxy.ts` sends school admins to `/onboarding` and shows other signed-in users a "Your school is being set up" page.
-6. Invited staff, students and guardians activate on the school host (`/activate`), set a password, complete a short profile step on first sign-in, then land on `/dashboard` or `/student`.
+6. Invited staff, students and guardians activate on the school host (`/activate`) from an invite link, or sign in with a printed credential slip (email or phone + temporary password), set a password, complete a short profile step on first sign-in, then land on `/dashboard` or `/student`.
 
 ---
 
@@ -185,7 +185,7 @@ Backend:
 - [x] `TenantMiddleware` and `/public/organizations/resolve` read `organization_domains` (only `verified`/`active` domains resolve).
 - [ ] Slug-history lookups return a redirect target.
 - [x] Handoff codes: issue (`POST /platform/auth/handoff`, `auth_tokens` type `handoff`) and exchange (`POST /auth/handoff`) endpoints.
-- [ ] "Find your school" endpoint (email/phone → message with sign-in links), rate-limited, uniform response.
+- [ ] "Find your school" endpoint (email → message with sign-in links; phone/SMS in Phase 1b), rate-limited, uniform response.
 - [x] Domain settings endpoints at `/domains` (list, add, `:id/verify`, `:id/primary`, delete), permissions `domains:read` / `domains:manage`.
 - [x] DNS check job (`DomainCheckScheduler`, every 5 minutes): pending domains for 72 hours, verified/active ones hourly; 7 days of failures → `inactive` (`dns_failing_since`).
 - [ ] Gate custom domains by plan (Standard+) once plans and entitlements exist.
