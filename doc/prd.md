@@ -3,10 +3,12 @@
 | Field        | Value                                                  |
 | ------------ | ------------------------------------------------------ |
 | Product      | School ERP: multi-tenant school management SaaS       |
-| Version      | 1.2                                                    |
+| Version      | 1.3                                                    |
 | Date         | 2026-10-18                                             |
 | Status       | Draft                                                  |
 | Market focus | Bangladesh first, built so it can go global            |
+
+**Changes in 1.3:** Phase 1a no longer depends on SMS (email verification, email/phone + password login). Identity accepts email or phone. Classes are permanent and sections are per session. A minimal staff directory joins the MVP. Exams, communication, settings and platform admin are trimmed for Phase 1a. Branches move to Phase 3. Results verification is optional. Technical choices for queues, PDFs and file storage are recorded. Open question 7 is resolved.
 
 ---
 
@@ -173,6 +175,8 @@ The existing software is mostly desktop-bound, hard to configure, English-only, 
 
 Legend: **F** = full, **W** = create/edit within scope, **R** = read-only, **O** = own records only, blank = no access. Each school can clone and customize roles (see 6.3).
 
+The Owner is not a separate role: the owner holds the OWNER membership with school-admin rights, so they have the Admin column. Two-way guardian messaging (Communication, "reply") arrives in Phase 2.
+
 | Module            | Admin | Principal | Accountant | Teacher | Class teacher | Receptionist | Librarian | Student | Guardian |
 | ----------------- | ----- | --------- | ---------- | ------- | ------------- | ------------ | --------- | ------- | -------- |
 | School settings   | F     | R         |            |         |               |              |           |         |          |
@@ -198,18 +202,18 @@ Legend: **F** = full, **W** = create/edit within scope, **R** = read-only, **O**
 ### 5.1 Tenancy
 
 - **Tenant = school (organization).** Every school-owned record is tied to exactly one organization and isolated at both the application and the database layer. Cross-tenant access is impossible by construction and covered by automated tests.
-- **Global identity.** A person has one account (email or phone number). That account can hold memberships in several schools, each with its own roles; for example, a teacher who works at two schools, or a guardian whose children attend different schools.
+- **Global identity.** A person has one account, identified by an email address, a phone number, or both. At least one is required, and each is unique across the platform when present (many guardians have only a phone). That account can hold memberships in several schools, each with its own roles; for example, a teacher who works at two schools, or a guardian whose children attend different schools.
 - **Addressing** (design: `domains-and-routing.md`):
   - The product domain (`<product-domain>`) hosts the marketing site, school signup and "Find your school". The platform admin lives on its own host, `admin.<product-domain>`.
   - Every school gets a subdomain, `<slug>.<product-domain>`. The slug is human-readable, chosen at signup, unique, and checked against a reserved list. A renamed slug keeps redirecting for 12 months.
   - Standard and higher plans can map a custom **app host** (`erp.myschool.edu.bd`) with ownership verification and automatic TLS. The school's apex domain (`myschool.edu.bd`) stays the school's own website; hosting it is out of scope for v1.
   - Every school host, subdomain or custom, serves the same routes: `/` school home, `/login`, `/activate`, `/onboarding`, `/dashboard`, `/student`. The subdomain keeps working when a custom domain is active, and can redirect to it.
   - A user who belongs to several schools signs in on each school's host. "Find your school" sends them links to every school where they have an active membership.
-- **Branches (campuses):**
+- **Branches (campuses)** (Phase 3, the whole feature set below):
   - A school group is a parent organization with several branch organizations.
   - Group-level users see consolidated dashboards and can switch branches.
   - Data stays per branch. Students can be transferred between branches with their history intact.
-  - **Group templates** (P2): a group admin maintains shared templates (fee heads and structures, class/subject curriculum, grading systems, notice and SMS templates, report-card and certificate layouts) and pushes them to selected branches. Each branch can override a pushed item locally. A later push shows which branches have overridden it and never silently replaces their local changes.
+  - **Group templates**: a group admin maintains shared templates (fee heads and structures, class/subject curriculum, grading systems, notice and SMS templates, report-card and certificate layouts) and pushes them to selected branches. Each branch can override a pushed item locally. A later push shows which branches have overridden it and never silently replaces their local changes.
 
 ### 5.2 School lifecycle
 
@@ -252,12 +256,14 @@ Each module lists its purpose, priority (**P0** = MVP must-have, delivered acros
 - School directory with search and filters by plan, status, region and student count.
 - Create a school on a customer's behalf; edit its profile, plan, limits and trial dates.
 - Plan catalog: price per student, minimum fee, included modules, limits (students, storage, users), and an SMS rate card.
-- Subscription invoices generated monthly or annually from active student counts; proration on plan changes.
-- Payment collection by card or MFS through a gateway; manual bank-transfer reconciliation.
-- Coupons and discounts (percentage or fixed, time-bound).
-- Platform users with roles: super-admin, support, sales, finance.
-- Support tooling: consent-based impersonation, password-reset assistance, tenant data export.
+- Subscription invoices generated monthly or annually from active student counts; proration on plan changes (Phase 1b).
+- Payment collection by card or MFS through a gateway; manual bank-transfer reconciliation (Phase 1b).
+- Coupons and discounts (percentage or fixed, time-bound) (Phase 1b).
+- Platform users with roles: super-admin, support, sales, finance. Phase 1a has the super-admin only; the other roles arrive in Phase 1b.
+- Support tooling: password-reset assistance and tenant data export (Phase 1a); consent-based impersonation (Phase 1b).
 - Platform audit log.
+
+**Phase 1a scope:** the super-admin uses the school directory, creates and edits schools, assigns plans and limits by hand, and extends trials. Everything else in this module arrives in Phase 1b.
 
 **User stories**
 
@@ -279,17 +285,17 @@ Each module lists its purpose, priority (**P0** = MVP must-have, delivered acros
 **Features**
 
 - Self-serve signup on the product domain: school name, type (school/college/madrasa/coaching/English-medium), owner name, email, phone, slug. The slug is suggested from the school name, editable, and checked for availability live.
-- Verification by email link plus SMS OTP. The school is created only after verification, then the owner is moved to the school's host already signed in and lands on the setup wizard.
+- Verification by email link in Phase 1a; an SMS OTP for the owner's phone is added in Phase 1b. The school is created only after verification, then the owner is moved to the school's host already signed in and lands on the setup wizard.
 - Until the owner completes (or skips) the wizard, school admins are sent to it on sign-in and other users see a "school is being set up" page.
-- **Find your school:** a user enters their email or phone and receives sign-in links for every school where they have an active membership. They can also type the school's address. A public directory search is opt-in per school (P1).
+- **Find your school:** a user enters their email (or, from Phase 1b, their phone) and receives sign-in links for every school where they have an active membership. They can also type the school's address. A public directory search is opt-in per school (P1).
 - A guided setup wizard with a progress checklist. Each step can be skipped and resumed:
   1. School profile: logo, address, EIIN, contact, principal's signature, currency, time zone, language, week start, weekend days.
   2. Academic session: start and end dates.
-  3. Shifts (morning/day), classes, sections, groups (Science/Commerce/Humanities).
+  3. Shifts (morning/day), classes, sections for the session, groups (Science/Commerce/Humanities).
   4. Subjects and their class assignment, starting from templates (NCTB curriculum, Cambridge, madrasa).
   5. Grading system (BD GPA 5.0 default template).
   6. Fee heads and a fee structure template.
-  7. Invite staff by email/phone or bulk Excel import.
+  7. Add staff to the staff directory and invite them by email or phone (an invite link, or a printed credential slip until SMS arrives in Phase 1b), or bulk-import them from Excel.
   8. Import students and guardians by Excel template, with validation preview.
 - Optional sample data mode to try the product.
 - In-app guided tours and a help center with Bangla video tutorials.
@@ -313,26 +319,27 @@ Each module lists its purpose, priority (**P0** = MVP must-have, delivered acros
 
 **Features**
 
-- Login with email or mobile number plus password, or a passwordless SMS/email OTP.
-- Account activation via invite link or OTP; forgot-password and reset flows.
+- Login with email or mobile number plus password (Phase 1a). Passwordless SMS/email OTP login arrives in Phase 1b.
+- Account activation via invite link (Phase 1a) or SMS OTP (Phase 1b); forgot-password and reset flows. Phone-only accounts reset their password through the school admin until SMS OTP is available.
 - Optional TOTP two-factor authentication; mandatory for admins and accountants on Premium.
 - Google / Microsoft sign-in (P1).
 - Session management: list active devices, log out everywhere, idle timeout set by the admin.
 - Sessions are per school host. Signing in to one school never signs the user out of another. Moving between hosts (after signup, from "Find your school") uses a single-use, short-lived handoff code.
 - Role-based access control:
   - Permissions use `resource:action` keys, for example `fees:collect` and `results:publish`.
-  - System roles: Admin, Principal, Accountant, Teacher, Class Teacher, Receptionist, Librarian, Student, Guardian.
+  - System roles: Admin, Principal, Accountant, Teacher, Class Teacher, Receptionist, Librarian, Student, Guardian. The owner is not a role; the OWNER membership carries school-admin rights.
   - Custom roles can be cloned from a system role and edited.
   - Scope rules restrict a role to its own classes, sections, subjects or branch.
 - One user can hold several roles; a teacher who is also a guardian switches context.
-- Bulk credential generation for students and guardians, with username/password slips printed per section.
+- Portal accounts: every guardian gets an account. Students get accounts only in the classes the school selects in settings (default: Class 6 and above).
+- Bulk credential generation for students and guardians, with login/password slips printed per section.
 - Audit log of logins, permission changes and sensitive data access.
 
 **User stories**
 
 - As an admin, I want to create a "Vice Principal" role with read access to everything and write access to exams so that I don't have to give full admin rights.
 - As a guardian with two children in the school, I want one login that lets me switch between them.
-- As a teacher, I want to log in with my phone number and an OTP so that I don't need to remember a password.
+- As a teacher, I want to log in with my phone number and an OTP so that I don't need to remember a password (Phase 1b).
 
 **Acceptance criteria**
 
@@ -350,12 +357,15 @@ Each module lists its purpose, priority (**P0** = MVP must-have, delivered acros
 
 - Academic sessions (years) with start and end dates and one active session. Sessions can span calendar years.
 - Terms or semesters inside a session (for example, Half-yearly and Annual).
-- Shifts, classes (grades), sections, and groups/streams.
+- **Classes (grades)** are permanent school records (Class 1 to Class 10, and so on) that carry over from session to session.
+- **Shifts** (morning/day) are school-level settings.
+- **Sections** belong to a class and a session (Class 6, Section A, 2026), and each section runs in one shift. Groups/streams (Science/Commerce/Humanities) are school-level and used by classes that need them.
 - Subjects with a code, a type (compulsory/optional/4th subject/elective), theory/practical/MCQ components, full marks and pass marks per component.
 - Subject groups and per-class curriculum per session, including the optional/4th-subject choice per student.
+- **Staff directory** (Phase 1a): employee profile (name, contact, employee number, joining date, status), department and designation, linked to the person's school membership. Teacher assignments, staff invites and dashboards use it. Salary, payroll and leave quotas come with HR in 6.11.
 - Teacher assignment: a class teacher per section and subject teachers per section and subject.
-- Rooms and buildings.
-- Session rollover: copy the structure, curriculum and teacher assignments from the previous session.
+- Rooms and buildings: used for exam room allocation (P1) and the timetable (P1).
+- Session rollover: copy the sections, curriculum and teacher assignments from the previous session.
 - **Batch mode** (P1, for coaching centers and short courses), chosen per school in settings or at signup when the school type is "coaching":
   - A **course** (for example "SSC Physics crash course" or "Admission test prep") has subjects, a duration and a fee plan.
   - A **batch** is one running group of a course: start and end dates, weekly schedule (days and times), teacher(s), room and seat capacity. Batches can run all year round and overlap; they are not tied to the academic session.
@@ -372,7 +382,7 @@ Each module lists its purpose, priority (**P0** = MVP must-have, delivered acros
 
 **Acceptance criteria**
 
-- Class names, section names and subject codes are unique within a school and session.
+- Class names and subject codes are unique within a school. Section names are unique within a class and session.
 - Rollover never moves students. Promotion is a separate flow (6.6).
 - Teacher-assignment changes are effective-dated, so historical records still show who taught what.
 - Batch enrollment is blocked when the batch is at capacity, unless a user with permission overrides it.
@@ -418,9 +428,9 @@ Each module lists its purpose, priority (**P0** = MVP must-have, delivered acros
 - **Documents:** upload birth certificate, previous TC, photos, etc., with type, expiry and verification status.
 - **Health:** allergies, conditions, medications, vaccination, emergency contacts; visible to authorized staff only.
 - **Notes and discipline:** behavior incidents, counselling notes, and visibility rules for each.
-- **Status lifecycle:** Applicant → Active → (Suspended) → Transferred / Left / Graduated / Dropped out, with reason and date.
+- **Status lifecycle:** Applicant → Active → (Suspended) → Transferred / Left / Graduated / Dropped out, with reason and date. Applicant is used once admissions (6.5, P1) is live; until then students start as Active.
 - **Promotion:** bulk promote by class, driven by result rules (pass/fail/conditional). Supports manual override, detention, roll re-assignment by merit, and section shuffle.
-- **Transfers:** between sections, shifts or branches.
+- **Transfers:** between sections or shifts. Transfers between branches come with branches in Phase 3 (5.1).
 - **Certificates:** Transfer Certificate (TC), testimonial, character certificate and study certificate from configurable templates. Each has a serial number and a QR code for verification.
 - **ID cards:** template designer, bulk printing with photo and QR/barcode, RFID card number binding.
 - **Search and filtering:** search by name, ID, phone or guardian; filter by class, section, status, gender or religion; export to Excel/PDF.
@@ -503,16 +513,17 @@ Each module lists its purpose, priority (**P0** = MVP must-have, delivered acros
   - Templates for GPA 5.0, GPA 4.0, Cambridge (A*–U), percentage/division, and the madrasa scheme.
   - Rules: an F in any compulsory subject means the overall result is F; 4th-subject bonus (points above 2.0 added); minimum pass per component (CQ/MCQ/practical); grace marks.
 - **Exam setup:** exam types (class test, monthly, half-yearly, annual, model test, pre-test), each with a weight in the final result. An exam is attached to classes and subjects, with full marks and pass marks per component.
-- **Exam schedule (routine)**, seat plans, room allocation, invigilator duty, and admit cards with eligibility rules (for example, fees cleared).
+- **Exam schedule (routine)**, seat plans, room allocation, invigilator duty, and admit cards with eligibility rules (for example, fees cleared) (P1).
 - **Mark entry:**
   - Subject teachers enter marks per component in a grid with keyboard navigation, or import from Excel.
   - Absent and exempt are tracked.
-  - Workflow: Draft → Submitted → Verified (head of department) → Approved (principal) → Published.
+  - Workflow: Draft → Submitted → Verified → Approved (principal) → Published. The Verified step is optional per school: when it is on, a user with `results:verify` (for example, a head of department) verifies before approval; when it is off, submitted marks go straight to approval.
 - **Tabulation:**
-  - Automatic calculation of totals, grade points, GPA, CGPA, positions/merit (with configurable tie-breakers) and failed-subject counts.
-  - Supports combined results across exams, for example 30% half-yearly + 70% annual.
+  - Automatic calculation of totals, grade points, GPA, combined GPA, positions/merit (with configurable tie-breakers) and failed-subject counts.
+  - Combined results across the exams of a session use the exam weights, for example 30% half-yearly + 70% annual. "CGPA" in this document means this combined session GPA, not a university-style cumulative GPA across years.
 - **Report cards:**
-  - Template designer: layout, logo, signatures, Bangla or English, remarks, attendance summary, co-curricular grades.
+  - Phase 1a: one or two fixed layouts with options for logo, signatures, Bangla or English, remarks, attendance summary and co-curricular grades.
+  - Template designer for custom layouts (P1).
   - Bulk PDF generation by section; publish to the portal or app.
 - **Merit lists, tabulation sheets, failed lists and subject-wise analysis.**
 - **Continuous assessment and co-curricular / behavioral grading** (P1).
@@ -530,7 +541,7 @@ Each module lists its purpose, priority (**P0** = MVP must-have, delivered acros
 - GPA calculation matches the published BD board rules on a regression suite of known cases (4th-subject bonus, F in a compulsory subject, component pass).
 - Marks cannot be edited after approval unless a principal re-opens them, and every change is audited with the old and new value.
 - Bulk report-card generation for 500 students completes in under 2 minutes.
-- Publishing sends a push or SMS notification to guardians with a link to the result.
+- Publishing sends a notification to guardians with a link to the result: in-app and email in Phase 1a, plus push and SMS from Phase 1b.
 
 ### 6.10 Fees and finance — P0
 
@@ -549,7 +560,7 @@ Each module lists its purpose, priority (**P0** = MVP must-have, delivered acros
   - Bank collection: a unique reference per invoice for partner-bank collection, with statement import for reconciliation.
 - **Payment allocation:** invoices, payments and allocations are separate records. A payment is allocated to one or more invoice lines (oldest due first by default, or chosen by the accountant), so one payment can settle several months or several children, and a partial payment leaves a precise remainder.
 - **Reconciliation:** each online or bank payment carries the provider's transaction reference and a reconciliation status (pending, matched, mismatched). A reconciliation screen lists mismatches between gateway or bank statements and recorded payments.
-- **Receipts:** a sequential receipt number with an SMS confirmation to the guardian.
+- **Receipts:** a sequential receipt number, with an in-app/email confirmation to the guardian (plus SMS from Phase 1b).
 - **Dues:** a due list by class, aging buckets, and automated reminders on a configurable schedule. Admit cards and results can optionally be blocked until dues are cleared.
 - **Refunds and adjustments** go through an approval workflow and keep an audit trail.
 - **Income and expense ledger:** expense categories, vouchers with attachments, and petty cash. Cash book, bank book, and daily collection report per collector.
@@ -575,9 +586,11 @@ Each module lists its purpose, priority (**P0** = MVP must-have, delivered acros
 
 **Purpose:** manage staff records and run payroll accurately.
 
+The basic staff directory (profile, department, designation) is already in the MVP (6.4). This module extends it.
+
 **Features**
 
-- **Employee profiles:** personal details, NID, education, experience, department, designation, employment type (permanent/contract/part-time), joining date, bank account and MFS account, documents.
+- **Employee profiles:** extended personal details, NID, education, experience, department, designation, employment type (permanent/contract/part-time), joining date, bank account and MFS account, documents.
 - **Recruitment** (P2): job posts, applications, interviews, offer letters, onboarding checklist.
 - **Staff attendance and leave:** see 6.7.
 - **Salary structures:** basic pay plus allowances (house rent, medical, conveyance) and deductions (PF, tax, advance recovery, absence/late deductions).
@@ -624,6 +637,8 @@ Each module lists its purpose, priority (**P0** = MVP must-have, delivered acros
 
 **Purpose:** reliable, targeted communication with every stakeholder.
 
+**Phasing:** Phase 1a has the notice board, in-app notifications, email, templates and the communication log. Phase 1b adds SMS with the wallet, web push, automated triggers and emergency broadcast. Two-way messaging and parent-teacher meetings are P1 (Phase 2).
+
 **Features**
 
 - **Notice board:** notices with attachments, targeted at everyone, a role, a class, a section, a group or individuals. Can be scheduled, pinned and set to expire, with read receipts.
@@ -634,8 +649,8 @@ Each module lists its purpose, priority (**P0** = MVP must-have, delivered acros
   - Prepaid credit wallet with low-balance alerts and a delivery report.
 - **Templates:** for absent, fee due, payment received, result published, birthday, holiday, etc. Variables like `{student_name}` are supported, in Bangla and English.
 - **Automated triggers:** the events above fire notifications automatically according to school settings.
-- **Two-way messaging:** guardian ↔ teacher and class-teacher chats, with an admin-configurable allowed window (for example 8 am – 8 pm). Moderated, no student-to-student chat.
-- **Parent-teacher meetings:** slot booking, reminders, notes.
+- **Two-way messaging** (P1): guardian ↔ teacher and class-teacher chats, with an admin-configurable allowed window (for example 8 am – 8 pm). Moderated, no student-to-student chat.
+- **Parent-teacher meetings** (P1): slot booking, reminders, notes.
 - **Emergency broadcast:** priority SMS plus push to all guardians in one step.
 - **Communication log:** what was sent to whom, when, through which channel, and its delivery status.
 
@@ -643,7 +658,7 @@ Each module lists its purpose, priority (**P0** = MVP must-have, delivered acros
 
 - Bulk SMS to 2,000 recipients is queued in under 5 seconds and delivered asynchronously with per-recipient status.
 - The wallet is checked before a send. A send that exceeds the balance is blocked with a clear message, except emergency broadcasts, which can overdraw up to a configured limit.
-- Messages outside the allowed window are queued and delivered when it opens.
+- Messages outside the allowed window are queued and delivered when it opens (P1, with two-way messaging).
 
 ### 6.14 Student and guardian portal and mobile apps — P0 (web/PWA), P1 (native)
 
@@ -654,11 +669,12 @@ Each module lists its purpose, priority (**P0** = MVP must-have, delivered acros
 - A guardian dashboard per child: today's attendance, upcoming exams, dues, latest notices, homework.
 - Pay fees online, download receipts and see payment history.
 - View and download results and report cards; see a performance trend chart.
-- Apply for leave, message teachers, book PTM slots.
+- Apply for leave. Messaging teachers and booking PTM slots arrive in Phase 2 (6.13).
 - Timetable, homework, study materials, quizzes (student).
 - Transport live location and pick-up/drop alerts (when transport is enabled).
 - Library: borrowed books and due dates.
-- Child switcher for guardians with several children, even across schools.
+- Child switcher for guardians with several children. Children at the same school switch in place. Children at other schools are listed as links that move the guardian to that school's host with a one-time handoff code (sessions are per school host, 6.3).
+- Student portal accounts exist only for the classes the school enables (6.3); in other classes the guardian account covers the student.
 - **Native apps** (Android first, then iOS):
   - Separate experiences for Guardian/Student and Teacher/Staff.
   - Push notifications, offline caching, biometric unlock.
@@ -741,7 +757,11 @@ Each module lists its purpose, priority (**P0** = MVP must-have, delivered acros
   - Owner/admin: enrollment, attendance today, collection today and month-to-date, dues, staff present, upcoming events.
   - Teacher: today's classes, pending attendance and marks, homework to grade.
   - Accountant: collection, dues and expenses.
-- **Standard report library:** around 60 reports across modules, with filters and export to PDF and Excel. Exports run in the background for large data sets.
+- **Standard report library:** around 60 reports across modules over time, with filters and export to PDF and Excel. Exports run in the background for large data sets. The Phase 1a set:
+  - Attendance: daily summary, monthly register, defaulters below X%.
+  - Fees: due list with aging, collection vs. demand, daily collection per collector, head-wise collection.
+  - Exams: result sheet, merit list, tabulation sheet, failed list.
+  - Students: class/section lists with filters.
 - **Custom report builder** (P1): pick an entity, columns, filters and grouping; save and share with roles; schedule an email delivery.
 - **Multi-branch analytics** (P2): compare branches on enrollment, collection, attendance and results.
 - **Government and compliance reports:** BANBEIS annual survey data and EMIS exports in the required formats.
@@ -769,13 +789,15 @@ Each module lists its purpose, priority (**P0** = MVP must-have, delivered acros
 - School profile, branding (logo, colors), the letterhead used on all PDFs.
 - Localization: language, date format, Bangla or English numerals, currency, time zone, weekend days.
 - Numbering patterns: student ID, roll, receipt, invoice, certificate serials.
-- Custom fields on student, guardian, employee and admission entities: text, number, date, select or file. These appear on forms, filters and exports.
-- Document and print template editors: report card, ID card, certificates, receipts, admit card.
+- Custom fields on student, guardian, employee and admission entities: text, number, date, select or file. These appear on forms, filters and exports (P1).
+- Document and print template editors: report card, ID card, certificates, receipts, admit card (P1). Phase 1a uses fixed layouts with options (logo, letterhead, language, signatures).
+- Portal accounts: the classes whose students get their own login (6.3).
+- Results workflow: whether the Verified step is required (6.9).
 - Notification preferences and SMS sender ID.
 - Custom domain (Standard+): add an app host, see the CNAME and TXT records to create, track verification and certificate status, set it as primary, or remove it.
 - School address: change the slug (rate-limited; the old address redirects for 12 months).
 - Public school home page: what appears on `/` (profile, contact, public notices) and whether the school is listed in the directory.
-- Data export: a full export of the school's data at any time (CSV/Excel plus a files archive).
+- Data export: a full export of the school's data at any time (CSV in Phase 1a; Excel plus a files archive later).
 - Audit log viewer for admins.
 
 ---
@@ -786,10 +808,10 @@ These end-to-end flows cut across modules. They drive screen design, API design 
 
 ### 7.1 Onboard a school
 
-1. On the product domain, the owner signs up with the school name, type, email, phone and slug, and verifies by email link and SMS OTP.
+1. On the product domain, the owner signs up with the school name, type, email, phone and slug, and verifies by email link (plus an SMS OTP from Phase 1b).
 2. The platform provisions the organization in one transaction: default roles, settings and the owner's admin membership.
 3. The owner is moved to `<slug>.<product-domain>` already signed in and works through the setup wizard (6.2): profile, session, shifts, classes, sections, subjects, grading, fee heads.
-4. The owner invites staff, who activate their accounts from the invite link on the school's host.
+4. The owner adds staff to the staff directory and invites them. Staff activate their accounts from the invite link on the school's host.
 5. The admin uploads students and guardians from the Excel template, reviews the row-level validation preview, and confirms.
 6. The setup checklist reaches 100% and the school is ready for daily operations.
 
@@ -809,14 +831,14 @@ These end-to-end flows cut across modules. They drive screen design, API design 
 3. The guardian pays online, or pays at the counter where the accountant records it.
 4. An online payment is confirmed only by a verified gateway webhook or server-side check.
 5. The payment is allocated to invoice lines, a gap-free receipt is issued, and the outstanding balance updates.
-6. The guardian receives an SMS or push confirmation.
+6. The guardian receives an in-app or email confirmation (SMS or push from Phase 1b).
 7. The accountant reconciles the day's collection per collector and per channel, and resolves any mismatches.
 
 ### 7.4 Publish exam results
 
-1. The academic coordinator creates the exam, attaches classes and subjects, and sets components, full marks and pass marks.
+1. The principal or an admin creates the exam, attaches classes and subjects, and sets components, full marks and pass marks.
 2. Subject teachers enter marks per component; the grade is computed as they type.
-3. Marks move through Draft → Submitted → Verified → Approved; approved marks are locked.
+3. Marks move through Draft → Submitted → (Verified, when the school requires it) → Approved; approved marks are locked.
 4. Tabulation computes totals, GPA, positions and failed subjects using the school's grading rules.
 5. The principal publishes the results; guardians and students are notified, and report cards become available.
 6. Any later change requires the principal to re-open the marks, and the old and new values are audited.
@@ -865,7 +887,7 @@ These end-to-end flows cut across modules. They drive screen design, API design 
 | Concurrent users at morning peak (8–9 am)      | 50,000 platform-wide          |
 | Schools supported on shared infrastructure     | 10,000+                       |
 | Largest single school                          | 15,000 students               |
-| Bulk operations (invoices, report cards, SMS)  | Run asynchronously in queues with progress shown |
+| Bulk operations (invoices, report cards, SMS)  | Run asynchronously in queues (BullMQ on Redis) with progress shown |
 
 ### 8.4 Availability and disaster recovery
 
@@ -908,6 +930,7 @@ These end-to-end flows cut across modules. They drive screen design, API design 
 - An API-first design. Every UI capability is backed by a documented REST API with OpenAPI specs.
 - Automated tests: unit, integration, end-to-end for critical flows, and the GPA/fee calculation regression suites.
 - CI/CD with staging and production environments, and database migrations that never break the running version.
+- Technical choices: the backend stays on NestJS 11 with TypeORM and PostgreSQL. Background jobs and notifications run on BullMQ (Redis). PDFs (report cards, receipts, registers) are rendered from HTML with headless Chromium, which shapes Bangla text correctly. Files go to S3-compatible object storage (MinIO in local development) and are served through short-lived signed URLs.
 
 ---
 
@@ -926,7 +949,8 @@ These end-to-end flows cut across modules. They drive screen design, API design 
 | SSO / productivity  | Google Workspace for Education, Microsoft 365                                 | P1       |
 | Accounting          | Excel/CSV exports, Tally, QuickBooks formats                                    | P1       |
 | Government / boards | Education board registration exports, BANBEIS/EMIS data formats                | P1       |
-| File storage        | S3-compatible object storage with a CDN                                        | P0       |
+| File storage        | S3-compatible object storage with a CDN (MinIO locally), signed URLs           | P0       |
+| PDF rendering       | HTML templates rendered by headless Chromium                                   | P0       |
 | Public API          | REST API with API keys per school, webhooks for key events (student admitted, payment received, result published) | P2 |
 
 ---
@@ -938,14 +962,14 @@ This is a conceptual model only. The detailed schema will be designed separately
 | Domain          | Key entities                                                                                     |
 | --------------- | ------------------------------------------------------------------------------------------------ |
 | Platform        | Organization (school), Organization domain, Slug history, Branch group, Group template, Plan, Subscription, Platform invoice, Feature flag, Platform user |
-| Identity        | User (global account), Membership (user ↔ school), Role, Permission, Session, Audit log            |
-| Academic        | Academic session, Term, Shift, Class, Section, Group, Subject, Curriculum, Teacher assignment, Room, Period, Timetable entry, Course, Batch, Batch enrollment |
+| Identity        | User (global account; email and/or phone), Membership (user ↔ school), Role, Permission, Session, Audit log            |
+| Academic        | Academic session, Term, Shift, Class (permanent), Section (per class and session), Group, Subject, Curriculum, Employee (staff directory), Department, Designation, Teacher assignment, Room, Period, Timetable entry, Course, Batch, Batch enrollment |
 | Students        | Student, Guardian, Student–guardian link, Enrollment, Document, Health record, Note, Promotion, Certificate |
 | Admissions      | Enquiry, Admission form, Application, Admission test, Merit list                                  |
 | Attendance      | Attendance record (student/staff), Attendance correction, Device event, Leave type, Leave request, Holiday               |
 | Exams           | Grade scale, Exam, Exam schedule, Mark (per component), Result, Report-card template               |
 | Finance         | Fee head, Fee structure, Discount/waiver, Invoice, Invoice line, Payment, Payment allocation, Receipt, Refund/reversal, Reconciliation, Expense, Ledger entry |
-| HR              | Employee, Department, Designation, Salary structure, Payroll run, Payslip, Loan/advance, Duty type, Duty roster entry, Task |
+| HR              | Salary structure, Payroll run, Payslip, Loan/advance, Duty type, Duty roster entry, Task |
 | LMS             | Homework, Submission, Study material, Question bank, Quiz, Quiz attempt, Lesson plan              |
 | Communication   | Notice, Message thread, Message, Notification, Template, SMS wallet, Delivery log                 |
 | Campus services | Book, Copy, Issue; Vehicle, Route, Stop, Transport allocation; Hostel, Room, Bed, Hostel allocation; Item, Stock movement, Asset |
@@ -1013,16 +1037,16 @@ These run in CI on every change that touches tenancy, auth, RBAC or finance.
 
 | Phase | Theme | Scope | Target |
 | ----- | ----- | ----- | ------ |
-| **Phase 1a: Pilot MVP** | Run the school day | Platform admin with manual plan assignment and limits (6.1), onboarding wizard (6.2), auth & RBAC (6.3), academic structure (6.4), SIS with Excel import (6.6), attendance & student leave (6.7, online only), exams & results with BD GPA and report cards (6.9), fees with counter collection, allocation, receipts and dues (6.10), notices + in-app + email (6.13), guardian/student web portal (6.14), standard reports & dashboards (6.22), settings (6.24) | Pilot with 3–5 schools |
-| **Phase 1b: GA** | Get paid and reach guardians | Online fee payment via SSLCommerz and bKash with reconciliation (6.10), SMS with wallet and absentee alerts (6.13), web push, offline attendance sync (6.7), installable PWA, self-serve subscription billing and plan upgrades (6.1), staff attendance and leave (6.7) | Pilot with 10 schools, then GA |
-| **Phase 2** | Go deeper and mobile | Board exam exports (6.9), admissions CRM (6.5), timetable builder (6.8), HR & payroll with duty roster and tasks (6.11), batch mode for coaching centers (6.4), LMS (6.12), native Android apps (guardian/student and teacher), WhatsApp, library (6.15), transport without GPS (6.16), events & certificates (6.19), front office (6.21), custom report builder, device attendance, Google/Microsoft SSO | GA + 6 months |
-| **Phase 3** | Scale and intelligence | Hostel (6.17), inventory & assets (6.18), alumni (6.20), GPS live tracking, timetable auto-generation, multi-branch analytics and group templates (5.1), AI features (6.23), iOS apps, white-label apps, public API & webhooks, international configuration packs | GA + 12 months |
+| **Phase 1a: Pilot MVP** | Run the school day | Platform admin for the super-admin only, with manual plan assignment, limits and trial extension (6.1); onboarding wizard with email verification (6.2); auth with email/phone + password and RBAC (6.3); academic structure with the staff directory (6.4); SIS with Excel import (6.6); attendance & student leave (6.7, online only); exams & results core cycle with BD GPA and fixed report-card layouts (6.9); fees with counter collection, allocation, receipts and dues (6.10); notices, in-app notifications and email (6.13); guardian/student web portal (6.14); the Phase 1a reports & dashboards (6.22); essential settings (6.24) | Pilot with 3–5 schools |
+| **Phase 1b: GA** | Get paid and reach guardians | Online fee payment via SSLCommerz and bKash with reconciliation (6.10), SMS with wallet, absentee alerts, automated triggers and emergency broadcast (6.13), SMS OTP for signup, activation and passwordless login (6.2, 6.3), web push, offline attendance sync (6.7), installable PWA, self-serve subscription billing and plan upgrades, platform roles and consent-based impersonation (6.1), staff attendance and leave (6.7) | Pilot with 10 schools, then GA |
+| **Phase 2** | Go deeper and mobile | Exam routine, seat plans, admit cards, invigilators and the report-card designer (6.9), board exam exports (6.9), admissions CRM (6.5), timetable builder (6.8), HR & payroll with duty roster and tasks (6.11), batch mode for coaching centers (6.4), LMS (6.12), two-way messaging and PTM (6.13), custom fields and template editors (6.24), native Android apps (guardian/student and teacher), WhatsApp, library (6.15), transport without GPS (6.16), events & certificates (6.19), front office (6.21), custom report builder, device attendance, Google/Microsoft SSO | GA + 6 months |
+| **Phase 3** | Scale and intelligence | Hostel (6.17), inventory & assets (6.18), alumni (6.20), GPS live tracking, timetable auto-generation, branches and school groups: parent organizations, branch switching, transfers between branches, multi-branch analytics and group templates (5.1), AI features (6.23), iOS apps, white-label apps, public API & webhooks, international configuration packs | GA + 12 months |
 
 ### 12.1 Out of scope for the MVP (Phases 1a and 1b)
 
 These are deliberately excluded so the MVP stays shippable. Requests for them go on the Phase 2/3 backlog.
 
-- HR and payroll, LMS, library, transport, hostel, inventory, alumni, front office.
+- HR and payroll beyond the basic staff directory, LMS, library, transport, hostel, inventory, alumni, front office.
 - Admissions CRM and online admission forms (students are entered manually or imported).
 - Batch mode for coaching centers (6.4); coaching centers are onboarded from Phase 2.
 - Timetable builder (a static timetable can be uploaded as a file or notice).
@@ -1030,7 +1054,10 @@ These are deliberately excluded so the MVP stays shippable. Requests for them go
 - Device attendance (RFID, biometric, QR gates) and GPS tracking.
 - WhatsApp, Nagad, Rocket and aamarPay.
 - Board registration and BANBEIS/EMIS exports.
-- Custom report builder and multi-branch analytics.
+- Custom report builder, branches and multi-branch analytics.
+- Exam routine, seat plans, admit cards and the report-card designer.
+- Two-way messaging and parent-teacher meetings.
+- Custom fields and print-template editors.
 - AI features.
 - Hosting the school's own website on its apex domain (a page builder or CMS). Custom domains cover the app host only.
 - Full double-entry accounting and statutory financial statements.
@@ -1042,15 +1069,15 @@ These are estimates for one experienced full-stack developer, assuming the tenan
 | Step | Estimate | Deliverable |
 | ---- | -------- | ----------- |
 | Foundation hardening | 1–2 weeks | Org provisioning, auth, RBAC and scope rules, audit log, CI with tenant-isolation tests |
-| Academic structure and SIS | 3–4 weeks | Sessions, classes, subjects, teacher assignments, students, guardians, enrollment, Excel import |
+| Academic structure and SIS | 3–4 weeks | Sessions, shifts, classes, per-session sections, subjects, staff directory, teacher assignments, students, guardians, enrollment, Excel import |
 | Attendance | 2 weeks | Mobile marking, corrections, holidays, reports |
-| Exams and results | 3–4 weeks | Grading engine with BD GPA suite, mark entry workflow, tabulation, report-card PDFs |
+| Exams and results | 3 weeks | Grading engine with BD GPA suite, mark entry workflow, tabulation, fixed-layout report-card PDFs |
 | Fees | 3 weeks | Fee heads and structures, invoices, counter collection, allocation, receipts, dues |
 | Portal, notices and dashboards | 2–3 weeks | Guardian/student portal, notices, email, role dashboards, standard reports |
 | Pilot hardening (end of 1a) | 2 weeks | Bangla localization, security review, backups, pilot onboarding |
 | Phase 1b | 6–8 weeks | Online payments and reconciliation, SMS and wallet, web push, offline sync, subscription billing |
 
-Phase 1a totals roughly 16–20 weeks, and Phase 1b roughly another 6–8 weeks.
+Phase 1a totals roughly 16–19 weeks, and Phase 1b roughly another 6–8 weeks.
 
 ### 12.3 MVP exit criteria
 
@@ -1091,7 +1118,8 @@ Phase 1a totals roughly 16–20 weeks, and Phase 1b roughly another 6–8 weeks.
 4. What is the minimum subscription price at which onboarding support stays viable?
 5. Which SMS provider(s) should be the primary at launch, and should masking sender IDs be bundled into plans?
 6. What level of WhatsApp messaging should be included, given per-conversation costs?
-7. Should student accounts be created for primary classes (Classes 1–5), or only guardian accounts?
+
+Resolved in 1.3: student accounts are created only for the classes a school enables (default Class 6 and above); guardians always get an account (6.3).
 
 ---
 
