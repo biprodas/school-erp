@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
-import { RbacModule } from '../rbac/rbac.module';
-import { UserModule } from '../users/user.module';
+import { RbacModule } from '~/modules/rbac/rbac.module';
+import { UserModule } from '~/modules/users/user.module';
 import { StakeholderController } from './stakeholder.controller';
 import { StakeholderRepository } from './stakeholder.repository';
 import { StakeholderService } from './stakeholder.service';

@@ -11,12 +11,9 @@ export class AppService {
       version: '1.0.0',
       name: 'School ERP API',
       description: 'A School ERP API built with NestJS and TypeORM',
-      architecture: 'Schema-per-tenant (Cost-effective)',
+      architecture: 'Multi-tenant: shared schema with row-level security',
       stack: ['NestJS', 'TypeORM', 'PostgreSQL', 'TypeScript'],
-      author: {
-        name: 'Biprodas Roy',
-        email: 'biprodas.cse@gmail.com',
-      },
+      author: 'Biprodas Roy',
     };
   }
 }

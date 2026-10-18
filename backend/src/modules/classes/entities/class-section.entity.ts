@@ -9,7 +9,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { OrgScopedEntity } from '~/tenancy/org-scoped.entity';
-import { Section } from '../../sections/entities/section.entity';
+import { Section } from '~/modules/sections/entities/section.entity';
 import { Class } from './class.entity';
 
 /**

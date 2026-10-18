@@ -9,10 +9,10 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { OrgScopedEntity } from '~/tenancy/org-scoped.entity';
-import { AcademicYear } from '../../academic-years/entities/academic-year.entity';
-import { Class } from '../../classes/entities/class.entity';
-import { Employee } from '../../employees/entities/employee.entity';
-import { Section } from '../../sections/entities/section.entity';
+import { AcademicYear } from '~/modules/academic-years/entities/academic-year.entity';
+import { Class } from '~/modules/classes/entities/class.entity';
+import { Employee } from '~/modules/employees/entities/employee.entity';
+import { Section } from '~/modules/sections/entities/section.entity';
 
 /** Assigns an employee as (a) class teacher of a class-section for a year. */
 @Entity('class_teachers')
@@ -20,6 +20,12 @@ import { Section } from '../../sections/entities/section.entity';
   'uq_class_teacher',
   ['orgId', 'academicYearId', 'classId', 'sectionId', 'employeeId'],
   { unique: true },
+)
+// At most one primary class teacher per class-section and year.
+@Index(
+  'uq_class_teachers_org_primary',
+  ['orgId', 'academicYearId', 'classId', 'sectionId'],
+  { unique: true, where: '"is_primary"' },
 )
 export class ClassTeacher extends OrgScopedEntity {
   @PrimaryGeneratedColumn('uuid')

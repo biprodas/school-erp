@@ -3,6 +3,8 @@ import { TENANT_DATASOURCE } from '~/tenancy/tenancy.constants';
 import { TenantDataSourceProxy } from '~/tenancy/tenant-datasource.proxy';
 import { BaseTenantRepository } from '~/tenancy/base-tenant.repository';
 import { Section } from './entities/section.entity';
+import { PaginationQueryDto } from '~/common/dto/pagination-query.dto';
+import { Paginated } from '~/common/dto/paginated.dto';
 
 @Injectable()
 export class SectionRepository extends BaseTenantRepository<Section> {
@@ -14,7 +16,10 @@ export class SectionRepository extends BaseTenantRepository<Section> {
     return this.repo.findOne({ where: { name } });
   }
 
-  findFiltered(where: Record<string, any>): Promise<Section[]> {
-    return this.repo.find({ where, order: { name: 'ASC' } });
+  findFiltered(
+    where: Record<string, any>,
+    page: PaginationQueryDto,
+  ): Promise<Paginated<Section>> {
+    return this.findPage({ where, order: { name: 'ASC' } }, page);
   }
 }

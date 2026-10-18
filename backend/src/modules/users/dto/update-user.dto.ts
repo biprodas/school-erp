@@ -1,16 +1,7 @@
-import { IsBoolean, IsEnum, IsOptional, IsString } from 'class-validator';
-import { UserStatus } from '../enums/user-status.enum';
+import { PartialType, PickType } from '@nestjs/swagger';
+import { CreateUserDto } from './create-user.dto';
 
-export class UpdateUserDto {
-  @IsOptional()
-  @IsString()
-  name?: string;
-
-  @IsOptional()
-  @IsEnum(UserStatus)
-  status?: UserStatus;
-
-  @IsOptional()
-  @IsBoolean()
-  isAdmin?: boolean;
-}
+/** Email and password are changed through the auth flows. */
+export class UpdateUserDto extends PartialType(
+  PickType(CreateUserDto, ['name', 'status', 'isAdmin'] as const),
+) {}

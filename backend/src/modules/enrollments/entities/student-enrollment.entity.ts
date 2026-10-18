@@ -10,10 +10,10 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { OrgScopedEntity } from '~/tenancy/org-scoped.entity';
-import { AcademicYear } from '../../academic-years/entities/academic-year.entity';
-import { Class } from '../../classes/entities/class.entity';
-import { Section } from '../../sections/entities/section.entity';
-import { Student } from '../../students/entities/student.entity';
+import { AcademicYear } from '~/modules/academic-years/entities/academic-year.entity';
+import { Class } from '~/modules/classes/entities/class.entity';
+import { Section } from '~/modules/sections/entities/section.entity';
+import { Student } from '~/modules/students/entities/student.entity';
 import { StudentEnrollmentStatus } from '../enums/student-enrollment-status.enum';
 import { StudentSubject } from './student-subject.entity';
 

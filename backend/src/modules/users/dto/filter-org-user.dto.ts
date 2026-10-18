@@ -2,7 +2,7 @@ import { IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class FilterOrgUserDto {
   @IsOptional()
-  @IsString()
+  @IsUUID()
   id?: string;
 
   @IsOptional()

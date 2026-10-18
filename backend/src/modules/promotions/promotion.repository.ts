@@ -3,6 +3,8 @@ import { TENANT_DATASOURCE } from '~/tenancy/tenancy.constants';
 import { TenantDataSourceProxy } from '~/tenancy/tenant-datasource.proxy';
 import { BaseTenantRepository } from '~/tenancy/base-tenant.repository';
 import { StudentPromotion } from './entities/student-promotion.entity';
+import { PaginationQueryDto } from '~/common/dto/pagination-query.dto';
+import { Paginated } from '~/common/dto/paginated.dto';
 
 const RELATIONS = [
   'student',
@@ -24,11 +26,17 @@ export class PromotionRepository extends BaseTenantRepository<StudentPromotion> 
     return this.repo.findOne({ where: { id }, relations: RELATIONS });
   }
 
-  findFiltered(where: Record<string, any>): Promise<StudentPromotion[]> {
-    return this.repo.find({
-      where,
-      relations: ['student', 'fromYear', 'toYear', 'fromClass', 'toClass'],
-      order: { createdAt: 'DESC' },
-    });
+  findFiltered(
+    where: Record<string, any>,
+    page: PaginationQueryDto,
+  ): Promise<Paginated<StudentPromotion>> {
+    return this.findPage(
+      {
+        where,
+        relations: ['student', 'fromYear', 'toYear', 'fromClass', 'toClass'],
+        order: { createdAt: 'DESC' },
+      },
+      page,
+    );
   }
 }

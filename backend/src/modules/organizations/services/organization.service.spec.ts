@@ -8,13 +8,14 @@ import {
 } from '@nestjs/common';
 import { OrganizationService } from './organization.service';
 import { Organization } from '../entities/organization.entity';
-import { Membership } from 'src/modules/memberships/entities/membership.entity';
-import { MembershipRole } from 'src/modules/memberships/enums/membership-role.enum';
+import { OrganizationStatus } from '../enums/organization-status.enum';
+import { Membership } from '~/modules/memberships/entities/membership.entity';
+import { MembershipRole } from '~/modules/memberships/enums/membership-role.enum';
 import { DemoteOldOwnerTo } from '../dto/transfer-ownership.dto';
-import { UserService } from 'src/modules/users/services/user.service';
-import { UserStatus } from 'src/modules/users/enums/user-status.enum';
+import { UserService } from '~/modules/users/services/user.service';
+import { UserStatus } from '~/modules/users/enums/user-status.enum';
 import { UserRole } from '~/modules/rbac/entities/user-role.entity';
-import { RbacSeederService } from '~/modules/rbac/rbac-seeder.service';
+import { RbacSeederService } from '~/modules/rbac/services/rbac-seeder.service';
 import { OwnerProvisioningService } from '~/modules/auth/services/owner-provisioning.service';
 import { RequestContextDto } from '~/common/dto/request-context.dto';
 
@@ -127,7 +128,7 @@ describe('OrganizationService', () => {
     // Repositories used inside dataSource.transaction(...)
     txMembershipRepo = {
       find: jest.fn().mockResolvedValue([]),
-      findOneOrFail: jest.fn(({ where }) =>
+      findOneOrFail: jest.fn(({ where }: { where: { userId: string } }) =>
         Promise.resolve(
           makeMembership({
             id: 'tx-mem-id',
@@ -144,7 +145,10 @@ describe('OrganizationService', () => {
 
     manager = {
       findOne: jest.fn().mockResolvedValue(null),
-      create: jest.fn((_, data) => ({ id: 'new-org-id', ...data })),
+      create: jest.fn((_: unknown, data: object) => ({
+        id: 'new-org-id',
+        ...data,
+      })),
       save: jest.fn((entity) => Promise.resolve(entity)),
       getRepository: jest.fn((entity) =>
         entity === UserRole ? txUserRoleRepo : txMembershipRepo,
@@ -152,7 +156,9 @@ describe('OrganizationService', () => {
     };
 
     const mockDataSource = {
-      transaction: jest.fn(async (cb: any) => cb(manager)),
+      transaction: jest.fn((cb: (m: typeof manager) => unknown) =>
+        Promise.resolve(cb(manager)),
+      ),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -265,6 +271,33 @@ describe('OrganizationService', () => {
         dto,
       );
       expect(result.name).toBe('Updated Name');
+    });
+
+    it('Organization OWNER cannot change the organization status', async () => {
+      orgRepo.findOne.mockResolvedValue(
+        makeOrg({ status: OrganizationStatus.SUSPENDED }),
+      );
+      membershipRepo.findOne.mockResolvedValue(
+        makeMembership({ userId: 'owner-id', role: MembershipRole.OWNER }),
+      );
+
+      await expect(
+        service.updateOrganization(userCtx('owner-id'), ORG_ID, {
+          status: OrganizationStatus.ACTIVE,
+        }),
+      ).rejects.toThrow(ForbiddenException);
+      expect(orgRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('ADMIN can change the organization status', async () => {
+      orgRepo.findOne.mockResolvedValue(
+        makeOrg({ status: OrganizationStatus.ACTIVE }),
+      );
+
+      const result = await service.updateOrganization(superAdminCtx(), ORG_ID, {
+        status: OrganizationStatus.SUSPENDED,
+      });
+      expect(result.status).toBe(OrganizationStatus.SUSPENDED);
     });
 
     it('Non-owner USER gets ForbiddenException', async () => {

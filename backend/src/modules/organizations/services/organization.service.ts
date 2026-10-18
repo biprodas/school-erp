@@ -9,16 +9,16 @@ import {
 import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
 import { Repository, DataSource, In } from 'typeorm';
 import { Organization } from '../entities/organization.entity';
-import { Membership } from 'src/modules/memberships/entities/membership.entity';
-import { MembershipRole } from 'src/modules/memberships/enums/membership-role.enum';
-import { User } from 'src/modules/users/entities/user.entity';
-import { UserService } from 'src/modules/users/services/user.service';
+import { Membership } from '~/modules/memberships/entities/membership.entity';
+import { MembershipRole } from '~/modules/memberships/enums/membership-role.enum';
+import { User } from '~/modules/users/entities/user.entity';
+import { UserService } from '~/modules/users/services/user.service';
 import {
   tenantDomainCache,
   tenantSlugCache,
 } from '~/tenancy/tenant-slug.cache';
 import { UserRole } from '~/modules/rbac/entities/user-role.entity';
-import { RbacSeederService } from '~/modules/rbac/rbac-seeder.service';
+import { RbacSeederService } from '~/modules/rbac/services/rbac-seeder.service';
 import { OwnerProvisioningService } from '~/modules/auth/services/owner-provisioning.service';
 import { CreateOrganizationDto } from '../dto/create-organization.dto';
 import {
@@ -346,6 +346,13 @@ export class OrganizationService {
     }
 
     if (!ctx.user?.isAdmin) {
+      // Status (active/suspended) is a platform decision; owners must not
+      // be able to lift a suspension themselves.
+      if (dto.status !== undefined && dto.status !== organization.status) {
+        throw new ForbiddenException(
+          'Only a platform admin can change the organization status',
+        );
+      }
       await this.assertOwner(ctx, id, 'update this organization');
     }
 

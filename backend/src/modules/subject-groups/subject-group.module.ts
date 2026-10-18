@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
-import { RbacModule } from '../rbac/rbac.module';
-import { SubjectModule } from '../subjects/subject.module';
-import { SubjectGroupController } from './subject-group.controller';
-import { SubjectGroupSubjectController } from './subject-group-subject.controller';
-import { SubjectGroupRepository } from './subject-group.repository';
-import { SubjectGroupSubjectRepository } from './subject-group-subject.repository';
-import { SubjectGroupService } from './subject-group.service';
+import { RbacModule } from '~/modules/rbac/rbac.module';
+import { SubjectModule } from '~/modules/subjects/subject.module';
+import { SubjectGroupController } from './controllers/subject-group.controller';
+import { SubjectGroupSubjectController } from './controllers/subject-group-subject.controller';
+import { SubjectGroupRepository } from './repositories/subject-group.repository';
+import { SubjectGroupSubjectRepository } from './repositories/subject-group-subject.repository';
+import { SubjectGroupService } from './services/subject-group.service';
 
 @Module({
   imports: [RbacModule, SubjectModule],
@@ -15,6 +15,6 @@ import { SubjectGroupService } from './subject-group.service';
     SubjectGroupSubjectRepository,
     SubjectGroupService,
   ],
-  exports: [SubjectGroupService, SubjectGroupRepository],
+  exports: [SubjectGroupService],
 })
 export class SubjectGroupModule {}

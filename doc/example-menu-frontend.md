@@ -279,4 +279,4 @@ These are in the code as-is and are recorded here so they are not mistaken for d
 - Navigation types & active-path helpers: `frontend/src/lib/sidebar-nav.ts`
 - Navigation rendering, role filtering & search: `frontend/src/app/(dashboard)/_components/nav-main.tsx`
 - Sidebar shell (wires `sidebarNavCategories` and `sidebarSecondaryNav`): `frontend/src/app/(dashboard)/_components/app-sidebar.tsx`
-- Product features overview: `doc/features.md`
+- Product requirements: `doc/prd.md`

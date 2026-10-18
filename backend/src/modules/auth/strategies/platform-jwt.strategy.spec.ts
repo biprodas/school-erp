@@ -1,5 +1,6 @@
 import { UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { UserStatus } from '~/modules/users/enums/user-status.enum';
 import { PlatformJwtStrategy } from './platform-jwt.strategy';
 
 describe('PlatformJwtStrategy', () => {
@@ -12,13 +13,13 @@ describe('PlatformJwtStrategy', () => {
       strategy.validate({
         sub: 'user-1',
         email: 'admin@platform.test',
-        status: 'active',
+        status: UserStatus.ACTIVE,
         isAdmin: true,
       }),
     ).toEqual({
       userId: 'user-1',
       email: 'admin@platform.test',
-      status: 'active',
+      status: UserStatus.ACTIVE,
       isAdmin: true,
     });
   });

@@ -20,6 +20,7 @@ import { CreateUserDto } from '../dto/create-user.dto';
 import { FilterUserDto } from '../dto/filter-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
 import { UserService } from '../services/user.service';
+import { ResponseMessage } from '~/common/decorators/response.decorators';
 
 @ApiTags('Platform / Users')
 @ApiBearerAuth('platform-jwt')
@@ -30,82 +31,53 @@ export class PlatformUserController {
 
   @Get()
   @UseGuards(PlatformAdminGuard)
-  async findAll(
+  @ResponseMessage('List of users')
+  findAll(
     @RequestContext() ctx: RequestContextDto,
     @Query() filterUserDto: FilterUserDto,
   ) {
-    const users = await this.userService.findAll(ctx, filterUserDto);
-
-    return {
-      success: true,
-      statusCode: 200,
-      message: `List of users`,
-      data: users,
-    };
+    return this.userService.findAll(ctx, filterUserDto);
   }
 
   @Post()
   @UseGuards(PlatformAdminGuard)
-  async create(
+  @ResponseMessage('User created')
+  create(
     @RequestContext() ctx: RequestContextDto,
     @Body() createUserDto: CreateUserDto,
   ) {
-    const user = await this.userService.createPlatformUser(ctx, createUserDto);
-
-    return {
-      success: true,
-      statusCode: 201,
-      message: `User created. ID: ${user.id}`,
-      data: user,
-    };
+    return this.userService.createPlatformUser(ctx, createUserDto);
   }
 
   @Get(':id')
-  async findOne(
+  @ResponseMessage('User found')
+  findOne(
     @RequestContext() ctx: RequestContextDto,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
     if (!ctx.user?.isAdmin && ctx.user?.id !== id) {
       throw new ForbiddenException('Access denied');
     }
-    const user = await this.userService.findById(ctx, id);
-
-    return {
-      success: true,
-      statusCode: 200,
-      message: `User found. ID: ${user.id}`,
-      data: user,
-    };
+    return this.userService.findById(ctx, id);
   }
 
   @Patch(':id')
-  async update(
+  @ResponseMessage('User updated')
+  update(
     @RequestContext() ctx: RequestContextDto,
     @Param('id', ParseUUIDPipe) targetId: string,
     @Body() updateUserDto: UpdateUserDto,
   ) {
-    const user = await this.userService.update(ctx, targetId, updateUserDto);
-
-    return {
-      success: true,
-      statusCode: 200,
-      message: `User updated. ID: ${user.id}`,
-      data: user,
-    };
+    return this.userService.update(ctx, targetId, updateUserDto);
   }
 
   @Delete(':id')
   @UseGuards(PlatformAdminGuard)
+  @ResponseMessage('User deleted')
   async remove(
     @RequestContext() ctx: RequestContextDto,
     @Param('id', ParseUUIDPipe) targetId: string,
   ) {
     await this.userService.remove(ctx, targetId);
-
-    return {
-      success: true,
-      statusCode: 200,
-      message: `User deleted. ID: ${targetId}`,
-    };
   }
 }

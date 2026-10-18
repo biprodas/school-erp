@@ -1,45 +1,38 @@
 import { Module } from '@nestjs/common';
-import { RoleController } from './role.controller';
-import { UserRoleController } from './user-role.controller';
-import { PermissionController } from './permission.controller';
-import { RoleService } from './role.service';
-import { RoleRepository } from './role.repository';
-import { UserRoleRepository } from './user-role.repository';
-import { IsAdminGuard } from './is-admin.guard';
-import { PermissionResolverService } from './permission-resolver.service';
-import { PermissionsGuard } from './permissions.guard';
-import { RbacSeederService } from './rbac-seeder.service';
-import { OwnerProvisioningService } from '../auth/services/owner-provisioning.service';
-import { MemberRepository } from '../users/repositories/member.repository';
+import { RoleController } from './controllers/role.controller';
+import { PermissionController } from './controllers/permission.controller';
+import { RoleService } from './services/role.service';
+import { RoleRepository } from './repositories/role.repository';
+import { UserRoleRepository } from './repositories/user-role.repository';
+import { IsAdminGuard } from './guards/is-admin.guard';
+import { PermissionResolverService } from './services/permission-resolver.service';
+import { PermissionsGuard } from './guards/permissions.guard';
+import { RbacSeederService } from './services/rbac-seeder.service';
 
 /**
  * Tenant-scoped role-based access control: role/permission management,
  * the permission guard, and the system-role seeder. Imported by any module
- * that needs `PermissionsGuard` or assigns roles to users.
+ * that needs `PermissionsGuard` or works with roles (through `RoleService`).
+ * It doesn't know about users or memberships; the user-role endpoints live
+ * in UserModule.
  */
 @Module({
-  controllers: [RoleController, UserRoleController, PermissionController],
+  controllers: [RoleController, PermissionController],
   providers: [
     RoleService,
     RoleRepository,
     UserRoleRepository,
-    MemberRepository,
     PermissionResolverService,
     PermissionsGuard,
     IsAdminGuard,
     RbacSeederService,
-    OwnerProvisioningService,
   ],
   exports: [
     RoleService,
-    RoleRepository,
-    UserRoleRepository,
-    MemberRepository,
     PermissionResolverService,
     PermissionsGuard,
     IsAdminGuard,
     RbacSeederService,
-    OwnerProvisioningService,
   ],
 })
 export class RbacModule {}

@@ -1,42 +1,26 @@
-import { NestFactory, Reflector } from '@nestjs/core';
-import { ClassSerializerInterceptor, ValidationPipe } from '@nestjs/common';
+import { Logger } from '@nestjs/common';
+import { NestFactory } from '@nestjs/core';
+import { Logger as PinoLogger } from 'nestjs-pino';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
+import { configureApp } from './app.setup';
 import { ConfigService } from '@nestjs/config';
-import { AppConfig, setupSwagger } from './config';
-import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
-import { RequestIdMiddleware } from './common/middlewares/request-id.middleware';
+import { AppConfig, setupSwagger } from '~/config';
+import { parseCorsOrigins } from './config/cors';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  // Buffer start-up logs until pino is ready, then route Nest's logger to it.
+  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  app.useLogger(app.get(PinoLogger));
 
-  app.setGlobalPrefix('api');
-
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      transform: true,
-      skipUndefinedProperties: true,
-      forbidNonWhitelisted: true,
-    }),
-  );
-
-  app.useGlobalFilters(new GlobalExceptionFilter());
-
-  app.useGlobalInterceptors(
-    new ClassSerializerInterceptor(app.get(Reflector), {
-      enableImplicitConversion: true,
-    }),
-  );
+  configureApp(app);
 
   app.use(helmet());
 
-  const corsOrigin = process.env.CORS_ORIGIN;
   app.enableCors({
-    origin: corsOrigin ? corsOrigin.split(',').map((o) => o.trim()) : true,
+    origin: parseCorsOrigins(process.env.CORS_ORIGIN),
     credentials: true,
   });
-  app.use(RequestIdMiddleware);
 
   const configService = app.get(ConfigService);
   const appConfig = configService.get<AppConfig>('app');
@@ -48,15 +32,12 @@ async function bootstrap() {
 
   await app.listen(appConfig.port);
 
-  console.log(
-    `🚀 Multi-tenant SaaS application running on http://${appConfig.host}:${appConfig.port}`,
-  );
-  console.log(`📊 Architecture: Schema-per-tenant (Cost-effective)`);
+  const logger = new Logger('Bootstrap');
+  const baseUrl = `http://${appConfig.host}:${appConfig.port}`;
+  logger.log(`API running on ${baseUrl}`);
   if (swaggerCfg) {
-    console.log(
-      `📚 Swagger docs available at http://${appConfig.host}:${appConfig.port}/${swaggerCfg.path}`,
-    );
+    logger.log(`Swagger docs available at ${baseUrl}/${swaggerCfg.path}`);
   }
 }
 
-bootstrap();
+void bootstrap();

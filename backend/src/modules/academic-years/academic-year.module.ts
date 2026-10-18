@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { RbacModule } from '../rbac/rbac.module';
+import { RbacModule } from '~/modules/rbac/rbac.module';
 import { AcademicYearController } from './academic-year.controller';
 import { AcademicYearRepository } from './academic-year.repository';
 import { AcademicYearService } from './academic-year.service';
@@ -8,6 +8,6 @@ import { AcademicYearService } from './academic-year.service';
   imports: [RbacModule],
   controllers: [AcademicYearController],
   providers: [AcademicYearRepository, AcademicYearService],
-  exports: [AcademicYearService, AcademicYearRepository],
+  exports: [AcademicYearService],
 })
 export class AcademicYearModule {}

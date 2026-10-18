@@ -21,6 +21,7 @@ import { VerifyEmailDto } from '../dto/verify-email.dto';
 import { ResendVerificationDto } from '../dto/resend-verification.dto';
 import { ChangePasswordDto } from '../dto/change-password.dto';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
+import { ResponseMessage } from '~/common/decorators/response.decorators';
 
 /** Generic message used by anti-enumeration endpoints. */
 const GENERIC_EMAIL_MSG =
@@ -38,120 +39,76 @@ export class AuthController {
   constructor(private authService: AuthService) {}
 
   @Get('activate')
-  async verifyActivation(@Query('token') token: string) {
-    const result = await this.authService.verifyActivation(token);
-
-    return {
-      success: true,
-      statusCode: 200,
-      message: `Activation token valid.`,
-      data: result,
-    };
+  @ResponseMessage('Activation token valid.')
+  verifyActivation(@Query('token') token: string) {
+    return this.authService.verifyActivation(token);
   }
 
   @Post('activate')
   @Throttle(AUTH_THROTTLE)
-  async activate(@Body() dto: ActivateDto) {
-    const result = await this.authService.activate(dto);
-
-    return {
-      success: true,
-      statusCode: 200,
-      message: `Account activated.`,
-      data: result,
-    };
+  @ResponseMessage('Account activated.')
+  activate(@Body() dto: ActivateDto) {
+    return this.authService.activate(dto);
   }
 
   @Post('login')
   @Throttle(AUTH_THROTTLE)
-  async login(@Body() dto: LoginDto) {
-    const result = await this.authService.login(dto);
-
-    return {
-      success: true,
-      statusCode: 200,
-      message: `User logged in.`,
-      data: result,
-    };
+  @ResponseMessage('User logged in.')
+  login(@Body() dto: LoginDto) {
+    return this.authService.login(dto);
   }
 
   @Post('forgot-password')
   @HttpCode(200)
   @Throttle(AUTH_THROTTLE)
+  @ResponseMessage(GENERIC_EMAIL_MSG)
   async forgotPassword(@Body() dto: ForgotPasswordDto) {
     await this.authService.forgotPassword(dto.email);
-    return {
-      success: true,
-      statusCode: 200,
-      message: GENERIC_EMAIL_MSG,
-      data: {},
-    };
+    return {};
   }
 
   @Get('reset-password')
-  async checkResetToken(@Query('token') token: string) {
-    const data = await this.authService.checkResetToken(token);
-    return {
-      success: true,
-      statusCode: 200,
-      message: 'Reset token valid.',
-      data,
-    };
+  @ResponseMessage('Reset token valid.')
+  checkResetToken(@Query('token') token: string) {
+    return this.authService.checkResetToken(token);
   }
 
   @Post('reset-password')
   @HttpCode(200)
   @Throttle(AUTH_THROTTLE)
+  @ResponseMessage('Password has been reset.')
   async resetPassword(@Body() dto: ResetPasswordDto) {
     await this.authService.resetPassword(dto.token, dto.password);
-    return {
-      success: true,
-      statusCode: 200,
-      message: 'Password has been reset.',
-      data: {},
-    };
+    return {};
   }
 
   @Get('verify-email')
-  async checkVerificationToken(@Query('token') token: string) {
-    const data = await this.authService.checkVerificationToken(token);
-    return {
-      success: true,
-      statusCode: 200,
-      message: 'Verification token valid.',
-      data,
-    };
+  @ResponseMessage('Verification token valid.')
+  checkVerificationToken(@Query('token') token: string) {
+    return this.authService.checkVerificationToken(token);
   }
 
   @Post('verify-email')
   @HttpCode(200)
   @Throttle(AUTH_THROTTLE)
-  async verifyEmail(@Body() dto: VerifyEmailDto) {
-    const result = await this.authService.verifyEmail(dto.token);
-    return {
-      success: true,
-      statusCode: 200,
-      message: 'Email verified.',
-      data: result,
-    };
+  @ResponseMessage('Email verified.')
+  verifyEmail(@Body() dto: VerifyEmailDto) {
+    return this.authService.verifyEmail(dto.token);
   }
 
   @Post('resend-verification')
   @HttpCode(200)
   @Throttle(AUTH_THROTTLE)
+  @ResponseMessage(GENERIC_EMAIL_MSG)
   async resendVerification(@Body() dto: ResendVerificationDto) {
     await this.authService.resendVerification(dto.email);
-    return {
-      success: true,
-      statusCode: 200,
-      message: GENERIC_EMAIL_MSG,
-      data: {},
-    };
+    return {};
   }
 
   @Post('change-password')
   @HttpCode(200)
   @UseGuards(JwtAuthGuard)
+  @ResponseMessage('Password changed.')
   async changePassword(
     @RequestContext() ctx: RequestContextDto,
     @Body() dto: ChangePasswordDto,
@@ -161,24 +118,13 @@ export class AuthController {
       dto.currentPassword,
       dto.newPassword,
     );
-    return {
-      success: true,
-      statusCode: 200,
-      message: 'Password changed.',
-      data: {},
-    };
+    return {};
   }
 
   @Get('me')
   @UseGuards(JwtAuthGuard)
-  async getMe(@RequestContext() ctx: RequestContextDto) {
-    const user = await this.authService.getMe(ctx.userId!);
-
-    return {
-      success: true,
-      statusCode: 200,
-      message: `User found.`,
-      data: user,
-    };
+  @ResponseMessage('User found.')
+  getMe(@RequestContext() ctx: RequestContextDto) {
+    return this.authService.getMe(ctx.userId!);
   }
 }

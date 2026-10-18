@@ -7,7 +7,7 @@ import {
   OneToMany,
 } from 'typeorm';
 import { OrganizationStatus } from '../enums/organization-status.enum';
-import { Membership } from 'src/modules/memberships/entities/membership.entity';
+import { Membership } from '~/modules/memberships/entities/membership.entity';
 
 /**
  * A school (tenant). All tenanted rows reference it via `org_id`, so deleting

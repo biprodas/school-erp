@@ -14,14 +14,16 @@ import {
 } from 'typeorm';
 import { OrgScopedEntity } from '~/tenancy/org-scoped.entity';
 import { User } from '~/modules/users/entities/user.entity';
-import { Department } from '../../departments/entities/department.entity';
-import { Designation } from '../../designations/entities/designation.entity';
+import { Department } from '~/modules/departments/entities/department.entity';
+import { Designation } from '~/modules/designations/entities/designation.entity';
 import { EmployeeGender } from '../enums/employee-gender.enum';
 import { EmployeeStatus } from '../enums/employee-status.enum';
 
 @Entity('employees')
+// Partial: a soft-deleted employee doesn't block reusing the number.
 @Index('uq_employees_org_employee_number', ['orgId', 'employeeNumber'], {
   unique: true,
+  where: '"deleted_at" IS NULL',
 })
 export class Employee extends OrgScopedEntity {
   @PrimaryGeneratedColumn('uuid')

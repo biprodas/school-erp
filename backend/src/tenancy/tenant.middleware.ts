@@ -1,8 +1,8 @@
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import { NextFunction, Request, Response } from 'express';
 import { Key } from '~/common/enums/keys.enum';
-import { OrganizationStatus } from 'src/modules/organizations/enums/organization-status.enum';
-import { OrganizationService } from 'src/modules/organizations/services/organization.service';
+import { OrganizationStatus } from '~/modules/organizations/enums/organization-status.enum';
+import { OrganizationService } from '~/modules/organizations/services/organization.service';
 import {
   TenantContextMissingException,
   TenantInactiveException,
@@ -23,7 +23,7 @@ export interface RequestWithOrg extends Request {
 interface ResolvedOrg {
   id: string;
   slug: string;
-  status: string;
+  status: OrganizationStatus;
 }
 
 const SLUG_PATTERN = /^[a-z0-9]([a-z0-9_-]*[a-z0-9])?$/;

@@ -1,28 +1,6 @@
-import { IsInt, IsOptional, IsString, MaxLength, Min } from 'class-validator';
+import { PartialType } from '@nestjs/swagger';
+import { CreateStudentEmergencyContactDto } from './create-student-emergency-contact.dto';
 
-export class UpdateStudentEmergencyContactDto {
-  @IsOptional()
-  @IsString()
-  @MaxLength(160)
-  name?: string;
-
-  @IsOptional()
-  @IsString()
-  @MaxLength(60)
-  relation?: string;
-
-  @IsOptional()
-  @IsString()
-  @MaxLength(40)
-  phone?: string;
-
-  @IsOptional()
-  @IsString()
-  @MaxLength(40)
-  alternatePhone?: string;
-
-  @IsOptional()
-  @IsInt()
-  @Min(1)
-  priority?: number;
-}
+export class UpdateStudentEmergencyContactDto extends PartialType(
+  CreateStudentEmergencyContactDto,
+) {}

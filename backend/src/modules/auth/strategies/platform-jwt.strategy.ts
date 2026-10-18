@@ -2,11 +2,13 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
+import type { AuthUser } from '~/common/auth/auth-user';
+import { UserStatus } from '~/modules/users/enums/user-status.enum';
 
 interface PlatformJwtPayload {
   sub: string;
   email: string;
-  status?: string;
+  status?: UserStatus;
   isAdmin?: boolean;
   orgId?: string;
 }
@@ -28,7 +30,7 @@ export class PlatformJwtStrategy extends PassportStrategy(
     });
   }
 
-  validate(payload: PlatformJwtPayload) {
+  validate(payload: PlatformJwtPayload): AuthUser {
     // Tenant tokens share the signing secret and carry their own `isAdmin`
     // (school admin, from the membership). Reject them here so a school admin can't pass
     // PlatformAdminGuard as a platform super-admin.

@@ -37,7 +37,8 @@ import { MailService } from './mail.service';
       },
     }),
   ],
-  controllers: [MailController],
+  // The dev/mail endpoints are unauthenticated, so they only exist outside production.
+  controllers: process.env.NODE_ENV === 'production' ? [] : [MailController],
   providers: [MailService],
   exports: [MailService],
 })

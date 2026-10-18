@@ -16,14 +16,14 @@ import { generateToken, hashToken } from '~/common/tokens/secure-token.util';
 import { AuthTokenType } from '~/common/tokens/auth-token-type.enum';
 import { MailService } from '~/shared/mail/mail.service';
 import type { RequestWithOrg } from '~/tenancy/tenant.middleware';
-import { AuthToken } from '~/modules/auth/entities/auth-token.entity';
+import { AuthToken } from '../entities/auth-token.entity';
 import { Membership } from '~/modules/memberships/entities/membership.entity';
 import { MembershipStatus } from '~/modules/memberships/enums/membership-status.enum';
 import { User } from '~/modules/users/entities/user.entity';
 import { UserStatus } from '~/modules/users/enums/user-status.enum';
-import { UserRoleRepository } from '../../rbac/user-role.repository';
-import { AccountRepository } from '../../users/repositories/account.repository';
-import { MemberRepository } from '../../users/repositories/member.repository';
+import { RoleService } from '~/modules/rbac/services/role.service';
+import { AccountRepository } from '~/modules/users/repositories/account.repository';
+import { MemberRepository } from '~/modules/users/repositories/member.repository';
 import { LoginDto } from '../dto/login.dto';
 import { ActivateDto } from '../dto/activate.dto';
 import { AuthTokenRepository } from '../repositories/auth-token.repository';
@@ -47,7 +47,7 @@ export class AuthService {
   constructor(
     private readonly accountRepo: AccountRepository,
     private readonly memberRepo: MemberRepository,
-    private readonly userRoleRepo: UserRoleRepository,
+    private readonly roleService: RoleService,
     private readonly authTokenRepo: AuthTokenRepository,
     private readonly mail: MailService,
     @Inject(REQUEST) private readonly request: RequestWithOrg,
@@ -159,10 +159,8 @@ export class AuthService {
   }
 
   private async getRoleNames(userId: string): Promise<string[]> {
-    const assignments = await this.userRoleRepo.findByUserId(userId);
-    return assignments
-      .map((assignment) => assignment.role?.name)
-      .filter((name): name is string => !!name);
+    const roles = await this.roleService.getUserRoles(userId);
+    return roles.map((role) => role.name);
   }
 
   private async generateToken(user: User, membership: Membership) {

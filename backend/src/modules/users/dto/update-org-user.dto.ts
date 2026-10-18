@@ -1,12 +1,7 @@
-import { IsEnum, IsOptional, IsString } from 'class-validator';
-import { MembershipStatus } from '~/modules/memberships/enums/membership-status.enum';
+import { PartialType, PickType } from '@nestjs/swagger';
+import { CreateOrgUserDto } from './create-org-user.dto';
 
-export class UpdateOrgUserDto {
-  @IsOptional()
-  @IsString()
-  name?: string;
-
-  @IsOptional()
-  @IsEnum(MembershipStatus)
-  status?: MembershipStatus;
-}
+/** Email and password belong to the global account; roles have their own endpoints. */
+export class UpdateOrgUserDto extends PartialType(
+  PickType(CreateOrgUserDto, ['name', 'status'] as const),
+) {}

@@ -11,14 +11,15 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiHeader, ApiTags } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { PermissionsGuard } from '../rbac/permissions.guard';
-import { PERMISSIONS } from '../rbac/permissions.catalog';
-import { RequirePermissions } from '../rbac/require-permissions.decorator';
+import { JwtAuthGuard } from '~/modules/auth/guards/jwt-auth.guard';
+import { PermissionsGuard } from '~/modules/rbac/guards/permissions.guard';
+import { PERMISSIONS } from '~/modules/rbac/permissions.catalog';
+import { RequirePermissions } from '~/modules/rbac/decorators/require-permissions.decorator';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { FilterEmployeeDto } from './dto/filter-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
 import { EmployeeService } from './employee.service';
+import { ResponseMessage } from '~/common/decorators/response.decorators';
 
 @ApiTags('Tenant / Employees')
 @ApiBearerAuth('tenant-jwt')
@@ -34,63 +35,39 @@ export class EmployeeController {
 
   @Get()
   @RequirePermissions(PERMISSIONS.EMPLOYEES_READ)
-  async findAll(@Query() filter: FilterEmployeeDto) {
-    const employees = await this.employeeService.findFiltered(filter);
-    return {
-      success: true,
-      statusCode: 200,
-      message: 'List of employees',
-      data: employees,
-    };
+  @ResponseMessage('List of employees')
+  findAll(@Query() filter: FilterEmployeeDto) {
+    return this.employeeService.findFiltered(filter);
   }
 
   @Post()
   @RequirePermissions(PERMISSIONS.EMPLOYEES_CREATE)
-  async create(@Body() dto: CreateEmployeeDto) {
-    const employee = await this.employeeService.create(dto);
-    return {
-      success: true,
-      statusCode: 201,
-      message: `Employee created. ID: ${employee.id}`,
-      data: employee,
-    };
+  @ResponseMessage('Employee created')
+  create(@Body() dto: CreateEmployeeDto) {
+    return this.employeeService.create(dto);
   }
 
   @Get(':id')
   @RequirePermissions(PERMISSIONS.EMPLOYEES_READ)
-  async findOne(@Param('id', ParseUUIDPipe) id: string) {
-    const employee = await this.employeeService.findById(id);
-    return {
-      success: true,
-      statusCode: 200,
-      message: `Employee found. ID: ${employee.id}`,
-      data: employee,
-    };
+  @ResponseMessage('Employee found')
+  findOne(@Param('id', ParseUUIDPipe) id: string) {
+    return this.employeeService.findById(id);
   }
 
   @Patch(':id')
   @RequirePermissions(PERMISSIONS.EMPLOYEES_UPDATE)
-  async update(
+  @ResponseMessage('Employee updated')
+  update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateEmployeeDto,
   ) {
-    const employee = await this.employeeService.update(id, dto);
-    return {
-      success: true,
-      statusCode: 200,
-      message: `Employee updated. ID: ${employee.id}`,
-      data: employee,
-    };
+    return this.employeeService.update(id, dto);
   }
 
   @Delete(':id')
   @RequirePermissions(PERMISSIONS.EMPLOYEES_DELETE)
+  @ResponseMessage('Employee deleted')
   async remove(@Param('id', ParseUUIDPipe) id: string) {
     await this.employeeService.remove(id);
-    return {
-      success: true,
-      statusCode: 200,
-      message: `Employee deleted. ID: ${id}`,
-    };
   }
 }

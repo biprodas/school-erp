@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
-import { RbacModule } from '../rbac/rbac.module';
-import { UserModule } from '../users/user.module';
+import { RbacModule } from '~/modules/rbac/rbac.module';
+import { UserModule } from '~/modules/users/user.module';
 import { StudentAddressController } from './controllers/student-address.controller';
 import { StudentController } from './controllers/student.controller';
 import { StudentDocumentController } from './controllers/student-document.controller';

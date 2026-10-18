@@ -3,14 +3,15 @@ import {
   ConflictException,
   NotFoundException,
 } from '@nestjs/common';
-import { RoleRepository } from '../rbac/role.repository';
-import { OrgUserService } from '../users/services/org-user.service';
-import { DepartmentRepository } from '../departments/department.repository';
-import { DesignationRepository } from '../designations/designation.repository';
+import { RoleService } from '~/modules/rbac/services/role.service';
+import { OrgUserService } from '~/modules/users/services/org-user.service';
+import { DepartmentService } from '~/modules/departments/department.service';
+import { DesignationService } from '~/modules/designations/designation.service';
 import { EmployeeRepository } from './employee.repository';
 import { EmployeeService } from './employee.service';
 import { Employee } from './entities/employee.entity';
 import { EmployeeStatus } from './enums/employee-status.enum';
+import { fakeTenantDataSource } from '~/tenancy/tenant-datasource.testing';
 
 const makeEmployee = (overrides: Partial<Employee> = {}): Employee => ({
   id: 'emp-1',
@@ -50,7 +51,7 @@ describe('EmployeeService', () => {
       findByEmployeeNumber: jest.fn(),
       findByUserId: jest.fn(),
       findFiltered: jest.fn(),
-      saveNew: jest.fn((data) =>
+      saveNew: jest.fn((data: Partial<Employee>) =>
         Promise.resolve(makeEmployee({ id: 'new-emp', ...data })),
       ),
       save: jest.fn((entity) => Promise.resolve(entity)),
@@ -61,21 +62,22 @@ describe('EmployeeService', () => {
       create: jest.fn(),
     };
     roleRepo = {
-      findByIdOrFail: jest.fn(),
+      findById: jest.fn(),
     };
     departmentRepo = {
-      findByIdOrFail: jest.fn(),
+      findById: jest.fn(),
     };
     designationRepo = {
-      findByIdOrFail: jest.fn(),
+      findById: jest.fn(),
     };
 
     service = new EmployeeService(
       employeeRepo as unknown as EmployeeRepository,
       userService as unknown as OrgUserService,
-      roleRepo as unknown as RoleRepository,
-      departmentRepo as unknown as DepartmentRepository,
-      designationRepo as unknown as DesignationRepository,
+      roleRepo as unknown as RoleService,
+      departmentRepo as unknown as DepartmentService,
+      designationRepo as unknown as DesignationService,
+      fakeTenantDataSource(),
     );
   });
 
@@ -105,8 +107,8 @@ describe('EmployeeService', () => {
 
     it('validates department and designation when provided', async () => {
       employeeRepo.findByEmployeeNumber.mockResolvedValue(null);
-      departmentRepo.findByIdOrFail.mockResolvedValue({ id: 'dept-1' });
-      designationRepo.findByIdOrFail.mockResolvedValue({ id: 'desig-1' });
+      departmentRepo.findById.mockResolvedValue({ id: 'dept-1' });
+      designationRepo.findById.mockResolvedValue({ id: 'desig-1' });
       employeeRepo.findByIdWithRelations.mockResolvedValue(
         makeEmployee({
           id: 'new-emp',
@@ -123,13 +125,13 @@ describe('EmployeeService', () => {
         designationId: 'desig-1',
       });
 
-      expect(departmentRepo.findByIdOrFail).toHaveBeenCalledWith('dept-1');
-      expect(designationRepo.findByIdOrFail).toHaveBeenCalledWith('desig-1');
+      expect(departmentRepo.findById).toHaveBeenCalledWith('dept-1');
+      expect(designationRepo.findById).toHaveBeenCalledWith('desig-1');
     });
 
     it('provisions a new user with the given roles when createUser is set', async () => {
       employeeRepo.findByEmployeeNumber.mockResolvedValue(null);
-      roleRepo.findByIdOrFail.mockResolvedValue({ id: 'role-teacher' });
+      roleRepo.findById.mockResolvedValue({ id: 'role-teacher' });
       userService.create.mockResolvedValue({ id: 'new-user' });
       employeeRepo.findByIdWithRelations.mockResolvedValue(
         makeEmployee({ id: 'new-emp', userId: 'new-user' }),
@@ -146,7 +148,7 @@ describe('EmployeeService', () => {
         },
       });
 
-      expect(roleRepo.findByIdOrFail).toHaveBeenCalledWith('role-teacher');
+      expect(roleRepo.findById).toHaveBeenCalledWith('role-teacher');
       expect(userService.create).toHaveBeenCalledWith({
         name: 'Linus Torvalds',
         email: 'linus@example.com',
@@ -188,7 +190,7 @@ describe('EmployeeService', () => {
 
     it('rejects an invalid department id', async () => {
       employeeRepo.findByEmployeeNumber.mockResolvedValue(null);
-      departmentRepo.findByIdOrFail.mockRejectedValue(new NotFoundException());
+      departmentRepo.findById.mockRejectedValue(new NotFoundException());
 
       await expect(
         service.create({
@@ -256,18 +258,24 @@ describe('EmployeeService', () => {
   });
 
   describe('findFiltered', () => {
-    it('passes only provided filters to the repository', async () => {
+    it('passes only provided filters, plus the page, to the repository', async () => {
       employeeRepo.findFiltered.mockResolvedValue([]);
-
-      await service.findFiltered({
+      const filter = {
         status: EmployeeStatus.ACTIVE,
         departmentId: 'dept-1',
-      });
+        page: 2,
+        limit: 10,
+      };
 
-      expect(employeeRepo.findFiltered).toHaveBeenCalledWith({
-        status: EmployeeStatus.ACTIVE,
-        departmentId: 'dept-1',
-      });
+      await service.findFiltered(filter);
+
+      expect(employeeRepo.findFiltered).toHaveBeenCalledWith(
+        {
+          status: EmployeeStatus.ACTIVE,
+          departmentId: 'dept-1',
+        },
+        filter,
+      );
     });
   });
 });

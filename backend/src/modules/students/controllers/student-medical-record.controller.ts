@@ -9,12 +9,13 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiHeader, ApiTags } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
-import { PERMISSIONS } from '../../rbac/permissions.catalog';
-import { PermissionsGuard } from '../../rbac/permissions.guard';
-import { RequirePermissions } from '../../rbac/require-permissions.decorator';
+import { JwtAuthGuard } from '~/modules/auth/guards/jwt-auth.guard';
+import { PERMISSIONS } from '~/modules/rbac/permissions.catalog';
+import { PermissionsGuard } from '~/modules/rbac/guards/permissions.guard';
+import { RequirePermissions } from '~/modules/rbac/decorators/require-permissions.decorator';
 import { UpsertStudentMedicalRecordDto } from '../dto/upsert-student-medical-record.dto';
 import { StudentMedicalRecordService } from '../services/student-medical-record.service';
+import { ResponseMessage } from '~/common/decorators/response.decorators';
 
 @ApiTags('Tenant / Students')
 @ApiBearerAuth('tenant-jwt')
@@ -30,39 +31,25 @@ export class StudentMedicalRecordController {
 
   @Get()
   @RequirePermissions(PERMISSIONS.STUDENT_MEDICAL_READ)
-  async get(@Param('studentId', ParseUUIDPipe) studentId: string) {
-    const record = await this.medicalService.getForStudent(studentId);
-    return {
-      success: true,
-      statusCode: 200,
-      message: `Medical record of student ${studentId}`,
-      data: record,
-    };
+  @ResponseMessage('Medical record')
+  get(@Param('studentId', ParseUUIDPipe) studentId: string) {
+    return this.medicalService.getForStudent(studentId);
   }
 
   @Put()
   @RequirePermissions(PERMISSIONS.STUDENT_MEDICAL_UPDATE)
-  async upsert(
+  @ResponseMessage('Medical record saved')
+  upsert(
     @Param('studentId', ParseUUIDPipe) studentId: string,
     @Body() dto: UpsertStudentMedicalRecordDto,
   ) {
-    const record = await this.medicalService.upsert(studentId, dto);
-    return {
-      success: true,
-      statusCode: 200,
-      message: `Medical record saved for student ${studentId}`,
-      data: record,
-    };
+    return this.medicalService.upsert(studentId, dto);
   }
 
   @Delete()
   @RequirePermissions(PERMISSIONS.STUDENT_MEDICAL_DELETE)
+  @ResponseMessage('Medical record removed')
   async remove(@Param('studentId', ParseUUIDPipe) studentId: string) {
     await this.medicalService.remove(studentId);
-    return {
-      success: true,
-      statusCode: 200,
-      message: `Medical record removed for student ${studentId}`,
-    };
   }
 }

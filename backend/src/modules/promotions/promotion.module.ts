@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
-import { RbacModule } from '../rbac/rbac.module';
-import { AcademicYearModule } from '../academic-years/academic-year.module';
-import { ClassModule } from '../classes/class.module';
-import { SectionModule } from '../sections/section.module';
-import { StudentModule } from '../students/student.module';
+import { RbacModule } from '~/modules/rbac/rbac.module';
+import { AcademicYearModule } from '~/modules/academic-years/academic-year.module';
+import { ClassModule } from '~/modules/classes/class.module';
+import { SectionModule } from '~/modules/sections/section.module';
+import { StudentModule } from '~/modules/students/student.module';
 import { PromotionController } from './promotion.controller';
 import { PromotionRepository } from './promotion.repository';
 import { PromotionService } from './promotion.service';

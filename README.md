@@ -66,8 +66,7 @@ Database: `npm run db:migrate` applies migrations, and `npm run db:seed:core` se
 
 ## Documentation
 
-- **[Menu structure](doc/menu-structure.md)** — sidebar categories, menus, and routes (mirrors `frontend/src/app/(dashboard)/_components/sidebar-nav.tsx`).
-- **[Features](doc/features.md)** — capability overview.
+- **[PRD](doc/prd.md)** — product requirements and feature scope.
 
 ## License
 

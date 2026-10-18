@@ -5,6 +5,7 @@ import { UpdateSubjectDto } from './dto/update-subject.dto';
 import { Subject } from './entities/subject.entity';
 import { SubjectType } from './enums/subject-type.enum';
 import { SubjectRepository } from './subject.repository';
+import { Paginated } from '~/common/dto/paginated.dto';
 
 @Injectable()
 export class SubjectService {
@@ -12,13 +13,13 @@ export class SubjectService {
 
   constructor(private readonly subjectRepo: SubjectRepository) {}
 
-  async findFiltered(filter: FilterSubjectDto): Promise<Subject[]> {
+  findFiltered(filter: FilterSubjectDto): Promise<Paginated<Subject>> {
     const where: Record<string, any> = {};
     if (filter.id) where.id = filter.id;
     if (filter.name) where.name = filter.name;
     if (filter.type) where.type = filter.type;
     if (filter.isActive !== undefined) where.isActive = filter.isActive;
-    return this.subjectRepo.findFiltered(where);
+    return this.subjectRepo.findFiltered(where, filter);
   }
 
   async findById(id: string): Promise<Subject> {

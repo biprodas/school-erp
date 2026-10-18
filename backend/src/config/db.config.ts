@@ -19,26 +19,20 @@ export interface DbConfig {
   maxLifetime: number;
 }
 
-export default registerAs(
-  'db',
-  (): DbConfig => ({
-    host: process.env.DB_HOST!,
-    port: parseInt(process.env.DB_PORT ?? '5432', 10),
-    username: process.env.DB_USERNAME!,
-    password: process.env.DB_PASSWORD!,
-    appUsername: process.env.DB_APP_USERNAME || undefined,
-    appPassword: process.env.DB_APP_PASSWORD || undefined,
-    database: process.env.DB_NAME!,
-    sync: process.env.DB_SYNC === 'true',
-    logging:
-      process.env.DB_LOGGING === 'true' ? ['query', 'error', 'schema'] : false,
-    ssl: process.env.DB_SSL === 'true',
-    tenantPoolSize: parseInt(process.env.DB_TENANT_POOL_SIZE ?? '20', 10),
-    connectionTimeout: parseInt(
-      process.env.DB_CONNECTION_TIMEOUT ?? '5000',
-      10,
-    ),
-    idleTimeout: parseInt(process.env.DB_IDLE_TIMEOUT ?? '10000', 10),
-    maxLifetime: parseInt(process.env.DB_MAX_LIFETIME ?? '1800000', 10),
-  }),
-);
+export default registerAs('db', (): DbConfig => ({
+  host: process.env.DB_HOST!,
+  port: parseInt(process.env.DB_PORT ?? '5432', 10),
+  username: process.env.DB_USERNAME!,
+  password: process.env.DB_PASSWORD!,
+  appUsername: process.env.DB_APP_USERNAME || undefined,
+  appPassword: process.env.DB_APP_PASSWORD || undefined,
+  database: process.env.DB_NAME!,
+  sync: process.env.DB_SYNC === 'true',
+  logging:
+    process.env.DB_LOGGING === 'true' ? ['query', 'error', 'schema'] : false,
+  ssl: process.env.DB_SSL === 'true',
+  tenantPoolSize: parseInt(process.env.DB_TENANT_POOL_SIZE ?? '20', 10),
+  connectionTimeout: parseInt(process.env.DB_CONNECTION_TIMEOUT ?? '5000', 10),
+  idleTimeout: parseInt(process.env.DB_IDLE_TIMEOUT ?? '10000', 10),
+  maxLifetime: parseInt(process.env.DB_MAX_LIFETIME ?? '1800000', 10),
+}));

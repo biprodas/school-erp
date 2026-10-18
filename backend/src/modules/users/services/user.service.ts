@@ -31,9 +31,7 @@ export class UserService {
     this.logger.log(`${this.findAll.name} Service Called`);
 
     const { id, name, email } = filterUserDto;
-    const reqQuery: any = { id, name, email };
-
-    return this.userRepo.find({ where: reqQuery });
+    return this.userRepo.find({ where: { id, name, email } });
   }
 
   async findById(_ctx: RequestContextDto, id: string): Promise<User> {

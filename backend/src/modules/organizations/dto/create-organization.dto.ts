@@ -2,8 +2,6 @@ import {
   IsString,
   IsNotEmpty,
   Length,
-  MinLength,
-  MaxLength,
   Matches,
   IsOptional,
   IsFQDN,

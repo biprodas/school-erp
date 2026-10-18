@@ -8,10 +8,10 @@ import {
 import { MembershipService } from './membership.service';
 import { Membership } from '../entities/membership.entity';
 import { MembershipRole } from '../enums/membership-role.enum';
-import { OrganizationService } from 'src/modules/organizations/services/organization.service';
-import { UserService } from 'src/modules/users/services/user.service';
+import { OrganizationService } from '~/modules/organizations/services/organization.service';
+import { UserService } from '~/modules/users/services/user.service';
 import { OwnerProvisioningService } from '~/modules/auth/services/owner-provisioning.service';
-import { UserStatus } from 'src/modules/users/enums/user-status.enum';
+import { UserStatus } from '~/modules/users/enums/user-status.enum';
 import { RequestContextDto } from '~/common/dto/request-context.dto';
 import { UserRole } from '~/modules/rbac/entities/user-role.entity';
 
@@ -57,7 +57,6 @@ const userCtx = (id = 'user-id') =>
   });
 
 const TENANT_ID = 'org-1';
-const OTHER_TENANT_ID = 'org-2';
 
 const makeMembership = (overrides: Partial<Membership> = {}): Membership =>
   ({
@@ -84,7 +83,7 @@ describe('MembershipService', () => {
     membershipRepo = {
       findOne: jest.fn(),
       find: jest.fn(),
-      create: jest.fn((data) => ({ ...data })),
+      create: jest.fn((data: object) => ({ ...data })),
       save: jest.fn((entity) => Promise.resolve({ id: 'new-mem', ...entity })),
       delete: jest.fn(),
     };
@@ -348,7 +347,7 @@ describe('MembershipService', () => {
       await service.findAll(superAdminCtx(), { orgId: TENANT_ID });
       expect(membershipRepo.find).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({ orgId: TENANT_ID }),
+          where: expect.objectContaining({ orgId: TENANT_ID }) as unknown,
         }),
       );
     });
@@ -362,7 +361,7 @@ describe('MembershipService', () => {
       const result = await service.findAll(ctx, {});
       expect(membershipRepo.find).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({ userId: 'user-id' }),
+          where: expect.objectContaining({ userId: 'user-id' }) as unknown,
         }),
       );
       expect(result).toHaveLength(1);

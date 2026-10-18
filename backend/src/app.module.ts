@@ -9,7 +9,6 @@ import { OrganizationModule } from '~/modules/organizations/organization.module'
 import { UserModule } from '~/modules/users/user.module';
 import { TenantCleanupInterceptor } from '~/tenancy/tenant-cleanup.interceptor';
 import { TenantMiddleware } from '~/tenancy/tenant.middleware';
-import { ProductModule } from '~/modules/products/product.module';
 import { RbacModule } from '~/modules/rbac/rbac.module';
 import { StudentModule } from '~/modules/students/student.module';
 import { DepartmentModule } from '~/modules/departments/department.module';
@@ -29,13 +28,12 @@ import { TimetableModule } from '~/modules/timetable/timetable.module';
 import { PromotionModule } from '~/modules/promotions/promotion.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { configLoaders, envValidationSchema, ThrottleConfig } from './config';
+import { configLoaders, envValidationSchema, ThrottleConfig } from '~/config';
 import { DatabaseModule } from './database/database.module';
-import { CatModule } from '~/modules/cats/cat.module';
-import { TaskModule } from '~/modules/tasks/task.module';
-import { HealthModule } from './shared/health/health.module';
-import { MailModule } from './shared/mail/mail.module';
-import { TenancyModule } from './tenancy/tenancy.module';
+import { HealthModule } from '~/shared/health/health.module';
+import { LoggingModule } from '~/shared/logging/logging.module';
+import { MailModule } from '~/shared/mail/mail.module';
+import { TenancyModule } from '~/tenancy/tenancy.module';
 
 const nodeEnv = process.env.NODE_ENV ?? 'development';
 const envFilePath = ['.env', `.env.${nodeEnv}`];
@@ -59,6 +57,7 @@ const envFilePath = ['.env', `.env.${nodeEnv}`];
         };
       },
     }),
+    LoggingModule,
     DatabaseModule,
     HealthModule,
     MailModule,
@@ -68,9 +67,6 @@ const envFilePath = ['.env', `.env.${nodeEnv}`];
     OrganizationModule,
     UserModule,
     RbacModule,
-    CatModule,
-    TaskModule,
-    ProductModule,
     StudentModule,
     DepartmentModule,
     DesignationModule,
@@ -123,6 +119,6 @@ export class AppModule {
         { path: 'dev/mail', method: RequestMethod.ALL },
         { path: 'dev/mail/*path', method: RequestMethod.ALL },
       )
-      .forRoutes('*');
+      .forRoutes({ path: '{*splat}', method: RequestMethod.ALL });
   }
 }

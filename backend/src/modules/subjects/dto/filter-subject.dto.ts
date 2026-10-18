@@ -8,8 +8,9 @@ import {
   MaxLength,
 } from 'class-validator';
 import { SubjectType } from '../enums/subject-type.enum';
+import { PaginationQueryDto } from '~/common/dto/pagination-query.dto';
 
-export class FilterSubjectDto {
+export class FilterSubjectDto extends PaginationQueryDto {
   @IsOptional()
   @IsUUID('4')
   id?: string;

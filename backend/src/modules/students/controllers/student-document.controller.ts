@@ -11,13 +11,14 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiHeader, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '~/common/decorators/current-user.decorator';
-import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
-import { PERMISSIONS } from '../../rbac/permissions.catalog';
-import { PermissionsGuard } from '../../rbac/permissions.guard';
-import { RequirePermissions } from '../../rbac/require-permissions.decorator';
+import { JwtAuthGuard } from '~/modules/auth/guards/jwt-auth.guard';
+import { PERMISSIONS } from '~/modules/rbac/permissions.catalog';
+import { PermissionsGuard } from '~/modules/rbac/guards/permissions.guard';
+import { RequirePermissions } from '~/modules/rbac/decorators/require-permissions.decorator';
 import { CreateStudentDocumentDto } from '../dto/create-student-document.dto';
 import { UpdateStudentDocumentDto } from '../dto/update-student-document.dto';
 import { StudentDocumentService } from '../services/student-document.service';
+import { ResponseMessage } from '~/common/decorators/response.decorators';
 
 @ApiTags('Tenant / Students')
 @ApiBearerAuth('tenant-jwt')
@@ -33,67 +34,40 @@ export class StudentDocumentController {
 
   @Get()
   @RequirePermissions(PERMISSIONS.STUDENT_DOCUMENTS_READ)
-  async list(@Param('studentId', ParseUUIDPipe) studentId: string) {
-    const documents = await this.documentService.listForStudent(studentId);
-    return {
-      success: true,
-      statusCode: 200,
-      message: `Documents of student ${studentId}`,
-      data: documents,
-    };
+  @ResponseMessage('Documents')
+  list(@Param('studentId', ParseUUIDPipe) studentId: string) {
+    return this.documentService.listForStudent(studentId);
   }
 
   @Post()
   @RequirePermissions(PERMISSIONS.STUDENT_DOCUMENTS_CREATE)
-  async create(
+  @ResponseMessage('Document added')
+  create(
     @Param('studentId', ParseUUIDPipe) studentId: string,
     @Body() dto: CreateStudentDocumentDto,
     @CurrentUser() user: { userId?: string } | undefined,
   ) {
-    const document = await this.documentService.create(
-      studentId,
-      dto,
-      user?.userId ?? null,
-    );
-    return {
-      success: true,
-      statusCode: 201,
-      message: `Document added to student ${studentId}. ID: ${document.id}`,
-      data: document,
-    };
+    return this.documentService.create(studentId, dto, user?.userId ?? null);
   }
 
   @Patch(':documentId')
   @RequirePermissions(PERMISSIONS.STUDENT_DOCUMENTS_UPDATE)
-  async update(
+  @ResponseMessage('Document updated')
+  update(
     @Param('studentId', ParseUUIDPipe) studentId: string,
     @Param('documentId', ParseUUIDPipe) documentId: string,
     @Body() dto: UpdateStudentDocumentDto,
   ) {
-    const document = await this.documentService.update(
-      studentId,
-      documentId,
-      dto,
-    );
-    return {
-      success: true,
-      statusCode: 200,
-      message: `Document updated. ID: ${document.id}`,
-      data: document,
-    };
+    return this.documentService.update(studentId, documentId, dto);
   }
 
   @Delete(':documentId')
   @RequirePermissions(PERMISSIONS.STUDENT_DOCUMENTS_DELETE)
+  @ResponseMessage('Document removed')
   async remove(
     @Param('studentId', ParseUUIDPipe) studentId: string,
     @Param('documentId', ParseUUIDPipe) documentId: string,
   ) {
     await this.documentService.remove(studentId, documentId);
-    return {
-      success: true,
-      statusCode: 200,
-      message: `Document removed. ID: ${documentId}`,
-    };
   }
 }

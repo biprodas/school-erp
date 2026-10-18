@@ -6,8 +6,9 @@ import {
   MaxLength,
 } from 'class-validator';
 import { StudentStatus } from '../enums/student-status.enum';
+import { PaginationQueryDto } from '~/common/dto/pagination-query.dto';
 
-export class FilterStudentDto {
+export class FilterStudentDto extends PaginationQueryDto {
   @IsOptional()
   @IsUUID('4')
   id?: string;

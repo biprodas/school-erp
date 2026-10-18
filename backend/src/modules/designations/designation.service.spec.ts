@@ -25,7 +25,7 @@ describe('DesignationService', () => {
       findByTitle: jest.fn(),
       findFiltered: jest.fn(),
       findByIdOrFail: jest.fn(),
-      saveNew: jest.fn((data) =>
+      saveNew: jest.fn((data: Partial<Designation>) =>
         Promise.resolve(makeDesignation({ id: 'new-desig', ...data })),
       ),
       save: jest.fn((entity) => Promise.resolve(entity)),

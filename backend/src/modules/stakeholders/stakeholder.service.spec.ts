@@ -3,13 +3,14 @@ import {
   ConflictException,
   NotFoundException,
 } from '@nestjs/common';
-import { RoleRepository } from '../rbac/role.repository';
-import { OrgUserService } from '../users/services/org-user.service';
+import { RoleService } from '~/modules/rbac/services/role.service';
+import { OrgUserService } from '~/modules/users/services/org-user.service';
 import { StakeholderRepository } from './stakeholder.repository';
 import { StakeholderService } from './stakeholder.service';
 import { Stakeholder } from './entities/stakeholder.entity';
 import { StakeholderStatus } from './enums/stakeholder-status.enum';
 import { StakeholderType } from './enums/stakeholder-type.enum';
+import { fakeTenantDataSource } from '~/tenancy/tenant-datasource.testing';
 
 const makeStakeholder = (
   overrides: Partial<Stakeholder> = {},
@@ -34,14 +35,14 @@ describe('StakeholderService', () => {
   let service: StakeholderService;
   let stakeholderRepo: Record<string, jest.Mock>;
   let userService: Record<string, jest.Mock>;
-  let roleRepo: Record<string, jest.Mock>;
+  let roleService: Record<string, jest.Mock>;
 
   beforeEach(() => {
     stakeholderRepo = {
       findByIdWithUser: jest.fn(),
       findByUserId: jest.fn(),
       findFiltered: jest.fn(),
-      saveNew: jest.fn((data) =>
+      saveNew: jest.fn((data: Partial<Stakeholder>) =>
         Promise.resolve(makeStakeholder({ id: 'new-stk', ...data })),
       ),
       save: jest.fn((entity) => Promise.resolve(entity)),
@@ -51,14 +52,15 @@ describe('StakeholderService', () => {
       findById: jest.fn(),
       create: jest.fn(),
     };
-    roleRepo = {
-      findByName: jest.fn(),
+    roleService = {
+      findSystemRole: jest.fn(),
     };
 
     service = new StakeholderService(
       stakeholderRepo as unknown as StakeholderRepository,
       userService as unknown as OrgUserService,
-      roleRepo as unknown as RoleRepository,
+      roleService as unknown as RoleService,
+      fakeTenantDataSource(),
     );
   });
 
@@ -86,7 +88,7 @@ describe('StakeholderService', () => {
     });
 
     it('provisions a new user with the stakeholder role when createUser is set', async () => {
-      roleRepo.findByName.mockResolvedValue({ id: 'role-stk' });
+      roleService.findSystemRole.mockResolvedValue({ id: 'role-stk' });
       userService.create.mockResolvedValue({ id: 'new-user' });
       stakeholderRepo.findByIdWithUser.mockResolvedValue(
         makeStakeholder({ id: 'new-stk', userId: 'new-user' }),
@@ -98,7 +100,7 @@ describe('StakeholderService', () => {
         createUser: { email: 'jane@example.com', password: 'secret123' },
       });
 
-      expect(roleRepo.findByName).toHaveBeenCalledWith('stakeholder');
+      expect(roleService.findSystemRole).toHaveBeenCalledWith('stakeholder');
       expect(userService.create).toHaveBeenCalledWith({
         name: 'Jane Donor',
         email: 'jane@example.com',
@@ -121,7 +123,7 @@ describe('StakeholderService', () => {
     });
 
     it('rejects when the stakeholder system role is missing', async () => {
-      roleRepo.findByName.mockResolvedValue(null);
+      roleService.findSystemRole.mockRejectedValue(new NotFoundException());
 
       await expect(
         service.create({
@@ -159,14 +161,16 @@ describe('StakeholderService', () => {
   });
 
   describe('findFiltered', () => {
-    it('passes only provided filters to the repository', async () => {
+    it('passes only provided filters, plus the page, to the repository', async () => {
       stakeholderRepo.findFiltered.mockResolvedValue([]);
+      const filter = { type: StakeholderType.VENDOR, page: 2, limit: 10 };
 
-      await service.findFiltered({ type: StakeholderType.VENDOR });
+      await service.findFiltered(filter);
 
-      expect(stakeholderRepo.findFiltered).toHaveBeenCalledWith({
-        type: StakeholderType.VENDOR,
-      });
+      expect(stakeholderRepo.findFiltered).toHaveBeenCalledWith(
+        { type: StakeholderType.VENDOR },
+        filter,
+      );
     });
   });
 });

@@ -10,13 +10,14 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiHeader, ApiTags } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { PermissionsGuard } from '../rbac/permissions.guard';
-import { PERMISSIONS } from '../rbac/permissions.catalog';
-import { RequirePermissions } from '../rbac/require-permissions.decorator';
+import { JwtAuthGuard } from '~/modules/auth/guards/jwt-auth.guard';
+import { PermissionsGuard } from '~/modules/rbac/guards/permissions.guard';
+import { PERMISSIONS } from '~/modules/rbac/permissions.catalog';
+import { RequirePermissions } from '~/modules/rbac/decorators/require-permissions.decorator';
 import { CreatePromotionDto } from './dto/create-promotion.dto';
 import { FilterPromotionDto } from './dto/filter-promotion.dto';
 import { PromotionService } from './promotion.service';
+import { ResponseMessage } from '~/common/decorators/response.decorators';
 
 @ApiTags('Tenant / Promotions')
 @ApiBearerAuth('tenant-jwt')
@@ -32,48 +33,29 @@ export class PromotionController {
 
   @Get()
   @RequirePermissions(PERMISSIONS.PROMOTIONS_READ)
-  async findAll(@Query() filter: FilterPromotionDto) {
-    const items = await this.promotionService.findFiltered(filter);
-    return {
-      success: true,
-      statusCode: 200,
-      message: 'List of promotions',
-      data: items,
-    };
+  @ResponseMessage('List of promotions')
+  findAll(@Query() filter: FilterPromotionDto) {
+    return this.promotionService.findFiltered(filter);
   }
 
   @Post()
   @RequirePermissions(PERMISSIONS.PROMOTIONS_CREATE)
-  async create(@Body() dto: CreatePromotionDto) {
-    const item = await this.promotionService.create(dto);
-    return {
-      success: true,
-      statusCode: 201,
-      message: `Promotion recorded. ID: ${item.id}`,
-      data: item,
-    };
+  @ResponseMessage('Promotion recorded')
+  create(@Body() dto: CreatePromotionDto) {
+    return this.promotionService.create(dto);
   }
 
   @Get(':id')
   @RequirePermissions(PERMISSIONS.PROMOTIONS_READ)
-  async findOne(@Param('id', ParseUUIDPipe) id: string) {
-    const item = await this.promotionService.findById(id);
-    return {
-      success: true,
-      statusCode: 200,
-      message: `Promotion found. ID: ${item.id}`,
-      data: item,
-    };
+  @ResponseMessage('Promotion found')
+  findOne(@Param('id', ParseUUIDPipe) id: string) {
+    return this.promotionService.findById(id);
   }
 
   @Delete(':id')
   @RequirePermissions(PERMISSIONS.PROMOTIONS_DELETE)
+  @ResponseMessage('Promotion deleted')
   async remove(@Param('id', ParseUUIDPipe) id: string) {
     await this.promotionService.remove(id);
-    return {
-      success: true,
-      statusCode: 200,
-      message: `Promotion deleted. ID: ${id}`,
-    };
   }
 }

@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { RbacModule } from '../rbac/rbac.module';
+import { RbacModule } from '~/modules/rbac/rbac.module';
 import { DepartmentController } from './department.controller';
 import { DepartmentRepository } from './department.repository';
 import { DepartmentService } from './department.service';
@@ -8,6 +8,6 @@ import { DepartmentService } from './department.service';
   imports: [RbacModule],
   controllers: [DepartmentController],
   providers: [DepartmentRepository, DepartmentService],
-  exports: [DepartmentService, DepartmentRepository],
+  exports: [DepartmentService],
 })
 export class DepartmentModule {}

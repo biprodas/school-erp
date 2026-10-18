@@ -3,6 +3,8 @@ import { TENANT_DATASOURCE } from '~/tenancy/tenancy.constants';
 import { TenantDataSourceProxy } from '~/tenancy/tenant-datasource.proxy';
 import { BaseTenantRepository } from '~/tenancy/base-tenant.repository';
 import { Stakeholder } from './entities/stakeholder.entity';
+import { PaginationQueryDto } from '~/common/dto/pagination-query.dto';
+import { Paginated } from '~/common/dto/paginated.dto';
 
 @Injectable()
 export class StakeholderRepository extends BaseTenantRepository<Stakeholder> {
@@ -18,11 +20,17 @@ export class StakeholderRepository extends BaseTenantRepository<Stakeholder> {
     return this.repo.findOne({ where: { userId } });
   }
 
-  findFiltered(where: Record<string, any>): Promise<Stakeholder[]> {
-    return this.repo.find({
-      where,
-      relations: ['user'],
-      order: { createdAt: 'DESC' },
-    });
+  findFiltered(
+    where: Record<string, any>,
+    page: PaginationQueryDto,
+  ): Promise<Paginated<Stakeholder>> {
+    return this.findPage(
+      {
+        where,
+        relations: ['user'],
+        order: { createdAt: 'DESC' },
+      },
+      page,
+    );
   }
 }

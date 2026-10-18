@@ -53,6 +53,22 @@ function stampOrg<D>(data: D, orgId: string): D {
   return data;
 }
 
+/**
+ * remove/softRemove/recover act on loaded entities by primary key only, so
+ * each one must already carry this org's `orgId` (i.e. it was loaded through
+ * the scoped repository).
+ */
+function assertSameOrg<D>(data: D, orgId: string): D {
+  const items: unknown[] = Array.isArray(data) ? data : [data];
+  for (const item of items) {
+    const current = (item as Record<string, unknown> | null)?.[ORG_ID_PROPERTY];
+    if (current !== orgId) {
+      throw new ForbiddenException('Cross-organization write blocked');
+    }
+  }
+  return data;
+}
+
 function scopeFindOptions(options: unknown, orgId: string) {
   const opts = (options ?? {}) as { where?: Where };
   return { ...opts, where: scopeWhere(opts.where, orgId) };
@@ -65,6 +81,7 @@ const FIND_OPTIONS_METHODS = new Set([
   'findAndCount',
   'count',
   'exists',
+  'exist',
 ]);
 const WHERE_METHODS = new Set([
   'findBy',
@@ -74,17 +91,44 @@ const WHERE_METHODS = new Set([
   'countBy',
   'existsBy',
 ]);
+/** `(columnName, where)` aggregates. */
+const AGGREGATE_METHODS = new Set(['sum', 'average', 'minimum', 'maximum']);
+/** `(conditions, propertyPath, value)` in-place arithmetic. */
+const ARITHMETIC_METHODS = new Set(['increment', 'decrement']);
 const CRITERIA_METHODS = new Set(['delete', 'softDelete', 'restore']);
 const WRITE_METHODS = new Set(['create', 'save', 'insert']);
+const LOADED_ENTITY_METHODS = new Set(['remove', 'softRemove', 'recover']);
+/**
+ * Members that would bypass the org filter and have no scoped equivalent
+ * here. Use the scoped methods above, or `createQueryBuilder` with an
+ * explicit `alias.orgId = :orgId` condition.
+ */
+const BLOCKED_MEMBERS = new Set([
+  'upsert',
+  'preload',
+  'findByIds',
+  'findOneById',
+  'updateAll',
+  'deleteAll',
+  'clear',
+  'query',
+  'sql',
+  'extend',
+  'manager',
+]);
 
 /**
  * Wraps a TypeORM repository so every common read/write is pinned to one
  * organization (app-level isolation; RLS is the safety net underneath):
  *
- * - find/findOne/findAndCount/count/exists (+ `*By` variants): `orgId` is
- *   merged into `where` (overriding any caller-supplied value).
+ * - find/findOne/findAndCount/count/exists (+ `*By` variants) and the
+ *   sum/average/minimum/maximum aggregates: `orgId` is merged into `where`
+ *   (overriding any caller-supplied value).
  * - create/save/insert: `orgId` is stamped; data for another org throws.
- * - update/delete/softDelete/restore: criteria are pinned to the org.
+ * - update/delete/softDelete/restore/increment/decrement: criteria are
+ *   pinned to the org.
+ * - remove/softRemove/recover: entities must belong to the org.
+ * - upsert/preload/query/manager and other unscoped escape hatches throw.
  *
  * `createQueryBuilder` is NOT rewritten (a later `.where()` would drop an
  * injected condition) — add `alias.orgId = :orgId` yourself; RLS still
@@ -97,6 +141,11 @@ export function scopeRepository<T extends ObjectLiteral>(
 ): Repository<T> {
   return new Proxy(repo, {
     get(target, prop, receiver) {
+      if (typeof prop === 'string' && BLOCKED_MEMBERS.has(prop)) {
+        throw new Error(
+          `Repository.${prop} is not available on org-scoped repositories`,
+        );
+      }
       const value: unknown = Reflect.get(target, prop, receiver);
       if (typeof prop !== 'string' || typeof value !== 'function') {
         return value;
@@ -110,6 +159,14 @@ export function scopeRepository<T extends ObjectLiteral>(
       }
       if (WHERE_METHODS.has(prop)) {
         return (where?: Where) => call(scopeWhere(where, orgId));
+      }
+      if (AGGREGATE_METHODS.has(prop)) {
+        return (column: unknown, where?: Where) =>
+          call(column, scopeWhere(where, orgId));
+      }
+      if (ARITHMETIC_METHODS.has(prop)) {
+        return (conditions: Where, ...rest: unknown[]) =>
+          call(scopeWhere(conditions, orgId), ...rest);
       }
       if (CRITERIA_METHODS.has(prop)) {
         return (criteria: unknown) => call(scopeCriteria(criteria, orgId));
@@ -126,6 +183,10 @@ export function scopeRepository<T extends ObjectLiteral>(
       if (WRITE_METHODS.has(prop)) {
         return (data?: unknown, ...rest: unknown[]) =>
           call(stampOrg(data ?? {}, orgId), ...rest);
+      }
+      if (LOADED_ENTITY_METHODS.has(prop)) {
+        return (data: unknown, ...rest: unknown[]) =>
+          call(assertSameOrg(data, orgId), ...rest);
       }
       return method.bind(target) as unknown;
     },

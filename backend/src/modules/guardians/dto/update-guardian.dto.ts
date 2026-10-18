@@ -1,30 +1,7 @@
-import {
-  IsEmail,
-  IsOptional,
-  IsString,
-  IsUUID,
-  MaxLength,
-} from 'class-validator';
+import { OmitType, PartialType } from '@nestjs/swagger';
+import { CreateGuardianDto } from './create-guardian.dto';
 
-export class UpdateGuardianDto {
-  @IsOptional()
-  @IsString()
-  name?: string;
-
-  @IsOptional()
-  @IsString()
-  @MaxLength(40)
-  phone?: string;
-
-  @IsOptional()
-  @IsEmail()
-  email?: string;
-
-  @IsOptional()
-  @IsString()
-  address?: string;
-
-  @IsOptional()
-  @IsUUID('4')
-  userId?: string;
-}
+/** Logins are only created together with the guardian. */
+export class UpdateGuardianDto extends PartialType(
+  OmitType(CreateGuardianDto, ['createUser'] as const),
+) {}

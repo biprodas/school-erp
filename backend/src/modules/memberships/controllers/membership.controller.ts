@@ -17,6 +17,7 @@ import { CreateMembershipDto } from '../dto/create-membership.dto';
 import { UpdateMembershipRoleDto } from '../dto/update-membership-role.dto';
 import { MembershipService } from '../services/membership.service';
 import { FilterMembershipDto } from '../dto/filter-membership.dto';
+import { ResponseMessage } from '~/common/decorators/response.decorators';
 
 @ApiTags('Platform / Memberships')
 @ApiBearerAuth('platform-jwt')
@@ -26,76 +27,46 @@ export class MembershipController {
   constructor(private readonly membershipService: MembershipService) {}
 
   @Get()
-  async findAll(
+  @ResponseMessage('List of memberships')
+  findAll(
     @RequestContext() ctx: RequestContextDto,
     @Query() dto: FilterMembershipDto,
   ) {
-    const memberships = await this.membershipService.findAll(ctx, dto);
-    return {
-      success: true,
-      statusCode: 200,
-      message: `List of memberships`,
-      data: memberships,
-    };
+    return this.membershipService.findAll(ctx, dto);
   }
 
   @Get('organization/:orgId')
-  async findByOrganization(
+  @ResponseMessage('List of memberships')
+  findByOrganization(
     @RequestContext() ctx: RequestContextDto,
     @Param('orgId') orgId: string,
   ) {
-    const memberships = await this.membershipService.findByOrgId(ctx, orgId);
-    return {
-      success: true,
-      statusCode: 200,
-      message: `List of memberships`,
-      data: memberships,
-    };
+    return this.membershipService.findByOrgId(ctx, orgId);
   }
 
   @Get('user/:userId')
-  async findByUser(
+  @ResponseMessage('List of memberships')
+  findByUser(
     @RequestContext() ctx: RequestContextDto,
     @Param('userId') userId: string,
   ) {
-    const memberships = await this.membershipService.findByUserId(ctx, userId);
-    return {
-      success: true,
-      statusCode: 200,
-      message: `List of memberships`,
-      data: memberships,
-    };
+    return this.membershipService.findByUserId(ctx, userId);
   }
 
   @Get('me')
-  async findMine(@RequestContext() ctx: RequestContextDto) {
-    const memberships = await this.membershipService.findByUserId(
-      ctx,
-      ctx.user?.id ?? '',
-    );
-    return {
-      success: true,
-      statusCode: 200,
-      message: `List of memberships`,
-      data: memberships,
-    };
+  @ResponseMessage('List of memberships')
+  findMine(@RequestContext() ctx: RequestContextDto) {
+    return this.membershipService.findByUserId(ctx, ctx.user?.id ?? '');
   }
 
   @Get(':id')
-  async findOne(
-    @RequestContext() ctx: RequestContextDto,
-    @Param('id') id: string,
-  ) {
-    const membership = await this.membershipService.findById(ctx, id);
-    return {
-      success: true,
-      statusCode: 200,
-      message: `Membership found`,
-      data: membership,
-    };
+  @ResponseMessage('Membership found')
+  findOne(@RequestContext() ctx: RequestContextDto, @Param('id') id: string) {
+    return this.membershipService.findById(ctx, id);
   }
 
   @Post()
+  @ResponseMessage('Membership created successfully')
   async create(
     @RequestContext() ctx: RequestContextDto,
     @Body() dto: CreateMembershipDto,
@@ -104,39 +75,25 @@ export class MembershipController {
       ctx,
       dto,
     );
-    return {
-      success: true,
-      statusCode: 201,
-      message: `Membership created successfully`,
-      data: { ...membership, activation: ownerActivation ?? null },
-    };
+    return { ...membership, activation: ownerActivation ?? null };
   }
 
   @Patch(':id')
-  async updateRole(
+  @ResponseMessage('Membership updated successfully')
+  updateRole(
     @RequestContext() ctx: RequestContextDto,
     @Param('id') id: string,
     @Body() dto: UpdateMembershipRoleDto,
   ) {
-    const membership = await this.membershipService.updateRole(ctx, id, dto);
-    return {
-      success: true,
-      statusCode: 200,
-      message: `Membership updated successfully`,
-      data: membership,
-    };
+    return this.membershipService.updateRole(ctx, id, dto);
   }
 
   @Delete(':id')
+  @ResponseMessage('Membership removed successfully')
   async remove(
     @RequestContext() ctx: RequestContextDto,
     @Param('id') id: string,
   ) {
     await this.membershipService.remove(ctx, id);
-    return {
-      success: true,
-      statusCode: 200,
-      message: `Membership removed successfully`,
-    };
   }
 }

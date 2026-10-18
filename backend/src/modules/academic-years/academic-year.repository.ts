@@ -4,6 +4,8 @@ import { TENANT_DATASOURCE } from '~/tenancy/tenancy.constants';
 import { TenantDataSourceProxy } from '~/tenancy/tenant-datasource.proxy';
 import { BaseTenantRepository } from '~/tenancy/base-tenant.repository';
 import { AcademicYear } from './entities/academic-year.entity';
+import { PaginationQueryDto } from '~/common/dto/pagination-query.dto';
+import { Paginated } from '~/common/dto/paginated.dto';
 
 @Injectable()
 export class AcademicYearRepository extends BaseTenantRepository<AcademicYear> {
@@ -15,8 +17,11 @@ export class AcademicYearRepository extends BaseTenantRepository<AcademicYear> {
     return this.repo.findOne({ where: { name } });
   }
 
-  findFiltered(where: Record<string, any>): Promise<AcademicYear[]> {
-    return this.repo.find({ where, order: { createdAt: 'DESC' } });
+  findFiltered(
+    where: Record<string, any>,
+    page: PaginationQueryDto,
+  ): Promise<Paginated<AcademicYear>> {
+    return this.findPage({ where, order: { createdAt: 'DESC' } }, page);
   }
 
   /** Clears the current flag on every academic year except the given one. */

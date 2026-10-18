@@ -164,14 +164,12 @@ NODE_ENV=production npm run db:migrate:prod   # runs dist/migrations with dist/d
 ```
 
 - Run migrations before starting the new app version. Never set `DB_SYNC=true` in production.
-- Create the restricted app role (`DB_APP_USERNAME`) yourself, with LOGIN NOSUPERUSER NOBYPASSRLS, not as the table owner. Then grant it DML on `public`, including tables created later:
+- Create the restricted app role (`DB_APP_USERNAME`) yourself, with LOGIN NOSUPERUSER NOBYPASSRLS, not as the table owner:
   ```sql
-  GRANT USAGE ON SCHEMA public TO school_erp_app;
-  GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO school_erp_app;
-  GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO school_erp_app;
-  ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO school_erp_app;
-  ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO school_erp_app;
+  CREATE ROLE school_erp_app LOGIN PASSWORD '…' NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE;
   ```
+- Run the migrations with `DB_APP_USERNAME` set. The `AppRoleGrants` migration then gives that role DML on exactly the tables tenant requests use (the org-scoped tables plus `users` and `auth_tokens`), and nothing on `organizations`, `migrations` or tables added later.
+- A migration that adds a tenanted table must enable its RLS policy and `GRANT SELECT, INSERT, UPDATE, DELETE` on it to the app role (see `AppRoleGrants` for the pattern).
 
 ### A dev DB that was built with `DB_SYNC=true`
 

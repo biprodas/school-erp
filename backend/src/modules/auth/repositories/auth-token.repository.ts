@@ -3,7 +3,7 @@ import { AuthTokenType } from '~/common/tokens/auth-token-type.enum';
 import { TENANT_DATASOURCE } from '~/tenancy/tenancy.constants';
 import { TenantDataSourceProxy } from '~/tenancy/tenant-datasource.proxy';
 import { BaseTenantRepository } from '~/tenancy/base-tenant.repository';
-import { AuthToken } from '~/modules/auth/entities/auth-token.entity';
+import { AuthToken } from '../entities/auth-token.entity';
 
 /**
  * Tokens in the shared `auth_tokens` table issued by the current org. The

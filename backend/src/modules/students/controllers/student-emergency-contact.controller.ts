@@ -10,13 +10,14 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiHeader, ApiTags } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
-import { PERMISSIONS } from '../../rbac/permissions.catalog';
-import { PermissionsGuard } from '../../rbac/permissions.guard';
-import { RequirePermissions } from '../../rbac/require-permissions.decorator';
+import { JwtAuthGuard } from '~/modules/auth/guards/jwt-auth.guard';
+import { PERMISSIONS } from '~/modules/rbac/permissions.catalog';
+import { PermissionsGuard } from '~/modules/rbac/guards/permissions.guard';
+import { RequirePermissions } from '~/modules/rbac/decorators/require-permissions.decorator';
 import { CreateStudentEmergencyContactDto } from '../dto/create-student-emergency-contact.dto';
 import { UpdateStudentEmergencyContactDto } from '../dto/update-student-emergency-contact.dto';
 import { StudentEmergencyContactService } from '../services/student-emergency-contact.service';
+import { ResponseMessage } from '~/common/decorators/response.decorators';
 
 @ApiTags('Tenant / Students')
 @ApiBearerAuth('tenant-jwt')
@@ -34,58 +35,39 @@ export class StudentEmergencyContactController {
 
   @Get()
   @RequirePermissions(PERMISSIONS.STUDENTS_READ)
-  async list(@Param('studentId', ParseUUIDPipe) studentId: string) {
-    const contacts = await this.contactService.listForStudent(studentId);
-    return {
-      success: true,
-      statusCode: 200,
-      message: `Emergency contacts of student ${studentId}`,
-      data: contacts,
-    };
+  @ResponseMessage('Emergency contacts')
+  list(@Param('studentId', ParseUUIDPipe) studentId: string) {
+    return this.contactService.listForStudent(studentId);
   }
 
   @Post()
   @RequirePermissions(PERMISSIONS.STUDENTS_CREATE)
-  async create(
+  @ResponseMessage('Emergency contact added')
+  create(
     @Param('studentId', ParseUUIDPipe) studentId: string,
     @Body() dto: CreateStudentEmergencyContactDto,
   ) {
-    const contact = await this.contactService.create(studentId, dto);
-    return {
-      success: true,
-      statusCode: 201,
-      message: `Emergency contact added to student ${studentId}. ID: ${contact.id}`,
-      data: contact,
-    };
+    return this.contactService.create(studentId, dto);
   }
 
   @Patch(':contactId')
   @RequirePermissions(PERMISSIONS.STUDENTS_UPDATE)
-  async update(
+  @ResponseMessage('Emergency contact updated')
+  update(
     @Param('studentId', ParseUUIDPipe) studentId: string,
     @Param('contactId', ParseUUIDPipe) contactId: string,
     @Body() dto: UpdateStudentEmergencyContactDto,
   ) {
-    const contact = await this.contactService.update(studentId, contactId, dto);
-    return {
-      success: true,
-      statusCode: 200,
-      message: `Emergency contact updated. ID: ${contact.id}`,
-      data: contact,
-    };
+    return this.contactService.update(studentId, contactId, dto);
   }
 
   @Delete(':contactId')
   @RequirePermissions(PERMISSIONS.STUDENTS_DELETE)
+  @ResponseMessage('Emergency contact removed')
   async remove(
     @Param('studentId', ParseUUIDPipe) studentId: string,
     @Param('contactId', ParseUUIDPipe) contactId: string,
   ) {
     await this.contactService.remove(studentId, contactId);
-    return {
-      success: true,
-      statusCode: 200,
-      message: `Emergency contact removed. ID: ${contactId}`,
-    };
   }
 }

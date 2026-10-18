@@ -1,12 +1,4 @@
-import { IsEnum, IsOptional, IsString } from 'class-validator';
-import { NoteType } from '../enums/note-type.enum';
+import { PartialType } from '@nestjs/swagger';
+import { CreateStudentNoteDto } from './create-student-note.dto';
 
-export class UpdateStudentNoteDto {
-  @IsOptional()
-  @IsEnum(NoteType)
-  noteType?: NoteType;
-
-  @IsOptional()
-  @IsString()
-  note?: string;
-}
+export class UpdateStudentNoteDto extends PartialType(CreateStudentNoteDto) {}

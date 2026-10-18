@@ -9,7 +9,10 @@ type Row = { id: string; orgId: string; name?: string };
 const ORG = 'org-a';
 
 type RepoMock = Record<string, jest.Mock> & {
-  metadata: { findColumnWithPropertyName: jest.Mock };
+  metadata: {
+    findColumnWithPropertyName: jest.Mock;
+    deleteDateColumn: unknown;
+  };
 };
 
 const makeRepo = (): RepoMock =>
@@ -23,8 +26,17 @@ const makeRepo = (): RepoMock =>
     save: jest.fn((data: unknown) => Promise.resolve(data)),
     update: jest.fn(),
     delete: jest.fn(),
+    softDelete: jest.fn(),
+    sum: jest.fn().mockResolvedValue(0),
+    increment: jest.fn(),
+    remove: jest.fn((data: unknown) => Promise.resolve(data)),
+    upsert: jest.fn(),
+    query: jest.fn(),
     createQueryBuilder: jest.fn().mockReturnValue('qb'),
-    metadata: { findColumnWithPropertyName: jest.fn() },
+    metadata: {
+      findColumnWithPropertyName: jest.fn(),
+      deleteDateColumn: undefined as unknown,
+    },
   }) as unknown as RepoMock;
 
 const asRepo = (raw: RepoMock) => raw as unknown as Repository<Row>;
@@ -134,6 +146,37 @@ describe('scopeRepository', () => {
     expect(raw.delete).toHaveBeenLastCalledWith({ name: 'x', orgId: ORG });
   });
 
+  it('scopes aggregates and increment / decrement', async () => {
+    await repo.sum('id' as never, { name: 'x' });
+    expect(raw.sum).toHaveBeenCalledWith('id', { name: 'x', orgId: ORG });
+
+    await repo.increment({ id: '1' }, 'name', 1);
+    expect(raw.increment).toHaveBeenCalledWith(
+      { id: '1', orgId: ORG },
+      'name',
+      1,
+    );
+  });
+
+  it('only removes entities that belong to the organization', async () => {
+    await repo.remove({ id: '1', orgId: ORG });
+    expect(raw.remove).toHaveBeenCalledWith({ id: '1', orgId: ORG });
+
+    expect(() => repo.remove({ id: '2', orgId: 'org-b' })).toThrow(
+      ForbiddenException,
+    );
+    expect(() => repo.remove([{ id: '3' } as Row])).toThrow(ForbiddenException);
+    expect(raw.remove).toHaveBeenCalledTimes(1);
+  });
+
+  it('blocks unscoped escape hatches', () => {
+    expect(() => repo.upsert({ id: '1' }, ['id'])).toThrow(/upsert/);
+    expect(() => repo.query('SELECT 1')).toThrow(/query/);
+    expect(() => repo.manager).toThrow(/manager/);
+    expect(raw.upsert).not.toHaveBeenCalled();
+    expect(raw.query).not.toHaveBeenCalled();
+  });
+
   it('passes other members through untouched', () => {
     expect(repo.createQueryBuilder('r')).toBe('qb');
     expect(repo.metadata).toBe(raw.metadata);
@@ -172,6 +215,38 @@ describe('BaseTenantRepository', () => {
 
     await repo.deleteById('3');
     expect(raw.delete).toHaveBeenCalledWith({ id: '3', orgId: ORG });
+  });
+
+  it('soft-deletes entities that have a delete-date column', async () => {
+    const raw = makeRepo();
+    raw.metadata.findColumnWithPropertyName.mockReturnValue({});
+    raw.metadata.deleteDateColumn = { propertyName: 'deletedAt' };
+    const repo = new EntityRepository(proxyFor(raw), Entity, 'Entity');
+
+    await repo.deleteById('3');
+
+    expect(raw.softDelete).toHaveBeenCalledWith({ id: '3', orgId: ORG });
+    expect(raw.delete).not.toHaveBeenCalled();
+  });
+
+  it('pages org-scoped results with findPage', async () => {
+    const raw = makeRepo();
+    raw.metadata.findColumnWithPropertyName.mockReturnValue({});
+    raw.findAndCount.mockResolvedValue([[{ id: '1' }], 41]);
+    const repo = new EntityRepository(proxyFor(raw), Entity, 'Entity');
+
+    const page = await repo.findPage(
+      { where: { id: '1' } },
+      { page: 3, limit: 20 },
+    );
+
+    expect(raw.findAndCount).toHaveBeenCalledWith({
+      where: { id: '1', orgId: ORG },
+      skip: 40,
+      take: 20,
+    });
+    expect(page.items).toEqual([{ id: '1' }]);
+    expect(page.meta).toEqual({ page: 3, limit: 20, total: 41, totalPages: 3 });
   });
 
   it('leaves global entities (no orgId column) unscoped', async () => {

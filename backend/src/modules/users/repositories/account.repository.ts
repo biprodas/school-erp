@@ -3,7 +3,7 @@ import { In } from 'typeorm';
 import { TENANT_DATASOURCE } from '~/tenancy/tenancy.constants';
 import { TenantDataSourceProxy } from '~/tenancy/tenant-datasource.proxy';
 import { BaseTenantRepository } from '~/tenancy/base-tenant.repository';
-import { User } from '~/modules/users/entities/user.entity';
+import { User } from '../entities/user.entity';
 
 const WITH_PASSWORD = {
   id: true,

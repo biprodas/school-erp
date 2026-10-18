@@ -1,16 +1,16 @@
 import { Module } from '@nestjs/common';
-import { RbacModule } from '../rbac/rbac.module';
-import { AcademicYearModule } from '../academic-years/academic-year.module';
-import { ClassModule } from '../classes/class.module';
-import { ClassCurriculumModule } from '../class-curriculum/class-curriculum.module';
-import { SectionModule } from '../sections/section.module';
-import { StudentModule } from '../students/student.module';
-import { SubjectModule } from '../subjects/subject.module';
-import { EnrollmentController } from './enrollment.controller';
-import { StudentSubjectController } from './student-subject.controller';
-import { EnrollmentRepository } from './enrollment.repository';
-import { StudentSubjectRepository } from './student-subject.repository';
-import { EnrollmentService } from './enrollment.service';
+import { RbacModule } from '~/modules/rbac/rbac.module';
+import { AcademicYearModule } from '~/modules/academic-years/academic-year.module';
+import { ClassModule } from '~/modules/classes/class.module';
+import { ClassCurriculumModule } from '~/modules/class-curriculum/class-curriculum.module';
+import { SectionModule } from '~/modules/sections/section.module';
+import { StudentModule } from '~/modules/students/student.module';
+import { SubjectModule } from '~/modules/subjects/subject.module';
+import { EnrollmentController } from './controllers/enrollment.controller';
+import { StudentSubjectController } from './controllers/student-subject.controller';
+import { EnrollmentRepository } from './repositories/enrollment.repository';
+import { StudentSubjectRepository } from './repositories/student-subject.repository';
+import { EnrollmentService } from './services/enrollment.service';
 
 @Module({
   imports: [
@@ -28,6 +28,6 @@ import { EnrollmentService } from './enrollment.service';
     StudentSubjectRepository,
     EnrollmentService,
   ],
-  exports: [EnrollmentService, EnrollmentRepository],
+  exports: [EnrollmentService],
 })
 export class EnrollmentModule {}

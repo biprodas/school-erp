@@ -1,16 +1,16 @@
 import { Module } from '@nestjs/common';
-import { RbacModule } from '../rbac/rbac.module';
-import { AcademicYearModule } from '../academic-years/academic-year.module';
-import { ClassModule } from '../classes/class.module';
-import { EmployeeModule } from '../employees/employee.module';
-import { SectionModule } from '../sections/section.module';
-import { SubjectModule } from '../subjects/subject.module';
-import { PeriodController } from './period.controller';
-import { ClassTimetableController } from './class-timetable.controller';
-import { PeriodRepository } from './period.repository';
-import { ClassTimetableRepository } from './class-timetable.repository';
-import { PeriodService } from './period.service';
-import { ClassTimetableService } from './class-timetable.service';
+import { RbacModule } from '~/modules/rbac/rbac.module';
+import { AcademicYearModule } from '~/modules/academic-years/academic-year.module';
+import { ClassModule } from '~/modules/classes/class.module';
+import { EmployeeModule } from '~/modules/employees/employee.module';
+import { SectionModule } from '~/modules/sections/section.module';
+import { SubjectModule } from '~/modules/subjects/subject.module';
+import { PeriodController } from './controllers/period.controller';
+import { ClassTimetableController } from './controllers/class-timetable.controller';
+import { PeriodRepository } from './repositories/period.repository';
+import { ClassTimetableRepository } from './repositories/class-timetable.repository';
+import { PeriodService } from './services/period.service';
+import { ClassTimetableService } from './services/class-timetable.service';
 
 @Module({
   imports: [

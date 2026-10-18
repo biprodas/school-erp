@@ -150,24 +150,6 @@ export const PERMISSIONS = {
   PROMOTIONS_UPDATE: 'promotions:update',
   PROMOTIONS_DELETE: 'promotions:delete',
 
-  // Cats
-  CATS_READ: 'cats:read',
-  CATS_CREATE: 'cats:create',
-  CATS_UPDATE: 'cats:update',
-  CATS_DELETE: 'cats:delete',
-
-  // Tasks
-  TASKS_READ: 'tasks:read',
-  TASKS_CREATE: 'tasks:create',
-  TASKS_UPDATE: 'tasks:update',
-  TASKS_DELETE: 'tasks:delete',
-
-  // Products
-  PRODUCTS_READ: 'products:read',
-  PRODUCTS_CREATE: 'products:create',
-  PRODUCTS_UPDATE: 'products:update',
-  PRODUCTS_DELETE: 'products:delete',
-
   // Access control management
   ROLES_READ: 'roles:read',
   ROLES_MANAGE: 'roles:manage',

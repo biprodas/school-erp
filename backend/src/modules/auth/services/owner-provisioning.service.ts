@@ -4,13 +4,13 @@ import { AuthTokenType } from '~/common/tokens/auth-token-type.enum';
 import { generateToken, hashToken } from '~/common/tokens/secure-token.util';
 import { ACTIVATION_TTL_MS } from '~/common/tokens/token-ttl.constants';
 import { MailService } from '~/shared/mail/mail.service';
-import { AuthToken } from '~/modules/auth/entities/auth-token.entity';
+import { AuthToken } from '../entities/auth-token.entity';
 import { Membership } from '~/modules/memberships/entities/membership.entity';
 import { MembershipRole } from '~/modules/memberships/enums/membership-role.enum';
 import { MembershipStatus } from '~/modules/memberships/enums/membership-status.enum';
-import { Role } from '../../rbac/entities/role.entity';
-import { UserRole } from '../../rbac/entities/user-role.entity';
-import { ADMIN_ROLE_NAME } from '../../rbac/system-roles.seed';
+import { Role } from '~/modules/rbac/entities/role.entity';
+import { UserRole } from '~/modules/rbac/entities/user-role.entity';
+import { ADMIN_ROLE_NAME } from '~/modules/rbac/system-roles.seed';
 
 export interface ProvisionOwnerInput {
   orgId: string;

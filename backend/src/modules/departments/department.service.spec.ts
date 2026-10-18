@@ -24,7 +24,7 @@ describe('DepartmentService', () => {
       findByName: jest.fn(),
       findFiltered: jest.fn(),
       findByIdOrFail: jest.fn(),
-      saveNew: jest.fn((data) =>
+      saveNew: jest.fn((data: Partial<Department>) =>
         Promise.resolve(makeDepartment({ id: 'new-dept', ...data })),
       ),
       save: jest.fn((entity) => Promise.resolve(entity)),

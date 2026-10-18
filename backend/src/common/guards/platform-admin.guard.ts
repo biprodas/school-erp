@@ -1,4 +1,5 @@
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
+import type { Request } from 'express';
 
 /**
  * Allows the request only for platform admins (`user.isAdmin === true`).
@@ -7,7 +8,7 @@ import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 @Injectable()
 export class PlatformAdminGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
-    const request = context.switchToHttp().getRequest();
+    const request = context.switchToHttp().getRequest<Request>();
     return request.user?.isAdmin === true;
   }
 }
