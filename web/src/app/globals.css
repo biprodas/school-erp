@@ -149,3 +149,9 @@
     @apply font-heading;
   }
 }
+
+@layer base {
+  [lang="bn"] {
+    font-family: var(--font-bengali), var(--font-manrope), sans-serif;
+  }
+}

@@ -1,5 +1,7 @@
+import Link from "next/link";
 import { ArrowRight, Check } from "lucide-react";
-import { HERO_STATS } from "../content";
+import { APP_LINKS } from "~/config/site";
+import { HERO_POINTS } from "../content";
 import { Container, pill } from "./primitives";
 
 const GRID_BACKGROUND = {
@@ -15,36 +17,33 @@ export function Hero() {
         <div>
           <p className="border-border text-ink/80 inline-flex items-center gap-2 rounded-full border bg-white px-3 py-1 text-xs">
             <span className="bg-brand-strong size-1.5 rounded-full" />
-            Trusted by 1,200+ schools
+            Built for schools in Bangladesh
           </p>
-          <h1 className="text-ink mt-6 text-5xl leading-[0.98] font-bold tracking-tight sm:text-6xl">
+          <h1 className="text-ink mt-6 text-5xl leading-[0.98] font-bold tracking-tight text-balance sm:text-6xl">
             Run your entire school from{" "}
             <span className="text-brand">one calm dashboard.</span>
           </h1>
-          <p className="text-ink-muted mt-6 max-w-lg text-lg leading-relaxed">
-            Admissions, attendance, fees, exams and parent updates — unified in
-            a secure ERP built for principals, loved by teachers and trusted by
-            parents.
+          <p className="text-ink-muted mt-6 max-w-lg text-lg leading-relaxed text-pretty">
+            Admissions, attendance, exams, fees and notices on one mobile-first
+            platform. Teachers mark attendance from a phone, guardians pay by
+            bKash, and results go out in days, not weeks.
           </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <a href="#demo" className={pill.primary}>
-              Book a free demo <ArrowRight className="size-4" />
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+            <a href={APP_LINKS.signup} className={pill.primary}>
+              Start free trial <ArrowRight className="size-4" />
             </a>
-            <a href="#modules" className={pill.outline}>
-              Explore modules
-            </a>
+            <Link href="/find-school" className={pill.outline}>
+              Sign in to your school
+            </Link>
           </div>
-          <dl className="mt-12 grid max-w-md grid-cols-3 gap-4">
-            {HERO_STATS.map((stat) => (
-              <div key={stat.label}>
-                <dt className="sr-only">{stat.label}</dt>
-                <dd className="font-heading text-ink text-2xl font-bold">
-                  {stat.value}
-                </dd>
-                <dd className="text-ink-muted mt-0.5 text-xs">{stat.label}</dd>
-              </div>
+          <ul className="text-ink-muted mt-5 flex flex-wrap gap-x-5 gap-y-2 text-sm">
+            {HERO_POINTS.map((point) => (
+              <li key={point} className="flex items-center gap-1.5">
+                <Check className="text-brand size-4" strokeWidth={3} />
+                {point}
+              </li>
             ))}
-          </dl>
+          </ul>
         </div>
         <DashboardPreview />
       </Container>
@@ -131,7 +130,7 @@ function DashboardPreview() {
               </div>
             </div>
             <ActivityRow
-              label="Ayesha R. — Class 7B"
+              label="Ayesha R. · Class 7B · bKash"
               badge="Fee paid"
               tone="success"
             />
@@ -144,9 +143,9 @@ function DashboardPreview() {
         </div>
       </div>
       <div className="border-border absolute start-0 -bottom-6 rounded-xl border bg-white px-4 py-3 shadow-lg sm:-start-6 lg:-start-8">
-        <p className="text-ink-muted text-[11px]">Parent app · just now</p>
+        <p className="text-ink-muted text-[11px]">Guardian alert · 8:05 AM</p>
         <p className="text-ink mt-0.5 flex items-center gap-1 text-sm font-semibold">
-          <Check className="text-brand size-4" /> Rafi checked in at 7:52 AM
+          <Check className="text-brand size-4" /> Rafi is present today
         </p>
       </div>
     </div>

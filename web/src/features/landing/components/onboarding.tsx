@@ -3,29 +3,28 @@ import { Container, Eyebrow, SectionTitle } from "./primitives";
 
 export function Onboarding() {
   return (
-    <section className="bg-cream py-20 sm:py-28">
-      <Container>
+    <section className="bg-cream pt-20 pb-16 sm:pt-28 sm:pb-20">
+      <Container className="max-w-6xl">
         <div className="text-center">
-          <Eyebrow>Onboarding</Eyebrow>
-          <SectionTitle className="text-ink mx-auto mt-3 max-w-xl">
-            Live in two weeks, not two terms.
+          <Eyebrow>Self-serve onboarding</Eyebrow>
+          <SectionTitle className="text-ink mx-auto mt-3 max-w-2xl">
+            From signup to first roll call in under a day.
           </SectionTitle>
         </div>
-        <ol className="mt-14 grid gap-6 md:grid-cols-3 md:gap-8">
+        <ol className="mt-14 grid gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-4">
           {ONBOARDING_STEPS.map((step, i) => (
-            <li
-              key={step.title}
-              className="border-border rounded-2xl border bg-white p-8"
-            >
-              <span className="bg-brand grid size-10 place-items-center rounded-full text-sm font-bold text-white">
-                {i + 1}
+            <li key={step.title}>
+              <span className="font-heading text-highlight text-5xl font-bold tracking-tight">
+                {String(i + 1).padStart(2, "0")}
               </span>
-              <h3 className="text-ink mt-6 text-xl font-semibold">
-                {step.title}
-              </h3>
-              <p className="text-ink-muted mt-2 leading-relaxed">
-                {step.description}
-              </p>
+              <div className="border-border mt-3 border-t pt-5">
+                <h3 className="text-ink font-sans text-lg font-bold">
+                  {step.title}
+                </h3>
+                <p className="text-ink-muted mt-2 text-sm leading-relaxed">
+                  {step.description}
+                </p>
+              </div>
             </li>
           ))}
         </ol>
