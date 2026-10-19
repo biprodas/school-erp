@@ -1,0 +1,105 @@
+@import "tailwindcss";
+
+/*
+ * Landing tokens. Forest green carries the brand, marigold is the single
+ * accent for the most important action on dark surfaces, and red only marks
+ * absences and dues inside product mockups.
+ */
+@theme {
+  --color-canvas: #f4f5f1;
+  --color-paper: #ffffff;
+  --color-ink: #12271e;
+  --color-ink-2: #46564e;
+  --color-ink-3: #6b7a72;
+  --color-line: #dfe5e0;
+  --color-line-strong: #c9d3cc;
+  --color-forest: #143f30;
+  --color-forest-2: #1d5a43;
+  --color-forest-hover: #174a37;
+  --color-mint: #e5eee8;
+  --color-mint-2: #d3e2d8;
+  --color-sage: #a9c2b4;
+  --color-marigold: #f0b24a;
+  --color-marigold-hover: #e8a333;
+  --color-marigold-tint: #fcefd6;
+  --color-red: #c2412d;
+  --color-red-tint: #fbe8e4;
+
+  --font-sans: var(--font-anek), system-ui, sans-serif;
+
+  --animate-rise: rise 600ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  --animate-fade: fade 200ms ease-out both;
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes fade {
+    from {
+      opacity: 0.25;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+}
+
+:root {
+  color-scheme: light;
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 5rem;
+}
+
+body {
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/*
+ * Display type: Anek Bangla at its narrowest width and heaviest weight. The
+ * same family sets Bangla and English, so mixed headlines stay consistent.
+ */
+.display {
+  font-variation-settings: "wdth" 75;
+  font-weight: 800;
+  letter-spacing: -0.015em;
+  line-height: 0.98;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-forest-2);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+summary {
+  list-style: none;
+}
+summary::-webkit-details-marker {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
