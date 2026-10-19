@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Anek_Bangla } from "next/font/google";
+import { TooltipProvider } from "~/components/ui/tooltip";
 import { SITE } from "~/config/site";
 import "./globals.css";
 
@@ -23,7 +24,9 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={anek.variable}>
-      <body className="min-h-full">{children}</body>
+      <body className="min-h-full">
+        <TooltipProvider>{children}</TooltipProvider>
+      </body>
     </html>
   );
 }
