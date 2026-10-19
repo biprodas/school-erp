@@ -7,6 +7,9 @@ import swaggerConfig from './swagger.config';
 import healthConfig from './health.config';
 import throttleConfig from './throttle.config';
 import domainsConfig from './domains.config';
+import queueConfig from './queue.config';
+import storageConfig from './storage.config';
+import pdfConfig from './pdf.config';
 
 /**
  * Single place to register config namespaces. Add new `*.config.ts` files and append here.
@@ -20,6 +23,9 @@ export const configLoaders: ConfigFactory[] = [
   healthConfig,
   throttleConfig,
   domainsConfig,
+  queueConfig,
+  storageConfig,
+  pdfConfig,
 ];
 
 export type {
@@ -32,6 +38,9 @@ export type {
   HealthConfig,
   ThrottleConfig,
   DomainsConfig,
+  QueueConfig,
+  StorageConfig,
+  PdfConfig,
 } from './config.types';
 export { validateEnv, envValidationSchema } from './env.validation';
 export { setupSwagger } from './swagger.setup';

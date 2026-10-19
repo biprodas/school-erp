@@ -3,10 +3,14 @@
 | Field        | Value                                                  |
 | ------------ | ------------------------------------------------------ |
 | Product      | School ERP: multi-tenant school management SaaS       |
-| Version      | 1.3                                                    |
+| Version      | 1.5                                                    |
 | Date         | 2026-10-18                                             |
 | Status       | Draft                                                  |
 | Market focus | Bangladesh first, built so it can go global            |
+
+**Changes in 1.5:** Google sign-in moves into Phase 1a (6.3); Microsoft sign-in is dropped.
+
+**Changes in 1.4:** Managing committee / governing body added (6.25): a Committee Member system role in Phase 1a, the committee module in Phase 2.
 
 **Changes in 1.3:** Phase 1a no longer depends on SMS (email verification, email/phone + password login). Identity accepts email or phone. Classes are permanent and sections are per session. A minimal staff directory joins the MVP. Exams, communication, settings and platform admin are trimmed for Phase 1a. Branches move to Phase 3. Results verification is optional. Technical choices for queues, PDFs and file storage are recorded. Open question 7 is resolved.
 
@@ -162,6 +166,7 @@ The existing software is mostly desktop-bound, hard to configure, English-only, 
 | **Hostel warden**           | Rooms, allocation, hostel attendance, mess, visitors                                   |
 | **Store keeper**            | Inventory, purchases, asset issue                                                      |
 | **HR officer**              | Staff records, leave, payroll                                                          |
+| **Managing committee member** | President, member secretary, guardian/teacher representatives, donor members: oversight of finance, results and enrollment, meetings and resolutions (6.25) |
 
 ### 4.3 Portal personas
 
@@ -176,6 +181,8 @@ The existing software is mostly desktop-bound, hard to configure, English-only, 
 Legend: **F** = full, **W** = create/edit within scope, **R** = read-only, **O** = own records only, blank = no access. Each school can clone and customize roles (see 6.3).
 
 The Owner is not a separate role: the owner holds the OWNER membership with school-admin rights, so they have the Admin column. Two-way guardian messaging (Communication, "reply") arrives in Phase 2.
+
+**Committee Member** (not a column, to keep the table readable): R on school settings, academic setup, dashboards and reports, including finance reports, collection, dues and result summaries. No access to individual students' health, discipline or guardian details, no write access anywhere, and nothing in HR beyond staff counts. In Phase 2 they also get the committee module (6.25): own meetings, minutes and resolutions.
 
 | Module            | Admin | Principal | Accountant | Teacher | Class teacher | Receptionist | Librarian | Student | Guardian |
 | ----------------- | ----- | --------- | ---------- | ------- | ------------- | ------------ | --------- | ------- | -------- |
@@ -322,12 +329,16 @@ Each module lists its purpose, priority (**P0** = MVP must-have, delivered acros
 - Login with email or mobile number plus password (Phase 1a). Passwordless SMS/email OTP login arrives in Phase 1b.
 - Account activation via invite link (Phase 1a) or SMS OTP (Phase 1b); forgot-password and reset flows. Phone-only accounts reset their password through the school admin until SMS OTP is available.
 - Optional TOTP two-factor authentication; mandatory for admins and accountants on Premium.
-- Google / Microsoft sign-in (P1).
+- Google sign-in (Phase 1a), in both realms:
+  - It signs in to an existing account only: the Google account's verified email must match the account's email, or be linked to it from account settings. It never creates a school membership; schools decide who belongs to them.
+  - At school signup (6.2), Google can verify the owner's email in place of the email link.
+  - Users can link and unlink Google in account settings; unlinking requires a password to be set, so nobody is locked out.
+  - Every school host uses one fixed callback on the product domain, then returns to the school's host with a one-time handoff code (`domains-and-routing.md` section 5a), so subdomains and custom domains need no Google configuration.
 - Session management: list active devices, log out everywhere, idle timeout set by the admin.
 - Sessions are per school host. Signing in to one school never signs the user out of another. Moving between hosts (after signup, from "Find your school") uses a single-use, short-lived handoff code.
 - Role-based access control:
   - Permissions use `resource:action` keys, for example `fees:collect` and `results:publish`.
-  - System roles: Admin, Principal, Accountant, Teacher, Class Teacher, Receptionist, Librarian, Student, Guardian. The owner is not a role; the OWNER membership carries school-admin rights.
+  - System roles: Admin, Principal, Accountant, Teacher, Class Teacher, Receptionist, Librarian, Committee Member, Student, Guardian. The owner is not a role; the OWNER membership carries school-admin rights.
   - Custom roles can be cloned from a system role and edited.
   - Scope rules restrict a role to its own classes, sections, subjects or branch.
 - One user can hold several roles; a teacher who is also a guardian switches context.
@@ -802,6 +813,34 @@ The basic staff directory (profile, department, designation) is already in the M
 
 ---
 
+### 6.25 Managing committee / governing body — P1 (role in Phase 1a)
+
+**Purpose:** support the School Managing Committee (SMC) or Governing Body that most non-government schools, colleges and madrasas in Bangladesh must have, and the board of trustees of private and English-medium schools.
+
+**Features**
+
+- **Committee member access (Phase 1a):** the Committee Member system role (4.4) gives read-only dashboards and reports, so members can follow finance, enrollment, attendance and results without admin rights. Schools can clone and adjust it like any role.
+- **Committees and terms:** one or more committees per school (type: managing committee, governing body, board of trustees, or custom), each with terms that have a start date, an end date and an approval reference (for example, the education board's approval letter as an attachment). Past terms and their members are kept.
+- **Members:** name, designation (president/chairman, vice-president, member secretary, guardian representative, teacher representative, founder/donor member, board nominee, or custom), category, contact, photo, joining and leaving dates within the term. A member can be linked to a user account; their Committee Member role then follows the term and ends automatically when the term or their membership ends.
+- **Meetings:** schedule with agenda and attachments, invitations and reminders to members (email/in-app; SMS from Phase 1b), attendance and quorum check, minutes.
+- **Resolutions:** numbered per committee and term, with text, decision date, attachments and follow-up actions assigned to staff, with status. Resolutions are searchable and can be linked from the records they authorize (for example, an expense or a fee change).
+- **Committee approvals** (P2): optionally require committee approval for configured actions such as large expenses, fee-structure changes or waivers above a limit, recorded as a resolution.
+
+**User stories**
+
+- As a committee president, I want to see this month's collection, dues and expenses on my phone before the monthly meeting.
+- As the member secretary (head teacher), I want to send the agenda to all members and record the minutes and resolutions after the meeting.
+- As an admin, I want a member's access to end automatically when the committee's term ends.
+
+**Acceptance criteria**
+
+- A Committee Member can never change data and never sees individual students' health, discipline or guardian details.
+- Resolution numbers are unique and sequential within a committee term and never reused.
+- When a term ends, its members lose the Committee Member role on the next request; the term's records stay readable for admins.
+- Every change to committee membership is in the audit log.
+
+---
+
 ## 7. Core user workflows
 
 These end-to-end flows cut across modules. They drive screen design, API design and the end-to-end test suite (11.3).
@@ -946,7 +985,7 @@ These end-to-end flows cut across modules. They drive screen design, API design 
 | Attendance devices  | ZKTeco and similar biometric/RFID devices via SDK or push API; QR scanning      | P1       |
 | GPS                 | Standard GPS trackers (GT06 protocol) or the driver mobile app                    | P2       |
 | Video classes       | Zoom, Google Meet, Jitsi (link generation, attendance import)                  | P1       |
-| SSO / productivity  | Google Workspace for Education, Microsoft 365                                 | P1       |
+| Sign-in             | Google (OpenID Connect), including Google Workspace for Education accounts      | P0       |
 | Accounting          | Excel/CSV exports, Tally, QuickBooks formats                                    | P1       |
 | Government / boards | Education board registration exports, BANBEIS/EMIS data formats                | P1       |
 | File storage        | S3-compatible object storage with a CDN (MinIO locally), signed URLs           | P0       |
@@ -974,6 +1013,7 @@ This is a conceptual model only. The detailed schema will be designed separately
 | Communication   | Notice, Message thread, Message, Notification, Template, SMS wallet, Delivery log                 |
 | Campus services | Book, Copy, Issue; Vehicle, Route, Stop, Transport allocation; Hostel, Room, Bed, Hostel allocation; Item, Stock movement, Asset |
 | Engagement      | Event, Club, Achievement, Alumni profile, Donation                                                |
+| Governance      | Committee, Committee term, Committee member, Meeting, Meeting attendance, Resolution              |
 
 Every school-owned entity carries the organization ID, and its uniqueness constraints are scoped per organization.
 
@@ -1037,9 +1077,9 @@ These run in CI on every change that touches tenancy, auth, RBAC or finance.
 
 | Phase | Theme | Scope | Target |
 | ----- | ----- | ----- | ------ |
-| **Phase 1a: Pilot MVP** | Run the school day | Platform admin for the super-admin only, with manual plan assignment, limits and trial extension (6.1); onboarding wizard with email verification (6.2); auth with email/phone + password and RBAC (6.3); academic structure with the staff directory (6.4); SIS with Excel import (6.6); attendance & student leave (6.7, online only); exams & results core cycle with BD GPA and fixed report-card layouts (6.9); fees with counter collection, allocation, receipts and dues (6.10); notices, in-app notifications and email (6.13); guardian/student web portal (6.14); the Phase 1a reports & dashboards (6.22); essential settings (6.24) | Pilot with 3–5 schools |
+| **Phase 1a: Pilot MVP** | Run the school day | Platform admin for the super-admin only, with manual plan assignment, limits and trial extension (6.1); onboarding wizard with email verification (6.2); auth with email/phone + password, Google sign-in and RBAC, including the Committee Member role (6.3, 6.25); academic structure with the staff directory (6.4); SIS with Excel import (6.6); attendance & student leave (6.7, online only); exams & results core cycle with BD GPA and fixed report-card layouts (6.9); fees with counter collection, allocation, receipts and dues (6.10); notices, in-app notifications and email (6.13); guardian/student web portal (6.14); the Phase 1a reports & dashboards (6.22); essential settings (6.24) | Pilot with 3–5 schools |
 | **Phase 1b: GA** | Get paid and reach guardians | Online fee payment via SSLCommerz and bKash with reconciliation (6.10), SMS with wallet, absentee alerts, automated triggers and emergency broadcast (6.13), SMS OTP for signup, activation and passwordless login (6.2, 6.3), web push, offline attendance sync (6.7), installable PWA, self-serve subscription billing and plan upgrades, platform roles and consent-based impersonation (6.1), staff attendance and leave (6.7) | Pilot with 10 schools, then GA |
-| **Phase 2** | Go deeper and mobile | Exam routine, seat plans, admit cards, invigilators and the report-card designer (6.9), board exam exports (6.9), admissions CRM (6.5), timetable builder (6.8), HR & payroll with duty roster and tasks (6.11), batch mode for coaching centers (6.4), LMS (6.12), two-way messaging and PTM (6.13), custom fields and template editors (6.24), native Android apps (guardian/student and teacher), WhatsApp, library (6.15), transport without GPS (6.16), events & certificates (6.19), front office (6.21), custom report builder, device attendance, Google/Microsoft SSO | GA + 6 months |
+| **Phase 2** | Go deeper and mobile | Exam routine, seat plans, admit cards, invigilators and the report-card designer (6.9), board exam exports (6.9), admissions CRM (6.5), timetable builder (6.8), HR & payroll with duty roster and tasks (6.11), batch mode for coaching centers (6.4), LMS (6.12), two-way messaging and PTM (6.13), custom fields and template editors (6.24), native Android apps (guardian/student and teacher), WhatsApp, library (6.15), transport without GPS (6.16), events & certificates (6.19), front office (6.21), managing committee module (6.25), custom report builder, device attendance | GA + 6 months |
 | **Phase 3** | Scale and intelligence | Hostel (6.17), inventory & assets (6.18), alumni (6.20), GPS live tracking, timetable auto-generation, branches and school groups: parent organizations, branch switching, transfers between branches, multi-branch analytics and group templates (5.1), AI features (6.23), iOS apps, white-label apps, public API & webhooks, international configuration packs | GA + 12 months |
 
 ### 12.1 Out of scope for the MVP (Phases 1a and 1b)
@@ -1057,6 +1097,7 @@ These are deliberately excluded so the MVP stays shippable. Requests for them go
 - Custom report builder, branches and multi-branch analytics.
 - Exam routine, seat plans, admit cards and the report-card designer.
 - Two-way messaging and parent-teacher meetings.
+- The managing committee module (meetings, minutes, resolutions); only the Committee Member role is in the MVP.
 - Custom fields and print-template editors.
 - AI features.
 - Hosting the school's own website on its apex domain (a page builder or CMS). Custom domains cover the app host only.
@@ -1068,7 +1109,7 @@ These are estimates for one experienced full-stack developer, assuming the tenan
 
 | Step | Estimate | Deliverable |
 | ---- | -------- | ----------- |
-| Foundation hardening | 1–2 weeks | Org provisioning, auth, RBAC and scope rules, audit log, CI with tenant-isolation tests |
+| Foundation hardening | 2–3 weeks | Org provisioning, auth (incl. Google sign-in), RBAC and scope rules, audit log, CI with tenant-isolation tests |
 | Academic structure and SIS | 3–4 weeks | Sessions, shifts, classes, per-session sections, subjects, staff directory, teacher assignments, students, guardians, enrollment, Excel import |
 | Attendance | 2 weeks | Mobile marking, corrections, holidays, reports |
 | Exams and results | 3 weeks | Grading engine with BD GPA suite, mark entry workflow, tabulation, fixed-layout report-card PDFs |
@@ -1077,7 +1118,7 @@ These are estimates for one experienced full-stack developer, assuming the tenan
 | Pilot hardening (end of 1a) | 2 weeks | Bangla localization, security review, backups, pilot onboarding |
 | Phase 1b | 6–8 weeks | Online payments and reconciliation, SMS and wallet, web push, offline sync, subscription billing |
 
-Phase 1a totals roughly 16–19 weeks, and Phase 1b roughly another 6–8 weeks.
+Phase 1a totals roughly 17–20 weeks, and Phase 1b roughly another 6–8 weeks.
 
 ### 12.3 MVP exit criteria
 
@@ -1143,5 +1184,6 @@ Resolved in 1.3: student accounts are created only for the classes a school enab
 | MFS                 | Mobile financial services (bKash, Nagad, Rocket)                                        |
 | Masking SMS         | SMS sent with a branded sender ID (e.g. "MYSCHOOL") instead of a number                 |
 | PTM                 | Parent-teacher meeting                                                                  |
+| SMC / Governing body | School Managing Committee (schools, madrasas) or Governing Body (colleges): the statutory committee that oversees a non-government institution |
 | RLS                 | Row-level security: database-enforced tenant isolation                                  |
 | RPO / RTO           | Recovery point objective (max data loss) / recovery time objective (max downtime)       |

@@ -43,6 +43,7 @@ export class OrganizationController {
   }
 
   @Post()
+  @UseGuards(PlatformAdminGuard)
   @ResponseMessage('Organization created successfully')
   async create(
     @RequestContext() ctx: RequestContextDto,

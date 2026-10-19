@@ -13,5 +13,7 @@ export class RequestContextDto {
   /** Organization resolved by TenantMiddleware (null on platform routes). */
   public orgId: string | null;
   public userId: string | null;
+  /** Sign-in session of the access token (null when unauthenticated). */
+  public sessionId: string | null;
   public user: UserDto | null;
 }

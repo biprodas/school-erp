@@ -60,12 +60,6 @@ export const PERMISSIONS = {
   GUARDIANS_UPDATE: 'guardians:update',
   GUARDIANS_DELETE: 'guardians:delete',
 
-  // Stakeholders
-  STAKEHOLDERS_READ: 'stakeholders:read',
-  STAKEHOLDERS_CREATE: 'stakeholders:create',
-  STAKEHOLDERS_UPDATE: 'stakeholders:update',
-  STAKEHOLDERS_DELETE: 'stakeholders:delete',
-
   // Academic years
   ACADEMIC_YEARS_READ: 'academic_years:read',
   ACADEMIC_YEARS_CREATE: 'academic_years:create',

@@ -1,4 +1,5 @@
 import { randomUUID } from 'crypto';
+import { ACTIVE_SESSIONS, TEST_SESSION_ID } from './support/sessions';
 import { INestApplication } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Test } from '@nestjs/testing';
@@ -69,9 +70,9 @@ describe('Domain settings (e2e)', () => {
   const as = (org: Organization) => {
     const token = jwt.sign({
       sub: randomUUID(),
-      email: `admin-${org.slug}@e2e.test`,
       orgId: org.id,
       isAdmin: true,
+      sid: TEST_SESSION_ID,
     });
     const http = request(app.getHttpServer());
     const auth = (req: request.Test) =>
@@ -98,6 +99,8 @@ describe('Domain settings (e2e)', () => {
     })
       .overrideProvider(DNS_RESOLVER)
       .useValue(fakeResolver)
+      .overrideProvider(ACTIVE_SESSIONS.provide)
+      .useValue(ACTIVE_SESSIONS.useValue)
       .compile();
     app = moduleRef.createNestApplication();
     configureApp(app);

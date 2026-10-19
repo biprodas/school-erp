@@ -6,9 +6,12 @@ import type { UserStatus } from '~/modules/users/enums/user-status.enum';
  */
 export interface AuthUser {
   userId: string;
-  email: string;
   /** School admin (tenant tokens) or platform super-admin (platform tokens). */
   isAdmin: boolean;
+  /** Sign-in session (refresh-token family) the access token belongs to. */
+  sessionId: string;
+  /** The password was set by someone else and must be changed first. */
+  mustChangePassword?: boolean;
   orgId?: string;
   status?: UserStatus;
 }

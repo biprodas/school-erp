@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
+import { normalizeEmail } from '~/common/identity/identifier';
 import { Repository } from 'typeorm';
 import { RequestContextDto } from '~/common/dto/request-context.dto';
 import { CreateUserDto } from '../dto/create-user.dto';
@@ -31,7 +32,14 @@ export class UserService {
     this.logger.log(`${this.findAll.name} Service Called`);
 
     const { id, name, email } = filterUserDto;
-    return this.userRepo.find({ where: { id, name, email } });
+    // Unset filters must be left out: TypeORM 1.x throws on undefined.
+    return this.userRepo.find({
+      where: {
+        ...(id ? { id } : {}),
+        ...(name ? { name } : {}),
+        ...(email ? { email: normalizeEmail(email) } : {}),
+      },
+    });
   }
 
   async findById(_ctx: RequestContextDto, id: string): Promise<User> {
@@ -49,7 +57,7 @@ export class UserService {
     this.logger.log(`${this.createPlatformUser.name} Service Called`);
 
     const existing = await this.userRepo.findOne({
-      where: { email: dto.email },
+      where: { email: normalizeEmail(dto.email) },
     });
     if (existing) {
       throw new ConflictException('Email already registered');
@@ -57,7 +65,7 @@ export class UserService {
 
     const hashedPassword = await bcrypt.hash(dto.password, 10);
     const user = this.userRepo.create({
-      email: dto.email,
+      email: normalizeEmail(dto.email),
       password: hashedPassword,
       name: dto.name,
       status: dto.status ?? UserStatus.ACTIVE,

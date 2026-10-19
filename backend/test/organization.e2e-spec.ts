@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { ACTIVE_SESSIONS, TEST_SESSION_ID } from './support/sessions';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
@@ -48,17 +49,17 @@ describe('Organization E2E', () => {
   const adminToken = () =>
     jwtService.sign({
       sub: ADMIN_ID,
-      email: 'admin@test.com',
       status: UserStatus.ACTIVE,
       isAdmin: true,
+      sid: TEST_SESSION_ID,
     });
 
   const userToken = (id = USER_ID) =>
     jwtService.sign({
       sub: id,
-      email: 'user@test.com',
       status: UserStatus.ACTIVE,
       isAdmin: false,
+      sid: TEST_SESSION_ID,
     });
 
   beforeEach(async () => {
@@ -97,6 +98,7 @@ describe('Organization E2E', () => {
       providers: [
         OrganizationService,
         PlatformJwtStrategy,
+        ACTIVE_SESSIONS,
         { provide: getRepositoryToken(Organization), useValue: tenantRepo },
         { provide: getRepositoryToken(Membership), useValue: membershipRepo },
         {
@@ -248,14 +250,22 @@ describe('Organization E2E', () => {
   // ===================== POST /organizations =====================
 
   describe('POST /organizations', () => {
-    it('Any authenticated user can create a tenant', async () => {
+    it('ADMIN can create a tenant', async () => {
       const res = await request(app.getHttpServer())
         .post('/organizations')
-        .set('Authorization', `Bearer ${userToken()}`)
+        .set('Authorization', `Bearer ${adminToken()}`)
         .send({ name: 'New School', slug: 'new_school' })
         .expect(201);
 
       expect((res.body as { success: boolean }).success).toBe(true);
+    });
+
+    it('Non-admin USER gets 403 (self-serve signup replaces this route)', async () => {
+      await request(app.getHttpServer())
+        .post('/organizations')
+        .set('Authorization', `Bearer ${userToken()}`)
+        .send({ name: 'Other School', slug: 'other_school' })
+        .expect(403);
     });
   });
 

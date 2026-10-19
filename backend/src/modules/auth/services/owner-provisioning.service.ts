@@ -18,7 +18,8 @@ export interface ProvisionOwnerInput {
 }
 
 export interface OwnerRecipient {
-  email: string;
+  /** Phone-only owners get no email; the API caller relays the link. */
+  email: string | null;
   name: string;
 }
 
@@ -98,6 +99,10 @@ export class OwnerProvisioningService {
     orgSlug: string,
     token: string,
   ): Promise<void> {
+    if (!recipient.email) {
+      this.logger.warn('Owner has no email address; activation link not sent');
+      return;
+    }
     await this.mailService.sendActivationEmail(
       recipient.email,
       recipient.name,

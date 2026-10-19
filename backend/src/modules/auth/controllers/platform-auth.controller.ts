@@ -1,8 +1,11 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
+  Param,
+  ParseUUIDPipe,
   Post,
   Query,
   UseGuards,
@@ -23,6 +26,9 @@ import { ChangePasswordDto } from '../dto/change-password.dto';
 import { IssueHandoffDto } from '../dto/handoff.dto';
 import { PlatformAuthService } from '../services/platform-auth.service';
 import { ResponseMessage } from '~/common/decorators/response.decorators';
+import { AllowPendingPasswordChange } from '~/common/auth/password-change';
+import { Client, type ClientInfo } from '~/common/decorators/client.decorator';
+import { RefreshTokenDto } from '../dto/refresh-token.dto';
 
 /** Generic message used by anti-enumeration endpoints. */
 const GENERIC_EMAIL_MSG =
@@ -45,8 +51,58 @@ export class PlatformAuthController {
   @HttpCode(200)
   @Throttle(AUTH_THROTTLE)
   @ResponseMessage('User logged in.')
-  login(@Body() dto: PlatformLoginDto) {
-    return this.platformAuthService.login(dto);
+  login(@Body() dto: PlatformLoginDto, @Client() client: ClientInfo) {
+    return this.platformAuthService.login(dto, client);
+  }
+
+  /** New token pair; the old refresh token stops working. */
+  @Post('refresh')
+  @HttpCode(200)
+  @Throttle(AUTH_THROTTLE)
+  @ResponseMessage('Session refreshed.')
+  refresh(@Body() dto: RefreshTokenDto, @Client() client: ClientInfo) {
+    return this.platformAuthService.refresh(dto.refreshToken, client);
+  }
+
+  /** Ends this sign-in (its refresh and access tokens). */
+  @Post('logout')
+  @HttpCode(200)
+  @UseGuards(PlatformJwtAuthGuard)
+  @AllowPendingPasswordChange()
+  @ResponseMessage('Logged out.')
+  async logout(@RequestContext() ctx: RequestContextDto) {
+    await this.platformAuthService.logout(ctx.sessionId!);
+    return {};
+  }
+
+  /** Active sign-ins on this host, newest first; `current` marks this one. */
+  @Get('sessions')
+  @UseGuards(PlatformJwtAuthGuard)
+  @ResponseMessage('Active sessions.')
+  listSessions(@RequestContext() ctx: RequestContextDto) {
+    return this.platformAuthService.listSessions(ctx.userId!, ctx.sessionId!);
+  }
+
+  @Delete('sessions/:id')
+  @UseGuards(PlatformJwtAuthGuard)
+  @ResponseMessage('Session ended.')
+  async revokeSession(
+    @RequestContext() ctx: RequestContextDto,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    await this.platformAuthService.revokeSession(ctx.userId!, id);
+    return {};
+  }
+
+  /** Signs the user out everywhere: every school and the platform. */
+  @Post('logout-all')
+  @HttpCode(200)
+  @UseGuards(PlatformJwtAuthGuard)
+  @AllowPendingPasswordChange()
+  @ResponseMessage('Logged out everywhere.')
+  async logoutEverywhere(@RequestContext() ctx: RequestContextDto) {
+    await this.platformAuthService.logoutEverywhere(ctx.userId!);
+    return {};
   }
 
   @Post('forgot-password')
@@ -83,8 +139,8 @@ export class PlatformAuthController {
   @HttpCode(200)
   @Throttle(AUTH_THROTTLE)
   @ResponseMessage('Email verified.')
-  verifyEmail(@Body() dto: VerifyEmailDto) {
-    return this.platformAuthService.verifyEmail(dto.token);
+  verifyEmail(@Body() dto: VerifyEmailDto, @Client() client: ClientInfo) {
+    return this.platformAuthService.verifyEmail(dto.token, client);
   }
 
   @Post('resend-verification')
@@ -99,17 +155,18 @@ export class PlatformAuthController {
   @Post('change-password')
   @HttpCode(200)
   @UseGuards(PlatformJwtAuthGuard)
+  @AllowPendingPasswordChange()
   @ResponseMessage('Password changed.')
-  async changePassword(
+  changePassword(
     @RequestContext() ctx: RequestContextDto,
     @Body() dto: ChangePasswordDto,
   ) {
-    await this.platformAuthService.changePassword(
+    return this.platformAuthService.changePassword(
       ctx.userId!,
+      ctx.sessionId!,
       dto.currentPassword,
       dto.newPassword,
     );
-    return {};
   }
 
   /** Code that signs the caller in to one of their schools on its host. */
@@ -126,6 +183,7 @@ export class PlatformAuthController {
 
   @Get('me')
   @UseGuards(PlatformJwtAuthGuard)
+  @AllowPendingPasswordChange()
   @ResponseMessage('User found.')
   getProfile(@RequestContext() ctx: RequestContextDto) {
     return this.platformAuthService.getProfile(ctx.userId!);

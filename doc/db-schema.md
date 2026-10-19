@@ -12,7 +12,7 @@ Notation:
 - **Back-relations.** Only the ones the entities declare (`OneToMany`/`OneToOne`) are listed. The implicit `Organization` back-relations on tenanted models are omitted.
 - **Enums.** Enums marked `// pg enum` are native Postgres enums. All the others are `varchar` columns whose values are checked in code.
 - **Soft delete.** `deletedAt` marks a soft-deleted row (TypeORM `@DeleteDateColumn`).
-- **Planned changes** (`doc/backend-plan.md`) are not shown here until they land. In particular, `stakeholders` is still in the code but will be dropped in M0.
+- **Planned changes** (`doc/backend-plan.md`) are not shown here until they land.
 
 ```prisma
 // ─────────────────────────────────────────────
@@ -412,7 +412,7 @@ model ClassTimetable {
 }
 
 // ─────────────────────────────────────────────
-// HR & Stakeholders
+// HR
 // ─────────────────────────────────────────────
 
 // tenanted
@@ -474,28 +474,6 @@ model Employee {
 
   @@unique([orgId, employeeNumber], map: "uq_employees_org_employee_number") // WHERE "deleted_at" IS NULL
   @@map("employees")
-}
-
-// tenanted. Not in the PRD; to be dropped (backend-plan M0).
-model Stakeholder {
-  id           String            @id @default(uuid())
-  orgId        String
-  org          Organization      @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  name         String
-  type         StakeholderType   @db.VarChar(32)
-  organization String?           @db.VarChar(160) // free-text company name
-  email        String?
-  phone        String?           @db.VarChar(40)
-  address      String?           @db.Text
-  notes        String?           @db.Text
-  status       StakeholderStatus @default(active)
-  userId       String?
-  user         User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
-  createdAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
-  deletedAt    DateTime?
-
-  @@map("stakeholders")
 }
 
 // ─────────────────────────────────────────────
@@ -829,22 +807,6 @@ enum EmployeeStatus {
   terminated
 }
 
-enum StakeholderType {
-  board_member
-  donor
-  vendor
-  alumni
-  inspector
-  partner
-  volunteer
-  other
-}
-
-enum StakeholderStatus {
-  active
-  inactive
-}
-
 enum StudentGender {
   male
   female
@@ -891,7 +853,7 @@ enum NoteType {
 enum GuardianRelation {
   father
   mother
-  BROTHER // stored uppercase: a bug, to be fixed to 'brother' (backend-plan M0)
+  brother
   other
 }
 

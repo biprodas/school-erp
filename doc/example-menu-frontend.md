@@ -6,7 +6,7 @@ Legend: **menu** → optional submenu (indented). `…/x` is shorthand for the p
 
 ## Role gating
 
-Any category, menu or submenu can carry `roles: string[]`. The values are tenant role names (system roles are seeded from `backend/src/modules/rbac/system-roles.seed.ts`: `admin`, `staff`, `teacher`, `accountant`, `librarian`, `parent`, `student`, `stakeholder`) read from `session.user.roles`.
+Any category, menu or submenu can carry `roles: string[]`. The values are tenant role names (system roles are seeded from `backend/src/modules/rbac/system-roles.seed.ts`: `admin`, `staff`, `teacher`, `accountant`, `librarian`, `parent`, `student`) read from `session.user.roles`.
 
 - Items without `roles` are visible to every staff user.
 - Tenant admins (`session.user.isAdmin`) and users holding the `admin` role see everything.

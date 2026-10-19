@@ -8,6 +8,10 @@
       {
         "include": "shared/mail/templates/**/*.hbs",
         "watchAssets": true
+      },
+      {
+        "include": "shared/pdf/templates/**/*.hbs",
+        "watchAssets": true
       }
     ],
     "watchAssets": true,

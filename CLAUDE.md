@@ -8,7 +8,7 @@ Monorepo for a multi-tenant School ERP SaaS. `backend/` is a NestJS 11 API (Type
 
 ## Commands
 
-Local infrastructure (repo root): `docker compose up -d` starts Postgres (host port 5433), pgAdmin (:5050), Redis (:6379), RedisInsight (:5540) and Mailpit (SMTP :1025, UI :8025). Overrides go in a root `.env` (see `.env.docker.example`).
+Local infrastructure (repo root): `docker compose up -d` starts Postgres (host port 5433), pgAdmin (:5050), Redis (:6379), RedisInsight (:5540), MinIO (S3 API :9000, console :9001; a `minio-init` job creates the `school-erp` bucket) and Mailpit (SMTP :1025, UI :8025). Overrides go in a root `.env` (see `.env.docker.example`).
 
 Backend (`cd backend`, API on `PORT=3900` with global prefix `/api`, Swagger at `/api/docs`):
 
@@ -62,7 +62,8 @@ Local env: the backend reads `.env` and then `.env.${NODE_ENV}` (`.env.developme
 
 - **Two JWT realms**:
   - Platform (`PlatformJwtAuthGuard` / `'platform-jwt'`, plus `PlatformAdminGuard`, in `src/common/guards/`), used for super-admin and organization management. Platform tokens never carry `orgId`; `PlatformJwtStrategy` rejects tokens that do.
-  - Tenant (`JwtAuthGuard` in `modules/auth/guards/`), used for everything inside a school. Payload `{ sub, email, orgId, isAdmin }`; `JwtStrategy` rejects tokens whose `orgId` differs from `req.orgId`. Login checks the global password, then requires an ACTIVE membership in the org.
+  - Tenant (`JwtAuthGuard` in `modules/auth/guards/`), used for everything inside a school. Payload `{ sub, orgId, isAdmin, sid, mcp? }`; `JwtStrategy` rejects tokens whose `orgId` differs from `req.orgId`. Login checks the global password (`CredentialService`: email or phone, lockout after 5 failures), then requires an ACTIVE membership in the org.
+- **Accounts and sessions**: an account has an email and/or a phone, both normalized (`common/identity/identifier.ts`). Every sign-in is a session (`SessionService`, table `user_sessions`): access tokens carry its id as `sid`, both strategies refuse revoked sessions, refresh tokens rotate and a reused one revokes the whole sign-in. Sessions belong to one school (or the platform, `orgId` null). Add people with `POST /users/invite` (activation link, or a slip password for phone-only); a password set by someone else sets `must_change_password`, and the guards then allow only routes marked `@AllowPendingPasswordChange()`.
 - **Tenanted controller pattern**:
   - `@UseGuards(JwtAuthGuard, PermissionsGuard)` plus `@RequirePermissions(PERMISSIONS.X)` per handler.
   - Swagger decorators: `@ApiBearerAuth('tenant-jwt')` and `@ApiHeader({ name: 'x-tenant-id' })`.
@@ -81,10 +82,18 @@ Local env: the backend reads `.env` and then `.env.${NODE_ENV}` (`.env.developme
 - **Pagination**: list endpoints for school data take `?page=&limit=` (filter DTOs extend `PaginationQueryDto`, default 20, max 100); repositories return `this.findPage(options, page)` and the envelope gains `meta: { page, limit, total, totalPages }` next to `data`, which stays a plain array.
 - **Global pipes**: `ValidationPipe` runs with `whitelist`, `forbidNonWhitelisted` and `transform`, so unknown DTO fields cause a 400. `ClassSerializerInterceptor` is global (use `@Exclude` on entity fields). Errors go through `GlobalExceptionFilter`.
 - **Logging**: `nestjs-pino` (`shared/logging/`) replaces Nest's logger, so use `new Logger(Context)` from `@nestjs/common` as usual. Lines are JSON (pretty in development), carry the request's `reqId` (`x-request-id`, set by `RequestIdMiddleware`) and, inside handlers, `orgId`/`userId`; each request ends with one `request completed` line. Never log secrets; `authorization`/`cookie` headers are redacted. `LOG_LEVEL` sets the level (tests default to `silent`).
-- **Deleting**: entities with a `@DeleteDateColumn` (students, employees, guardians, stakeholders, academic years, student documents and notes) are soft-deleted by `BaseTenantRepository.deleteById`/`remove`, which keeps the history the PRD requires; their unique business keys are partial indexes (`WHERE "deleted_at" IS NULL`). Other entities are hard-deleted.
+- **Deleting**: entities with a `@DeleteDateColumn` (students, employees, guardians, academic years, student documents and notes) are soft-deleted by `BaseTenantRepository.deleteById`/`remove`, which keeps the history the PRD requires; their unique business keys are partial indexes (`WHERE "deleted_at" IS NULL`). Other entities are hard-deleted.
 - **Constraint races**: "only one" rules (current academic year, primary class teacher, primary guardian) are partial unique indexes as well as service checks; a Postgres unique or FK violation becomes a 409 in `GlobalExceptionFilter`.
 - **Rate limiting**: `TenantThrottlerGuard` is a global guard that limits per tenant plus per user or IP.
 - **Background jobs**: `@nestjs/schedule` (v6; v12 is ESM-only and doesn't load under Jest) is registered in `AppModule` and disabled when `NODE_ENV=test`. Jobs that span schools (e.g. `DomainCheckScheduler`) read through the root connection with `@InjectRepository`; expose a `runOnce()` so tests can drive them.
+- **Infrastructure services** (use these, don't hand-roll):
+  - Background work: inject `JobQueue` (`~/shared/queue`) and `enqueue(QUEUES.x, name, payload)`; handle it with `@JobHandler(queue, name)` on a singleton provider. Tenant work inside a handler runs through `TenantJobRunner.run(orgId, resolve => …)` (`~/tenancy/tenant-job.runner`) so RLS applies; for user-visible progress use `JobService.start()` + `JobTracker.run()` (`modules/jobs`). Under `NODE_ENV=test` jobs run in-process; tests `await (queue as InlineJobQueue).drain()`.
+  - Files: `FileService.upload(file, purpose)` behind the feature endpoint's own permission, with `@UseInterceptors(FileUpload(purpose))`; purposes and allowed types are in `modules/files/file-purposes.ts`. Hand out `getDownloadUrl()` only after checking access to the owning record.
+  - PDFs: `PdfService.render(template, data, { paper })` (`~/shared/pdf`), only from `pdf` queue jobs. Spreadsheets: `buildTemplate` / `parseSheet` / `writeSheet` (`~/shared/spreadsheet/spreadsheet`).
+  - Numbers (student IDs, receipts, invoices): `NumberingService.next()` / `nextFormatted()` inside the same `ds.runInTransaction` as the insert that uses the number.
+  - Sensitive columns (NID, health, bank): `transformer: EncryptedColumn` (`~/shared/crypto/field-encryption`); never filter or index them.
+  - Retryable writes: `@Idempotent()` (`modules/idempotency/idempotent.decorator`).
+  - Error codes: throw `new XxxException({ message, code: 'SOME_CODE' })`; the error envelope carries `code` for the frontend.
 - **`.http` files** (e.g. `organization.http`, `auth.http`) next to modules are manual REST-client request samples.
 
 ## Frontend architecture

@@ -16,7 +16,6 @@ import { DepartmentModule } from '~/modules/departments/department.module';
 import { DesignationModule } from '~/modules/designations/designation.module';
 import { EmployeeModule } from '~/modules/employees/employee.module';
 import { GuardianModule } from '~/modules/guardians/guardian.module';
-import { StakeholderModule } from '~/modules/stakeholders/stakeholder.module';
 import { AcademicYearModule } from '~/modules/academic-years/academic-year.module';
 import { ClassModule } from '~/modules/classes/class.module';
 import { SectionModule } from '~/modules/sections/section.module';
@@ -27,6 +26,7 @@ import { EnrollmentModule } from '~/modules/enrollments/enrollment.module';
 import { TeachingModule } from '~/modules/teaching/teaching.module';
 import { TimetableModule } from '~/modules/timetable/timetable.module';
 import { PromotionModule } from '~/modules/promotions/promotion.module';
+import { JobModule } from '~/modules/jobs/job.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { configLoaders, envValidationSchema, ThrottleConfig } from '~/config';
@@ -34,6 +34,12 @@ import { DatabaseModule } from './database/database.module';
 import { HealthModule } from '~/shared/health/health.module';
 import { LoggingModule } from '~/shared/logging/logging.module';
 import { MailModule } from '~/shared/mail/mail.module';
+import { QueueModule } from '~/shared/queue';
+import { StorageModule } from '~/shared/storage/storage.module';
+import { PdfModule } from '~/shared/pdf/pdf.module';
+import { FileModule } from '~/modules/files/file.module';
+import { NumberingModule } from '~/modules/numbering/numbering.module';
+import { IdempotencyModule } from '~/modules/idempotency/idempotency.module';
 import { TenancyModule } from '~/tenancy/tenancy.module';
 
 const nodeEnv = process.env.NODE_ENV ?? 'development';
@@ -69,6 +75,9 @@ const envFilePath = ['.env', `.env.${nodeEnv}`];
     DatabaseModule,
     HealthModule,
     MailModule,
+    QueueModule,
+    StorageModule,
+    PdfModule,
     TenancyModule,
     AuthModule,
     MembershipModule,
@@ -80,7 +89,6 @@ const envFilePath = ['.env', `.env.${nodeEnv}`];
     DesignationModule,
     EmployeeModule,
     GuardianModule,
-    StakeholderModule,
     AcademicYearModule,
     SectionModule,
     SubjectModule,
@@ -91,6 +99,10 @@ const envFilePath = ['.env', `.env.${nodeEnv}`];
     TeachingModule,
     TimetableModule,
     PromotionModule,
+    JobModule,
+    FileModule,
+    NumberingModule,
+    IdempotencyModule,
   ],
   controllers: [AppController],
   providers: [

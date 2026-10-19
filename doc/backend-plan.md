@@ -15,7 +15,7 @@
 - This is a starting plan, not a fixed spec. When implementation shows a better way, change the code and update this doc to match.
 - Items marked **(1b)** are listed only so Phase 1a leaves room for them; they are tracked in section 14.
 
-**Current state:** no milestone started. Section 1 lists what already exists and can be reused.
+**Current state:** M0 in progress (4.1, 4.2 and 4.3 done; DB-backed checks wait for the local database). Section 1 lists what already exists and can be reused.
 
 ---
 
@@ -86,7 +86,7 @@ flowchart LR
 | # | Milestone | Estimate (PRD 12.2) | Depends on | Status |
 | - | --------- | ------------------- | ---------- | ------ |
 | M0 | Foundation hardening | 1–2 weeks | — | ☐ |
-| M1 | Platform admin and onboarding | ~1 week (overlaps M0) | M0 | ☐ |
+| M1 | Platform admin, onboarding and Google sign-in | ~1.5–2 weeks (overlaps M0) | M0 | ☐ |
 | M2 | Academic structure and staff directory | 1.5–2 weeks | M0 | ☐ |
 | M3 | Student information system | 1.5–2 weeks | M2 | ☐ |
 | M4 | Attendance and student leave | 2 weeks | M2, M3 | ☐ |
@@ -95,7 +95,7 @@ flowchart LR
 | M7 | Notices, notifications, portal, dashboards | 2–3 weeks | M4, M5, M6 | ☐ |
 | M8 | Settings completion and pilot hardening | 2 weeks | all | ☐ |
 
-M4, M5 and M6 don't depend on one another, so they can be reordered (fees first if a pilot school needs billing early). The total is roughly 16–19 weeks for one developer.
+M4, M5 and M6 don't depend on one another, so they can be reordered (fees first if a pilot school needs billing early). The total is roughly 17–20 weeks for one developer.
 
 ---
 
@@ -105,76 +105,84 @@ M4, M5 and M6 don't depend on one another, so they can be reordered (fees first 
 
 ### 4.1 Cleanup
 
-- [ ] Drop `stakeholders`:
-  - [ ] Remove the module, its catalog keys, the `stakeholder` system role in the seed, and the import in `app.module.ts`.
-  - [ ] Migration `DropStakeholders`: delete `user_roles` rows for that role, delete the role rows, drop the table, revoke the grant.
-  - [ ] Update `CLAUDE.md`, `backend/README.md`, `doc/db-schema.md`, `doc/example-menu-frontend.md`.
-- [ ] Fix `StudentGuardianRelation.BROTHER` to `'brother'`, with a data migration.
-- [ ] Remove the `console.log` entity hooks in `User`.
-- [ ] Restrict `POST /organizations` to `PlatformAdminGuard` (self-serve creation moves to the signup flow, M1).
-- [ ] Leave `timetable` dormant: no new work, out of seeded roles and the frontend menu (its `section_id` FK moves in M2).
+- [x] Drop `stakeholders` (migration `1792330000000-DropStakeholders`):
+  - [x] Remove the module, its catalog keys, the `stakeholder` system role in the seed, and the import in `app.module.ts`.
+  - [x] Migration `DropStakeholders`: delete `user_roles` rows for that role, delete the role rows, drop the table, revoke the grant.
+  - [x] Update `CLAUDE.md`, `backend/README.md`, `doc/db-schema.md`, `doc/example-menu-frontend.md`.
+- [x] Fix `GuardianRelation.BROTHER` to `'brother'`, with a data migration (`1792330000001-GuardianRelationLowercase`).
+- [x] Remove the `console.log` entity hooks in `User`.
+- [x] Restrict `POST /organizations` to `PlatformAdminGuard` (self-serve creation moves to the signup flow, M1).
+- [ ] Leave `timetable` dormant: no new work, out of seeded roles and the frontend menu (its `section_id` FK moves in M2). *Seed and menu changes happen with the M0 role alignment (4.4).*
 
 ### 4.2 Infrastructure modules
 
-- [ ] **Dependencies:** `@nestjs/bullmq`, `bullmq`, `@aws-sdk/client-s3`, `@aws-sdk/s3-request-presigner`, `puppeteer`, `exceljs`, `file-type`, `nestjs-cls` (see open point 4).
-- [ ] **Local stack:** MinIO in `docker-compose.yml` (API and console ports, a default bucket), `.env.docker.example` updated.
-- [ ] **Env vars** in `env.validation.ts` and `backend/.env.example`: `REDIS_URL`, `S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_FORCE_PATH_STYLE`, `PDF_CONCURRENCY`, `FIELD_ENCRYPTION_KEY`, `JWT_REFRESH_TTL`, `UPLOAD_MAX_BYTES`.
-- [ ] **`QueueModule`** (`src/shared/queue/`):
-  - [ ] Queues `mail`, `notifications`, `pdf`, `imports`, `billing`, `exports` on Redis.
-  - [ ] Job payloads always carry `orgId` and `actorUserId`.
-  - [ ] Inline or no-op under `NODE_ENV=test` unless a spec opts in.
-- [ ] **Tenant context for workers** (`src/tenancy/tenant-job.runner.ts`):
-  - [ ] `runAsTenant(orgId, fn)` builds a `TenantDataSourceProxy` from `TenantConnectionService.getScopedConnection(orgId)`, registers it under a fresh `ContextIdFactory` context, and resolves request-scoped services via `ModuleRef.resolve`.
-  - [ ] Releases the QueryRunner afterwards; workers never read tenant data through the root connection, so RLS still applies.
-  - [ ] Spec: a job for org A can't see org B's rows.
-- [ ] **`jobs` module** (`src/modules/jobs/`): org-scoped `jobs (type, status queued|running|succeeded|failed, progress, result jsonb, error, created_by, file_id)`; `GET /jobs/:id` for polling.
-- [ ] **`StorageModule`** (`src/shared/storage/`): `put`, `getSignedUrl(key, ttl = 5 min)`, `delete`; keys are `orgs/<orgId>/<kind>/<uuid>`.
-- [ ] **`files` module** (`src/modules/files/`):
-  - [ ] Org-scoped `files (key, mime, size, sha256, purpose, uploaded_by)`.
-  - [ ] Multipart upload through the API (multer memory storage), per-purpose allow-list of types, magic-byte sniffing, per-file size limit, plan storage quota.
-  - [ ] Signed download URLs only after the caller passes the owning resource's permission check.
+- [x] **Dependencies:** `bullmq` + `ioredis`, `@aws-sdk/client-s3`, `@aws-sdk/s3-request-presigner`, `puppeteer` (24.x, the last CommonJS line), `exceljs`, `@fontsource/noto-sans-bengali` / `noto-serif-bengali`, `nestjs-cls` (for 4.5). *Not used: `@nestjs/bullmq` 12 and `file-type` 22 are ESM-only; the queue uses plain BullMQ behind `JobQueue`, and uploads use a built-in signature check (`modules/files/file-type.ts`).*
+- [x] **Local stack:** MinIO in `docker-compose.yml` (API :9000, console :9001) plus a `minio-init` job that creates the private `school-erp` bucket; `.env.docker.example` updated.
+- [x] **Env vars** in `env.validation.ts`, `backend/.env.example` and `.env.development`: `QUEUE_DRIVER`, `REDIS_URL`, `QUEUE_CONCURRENCY`, `S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_FORCE_PATH_STYLE`, `S3_SIGNED_URL_TTL`, `UPLOAD_MAX_BYTES`, `PDF_CONCURRENCY`, `PDF_CHROME_PATH`, `PDF_NO_SANDBOX`, `FIELD_ENCRYPTION_KEY`, `FIELD_ENCRYPTION_OLD_KEYS` (S3 credentials and the encryption key are required in production). *`JWT_REFRESH_TTL` comes with 4.3.*
+- [x] **`QueueModule`** (`src/shared/queue/`):
+  - [x] Queues `mail`, `notifications`, `pdf`, `imports`, `billing`, `exports`. Inject `JobQueue` to enqueue; mark handlers with `@JobHandler(queue, name)` on singleton providers (found at startup by `JobHandlerRegistry`). BullMQ driver: one worker per queue with handlers, 3 attempts with exponential backoff by default.
+  - [x] Job payloads always carry `orgId` and `actorUserId` (`JobPayload`).
+  - [x] `inline` driver under `NODE_ENV=test` (or `QUEUE_DRIVER=inline`): runs real handlers in-process with retries; tests `await queue.drain()`.
+- [x] **Tenant context for workers** (`src/tenancy/tenant-job.runner.ts`, `TenantJobRunner`):
+  - [x] `run(orgId, work, actor?)` registers a synthetic request for a fresh DI context, so `TENANT_DATASOURCE` and every tenant repository resolve exactly as in a request.
+  - [x] Releases the QueryRunner when `work` settles (also on error).
+  - [ ] Spec: a job for org A can't see org B's rows. *Unit spec covers separate connections per org; the RLS check needs the e2e database.*
+- [x] **`jobs` module** (`src/modules/jobs/`): org-scoped `jobs (type, status queued|running|succeeded|failed, progress, result jsonb, error, attempts, created_by, file_id, started_at, finished_at)`; `JobService.start()` creates the row and enqueues; `JobTracker.run()` wraps a handler and keeps the row current; `GET /jobs/:id` (creator or school admin, else 404).
+- [x] **`StorageModule`** (`src/shared/storage/`): `put`, `getSignedUrl(key, ttl = S3_SIGNED_URL_TTL)`, `getBuffer`, `delete`; keys are `orgs/<orgId>/<kind>/<uuid>`.
+- [x] **`files` module** (`src/modules/files/`):
+  - [x] Org-scoped `files (key, original_name, mime, size, sha256, purpose, uploaded_by)`; the id is generated by the app because it is part of the key.
+  - [x] Per-purpose allow-list (`file-purposes.ts`) of sniffed types and sizes; `FileUpload(purpose)` interceptor (multer memory storage) for feature endpoints. *No generic `POST /files`: each feature endpoint uploads through `FileService` behind its own permission.*
+  - [x] Signed download URLs via `FileService.getDownloadUrl`, called by owning modules after their permission check.
+  - [ ] Plan storage quota. *Needs `EntitlementService` (M1); marked `TODO(M1)` in `FileService`.*
   - [ ] Virus scanning **(1b)**.
-- [ ] **`PdfModule`** (`src/shared/pdf/`):
-  - [ ] Puppeteer browser pool (concurrency from env), Handlebars templates in `src/shared/pdf/templates/`.
-  - [ ] Bundled Bangla fonts (Noto Sans Bengali / Noto Serif Bengali); a smoke test renders Bangla conjuncts.
-  - [ ] `render(template, data, { paper: 'A4' | 'Legal' | '80mm' })` returns a Buffer; called only from the `pdf` queue.
-  - [ ] Production image includes Chromium.
-- [ ] **`SpreadsheetModule`** (`src/shared/spreadsheet/`): build a template workbook from a column spec, parse rows into typed records, write exports.
-- [ ] **`NumberingService`** (`src/modules/numbering/`):
-  - [ ] Org-scoped `numbering_sequences (org_id, key, scope, next_value)`.
-  - [ ] `next(key, scope)` uses `SELECT … FOR UPDATE` in the caller's transaction, so a rollback never burns a number (gap-free receipts).
-  - [ ] `format(pattern, ctx)` supports `{YYYY}`, `{YY}`, `{CLASS}`, `{SEQ:n}`.
-  - [ ] Unit suite, plus a concurrency e2e (parallel `next()` calls give distinct, gap-free numbers).
-- [ ] **Field encryption** (`src/shared/crypto/`): `EncryptedColumnTransformer` (AES-256-GCM, key id prefix for rotation) for NID, health fields and bank accounts. Encrypted columns are never searched.
-- [ ] **Idempotency-Key** interceptor + org-scoped `idempotency_keys` table (24-hour retention).
-- [ ] **Error `code`** added to `GlobalExceptionFilter` and the error envelope.
+- [x] **`PdfModule`** (`src/shared/pdf/`):
+  - [x] One shared headless Chrome, at most `PDF_CONCURRENCY` pages at once; Handlebars templates in `src/shared/pdf/templates/` (copied by `nest-cli.json`).
+  - [x] Bundled Noto Sans/Serif Bengali inlined as data URIs; the smoke test checks both fonts are embedded in a Bangla PDF.
+  - [x] `render(template, data, { paper: 'A4' | 'A4-landscape' | 'Legal' | 'Legal-landscape' | '80mm' })` and `renderHtml(...)` return a Buffer; 80 mm height follows the content.
+  - [ ] Production image includes Chromium. *No production Dockerfile yet; note for deployment: Ubuntu 24+ hosts block Chrome's sandbox for downloaded builds, so run as a non-root user with a system Chromium (`PDF_CHROME_PATH`) or set `PDF_NO_SANDBOX=true` only inside a locked-down container.*
+- [x] **Spreadsheet helpers** (`src/shared/spreadsheet/spreadsheet.ts`): `buildTemplate` (headers, example row, dropdowns), `parseSheet` (XLSX/CSV, loose header matching, typed values, all row errors collected), `writeSheet`.
+- [x] **`NumberingService`** (`src/modules/numbering/`):
+  - [x] Org-scoped `numbering_sequences (org_id, key, scope, next_value)`.
+  - [x] `next(key, scope)` is one atomic upsert that row-locks the counter inside the caller's transaction, so a rollback never burns a number.
+  - [x] `formatNumber(pattern, seq, ctx)` supports `{YYYY}`, `{YY}`, `{MM}`, `{CLASS}`, `{SEQ}` / `{SEQ:n}`; `assertValidPattern` requires one `{SEQ}`.
+  - [x] Unit suite.
+  - [ ] Concurrency e2e (parallel `next()` calls give distinct, gap-free numbers). *Needs the e2e database.*
+- [x] **Field encryption** (`src/shared/crypto/field-encryption.ts`): `EncryptedColumn` transformer, AES-256-GCM, `v1:<keyId>:<iv>:<tag>:<data>`, old keys stay readable via `FIELD_ENCRYPTION_OLD_KEYS`, `needsReencryption()` for rotation.
+- [x] **`@Idempotent()`** (`src/modules/idempotency/`): org-scoped `idempotency_keys`, atomic claim (`INSERT … ON CONFLICT`, expired keys reclaimed), replay with the stored status, 422 for a reused key with a different body, 409 while in progress, key freed on failure; hourly cleanup of expired keys.
+- [x] **Error `code`** in `GlobalExceptionFilter`: explicit `code` from the exception body, else derived from the status (`NOT_FOUND`, …), `VALIDATION_FAILED`, `UNIQUE_VIOLATION`/`FOREIGN_KEY_VIOLATION`, `INTERNAL_ERROR`.
+- [x] Migration `1792330000002-InfrastructureTables` (`jobs`, `files`, `numbering_sequences`, `idempotency_keys`) with RLS and app-role grants. *Written from TypeORM's metadata (`scripts/print-ddl.ts`) since no database was available; confirm with `db:migrate` + `db:generate` (no drift).*
 
 ### 4.3 Identity (PRD 5.1, 6.3)
 
-- [ ] **Email or phone:**
-  - [ ] Migration: `users.email` nullable, add `phone` (E.164), partial unique indexes on `lower(email)` and `phone`, `CHECK (email IS NOT NULL OR phone IS NOT NULL)`, add `phone_verified_at` (set in 1b) and `must_change_password`.
-  - [ ] Phone normalization for Bangladesh (`01…`, `+8801…`) with unit tests.
-  - [ ] Login DTOs take `identifier` (email or phone) + password, in both realms.
-  - [ ] JWT payload drops `email`; `AuthUser` and both strategies follow.
-- [ ] **Lockout:** `users.failed_login_count`, `locked_until`; 5 failures → 15-minute lock; success resets; both written to the audit log; admins can list lock events for their school's members.
-- [ ] **Sessions and refresh tokens:**
-  - [ ] Platform table `user_sessions (id, user_id, org_id nullable, refresh_hash, family_id, user_agent, ip, created_at, last_used_at, expires_at, revoked_at)`.
-  - [ ] Access JWT lasts 15 minutes and carries `sid`; refresh tokens rotate, and reusing an old one revokes the whole family.
-  - [ ] Endpoints in both realms: `POST /auth/refresh`, `POST /auth/logout`, `GET /auth/sessions`, `DELETE /auth/sessions/:id`, `POST /auth/logout-all`.
-  - [ ] `JwtStrategy` rejects a revoked `sid` (Redis cache, 60 s).
-  - [ ] Idle timeout from org settings, enforced on refresh using `last_used_at`.
-  - [ ] A session issued for one org can't be refreshed for another.
-- [ ] **Invites:**
-  - [ ] `POST /users/invite { email? | phone?, name, roleIds, employeeId? }`: create or link the account, PENDING membership, roles, activation token.
-  - [ ] With an email, mail the link. Without one, return a one-time temporary password for a printed slip (`must_change_password = true`).
-  - [ ] Existing `POST /users` stays for admins but sets `must_change_password`.
-  - [ ] `OwnerProvisioningService` reuses the same activation path.
-- [ ] **Bulk credential slips:** `POST /users/credential-slips { sectionId, audience: guardians|students }` job: create the missing accounts, set temporary passwords, render a PDF of slips per section.
-- [ ] Frontend follow-up noted: NextAuth stores the refresh token and refreshes before expiry.
+- [x] **Email or phone:**
+  - [x] Migration `1792330000003-IdentityAndSessions`: `users.email` nullable (existing emails lower-cased), `phone` varchar(16) unique, `chk_users_email_or_phone`, `phone_verified_at`, `must_change_password`. *Unique constraints stay plain (Postgres allows many NULLs); emails are normalized in the app instead of a `lower()` index.*
+  - [x] Normalization in `common/identity/identifier.ts`: emails trimmed + lower-cased; Bangladesh mobiles (`01…`, `8801…`, `+880 1…`) → E.164; other countries need `+<cc>…`. `@IsPhone()` validator.
+  - [x] Login DTOs take `identifier` (email or phone) + password in both realms; `email` is still accepted as a deprecated alias so the current frontend keeps working.
+  - [x] JWT payload drops `email`; `AuthUser` and both strategies follow (`sessionId`, `mustChangePassword` added).
+- [x] **Lockout** (`CredentialService`, shared by both realms): `failed_login_count`, `locked_until`; the 5th wrong password locks for 15 minutes (atomic SQL step), success resets; unknown accounts get the same answer after a dummy bcrypt compare.
+  - [ ] Lockouts written to the audit log and listable by school admins. *Comes with 4.5 (`verify()` already reports each failure through `onFailure`).*
+- [x] **Sessions and refresh tokens** (`SessionService`):
+  - [x] `user_sessions (user_id, org_id nullable, refresh_hash, family_id, user_agent, ip, created_at, last_used_at, expires_at, revoked_at)`; root connection only (identity data), no RLS.
+  - [x] Access JWT carries `sid` (the family id). *Access lifetime stays `JWT_EXPIRES_IN` (long) until the frontend refreshes tokens, then set it to `15m` (decision 2026-10-18).* Refresh tokens (`JWT_REFRESH_TTL`, default 30d) rotate on every use; reusing one, or losing a concurrent refresh, revokes the family (`REFRESH_TOKEN_REUSED`).
+  - [x] Both realms: `POST …/refresh`, `POST …/logout`, `GET …/sessions`, `DELETE …/sessions/:id`, `POST …/logout-all` (every school and the platform).
+  - [x] Strategies refuse tokens without `sid` or with a revoked one (`SESSION_REVOKED`); positive answers are cached 60 s per process, and revocations clear the local cache at once.
+  - [ ] Idle timeout from org settings. *Needs 4.6; `TODO(4.6)` in `SessionService.rotate`.*
+  - [x] A session is only refreshable on its own school (or the platform), so a token from one school can't be refreshed on another.
+  - [x] Password reset ends every session; password change ends the others and returns a fresh access token for the current one.
+- [x] **Invites** (`POST /users/invite`, `InviteService` in AuthModule because it mints activation tokens):
+  - [x] `OrgUserService.addMember` finds the account by email or phone (or creates it), refuses an email + phone of two different accounts, adds the membership and roles.
+  - [x] Email → activation link (membership PENDING until used); phone only → a 10-character temporary password returned once for a slip (`must_change_password`); existing account → linked, keeps its password.
+  - [x] `POST /users` keeps working: the admin-chosen password is temporary (`must_change_password`), and email or phone is accepted.
+  - [x] `OwnerProvisioningService` keeps its activation path; it now skips the email for owners without one.
+  - [x] While `must_change_password` is set, both JWT guards answer 403 `PASSWORD_CHANGE_REQUIRED` except on routes marked `@AllowPendingPasswordChange()` (me, change-password, logout, logout-all).
+- [ ] **Bulk credential slips** (`POST /users/credential-slips`). *Moved to M3: it needs per-session sections and guardian/student portal accounts.*
+- [ ] Frontend follow-up: "Continue with Google" on every login page (M1 5.5); NextAuth stores the refresh token, refreshes before expiry, sends `identifier`, handles `PASSWORD_CHANGE_REQUIRED`; then set `JWT_EXPIRES_IN=15m`.
+- [x] Tests: identifier, lockout, session rotation/reuse/binding, strategies, forced-change guard, invites, `addMember` (unit); `test/auth-sessions.e2e-spec.ts` (DB) for the PRD 6.3 acceptance flows. *The DB e2e specs haven't run yet (no local database).*
+- [x] Fixed on the way: `UserService.findAll` (platform users) passed unset filters as `undefined`, which TypeORM 1.x rejects on unscoped repositories.
 
 ### 4.4 RBAC alignment and scope rules (PRD 4.4, 6.3)
 
-- [ ] **System roles** per PRD 6.3: `admin`, `principal`, `accountant`, `teacher`, `class_teacher`, `receptionist`, `librarian`, `student`, `guardian`, with permission sets from the 4.4 matrix (updated as milestones add keys).
+- [ ] **System roles** per PRD 6.3: `admin`, `principal`, `accountant`, `teacher`, `class_teacher`, `receptionist`, `librarian`, `committee_member`, `student`, `guardian`, with permission sets from the 4.4 matrix (updated as milestones add keys). `committee_member` gets read-only keys only (dashboards, reports, settings, academic setup, finance summaries), never the sensitive student keys (`student_medical:*`, `student_notes:read_sensitive`, guardian details).
 - [ ] Migration `AlignSystemRoles` for existing orgs: rename `parent` → `guardian`, move `staff` holders to `principal`, insert the missing roles, rewrite permissions of `is_system` roles; custom roles untouched.
 - [ ] `POST /roles/:id/clone`.
 - [ ] **Scope:**
@@ -226,7 +234,7 @@ M4, M5 and M6 don't depend on one another, so they can be reordered (fees first 
 
 ## 5. M1: Platform admin and onboarding
 
-**Scope:** PRD 6.1 Phase 1a (super-admin only), 6.2, 7.1 and `domains-and-routing.md` sections 2–4.
+**Scope:** PRD 6.1 Phase 1a (super-admin only), 6.2, Google sign-in from 6.3, 7.1 and `domains-and-routing.md` sections 2–5a.
 
 ### 5.1 Plans and entitlements (PRD 3.3, 6.1)
 
@@ -273,6 +281,18 @@ M4, M5 and M6 don't depend on one another, so they can be reordered (fees first 
 - [ ] `POST /public/find-school { email }`: always 202; enqueues a mail listing every school with an ACTIVE membership, each linking to `https://<host>/login?identifier=…`; rate-limited per IP and per recipient. Phone input **(1b)**.
 - [ ] Sample data: `POST /onboarding/sample-data` (job) fills a demo session; `DELETE` removes everything it created (`sample_batch_id`). Lowest priority.
 
+### 5.5 Google sign-in (PRD 6.3, `domains-and-routing.md` 5a)
+
+- [ ] Env `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` (optional in dev: the routes answer 404 `GOOGLE_SIGNIN_DISABLED` when unset); callback `${APP_URL}/api/oauth/google/callback`.
+- [ ] Platform tables `user_identities (user_id, provider, subject, email, linked_at, last_used_at)`, unique `(provider, subject)`, and `oauth_states (state_hash, code_verifier, nonce, return_host, org_id, next, intent, user_id, expires_at, used_at)`; `users.password_set` (false for accounts created through Google signup).
+- [ ] `GET /oauth/google/start?return=&next=&intent=signin|signup|link`: return-host allow-list (root subdomains, `verified`/`active` custom domains, the admin host), same-host `next` only, single-use state (10 min), PKCE S256, nonce. Excluded from `TenantMiddleware`; rate-limited.
+- [ ] `GET /oauth/google/callback`: consume state, exchange code, verify the ID token (issuer, audience, expiry, nonce, `email_verified`) against Google's published keys; store no Google tokens.
+- [ ] Account match: linked identity, else verified email (link it, set `email_verified_at`); never create a membership. No match → uniform error on the school's `/login`, or continue signup with the verified email (M1 5.3).
+- [ ] School sign-in: the same account/membership checks as password login, then a handoff code (existing `auth_tokens` type `handoff`) and a redirect to the return host's `/auth/handoff`. Platform sign-in: a platform handoff code redeemed by new `POST /platform/auth/handoff/exchange`.
+- [ ] Link (signed-in `intent=link`) and unlink (`DELETE /auth/identities/google`, refused without a password); identities listed in `GET /auth/me`.
+- [ ] Audit events (4.5): Google sign-in, link, unlink.
+- [ ] Tests: ID-token verification (bad issuer, audience, nonce, unverified email, expired), state reuse and expiry, open-redirect attempts, link conflicts, unlink without password (unit, Google mocked); start → callback → handoff → session (e2e with a stubbed token endpoint).
+
 ### Done when
 
 - [ ] A school signs up, verifies by email and lands signed in on its own host (e2e).
@@ -280,6 +300,7 @@ M4, M5 and M6 don't depend on one another, so they can be reordered (fees first 
 - [ ] Reserved and taken slugs are rejected with suggestions; an unverified signup reserves nothing.
 - [ ] "Find your school" gives the same response for known and unknown emails (e2e).
 - [ ] Only a super-admin can create schools, change plans and extend trials, and each action is in the platform audit log.
+- [ ] A member signs in to their school with Google from its subdomain and from its custom domain; a non-member gets the same error as an unknown account (e2e).
 
 ---
 
