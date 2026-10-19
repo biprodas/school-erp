@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { ACTIVE_SESSIONS, TEST_SESSION_ID } from './support/sessions';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
@@ -49,17 +50,17 @@ describe('Membership E2E', () => {
   const adminToken = () =>
     jwtService.sign({
       sub: ADMIN_ID,
-      email: 'admin@test.com',
       status: UserStatus.ACTIVE,
       isAdmin: true,
+      sid: TEST_SESSION_ID,
     });
 
   const userToken = (id = USER_ID) =>
     jwtService.sign({
       sub: id,
-      email: 'user@test.com',
       status: UserStatus.ACTIVE,
       isAdmin: false,
+      sid: TEST_SESSION_ID,
     });
 
   beforeEach(async () => {
@@ -91,6 +92,7 @@ describe('Membership E2E', () => {
       providers: [
         MembershipService,
         PlatformJwtStrategy,
+        ACTIVE_SESSIONS,
         { provide: getRepositoryToken(Membership), useValue: membershipRepo },
         { provide: OrganizationService, useValue: tenantServiceMock },
         { provide: UserService, useValue: userServiceMock },

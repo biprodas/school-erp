@@ -22,6 +22,7 @@ export function createRequestContext(request: Request): RequestContextDto {
   const authUser = request.user;
   if (authUser) {
     ctx.userId = authUser.userId;
+    ctx.sessionId = authUser.sessionId;
     ctx.user = plainToClass(
       UserDto,
       { ...authUser, id: authUser.userId },
@@ -29,6 +30,7 @@ export function createRequestContext(request: Request): RequestContextDto {
     );
   } else {
     ctx.userId = null;
+    ctx.sessionId = null;
     ctx.user = null;
   }
 

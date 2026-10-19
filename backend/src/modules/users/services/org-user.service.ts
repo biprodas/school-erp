@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Inject,
   Injectable,
@@ -6,6 +7,9 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
+import { randomBytes } from 'node:crypto';
+import { normalizeEmail, normalizePhone } from '~/common/identity/identifier';
+import type { User } from '../entities/user.entity';
 import { Membership } from '~/modules/memberships/entities/membership.entity';
 import { MembershipStatus } from '~/modules/memberships/enums/membership-status.enum';
 import { UserStatus } from '../enums/user-status.enum';
@@ -26,7 +30,8 @@ import { TenantDataSourceProxy } from '~/tenancy/tenant-datasource.proxy';
 export interface SerializedUser {
   id: string;
   membershipId: string;
-  email: string;
+  email: string | null;
+  phone: string | null;
   name: string;
   status: MembershipStatus;
   isAdmin: boolean;
@@ -34,6 +39,23 @@ export interface SerializedUser {
   roles: { id: string; name: string }[];
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface AddMemberInput {
+  name: string;
+  email?: string;
+  phone?: string;
+  /** Temporary password for a new account (must be changed at sign-in). */
+  password?: string;
+  status: MembershipStatus;
+  roleIds?: string[];
+}
+
+export interface AddMemberResult {
+  userId: string;
+  account: User;
+  /** False when an existing global account was linked. */
+  createdAccount: boolean;
 }
 
 /**
@@ -60,6 +82,7 @@ export class OrgUserService {
       id: m.userId,
       membershipId: m.id,
       email: m.user.email,
+      phone: m.user.phone,
       name: m.user.name,
       status: m.status,
       isAdmin: m.isAdmin,
@@ -115,49 +138,100 @@ export class OrgUserService {
   }
 
   /**
-   * Adds a user to this school. A brand-new email creates the global
-   * account with the given password; an existing account is linked as-is
-   * (its password is never changed from here).
+   * Adds a user to this school with an admin-chosen, temporary password
+   * (the user must change it at first sign-in). An existing account (same
+   * email or phone) is linked as-is: its password is never changed here.
    */
   create(dto: CreateOrgUserDto): Promise<SerializedUser> {
     return this.ds.runInTransaction(async () => {
       this.logger.log(`${this.create.name} Service Called`);
+      const { userId } = await this.addMember({
+        name: dto.name,
+        email: dto.email,
+        phone: dto.phone,
+        password: dto.password,
+        status: dto.status ?? MembershipStatus.ACTIVE,
+        roleIds: dto.roleIds,
+      });
+      return this.findById(userId);
+    });
+  }
 
-      // Validate the requested roles up front so we never create a member
-      // and then fail half-way through assigning roles.
-      const roleIds = [...new Set(dto.roleIds ?? [])];
-      for (const roleId of roleIds) {
-        await this.roleService.findById(roleId);
-      }
+  /**
+   * Finds the global account by email or phone (creating it if neither
+   * matches) and adds a membership in this school with the given roles.
+   * A new account gets `password` as a temporary one, or an unusable random
+   * one when it will be set through an activation link. Call inside
+   * `ds.runInTransaction`.
+   */
+  async addMember(input: AddMemberInput): Promise<AddMemberResult> {
+    const email = input.email ? normalizeEmail(input.email) : undefined;
+    const phone = input.phone ? normalizePhone(input.phone) : undefined;
+    if (!email && !phone) {
+      throw new BadRequestException({
+        message: 'An email address or a phone number is required',
+        code: 'IDENTIFIER_REQUIRED',
+      });
+    }
+    if (phone === null) {
+      throw new BadRequestException({
+        message: 'Invalid phone number',
+        code: 'INVALID_PHONE',
+      });
+    }
 
-      let account = await this.accountRepo.findByEmail(dto.email);
-      if (account) {
-        const existing = await this.memberRepo.findByUserId(account.id);
-        if (existing) {
-          throw new ConflictException(
-            'User is already a member of this organization',
-          );
-        }
-      } else {
-        account = await this.accountRepo.saveNew({
-          name: dto.name,
-          email: dto.email,
-          password: await bcrypt.hash(dto.password, 10),
-          status: UserStatus.ACTIVE,
+    // Validate the requested roles up front so we never create a member
+    // and then fail half-way through assigning roles.
+    const roleIds = [...new Set(input.roleIds ?? [])];
+    for (const roleId of roleIds) {
+      await this.roleService.findById(roleId);
+    }
+
+    const byEmail = email ? await this.accountRepo.findByEmail(email) : null;
+    const byPhone = phone ? await this.accountRepo.findByPhone(phone) : null;
+    if (byEmail && byPhone && byEmail.id !== byPhone.id) {
+      throw new ConflictException({
+        message: 'The email and the phone number belong to different accounts',
+        code: 'IDENTIFIER_CONFLICT',
+      });
+    }
+    let account = byEmail ?? byPhone;
+    const createdAccount = !account;
+    if (account) {
+      if (await this.memberRepo.findByUserId(account.id)) {
+        throw new ConflictException({
+          message: 'User is already a member of this organization',
+          code: 'ALREADY_MEMBER',
         });
       }
-
-      await this.memberRepo.saveNew({
-        userId: account.id,
-        status: dto.status ?? MembershipStatus.ACTIVE,
+    } else {
+      account = await this.accountRepo.saveNew({
+        name: input.name,
+        email: email ?? null,
+        phone: phone ?? null,
+        password: await bcrypt.hash(
+          input.password ?? randomBytes(32).toString('base64url'),
+          10,
+        ),
+        mustChangePassword: input.password !== undefined,
+        status: UserStatus.ACTIVE,
       });
+    }
 
-      for (const roleId of roleIds) {
-        await this.roleService.assignRole(account.id, roleId);
-      }
+    await this.memberRepo.saveNew({ userId: account.id, status: input.status });
+    for (const roleId of roleIds) {
+      await this.roleService.assignRole(account.id, roleId);
+    }
+    return { userId: account.id, account, createdAccount };
+  }
 
-      return this.findById(account.id);
-    });
+  /** Marks this school's membership of the user ACTIVE (existing accounts). */
+  async activateMembership(userId: string): Promise<void> {
+    const member = await this.getMemberOrFail(userId);
+    if (member.status !== MembershipStatus.ACTIVE) {
+      member.status = MembershipStatus.ACTIVE;
+      await this.memberRepo.save(member);
+    }
   }
 
   async update(id: string, dto: UpdateOrgUserDto): Promise<SerializedUser> {

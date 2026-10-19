@@ -9,6 +9,10 @@ const optionalTcpPort = Joi.any().custom((value, helpers) => {
   return n;
 });
 
+/** `<keyId>:<base64 of 32 bytes>`, e.g. `k1:3q2+7w…=`. */
+const FIELD_KEY_SOURCE = '[a-z0-9_-]{1,16}:[A-Za-z0-9+/]{43}=';
+const FIELD_KEY_PATTERN = new RegExp(`^${FIELD_KEY_SOURCE}$`);
+
 export const envValidationSchema = Joi.object({
   NODE_ENV: Joi.string().valid('development', 'staging', 'production', 'test'),
   LOG_LEVEL: Joi.string().valid(
@@ -68,6 +72,9 @@ export const envValidationSchema = Joi.object({
     'any.required': 'JWT_SECRET is required',
   }),
   JWT_EXPIRES_IN: Joi.string().default('1d'),
+  JWT_REFRESH_TTL: Joi.string()
+    .pattern(/^\d+[smhd]$/)
+    .default('30d'),
   MAIL_HOST: Joi.string().default('localhost'),
   MAIL_PORT: optionalTcpPort,
   MAIL_SECURE: Joi.boolean().default(false),
@@ -103,6 +110,52 @@ export const envValidationSchema = Joi.object({
   RATE_LIMIT_ENABLED: Joi.boolean().default(true),
   RATE_LIMIT_TTL: Joi.number().integer().min(1000).default(60000),
   RATE_LIMIT_MAX: Joi.number().integer().min(1).default(100),
+  // Background jobs (BullMQ on Redis; `inline` runs them in-process).
+  QUEUE_DRIVER: Joi.string().valid('bullmq', 'inline').optional(),
+  REDIS_URL: Joi.string()
+    .uri({ scheme: ['redis', 'rediss'] })
+    .default('redis://localhost:6379'),
+  QUEUE_CONCURRENCY: Joi.number().integer().min(1).max(64).default(4),
+  // S3-compatible object storage (MinIO in docker compose).
+  S3_ENDPOINT: Joi.string().uri().optional(),
+  S3_REGION: Joi.string().default('us-east-1'),
+  S3_BUCKET: Joi.string().when('NODE_ENV', {
+    is: 'production',
+    then: Joi.required(),
+    otherwise: Joi.optional().default('school-erp'),
+  }),
+  S3_ACCESS_KEY: Joi.string().when('NODE_ENV', {
+    is: 'production',
+    then: Joi.required(),
+    otherwise: Joi.allow('').optional(),
+  }),
+  S3_SECRET_KEY: Joi.string().when('NODE_ENV', {
+    is: 'production',
+    then: Joi.required(),
+    otherwise: Joi.allow('').optional(),
+  }),
+  S3_FORCE_PATH_STYLE: Joi.boolean().default(true),
+  S3_SIGNED_URL_TTL: Joi.number().integer().min(30).max(86400).default(300),
+  UPLOAD_MAX_BYTES: Joi.number()
+    .integer()
+    .min(1024)
+    .default(10 * 1024 * 1024),
+  // PDF rendering (headless Chrome via Puppeteer).
+  PDF_CONCURRENCY: Joi.number().integer().min(1).max(32).default(4),
+  PDF_CHROME_PATH: Joi.string().optional(),
+  PDF_NO_SANDBOX: Joi.boolean().default(false),
+  // `<keyId>:<base64 32-byte key>` for AES-256-GCM field encryption; older
+  // keys (same format, comma-separated) stay readable for rotation.
+  FIELD_ENCRYPTION_KEY: Joi.string()
+    .pattern(FIELD_KEY_PATTERN)
+    .when('NODE_ENV', {
+      is: 'production',
+      then: Joi.required(),
+      otherwise: Joi.optional(),
+    }),
+  FIELD_ENCRYPTION_OLD_KEYS: Joi.string()
+    .pattern(new RegExp(`^${FIELD_KEY_SOURCE}(,${FIELD_KEY_SOURCE})*$`))
+    .optional(),
 })
   .unknown(true)
   .prefs({ abortEarly: false });

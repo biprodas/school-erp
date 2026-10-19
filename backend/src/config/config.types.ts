@@ -6,6 +6,9 @@ import type { SwaggerConfig } from './swagger.config';
 import type { HealthConfig } from './health.config';
 import type { ThrottleConfig } from './throttle.config';
 import type { DomainsConfig } from './domains.config';
+import type { QueueConfig } from './queue.config';
+import type { StorageConfig } from './storage.config';
+import type { PdfConfig } from './pdf.config';
 
 /** Combined shape of all registered namespaces (matches `configLoaders`). */
 export interface RootConfig {
@@ -17,6 +20,9 @@ export interface RootConfig {
   health: HealthConfig;
   throttle: ThrottleConfig;
   domains: DomainsConfig;
+  queue: QueueConfig;
+  storage: StorageConfig;
+  pdf: PdfConfig;
 }
 
 export type {
@@ -28,4 +34,7 @@ export type {
   HealthConfig,
   ThrottleConfig,
   DomainsConfig,
+  QueueConfig,
+  StorageConfig,
+  PdfConfig,
 };

@@ -1,14 +1,16 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
+  NotFoundException,
   UnauthorizedException,
-  ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
-import * as bcrypt from 'bcrypt';
+import type { ClientInfo } from '~/common/decorators/client.decorator';
+import { normalizeEmail } from '~/common/identity/identifier';
 import {
   EMAIL_VERIFICATION_TTL_MS,
   HANDOFF_TTL_MS,
@@ -25,13 +27,17 @@ import { Organization } from '~/modules/organizations/entities/organization.enti
 import { OrganizationStatus } from '~/modules/organizations/enums/organization-status.enum';
 import { PlatformRegisterDto } from '../dto/platform-register.dto';
 import { PlatformLoginDto } from '../dto/platform-login.dto';
+import { loginIdentifier } from '../dto/login.dto';
 import { AuthToken } from '../entities/auth-token.entity';
+import type { PlatformJwtPayload } from '../strategies/platform-jwt.strategy';
+import { CredentialService, hashPassword } from './credential.service';
+import { SessionService, type IssuedSession } from './session.service';
 
 /**
  * Authentication + self-service account operations for platform users:
- * register/login plus email verification, password reset, and change-password.
- * Platform-issued tokens have a null `orgId`; school-issued ones are never
- * redeemable here. Anti-enumeration:
+ * register/login plus email verification, password reset, change-password
+ * and sessions. Platform-issued tokens and sessions have a null `orgId`;
+ * school-issued ones are never redeemable here. Anti-enumeration:
  * forgot/resend never reveal whether an email exists.
  */
 @Injectable()
@@ -45,6 +51,8 @@ export class PlatformAuthService {
     private readonly membershipRepo: Repository<Membership>,
     @InjectRepository(Organization)
     private readonly organizationRepo: Repository<Organization>,
+    private readonly credentials: CredentialService,
+    private readonly sessions: SessionService,
     private readonly mail: MailService,
     private readonly jwtService: JwtService,
   ) {}
@@ -54,17 +62,18 @@ export class PlatformAuthService {
    * before they can log in — no JWT is issued here.
    */
   async register(dto: PlatformRegisterDto) {
-    const existing = await this.userRepository.findOne({
-      where: { email: dto.email },
-    });
+    const email = normalizeEmail(dto.email);
+    const existing = await this.userRepository.findOne({ where: { email } });
     if (existing) {
-      throw new ConflictException('Email already registered');
+      throw new ConflictException({
+        message: 'Email already registered',
+        code: 'EMAIL_TAKEN',
+      });
     }
 
-    const hashedPassword = await bcrypt.hash(dto.password, 10);
     const user = this.userRepository.create({
-      email: dto.email,
-      password: hashedPassword,
+      email,
+      password: await hashPassword(dto.password),
       name: dto.name,
       status: UserStatus.PENDING,
     });
@@ -75,40 +84,47 @@ export class PlatformAuthService {
     return { email: user.email };
   }
 
-  async login(dto: PlatformLoginDto) {
+  async login(dto: PlatformLoginDto, client: ClientInfo) {
+    const user = await this.credentials.verify(
+      loginIdentifier(dto),
+      dto.password,
+    );
+    this.assertCanSignIn(user);
+    return this.startSession(user, client);
+  }
+
+  async refresh(refreshToken: string, client: ClientInfo) {
+    const rotated = await this.sessions.rotate(refreshToken, null, client);
     const user = await this.userRepository.findOne({
-      where: { email: dto.email },
-      select: {
-        id: true,
-        email: true,
-        password: true,
-        name: true,
-        status: true,
-        isAdmin: true,
-        emailVerifiedAt: true,
-      },
+      where: { id: rotated.userId },
     });
-
-    if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
+    try {
+      if (!user) throw new UnauthorizedException('Invalid credentials');
+      this.assertCanSignIn(user);
+    } catch (err) {
+      await this.sessions.revokeFamily(rotated.sessionId);
+      throw err;
     }
+    return this.tokenResponse(user, rotated);
+  }
 
-    const isValid = await bcrypt.compare(dto.password, user.password);
-    if (!isValid) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
+  logout(sessionId: string): Promise<void> {
+    return this.sessions.revokeFamily(sessionId);
+  }
 
-    // Credentials are valid — now surface a clear reason if they can't log in.
-    if (user.status === UserStatus.PENDING && !user.emailVerifiedAt) {
-      throw new ForbiddenException(
-        'Please verify your email before logging in.',
-      );
-    }
-    if (user.status !== UserStatus.ACTIVE) {
-      throw new UnauthorizedException(`Account is ${user.status}`);
-    }
+  listSessions(userId: string, currentSessionId: string) {
+    return this.sessions.listActive(userId, null, currentSessionId);
+  }
 
-    return this.buildTokenResponse(user);
+  async revokeSession(userId: string, sessionId: string): Promise<void> {
+    if (!(await this.sessions.revokeOwn(userId, null, sessionId))) {
+      throw new NotFoundException('Session not found');
+    }
+  }
+
+  /** Signs the user out of the platform and every school. */
+  logoutEverywhere(userId: string): Promise<void> {
+    return this.sessions.revokeAllForUser(userId);
   }
 
   async getProfile(userId: string) {
@@ -165,6 +181,7 @@ export class PlatformAuthService {
 
   /** Mint + email a verification token. Called by register() and resend. */
   async issueEmailVerification(user: User): Promise<void> {
+    if (!user.email) return;
     const rawToken = generateToken();
     const verificationToken = this.tokenRepo.create({
       userId: user.id,
@@ -178,13 +195,15 @@ export class PlatformAuthService {
   }
 
   /** Pre-check a verification token without consuming it (for the frontend). */
-  async checkVerificationToken(rawToken: string): Promise<{ email: string }> {
+  async checkVerificationToken(
+    rawToken: string,
+  ): Promise<{ email: string | null }> {
     const { user } = await this.resolveVerification(rawToken);
     return { email: user.email };
   }
 
   /** Consume a verification token: mark verified + active, then auto-login. */
-  async verifyEmail(rawToken: string) {
+  async verifyEmail(rawToken: string, client: ClientInfo) {
     const { user, record } = await this.resolveVerification(rawToken);
 
     user.emailVerifiedAt = new Date();
@@ -196,12 +215,14 @@ export class PlatformAuthService {
     record.usedAt = new Date();
     await this.tokenRepo.save(record);
 
-    return this.buildTokenResponse(user);
+    return this.startSession(user, client);
   }
 
   /** Re-issue a verification email if the user exists and is not yet verified. */
   async resendVerification(email: string): Promise<void> {
-    const user = await this.userRepository.findOne({ where: { email } });
+    const user = await this.userRepository.findOne({
+      where: { email: normalizeEmail(email) },
+    });
     if (user && !user.emailVerifiedAt) {
       await this.issueEmailVerification(user);
     }
@@ -211,8 +232,10 @@ export class PlatformAuthService {
 
   /** Mint + email a reset token if the user exists (always silent). */
   async forgotPassword(email: string): Promise<void> {
-    const user = await this.userRepository.findOne({ where: { email } });
-    if (!user) return;
+    const user = await this.userRepository.findOne({
+      where: { email: normalizeEmail(email) },
+    });
+    if (!user?.email) return;
 
     const rawToken = generateToken();
     const resetToken = this.tokenRepo.create({
@@ -227,67 +250,90 @@ export class PlatformAuthService {
   }
 
   /** Pre-check a reset token without consuming it (for the frontend). */
-  async checkResetToken(rawToken: string): Promise<{ email: string }> {
+  async checkResetToken(rawToken: string): Promise<{ email: string | null }> {
     const { user } = await this.resolveReset(rawToken);
     return { email: user.email };
   }
 
-  /** Consume a reset token and set the new password. */
+  /** Consume a reset token, set the new password, end every session. */
   async resetPassword(rawToken: string, newPassword: string): Promise<void> {
     const { user, record } = await this.resolveReset(rawToken);
 
-    user.password = await bcrypt.hash(newPassword, 10);
-    await this.userRepository.save(user);
-
+    await this.credentials.setPassword(user.id, newPassword);
     record.usedAt = new Date();
     await this.tokenRepo.save(record);
+    await this.sessions.revokeAllForUser(user.id);
   }
 
-  /** Change password for an authenticated user (verifies the current one). */
+  /**
+   * Change password for an authenticated user (verifies the current one).
+   * Other sessions end; this one gets a fresh access token.
+   */
   async changePassword(
     userId: string,
+    sessionId: string,
     currentPassword: string,
     newPassword: string,
-  ): Promise<void> {
-    const user = await this.userRepository.findOne({
-      where: { id: userId },
-      select: {
-        id: true,
-        email: true,
-        password: true,
-        name: true,
-        status: true,
-        isAdmin: true,
-      },
-    });
-    if (!user) {
-      throw new UnauthorizedException('User not found');
+  ) {
+    if (!(await this.credentials.checkPassword(userId, currentPassword))) {
+      throw new BadRequestException({
+        message: 'Current password is incorrect',
+        code: 'WRONG_PASSWORD',
+      });
     }
+    await this.credentials.setPassword(userId, newPassword);
+    await this.sessions.revokeAllForUser(userId, sessionId);
 
-    const isValid = await bcrypt.compare(currentPassword, user.password);
-    if (!isValid) {
-      throw new BadRequestException('Current password is incorrect');
-    }
-
-    user.password = await bcrypt.hash(newPassword, 10);
-    await this.userRepository.save(user);
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) throw new UnauthorizedException('User not found');
+    return {
+      access_token: this.accessToken(user, sessionId),
+      token_type: 'Bearer',
+    };
   }
 
   // --- Internals ----------------------------------------------------------
 
-  private buildTokenResponse(user: User) {
-    const payload = {
+  /** Credentials are valid; surface a clear reason if they can't log in. */
+  private assertCanSignIn(user: User): void {
+    if (user.status === UserStatus.PENDING && !user.emailVerifiedAt) {
+      throw new ForbiddenException({
+        message: 'Please verify your email before logging in.',
+        code: 'EMAIL_NOT_VERIFIED',
+      });
+    }
+    if (user.status !== UserStatus.ACTIVE) {
+      throw new UnauthorizedException(`Account is ${user.status}`);
+    }
+  }
+
+  private async startSession(user: User, client: ClientInfo) {
+    const session = await this.sessions.start(user.id, null, client);
+    return this.tokenResponse(user, session);
+  }
+
+  private accessToken(user: User, sessionId: string): string {
+    const payload: PlatformJwtPayload = {
       sub: user.id,
-      email: user.email,
       status: user.status,
       isAdmin: user.isAdmin,
+      sid: sessionId,
+      ...(user.mustChangePassword ? { mcp: true } : {}),
     };
+    return this.jwtService.sign(payload);
+  }
+
+  private tokenResponse(user: User, session: IssuedSession) {
     return {
-      access_token: this.jwtService.sign(payload),
+      access_token: this.accessToken(user, session.sessionId),
+      refresh_token: session.refreshToken,
+      refresh_expires_at: session.refreshExpiresAt,
       token_type: 'Bearer',
+      mustChangePassword: user.mustChangePassword === true,
       user: {
         id: user.id,
         email: user.email,
+        phone: user.phone,
         name: user.name,
         status: user.status,
         isAdmin: user.isAdmin,

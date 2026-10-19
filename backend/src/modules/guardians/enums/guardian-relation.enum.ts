@@ -1,6 +1,6 @@
 export enum GuardianRelation {
   FATHER = 'father',
   MOTHER = 'mother',
-  BROTHER = 'BROTHER',
+  BROTHER = 'brother',
   OTHER = 'other',
 }

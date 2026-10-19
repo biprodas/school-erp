@@ -1,4 +1,5 @@
 import { randomUUID } from 'crypto';
+import { ACTIVE_SESSIONS, TEST_SESSION_ID } from './support/sessions';
 import { INestApplication } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Test } from '@nestjs/testing';
@@ -32,9 +33,9 @@ describe('Tenant isolation (e2e)', () => {
   const tokenFor = (org: Organization) =>
     jwt.sign({
       sub: randomUUID(),
-      email: `admin-${org.slug}@e2e.test`,
       orgId: org.id,
       isAdmin: true,
+      sid: TEST_SESSION_ID,
     });
 
   /** A request as a school admin of `org`, against `org` unless overridden. */
@@ -78,9 +79,14 @@ describe('Tenant isolation (e2e)', () => {
   };
 
   beforeAll(async () => {
+    // Sessions are covered by auth-sessions.e2e-spec; these synthetic
+    // admins have no user rows to hang a real session on.
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+      .overrideProvider(ACTIVE_SESSIONS.provide)
+      .useValue(ACTIVE_SESSIONS.useValue)
+      .compile();
     app = moduleRef.createNestApplication();
     configureApp(app);
     await app.init();

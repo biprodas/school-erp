@@ -1,4 +1,8 @@
-import { NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { QueryFailedError } from 'typeorm';
 import { GlobalExceptionFilter } from './global-exception.filter';
 
@@ -70,5 +74,39 @@ describe('GlobalExceptionFilter', () => {
         path: '/api/things/1',
       }),
     );
+  });
+
+  describe('error code', () => {
+    const codeOf = (exception: unknown) =>
+      (run(exception).json.mock.calls[0] as [{ code: string }])[0].code;
+
+    it('uses an explicit code from the exception body', () => {
+      expect(
+        codeOf(new ConflictException({ message: 'Taken', code: 'SLUG_TAKEN' })),
+      ).toBe('SLUG_TAKEN');
+    });
+
+    it('derives the code from the status', () => {
+      expect(codeOf(new NotFoundException('Student not found'))).toBe(
+        'NOT_FOUND',
+      );
+    });
+
+    it('marks ValidationPipe failures as VALIDATION_FAILED', () => {
+      expect(codeOf(new BadRequestException(['name must be a string']))).toBe(
+        'VALIDATION_FAILED',
+      );
+    });
+
+    it('names Postgres conflicts', () => {
+      const error = new QueryFailedError('INSERT ...', [], {
+        code: '23505',
+      } as unknown as Error);
+      expect(codeOf(error)).toBe('UNIQUE_VIOLATION');
+    });
+
+    it('hides details of unexpected errors', () => {
+      expect(codeOf(new Error('boom'))).toBe('INTERNAL_ERROR');
+    });
   });
 });

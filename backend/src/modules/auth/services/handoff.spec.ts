@@ -23,6 +23,8 @@ import { RoleService } from '~/modules/rbac/services/role.service';
 import { AuthToken } from '../entities/auth-token.entity';
 import { AuthTokenRepository } from '../repositories/auth-token.repository';
 import { AuthService } from './auth.service';
+import { CredentialService } from './credential.service';
+import { SessionService } from './session.service';
 import { PlatformAuthService } from './platform-auth.service';
 
 const ORG_ID = 'org-1';
@@ -77,6 +79,8 @@ describe('PlatformAuthService.issueHandoff', () => {
           provide: getRepositoryToken(Organization),
           useValue: organizationRepo,
         },
+        { provide: CredentialService, useValue: {} },
+        { provide: SessionService, useValue: {} },
         { provide: MailService, useValue: {} },
         { provide: JwtService, useValue: {} },
       ],
@@ -153,6 +157,15 @@ describe('AuthService.exchangeHandoff', () => {
   const authTokenRepo = { findByHash: jest.fn(), consume: jest.fn() };
   const roleService = { getUserRoles: jest.fn() };
   const jwtService = { sign: jest.fn(() => 'signed-jwt') };
+  const refreshExpiresAt = new Date(Date.now() + 86_400_000);
+  const sessions = {
+    start: jest.fn().mockResolvedValue({
+      sessionId: 'sess-1',
+      refreshToken: 'refresh-1',
+      refreshExpiresAt,
+    }),
+  };
+  const client = { ip: '203.0.113.7', userAgent: 'jest' };
 
   const makeRecord = (overrides: Partial<AuthToken> = {}): AuthToken =>
     ({
@@ -174,6 +187,8 @@ describe('AuthService.exchangeHandoff', () => {
         { provide: MemberRepository, useValue: memberRepo },
         { provide: RoleService, useValue: roleService },
         { provide: AuthTokenRepository, useValue: authTokenRepo },
+        { provide: CredentialService, useValue: {} },
+        { provide: SessionService, useValue: sessions },
         { provide: MailService, useValue: {} },
         { provide: JwtService, useValue: jwtService },
         { provide: REQUEST, useValue: { orgId: ORG_ID, orgSlug: 'acme' } },
@@ -189,21 +204,24 @@ describe('AuthService.exchangeHandoff', () => {
   });
 
   it('consumes the code and returns a tenant session for this org', async () => {
-    const result = await service.exchangeHandoff('raw-code');
+    const result = await service.exchangeHandoff('raw-code', client);
 
     expect(authTokenRepo.findByHash).toHaveBeenCalledWith(
       hashToken('raw-code'),
       AuthTokenType.HANDOFF,
     );
     expect(authTokenRepo.consume).toHaveBeenCalledWith('tok-1');
+    expect(sessions.start).toHaveBeenCalledWith(USER_ID, ORG_ID, client);
     expect(jwtService.sign).toHaveBeenCalledWith({
       sub: USER_ID,
-      email: 'owner@test.com',
       orgId: ORG_ID,
       isAdmin: true,
+      sid: 'sess-1',
     });
     expect(result).toMatchObject({
       access_token: 'signed-jwt',
+      refresh_token: 'refresh-1',
+      refresh_expires_at: refreshExpiresAt,
       user: { id: USER_ID, roles: ['admin'] },
       organization: { id: ORG_ID, slug: 'acme' },
     });
@@ -211,7 +229,7 @@ describe('AuthService.exchangeHandoff', () => {
 
   it('rejects an unknown code (including one issued for another school)', async () => {
     authTokenRepo.findByHash.mockResolvedValue(null);
-    await expect(service.exchangeHandoff('raw-code')).rejects.toThrow(
+    await expect(service.exchangeHandoff('raw-code', client)).rejects.toThrow(
       BadRequestException,
     );
   });
@@ -220,7 +238,7 @@ describe('AuthService.exchangeHandoff', () => {
     authTokenRepo.findByHash.mockResolvedValue(
       makeRecord({ expiresAt: new Date(Date.now() - 1) }),
     );
-    await expect(service.exchangeHandoff('raw-code')).rejects.toThrow(
+    await expect(service.exchangeHandoff('raw-code', client)).rejects.toThrow(
       BadRequestException,
     );
     expect(authTokenRepo.consume).not.toHaveBeenCalled();
@@ -230,24 +248,25 @@ describe('AuthService.exchangeHandoff', () => {
     authTokenRepo.findByHash.mockResolvedValue(
       makeRecord({ usedAt: new Date() }),
     );
-    await expect(service.exchangeHandoff('raw-code')).rejects.toThrow(
+    await expect(service.exchangeHandoff('raw-code', client)).rejects.toThrow(
       BadRequestException,
     );
   });
 
   it('rejects a code redeemed concurrently by another request', async () => {
     authTokenRepo.consume.mockResolvedValue(false);
-    await expect(service.exchangeHandoff('raw-code')).rejects.toThrow(
+    await expect(service.exchangeHandoff('raw-code', client)).rejects.toThrow(
       BadRequestException,
     );
     expect(jwtService.sign).not.toHaveBeenCalled();
+    expect(sessions.start).not.toHaveBeenCalled();
   });
 
   it('rejects when the membership is no longer active', async () => {
     memberRepo.findByUserId.mockResolvedValue(
       makeMembership({ status: MembershipStatus.SUSPENDED }),
     );
-    await expect(service.exchangeHandoff('raw-code')).rejects.toThrow(
+    await expect(service.exchangeHandoff('raw-code', client)).rejects.toThrow(
       UnauthorizedException,
     );
     expect(jwtService.sign).not.toHaveBeenCalled();

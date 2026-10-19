@@ -5,6 +5,7 @@ import { getDataSourceToken } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import type { DbConfig } from '../config/db.config';
 import { TenantConnectionService } from './tenant-connection.service';
+import { TenantJobRunner } from './tenant-job.runner';
 import { createTenantPoolDataSourceOptions } from './tenant.datasource';
 import { TENANT_DATASOURCE, TENANT_POOL_DATASOURCE } from './tenancy.constants';
 import { TenantContextMissingException } from './exceptions/tenant.exceptions';
@@ -49,6 +50,7 @@ const logger = new Logger('TenancyModule');
       },
     },
     TenantConnectionService,
+    TenantJobRunner,
     {
       provide: TENANT_DATASOURCE,
       scope: Scope.REQUEST,
@@ -67,6 +69,6 @@ const logger = new Logger('TenancyModule');
       },
     },
   ],
-  exports: [TenantConnectionService, TENANT_DATASOURCE],
+  exports: [TenantConnectionService, TenantJobRunner, TENANT_DATASOURCE],
 })
 export class TenancyModule {}

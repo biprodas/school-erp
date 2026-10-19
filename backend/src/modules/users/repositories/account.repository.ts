@@ -5,21 +5,13 @@ import { TenantDataSourceProxy } from '~/tenancy/tenant-datasource.proxy';
 import { BaseTenantRepository } from '~/tenancy/base-tenant.repository';
 import { User } from '../entities/user.entity';
 
-const WITH_PASSWORD = {
-  id: true,
-  email: true,
-  password: true,
-  name: true,
-  status: true,
-  emailVerifiedAt: true,
-} as const;
-
 /**
  * Global user accounts (the shared `users` table) as seen from a tenant
  * request. Accounts are not org-scoped — membership in the current org is
  * checked through `MemberRepository` — so only use this for identity
- * operations (login, password, email verification) or for users already
- * known to be members.
+ * operations (activation, email verification) or for users already known to
+ * be members. Passwords are checked by `CredentialService` (auth module).
+ * Pass normalized emails/phones (`common/identity/identifier.ts`).
  */
 @Injectable()
 export class AccountRepository extends BaseTenantRepository<User> {
@@ -31,12 +23,8 @@ export class AccountRepository extends BaseTenantRepository<User> {
     return this.repo.findOne({ where: { email } });
   }
 
-  findByEmailWithPassword(email: string): Promise<User | null> {
-    return this.repo.findOne({ where: { email }, select: WITH_PASSWORD });
-  }
-
-  findByIdWithPassword(id: string): Promise<User | null> {
-    return this.repo.findOne({ where: { id }, select: WITH_PASSWORD });
+  findByPhone(phone: string): Promise<User | null> {
+    return this.repo.findOne({ where: { phone } });
   }
 
   findByIds(ids: string[]): Promise<User[]> {

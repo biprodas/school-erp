@@ -1,13 +1,4 @@
-import { IsDefined, IsEmail, IsNotEmpty, IsString } from 'class-validator';
+import { LoginDto } from './login.dto';
 
-export class PlatformLoginDto {
-  @IsEmail()
-  @IsNotEmpty()
-  @IsDefined()
-  email: string;
-
-  @IsString()
-  @IsNotEmpty()
-  @IsDefined()
-  password: string;
-}
+/** Same shape as the tenant login: identifier (or legacy email) + password. */
+export class PlatformLoginDto extends LoginDto {}

@@ -57,10 +57,6 @@ export const SYSTEM_ROLES: SystemRoleSeed[] = [
       P.GUARDIANS_CREATE,
       P.GUARDIANS_UPDATE,
       P.GUARDIANS_DELETE,
-      P.STAKEHOLDERS_READ,
-      P.STAKEHOLDERS_CREATE,
-      P.STAKEHOLDERS_UPDATE,
-      P.STAKEHOLDERS_DELETE,
       P.ACADEMIC_YEARS_READ,
       P.ACADEMIC_YEARS_CREATE,
       P.ACADEMIC_YEARS_UPDATE,
@@ -177,11 +173,6 @@ export const SYSTEM_ROLES: SystemRoleSeed[] = [
   {
     name: 'student',
     description: 'Student',
-    permissions: [],
-  },
-  {
-    name: 'stakeholder',
-    description: 'External member or stakeholder',
     permissions: [],
   },
 ];

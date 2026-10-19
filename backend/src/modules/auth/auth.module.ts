@@ -11,14 +11,19 @@ import { Organization } from '~/modules/organizations/entities/organization.enti
 import { UserModule } from '~/modules/users/user.module';
 import { RbacModule } from '~/modules/rbac/rbac.module';
 import { AuthToken } from './entities/auth-token.entity';
+import { UserSession } from './entities/user-session.entity';
 import { AuthController } from './controllers/auth.controller';
 import { PlatformAuthController } from './controllers/platform-auth.controller';
+import { InviteController } from './controllers/invite.controller';
+import { InviteService } from './services/invite.service';
 import { AuthService } from './services/auth.service';
 import { PlatformAuthService } from './services/platform-auth.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { PlatformJwtStrategy } from './strategies/platform-jwt.strategy';
 import { AuthTokenRepository } from './repositories/auth-token.repository';
 import { OwnerProvisioningService } from './services/owner-provisioning.service';
+import { CredentialService } from './services/credential.service';
+import { SessionService } from './services/session.service';
 
 /**
  * Both auth realms, sharing one JWT signing config:
@@ -29,7 +34,13 @@ import { OwnerProvisioningService } from './services/owner-provisioning.service'
  */
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, AuthToken, Membership, Organization]),
+    TypeOrmModule.forFeature([
+      User,
+      AuthToken,
+      UserSession,
+      Membership,
+      Organization,
+    ]),
     PassportModule,
     UserModule,
     RbacModule,
@@ -49,7 +60,7 @@ import { OwnerProvisioningService } from './services/owner-provisioning.service'
       },
     }),
   ],
-  controllers: [PlatformAuthController, AuthController],
+  controllers: [PlatformAuthController, AuthController, InviteController],
   providers: [
     PlatformAuthService,
     PlatformJwtStrategy,
@@ -57,7 +68,10 @@ import { OwnerProvisioningService } from './services/owner-provisioning.service'
     JwtStrategy,
     AuthTokenRepository,
     OwnerProvisioningService,
+    CredentialService,
+    SessionService,
+    InviteService,
   ],
-  exports: [PlatformAuthService, OwnerProvisioningService],
+  exports: [PlatformAuthService, OwnerProvisioningService, SessionService],
 })
 export class AuthModule {}

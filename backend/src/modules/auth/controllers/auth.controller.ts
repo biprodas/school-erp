@@ -1,8 +1,11 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
+  Param,
+  ParseUUIDPipe,
   Post,
   Query,
   UseGuards,
@@ -23,6 +26,9 @@ import { ChangePasswordDto } from '../dto/change-password.dto';
 import { ExchangeHandoffDto } from '../dto/handoff.dto';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { ResponseMessage } from '~/common/decorators/response.decorators';
+import { AllowPendingPasswordChange } from '~/common/auth/password-change';
+import { Client, type ClientInfo } from '~/common/decorators/client.decorator';
+import { RefreshTokenDto } from '../dto/refresh-token.dto';
 
 /** Generic message used by anti-enumeration endpoints. */
 const GENERIC_EMAIL_MSG =
@@ -48,15 +54,65 @@ export class AuthController {
   @Post('activate')
   @Throttle(AUTH_THROTTLE)
   @ResponseMessage('Account activated.')
-  activate(@Body() dto: ActivateDto) {
-    return this.authService.activate(dto);
+  activate(@Body() dto: ActivateDto, @Client() client: ClientInfo) {
+    return this.authService.activate(dto, client);
   }
 
   @Post('login')
   @Throttle(AUTH_THROTTLE)
   @ResponseMessage('User logged in.')
-  login(@Body() dto: LoginDto) {
-    return this.authService.login(dto);
+  login(@Body() dto: LoginDto, @Client() client: ClientInfo) {
+    return this.authService.login(dto, client);
+  }
+
+  /** New token pair; the old refresh token stops working. */
+  @Post('refresh')
+  @HttpCode(200)
+  @Throttle(AUTH_THROTTLE)
+  @ResponseMessage('Session refreshed.')
+  refresh(@Body() dto: RefreshTokenDto, @Client() client: ClientInfo) {
+    return this.authService.refresh(dto.refreshToken, client);
+  }
+
+  /** Ends this sign-in (its refresh and access tokens). */
+  @Post('logout')
+  @HttpCode(200)
+  @UseGuards(JwtAuthGuard)
+  @AllowPendingPasswordChange()
+  @ResponseMessage('Logged out.')
+  async logout(@RequestContext() ctx: RequestContextDto) {
+    await this.authService.logout(ctx.sessionId!);
+    return {};
+  }
+
+  /** Active sign-ins on this host, newest first; `current` marks this one. */
+  @Get('sessions')
+  @UseGuards(JwtAuthGuard)
+  @ResponseMessage('Active sessions.')
+  listSessions(@RequestContext() ctx: RequestContextDto) {
+    return this.authService.listSessions(ctx.userId!, ctx.sessionId!);
+  }
+
+  @Delete('sessions/:id')
+  @UseGuards(JwtAuthGuard)
+  @ResponseMessage('Session ended.')
+  async revokeSession(
+    @RequestContext() ctx: RequestContextDto,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    await this.authService.revokeSession(ctx.userId!, id);
+    return {};
+  }
+
+  /** Signs the user out everywhere: every school and the platform. */
+  @Post('logout-all')
+  @HttpCode(200)
+  @UseGuards(JwtAuthGuard)
+  @AllowPendingPasswordChange()
+  @ResponseMessage('Logged out everywhere.')
+  async logoutEverywhere(@RequestContext() ctx: RequestContextDto) {
+    await this.authService.logoutEverywhere(ctx.userId!);
+    return {};
   }
 
   /** Exchange a cross-host handoff code for a session on this school host. */
@@ -64,8 +120,11 @@ export class AuthController {
   @HttpCode(200)
   @Throttle(AUTH_THROTTLE)
   @ResponseMessage('User logged in.')
-  exchangeHandoff(@Body() dto: ExchangeHandoffDto) {
-    return this.authService.exchangeHandoff(dto.code);
+  exchangeHandoff(
+    @Body() dto: ExchangeHandoffDto,
+    @Client() client: ClientInfo,
+  ) {
+    return this.authService.exchangeHandoff(dto.code, client);
   }
 
   @Post('forgot-password')
@@ -118,21 +177,23 @@ export class AuthController {
   @Post('change-password')
   @HttpCode(200)
   @UseGuards(JwtAuthGuard)
+  @AllowPendingPasswordChange()
   @ResponseMessage('Password changed.')
-  async changePassword(
+  changePassword(
     @RequestContext() ctx: RequestContextDto,
     @Body() dto: ChangePasswordDto,
   ) {
-    await this.authService.changePassword(
+    return this.authService.changePassword(
       ctx.userId!,
+      ctx.sessionId!,
       dto.currentPassword,
       dto.newPassword,
     );
-    return {};
   }
 
   @Get('me')
   @UseGuards(JwtAuthGuard)
+  @AllowPendingPasswordChange()
   @ResponseMessage('User found.')
   getMe(@RequestContext() ctx: RequestContextDto) {
     return this.authService.getMe(ctx.userId!);

@@ -94,7 +94,7 @@ For the full folder map, see [doc/backend-structure.md](../doc/backend-structure
 |------|---------|
 | Platform | `auth`, `users`, `tenants`, `memberships` |
 | Tenant core | `auth`, `users`, `rbac` |
-| People | `students`, `guardians`, `employees`, `departments`, `designations`, `stakeholders` |
+| People | `students`, `guardians`, `employees`, `departments`, `designations` |
 | Academics | `academic-years`, `classes`, `sections`, `subjects`, `subject-groups`, `class-curriculum`, `enrollments`, `teaching`, `timetable`, `promotions` |
 | Shared | `health`, `mail` (Handlebars templates + dev-only `dev/mail` trigger endpoints) |
 | Samples | `cats`, `tasks`, `products` |

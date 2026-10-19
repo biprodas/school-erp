@@ -97,6 +97,31 @@ The code is bound to the school, not to one hostname, so it works the same on th
 
 ---
 
+## 5a. Google sign-in
+
+Google only accepts redirect URLs registered in advance, and we have one host per school plus custom domains. So every Google sign-in, from any host, goes through **one fixed callback on the product domain** and then returns to the starting host with a handoff code (section 5). Schools and custom domains need no Google configuration.
+
+```
+acme.mydomain.com/login ──► mydomain.com/api/oauth/google/start?return=acme.mydomain.com&next=/dashboard
+        ──► accounts.google.com (state + PKCE + nonce)
+        ──► mydomain.com/api/oauth/google/callback
+        ──► acme.mydomain.com/auth/handoff?code=…&next=/dashboard ──► signed in on acme
+```
+
+1. **Start** (`GET /oauth/google/start`, platform route): `return` must be a school host we serve (a subdomain of the root domain, or a `verified`/`active` custom domain) or the platform admin host; anything else is refused, so this can't be used as an open redirect. The backend stores a single-use state (10 minutes) with the PKCE verifier, a nonce, the return host, the school it resolves to, `next` (same-host path only) and the intent (`signin`, `signup` or `link`), then redirects to Google with `scope=openid email profile`, `prompt=select_account`.
+2. **Callback** (`GET /oauth/google/callback`): consume the state (single use), exchange the code with the PKCE verifier, and verify the ID token (issuer, audience, expiry, nonce) and `email_verified = true`. Google access and refresh tokens are not stored; only the Google subject id and email are.
+3. **Find the account:** by linked identity (`user_identities.provider = 'google'` and `subject`), else by the verified email, in which case the identity is linked now and the account's email is marked verified (Google has proved control of that address). No match:
+   - school sign-in: the user lands on that school's `/login?error=google_no_account`, with the same message whether or not an account exists elsewhere;
+   - signup on the product domain: the signup form continues with the verified email, and no email link is needed.
+4. **Sign in:** for a school, the same checks as a password login (account status, ACTIVE membership in that school, lockout does not apply), then a handoff code for that school and a redirect to `https://<return host>/auth/handoff?code=…&next=…`. For the platform admin host, a platform handoff code redeemed at `admin.mydomain.com/auth/handoff`.
+5. **Link / unlink** (account settings, signed in): `start?intent=link` binds the state to the signed-in user; the callback links the Google identity unless it already belongs to another account. Unlinking requires a password on the account, so nobody loses their only way in.
+
+**Never creates memberships.** Google sign-in only signs people in to schools that already added them (invite, import, staff directory). Restricting a school to its Google Workspace domain (`hd`) can come later as a school setting.
+
+**Data:** `user_identities (user_id, provider, subject, email, linked_at, last_used_at)`, unique on `(provider, subject)`; `oauth_states (state_hash, code_verifier, nonce, return_host, org_id, next, intent, user_id, expires_at, used_at)`. Env: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and the callback URL derived from `APP_URL`.
+
+---
+
 ## 6. API access: same-origin proxy
 
 Browsers call `/api/*` on the host they are on. The Next.js app rewrites those requests to the backend and forwards the tenant (`x-tenant-id` resolved from the host, plus `X-Forwarded-Host`).
@@ -185,6 +210,7 @@ Backend:
 - [x] `TenantMiddleware` and `/public/organizations/resolve` read `organization_domains` (only `verified`/`active` domains resolve).
 - [ ] Slug-history lookups return a redirect target.
 - [x] Handoff codes: issue (`POST /platform/auth/handoff`, `auth_tokens` type `handoff`) and exchange (`POST /auth/handoff`) endpoints.
+- [ ] Google sign-in (section 5a): start/callback on the product domain, state + PKCE + nonce, return-host allow-list, account match by identity or verified email, school and platform handoff, link/unlink.
 - [ ] "Find your school" endpoint (email → message with sign-in links; phone/SMS in Phase 1b), rate-limited, uniform response.
 - [x] Domain settings endpoints at `/domains` (list, add, `:id/verify`, `:id/primary`, delete), permissions `domains:read` / `domains:manage`.
 - [x] DNS check job (`DomainCheckScheduler`, every 5 minutes): pending domains for 72 hours, verified/active ones hourly; 7 days of failures → `inactive` (`dns_failing_since`).

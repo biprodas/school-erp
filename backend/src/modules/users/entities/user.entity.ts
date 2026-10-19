@@ -1,8 +1,6 @@
 import { Exclude } from 'class-transformer';
 import {
-  AfterInsert,
-  AfterRemove,
-  AfterUpdate,
+  Check,
   Column,
   CreateDateColumn,
   DeleteDateColumn,
@@ -15,13 +13,24 @@ import { PlatformRole } from '../enums/platform-role.enum';
 import { UserStatus } from '../enums/user-status.enum';
 import { Membership } from '~/modules/memberships/entities/membership.entity';
 
+/**
+ * A global account (one login across schools). It is identified by an email,
+ * a phone number, or both; each is stored normalized (see
+ * `common/identity/identifier.ts`) and unique when present.
+ */
 @Entity('users', { schema: 'public' })
+@Check('chk_users_email_or_phone', `"email" IS NOT NULL OR "phone" IS NOT NULL`)
 export class User {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ unique: true })
-  email: string;
+  /** Lower-case; null for phone-only accounts. */
+  @Column({ type: 'varchar', unique: true, nullable: true })
+  email: string | null;
+
+  /** E.164 (`+8801712345678`); null for email-only accounts. */
+  @Column({ type: 'varchar', length: 16, unique: true, nullable: true })
+  phone: string | null;
 
   /**
    * Never returned by default queries — use { select: [..., 'password'] }
@@ -62,6 +71,27 @@ export class User {
   @Column({ name: 'email_verified_at', type: 'timestamptz', nullable: true })
   emailVerifiedAt: Date | null;
 
+  /** Set when the user confirms their phone by SMS OTP (Phase 1b). */
+  @Column({ name: 'phone_verified_at', type: 'timestamptz', nullable: true })
+  phoneVerifiedAt: Date | null;
+
+  /**
+   * The password was set by someone else (invite slip, admin); the user must
+   * choose a new one before using anything else.
+   */
+  @Column({ name: 'must_change_password', type: 'boolean', default: false })
+  mustChangePassword: boolean;
+
+  /** Consecutive failed sign-ins; reset on success or when a lock starts. */
+  @Exclude({ toPlainOnly: true })
+  @Column({ name: 'failed_login_count', type: 'int', default: 0 })
+  failedLoginCount: number;
+
+  /** Sign-in is refused until then (5 failures → 15 minutes). */
+  @Exclude({ toPlainOnly: true })
+  @Column({ name: 'locked_until', type: 'timestamptz', nullable: true })
+  lockedUntil: Date | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
@@ -73,19 +103,4 @@ export class User {
 
   @OneToMany(() => Membership, (membership) => membership.user)
   memberships: Membership[];
-
-  @AfterInsert()
-  logInsert() {
-    console.log(`User Inserted #ID: ${this.id}`);
-  }
-
-  @AfterUpdate()
-  logUpdate() {
-    console.log(`User Updated #ID: ${this.id}`);
-  }
-
-  @AfterRemove()
-  logRemove() {
-    console.log(`User Removed`);
-  }
 }

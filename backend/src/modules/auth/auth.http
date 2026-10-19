@@ -1,26 +1,79 @@
-### Register a User
-POST http://localhost:3000/auth/register
-X-Tenant-ID: acme
+@base = http://localhost:3900/api
+@tenant = acme
+
+### Login with email or phone (tenant)
+# @name login
+POST {{base}}/auth/login
+X-Tenant-ID: {{tenant}}
 Content-Type: application/json
 
 {
-  "email": "john@acme.com",
-  "password": "SecurePass123!",
-  "name": "John Doe"
-}
-
-### Login
-POST http://localhost:3000/auth/login
-X-Tenant-ID: acme
-Content-Type: application/json
-
-{
-  "email": "john@acme.com",
+  "identifier": "john@acme.com",
   "password": "SecurePass123!"
 }
 
+### Login with a phone number
+POST {{base}}/auth/login
+X-Tenant-ID: {{tenant}}
+Content-Type: application/json
 
-### Get User Profile
-GET http://localhost:3000/auth/profile
-X-Tenant-ID: acme
-Authorization: Bearer <jwt-token>
+{
+  "identifier": "01712345678",
+  "password": "SecurePass123!"
+}
+
+### Current user
+GET {{base}}/auth/me
+X-Tenant-ID: {{tenant}}
+Authorization: Bearer {{login.response.body.data.access_token}}
+
+### Refresh (rotates the refresh token; reusing an old one ends the sign-in)
+POST {{base}}/auth/refresh
+X-Tenant-ID: {{tenant}}
+Content-Type: application/json
+
+{
+  "refreshToken": "{{login.response.body.data.refresh_token}}"
+}
+
+### Active sessions on this school
+GET {{base}}/auth/sessions
+X-Tenant-ID: {{tenant}}
+Authorization: Bearer {{login.response.body.data.access_token}}
+
+### End one session
+DELETE {{base}}/auth/sessions/<session-id>
+X-Tenant-ID: {{tenant}}
+Authorization: Bearer {{login.response.body.data.access_token}}
+
+### Change password (ends the other sessions, returns a fresh access token)
+POST {{base}}/auth/change-password
+X-Tenant-ID: {{tenant}}
+Authorization: Bearer {{login.response.body.data.access_token}}
+Content-Type: application/json
+
+{
+  "currentPassword": "SecurePass123!",
+  "newPassword": "EvenMoreSecure456!"
+}
+
+### Invite by email (activation link) or phone only (slip password)
+POST {{base}}/users/invite
+X-Tenant-ID: {{tenant}}
+Authorization: Bearer {{login.response.body.data.access_token}}
+Content-Type: application/json
+
+{
+  "name": "Rina Akter",
+  "phone": "01812345678"
+}
+
+### Logout (this session)
+POST {{base}}/auth/logout
+X-Tenant-ID: {{tenant}}
+Authorization: Bearer {{login.response.body.data.access_token}}
+
+### Logout everywhere (every school and the platform)
+POST {{base}}/auth/logout-all
+X-Tenant-ID: {{tenant}}
+Authorization: Bearer {{login.response.body.data.access_token}}

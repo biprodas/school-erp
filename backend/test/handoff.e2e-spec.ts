@@ -15,6 +15,7 @@ import { Organization } from '~/modules/organizations/entities/organization.enti
 import { OrganizationStatus } from '~/modules/organizations/enums/organization-status.enum';
 import { User } from '~/modules/users/entities/user.entity';
 import { UserStatus } from '~/modules/users/enums/user-status.enum';
+import { SessionService } from '~/modules/auth/services/session.service';
 
 /**
  * Cross-host sign-in: the platform issues a one-time code for one school
@@ -30,13 +31,14 @@ describe('Sign-in handoff (e2e)', () => {
   let orgA: Organization;
   let orgB: Organization;
   let user: User;
+  let platformSessionId: string;
 
   const platformToken = () =>
     jwt.sign({
       sub: user.id,
-      email: user.email,
       status: UserStatus.ACTIVE,
       isAdmin: false,
+      sid: platformSessionId,
     });
 
   const issue = (orgId: string) =>
@@ -82,6 +84,10 @@ describe('Sign-in handoff (e2e)', () => {
         status: UserStatus.ACTIVE,
       }),
     );
+
+    ({ sessionId: platformSessionId } = await app
+      .get(SessionService)
+      .start(user.id, null));
 
     // A member of school A only.
     const memberships = rootDs.getRepository(Membership);
