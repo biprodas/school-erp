@@ -1,0 +1,389 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Brand palette (see DESIGN.md). Components use the role tokens below; the
+ * raw palette is for the landing page and illustrations.
+ */
+@theme {
+  --color-canvas: #f4f5f1;
+  --color-paper: #ffffff;
+  --color-ink: #12271e;
+  --color-ink-2: #46564e;
+  --color-ink-3: #6b7a72;
+  --color-line: #dfe5e0;
+  --color-line-strong: #c9d3cc;
+  --color-forest-deep: #0e241b;
+  --color-forest: #143f30;
+  --color-forest-2: #1d5a43;
+  --color-forest-hover: #174a37;
+  --color-mint: #e5eee8;
+  --color-mint-2: #d3e2d8;
+  --color-sage: #a9c2b4;
+  --color-marigold: #f0b24a;
+  --color-marigold-hover: #e8a333;
+  --color-marigold-tint: #fcefd6;
+  --color-marigold-ink: #7a4d07;
+  --color-red: #c2412d;
+  --color-red-tint: #fbe8e4;
+
+  --font-sans: var(--font-anek), system-ui, sans-serif;
+
+  /* Hairlines first: cards and fields sit on rings, so xs is no shadow. */
+  --shadow-xs: 0 0 #0000;
+  --shadow-sm: 0 1px 2px rgb(18 39 30 / 0.06);
+  --shadow-md: 0 4px 12px -2px rgb(18 39 30 / 0.1), 0 2px 4px -2px rgb(18 39 30 / 0.06);
+  --shadow-lg: 0 12px 32px -8px rgb(18 39 30 / 0.16), 0 4px 8px -4px rgb(18 39 30 / 0.08);
+  --shadow-xl: 0 24px 48px -16px rgb(18 39 30 / 0.24);
+  --shadow-feature: 0 32px 48px -28px rgb(20 63 48 / 0.75);
+
+  --ease-out-soft: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --animate-rise: rise 600ms var(--ease-out-soft) both;
+  --animate-fade: fade 200ms ease-out both;
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes fade {
+    from {
+      opacity: 0.25;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+}
+
+:root {
+  color-scheme: light;
+
+  --background: var(--color-canvas);
+  --foreground: var(--color-ink);
+  --card: var(--color-paper);
+  --card-foreground: var(--color-ink);
+  --popover: var(--color-paper);
+  --popover-foreground: var(--color-ink);
+  --primary: var(--color-forest-2);
+  --primary-foreground: var(--color-paper);
+  --primary-hover: var(--color-forest-hover);
+  --secondary: var(--color-mint);
+  --secondary-foreground: var(--color-forest);
+  --muted: var(--color-mint);
+  --muted-foreground: var(--color-ink-2);
+  --subtle-foreground: var(--color-ink-3);
+  --accent: var(--color-mint);
+  --accent-foreground: var(--color-forest);
+  --highlight: var(--color-marigold);
+  --highlight-foreground: var(--color-ink);
+  --highlight-hover: var(--color-marigold-hover);
+  --success: var(--color-forest-2);
+  --success-tint: var(--color-mint);
+  --warning: var(--color-marigold-ink);
+  --warning-tint: var(--color-marigold-tint);
+  --destructive: var(--color-red);
+  --destructive-tint: var(--color-red-tint);
+  --band: var(--color-forest);
+  --border: var(--color-line);
+  --input: var(--color-line-strong);
+  --ring: var(--color-forest-2);
+  --chart-1: var(--color-forest-2);
+  --chart-2: var(--color-sage);
+  --chart-3: var(--color-marigold);
+  --chart-4: var(--color-forest);
+  --chart-5: var(--color-ink-3);
+  --sidebar: var(--color-paper);
+  --sidebar-foreground: var(--color-ink);
+  --sidebar-primary: var(--color-forest-2);
+  --sidebar-primary-foreground: var(--color-paper);
+  --sidebar-accent: var(--color-mint);
+  --sidebar-accent-foreground: var(--color-forest);
+  --sidebar-border: var(--color-line);
+  --sidebar-ring: var(--color-forest-2);
+
+  /* Final call-to-action gradient on the landing page. */
+  --cta-from: var(--color-forest-2);
+  --cta-to: var(--color-forest);
+  --cta-ring: transparent;
+
+  --backdrop-glow: #d4e4d9;
+  --backdrop-line: rgb(20 63 48 / 0.07);
+}
+
+/*
+ * Dark theme: deep navy surfaces with warm off-white text, the calm,
+ * low-chroma base of study and classroom tools. Brand green is the primary
+ * action; marigold stays a small accent, never a button fill. The surface,
+ * ink and line palette is remapped too, so landing classes like bg-paper
+ * follow it.
+ */
+.dark {
+  color-scheme: dark;
+
+  --color-canvas: oklch(0.16 0.025 255);
+  --color-paper: oklch(0.2 0.03 255);
+  --color-ink: oklch(0.95 0.01 85);
+  --color-ink-2: oklch(0.7 0.03 255);
+  --color-ink-3: oklch(0.62 0.03 255);
+  --color-line: oklch(1 0 0 / 10%);
+  --color-line-strong: oklch(1 0 0 / 18%);
+  --color-forest-2: oklch(0.7 0.13 160);
+  --color-forest-hover: oklch(0.76 0.12 160);
+  --color-mint: oklch(0.28 0.035 255);
+  --color-mint-2: oklch(0.33 0.04 255);
+  --color-sage: oklch(0.4 0.045 255);
+  --color-marigold-tint: oklch(0.8 0.15 75 / 14%);
+  --color-red: oklch(0.7 0.17 27);
+  --color-red-tint: oklch(0.7 0.17 27 / 14%);
+
+  --background: var(--color-canvas);
+  --foreground: var(--color-ink);
+  --card: var(--color-paper);
+  --card-foreground: var(--color-ink);
+  --popover: var(--color-paper);
+  --popover-foreground: var(--color-ink);
+  --primary: var(--color-forest-2);
+  --primary-foreground: oklch(0.16 0.025 255);
+  --primary-hover: var(--color-forest-hover);
+  --secondary: oklch(0.25 0.03 255);
+  --secondary-foreground: var(--color-ink);
+  --muted: oklch(0.25 0.03 255);
+  --muted-foreground: var(--color-ink-2);
+  --subtle-foreground: var(--color-ink-3);
+  --accent: var(--color-mint);
+  --accent-foreground: var(--color-ink);
+  --highlight: var(--color-forest-2);
+  --highlight-foreground: oklch(0.16 0.025 255);
+  --highlight-hover: var(--color-forest-hover);
+  --success: oklch(0.62 0.14 155);
+  --success-tint: oklch(0.3 0.06 160 / 60%);
+  --warning: oklch(0.84 0.13 80);
+  --warning-tint: var(--color-marigold-tint);
+  --destructive: var(--color-red);
+  --destructive-tint: var(--color-red-tint);
+  --band: var(--color-forest);
+  --border: var(--color-line);
+  --input: oklch(1 0 0 / 12%);
+  --ring: var(--color-forest-2);
+  --chart-1: var(--color-forest-2);
+  --chart-2: oklch(0.72 0.1 230);
+  --chart-3: var(--color-marigold);
+  --chart-4: oklch(0.85 0.06 160);
+  --chart-5: var(--color-ink-2);
+  --sidebar: var(--color-paper);
+  --sidebar-foreground: var(--color-ink);
+  --sidebar-primary: var(--color-forest-2);
+  --sidebar-primary-foreground: oklch(0.16 0.025 255);
+  --sidebar-accent: var(--color-mint);
+  --sidebar-accent-foreground: var(--color-ink);
+  --sidebar-border: var(--color-line);
+  --sidebar-ring: var(--color-forest-2);
+
+  --backdrop-glow: oklch(0.3 0.06 160 / 45%);
+  --backdrop-line: oklch(1 0 0 / 5%);
+}
+
+/*
+ * Whole-page dark mode only: forest bands and the brand marigold turn into a
+ * darker navy band and a calmer marigold. Scoped `.dark` bands in the light
+ * theme keep the forest green.
+ */
+:root.dark {
+  --cta-from: oklch(0.31 0.05 250);
+  --cta-to: oklch(0.23 0.035 255);
+  --cta-ring: oklch(1 0 0 / 12%);
+  --color-forest: oklch(0.11 0.02 255);
+  --color-forest-deep: oklch(0.11 0.02 255);
+  --color-marigold: oklch(0.8 0.15 75);
+  --color-marigold-hover: oklch(0.75 0.15 72);
+}
+
+@theme inline {
+  --font-heading: var(--font-sans);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-hover: var(--primary-hover);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-subtle-foreground: var(--subtle-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-highlight: var(--highlight);
+  --color-highlight-foreground: var(--highlight-foreground);
+  --color-highlight-hover: var(--highlight-hover);
+  --color-success: var(--success);
+  --color-success-tint: var(--success-tint);
+  --color-warning: var(--warning);
+  --color-warning-tint: var(--warning-tint);
+  --color-destructive: var(--destructive);
+  --color-destructive-tint: var(--destructive-tint);
+  --color-band: var(--band);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Radius scale, pinned per step (see DESIGN.md). */
+  --radius-sm: 4px; /* checkboxes, small accents */
+  --radius-md: 6px; /* menu, select and command items */
+  --radius-lg: 10px; /* inputs, selects, tabs, popovers, menus */
+  --radius-xl: 12px; /* icon tiles, dialogs, command */
+  --radius-2xl: 16px; /* cards, pricing tiers, toasts */
+  --radius-3xl: 24px; /* product mockups, hero containers */
+  --radius-4xl: 9999px; /* badges, buttons (pill) */
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply font-sans;
+    scroll-behavior: smooth;
+    scroll-padding-top: 5rem;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+  summary {
+    list-style: none;
+  }
+  summary::-webkit-details-marker {
+    display: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-delay: 0ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+/*
+ * Focus: a 2px ring-colored outline on actions; fields keep their own ring.
+ * Unlayered on purpose, so it beats the components' `outline-none`.
+ */
+:is(
+    a[href],
+    button,
+    summary,
+    [role="button"],
+    [role="tab"],
+    [role="checkbox"],
+    [role="radio"],
+    [role="switch"],
+    [role="slider"]
+  ):focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 3px;
+  --tw-ring-shadow: 0 0 #0000;
+}
+
+/*
+ * Type scale. Display sizes set Anek Bangla at its narrowest width and
+ * heaviest weight, for Bangla and English alike.
+ */
+@utility display {
+  font-variation-settings: "wdth" 75;
+  font-weight: 800;
+  letter-spacing: -0.015em;
+  line-height: 0.98;
+}
+@utility type-display-xl {
+  font-size: clamp(3.6rem, 4.5vw + 1.6rem, 5.6rem);
+  font-variation-settings: "wdth" 75;
+  font-weight: 800;
+  letter-spacing: -0.015em;
+  line-height: 0.98;
+  text-wrap: balance;
+}
+@utility type-display-lg {
+  font-size: clamp(2.6rem, 2.4vw + 1.8rem, 3.75rem);
+  font-variation-settings: "wdth" 75;
+  font-weight: 800;
+  letter-spacing: -0.015em;
+  line-height: 0.98;
+  text-wrap: balance;
+}
+@utility type-display-md {
+  font-size: 2.75rem;
+  font-variation-settings: "wdth" 75;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1;
+}
+@utility type-title-lg {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.005em;
+  line-height: 1.2;
+}
+@utility type-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+@utility type-lead {
+  font-size: clamp(1.125rem, 0.4vw + 1rem, 1.25rem);
+  line-height: 1.65;
+}
+@utility type-body {
+  font-size: 15px;
+  line-height: 1.6;
+}
+@utility type-eyebrow {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+@utility type-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.4;
+}
+@utility type-caption {
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+@utility type-numeral {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
