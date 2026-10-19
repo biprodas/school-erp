@@ -38,6 +38,10 @@ const COLUMNS = [
       { href: LINKS.login, label: "Find your school" },
       { href: LINKS.demo, label: "Book a demo" },
       { href: LINKS.signup, label: "Start free trial" },
+      // Internal reference page, linked only while developing.
+      ...(process.env.NODE_ENV === "development"
+        ? [{ href: "/design-system", label: "Design system" }]
+        : []),
     ],
   },
   {

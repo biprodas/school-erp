@@ -35,7 +35,7 @@ export function WhySwitch() {
       <div className="mt-12 overflow-hidden rounded-2xl bg-paper ring-1 ring-line shadow-[0_24px_48px_-32px_rgba(20,63,48,0.3)]">
         <div className="hidden grid-cols-2 text-[15px] font-semibold md:grid">
           <p className="px-6 py-4">Today</p>
-          <p className="bg-mint/60 px-6 py-4 text-forest">With Kampasy</p>
+          <p className="bg-mint/60 px-6 py-4 text-secondary-foreground">With Kampasy</p>
         </div>
         <ul>
           {ROWS.map((row) => (

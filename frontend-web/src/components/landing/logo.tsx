@@ -5,7 +5,7 @@ export function Logo({ light = false }: { light?: boolean }) {
   return (
     <span className="inline-flex items-center gap-2">
       <KampasyMark className={light ? "size-7" : "size-8"} />
-      <span className={`text-xl font-bold tracking-tight ${light ? "text-white" : "text-ink"}`}>
+      <span className={`text-xl font-bold tracking-tight ${light ? "text-white" : "text-foreground"}`}>
         {SITE.name}
       </span>
     </span>

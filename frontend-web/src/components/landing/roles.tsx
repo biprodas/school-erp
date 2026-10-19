@@ -149,7 +149,7 @@ const ROLES: Role[] = [
     view: (
       <Card title="Nusrat, Class 8 B" aside="Shapla Model School">
         <div className="mb-3 flex gap-2">
-          <span className="rounded-full bg-forest-2 px-3 py-1 text-xs font-semibold text-white">Nusrat</span>
+          <span className="rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground">Nusrat</span>
           <span className="rounded-full px-3 py-1 text-xs text-ink-2 ring-1 ring-line">Tanvir</span>
         </div>
         <Line label="Today" value="Present" tone="text-forest-2" />

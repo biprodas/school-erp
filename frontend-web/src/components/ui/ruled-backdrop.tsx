@@ -18,8 +18,8 @@ type RuledBackdropProps = {
  */
 export function RuledBackdrop({
   glowAt,
-  glow = "212, 228, 217",
-  rule = "20, 63, 48, 0.08",
+  glow = "var(--backdrop-glow)",
+  rule = "var(--backdrop-rule)",
   focusAt = "50% 35%",
   fadeTo,
 }: RuledBackdropProps) {

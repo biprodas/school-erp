@@ -1,3 +1,4 @@
+import { ThemeToggle } from "~/components/theme-toggle";
 import { LINKS } from "~/config/site";
 import { ButtonLink } from "../ui/button-link";
 import { Logo } from "./logo";
@@ -31,36 +32,38 @@ export function SiteHeader() {
           </ul>
         </nav>
 
-        <div className="ml-auto hidden items-center gap-5 lg:flex">
-          <a className="text-[15px] font-medium hover:text-forest-2" href={LINKS.login}>
-            Find your school
-          </a>
-          <ButtonLink href={LINKS.signup} arrow>
-            Get started free
-          </ButtonLink>
-        </div>
-
-        <MobileMenu>
-          <nav aria-label="Mobile">
-            <ul className="divide-y divide-line">
-              {NAV.map((item) => (
-                <li key={item.href}>
-                  <a className="block py-3 text-base font-medium" href={item.href}>
-                    {item.label}
+        <div className="ml-auto flex items-center gap-3 lg:gap-5">
+          <div className="hidden items-center gap-5 lg:flex">
+            <a className="text-[15px] font-medium hover:text-forest-2" href={LINKS.login}>
+              Find your school
+            </a>
+            <ButtonLink href={LINKS.signup} arrow>
+              Get started free
+            </ButtonLink>
+          </div>
+          <ThemeToggle />
+          <MobileMenu>
+            <nav aria-label="Mobile">
+              <ul className="divide-y divide-line">
+                {NAV.map((item) => (
+                  <li key={item.href}>
+                    <a className="block py-3 text-base font-medium" href={item.href}>
+                      {item.label}
+                    </a>
+                  </li>
+                ))}
+                <li>
+                  <a className="block py-3 text-base font-medium" href={LINKS.login}>
+                    Find your school
                   </a>
                 </li>
-              ))}
-              <li>
-                <a className="block py-3 text-base font-medium" href={LINKS.login}>
-                  Find your school
-                </a>
-              </li>
-            </ul>
-          </nav>
-          <ButtonLink href={LINKS.signup} className="mt-4 w-full" arrow>
-            Get started free
-          </ButtonLink>
-        </MobileMenu>
+              </ul>
+            </nav>
+            <ButtonLink href={LINKS.signup} className="mt-4 w-full" arrow>
+              Get started free
+            </ButtonLink>
+          </MobileMenu>
+        </div>
       </div>
     </header>
   );

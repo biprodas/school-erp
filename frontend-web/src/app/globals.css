@@ -1,15 +1,31 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-/*
- ---break---
- */
+
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Landing tokens. Forest green carries the brand, marigold is the single
- * accent for the most important action on dark surfaces, and red only marks
- * absences and dues inside product mockups.
+ * Lets the design system page pin interaction states with
+ * data-preview="hover focus active", so reviewers see every state at once.
+ */
+@custom-variant hover {
+  @media (hover: hover) {
+    &:hover {
+      @slot;
+    }
+  }
+  &[data-preview~="hover"] {
+    @slot;
+  }
+}
+@custom-variant focus-visible (&:focus-visible, &[data-preview~="focus"]);
+@custom-variant active (&:active, &[data-preview~="active"]);
+
+/*
+ * Kampasy palette (see DESIGN.md). Forest green carries the brand, marigold is
+ * the single accent for the most important action on dark surfaces, and red
+ * only marks absences, dues and errors. Components never use these directly:
+ * they use the role tokens in :root and .dark below.
  */
 @theme {
   --color-canvas: #f4f5f1;
@@ -19,6 +35,7 @@
   --color-ink-3: #6b7a72;
   --color-line: #dfe5e0;
   --color-line-strong: #c9d3cc;
+  --color-forest-deep: #0e241b;
   --color-forest: #143f30;
   --color-forest-2: #1d5a43;
   --color-forest-hover: #174a37;
@@ -28,12 +45,23 @@
   --color-marigold: #f0b24a;
   --color-marigold-hover: #e8a333;
   --color-marigold-tint: #fcefd6;
+  --color-marigold-ink: #7a4d07;
   --color-red: #c2412d;
   --color-red-tint: #fbe8e4;
 
   --font-sans: var(--font-anek), system-ui, sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
 
-  --animate-rise: rise 600ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  /* Hairlines first: cards and inputs sit on rings, not shadows. */
+  --shadow-xs: 0 0 #0000;
+  --shadow-sm: 0 1px 2px rgb(18 39 30 / 0.06);
+  --shadow-md: 0 4px 12px -2px rgb(18 39 30 / 0.1), 0 2px 4px -2px rgb(18 39 30 / 0.06);
+  --shadow-lg: 0 12px 32px -8px rgb(18 39 30 / 0.16), 0 4px 8px -4px rgb(18 39 30 / 0.08);
+  --shadow-xl: 0 24px 48px -16px rgb(18 39 30 / 0.24);
+  --shadow-feature: 0 32px 48px -28px rgb(20 63 48 / 0.75);
+
+  --ease-out-soft: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --animate-rise: rise 600ms var(--ease-out-soft) both;
   --animate-fade: fade 200ms ease-out both;
 
   @keyframes rise {
@@ -57,60 +85,257 @@
   }
 }
 
+/* Light theme: the paper register on a canvas desk. */
 :root {
   color-scheme: light;
 
-  /* shadcn roles, mapped onto the landing tokens above. */
   --background: var(--color-canvas);
   --foreground: var(--color-ink);
   --card: var(--color-paper);
   --card-foreground: var(--color-ink);
   --popover: var(--color-paper);
   --popover-foreground: var(--color-ink);
-  --primary: var(--color-forest);
+  --primary: var(--color-forest-2);
   --primary-foreground: var(--color-paper);
+  --primary-hover: var(--color-forest-hover);
   --secondary: var(--color-mint);
   --secondary-foreground: var(--color-forest);
   --muted: var(--color-mint);
   --muted-foreground: var(--color-ink-2);
+  --subtle-foreground: var(--color-ink-3);
   --accent: var(--color-mint);
   --accent-foreground: var(--color-forest);
+  --highlight: var(--color-marigold);
+  --highlight-foreground: var(--color-ink);
+  --highlight-hover: var(--color-marigold-hover);
+  --success: var(--color-forest-2);
+  --success-tint: var(--color-mint);
+  --warning: var(--color-marigold-ink);
+  --warning-tint: var(--color-marigold-tint);
   --destructive: var(--color-red);
+  --destructive-tint: var(--color-red-tint);
+  --band: var(--color-forest);
   --border: var(--color-line);
   --input: var(--color-line-strong);
   --ring: var(--color-forest-2);
-  --chart-1: var(--color-forest);
-  --chart-2: var(--color-forest-2);
-  --chart-3: var(--color-sage);
-  --chart-4: var(--color-marigold);
+  --chart-1: var(--color-forest-2);
+  --chart-2: var(--color-sage);
+  --chart-3: var(--color-marigold);
+  --chart-4: var(--color-forest);
   --chart-5: var(--color-ink-3);
-  --radius: 0.625rem;
   --sidebar: var(--color-paper);
   --sidebar-foreground: var(--color-ink);
-  --sidebar-primary: var(--color-forest);
+  --sidebar-primary: var(--color-forest-2);
   --sidebar-primary-foreground: var(--color-paper);
   --sidebar-accent: var(--color-mint);
   --sidebar-accent-foreground: var(--color-forest);
   --sidebar-border: var(--color-line);
   --sidebar-ring: var(--color-forest-2);
-}
 
-html {
-  scroll-behavior: smooth;
-  scroll-padding-top: 5rem;
-}
-
-body {
-  background: var(--color-canvas);
-  color: var(--color-ink);
-  font-family: var(--font-sans);
-  -webkit-font-smoothing: antialiased;
+  /* Backdrop colors, as "r, g, b[, a]" lists for rgb()/rgba(). */
+  --backdrop-glow: 212, 228, 217;
+  --backdrop-line: 20, 63, 48, 0.07;
+  --backdrop-rule: 20, 63, 48, 0.08;
 }
 
 /*
- * Display type: Anek Bangla at its narrowest width and heaviest weight. The
- * same family sets Bangla and English, so mixed headlines stay consistent.
+ * Dark theme, derived from the landing page's forest bands: deep forest
+ * surfaces, sage for secondary text, and marigold as the primary action.
+ * Put `className="dark"` on a forest band to render its components this way.
  */
+.dark {
+  color-scheme: dark;
+
+  /*
+   * The landing page uses the raw palette directly (bg-paper, text-ink-2,
+   * text-forest-2, …), so the surface, ink and line colors swap here too.
+   * Forest, forest-deep and marigold stay put: they are the brand.
+   */
+  --color-canvas: #0e241b;
+  --color-paper: #143428;
+  --color-ink: #eef3ef;
+  --color-ink-2: #b9cdc1;
+  --color-ink-3: #93ab9e;
+  --color-line: rgb(255 255 255 / 0.12);
+  --color-line-strong: rgb(255 255 255 / 0.2);
+  --color-forest-2: #7cc29c;
+  --color-forest-hover: #8fd1ad;
+  --color-mint: #1a4033;
+  --color-mint-2: #24503f;
+  --color-sage: #2f604c;
+  --color-marigold-tint: rgb(240 178 74 / 0.14);
+  --color-red: #f08a76;
+  --color-red-tint: rgb(240 138 118 / 0.14);
+  --backdrop-glow: 29, 90, 67;
+  --backdrop-line: 255, 255, 255, 0.045;
+  --backdrop-rule: 255, 255, 255, 0.05;
+
+  --background: var(--color-forest-deep);
+  --foreground: #eef3ef;
+  --card: #143428;
+  --card-foreground: #eef3ef;
+  --popover: #163a2d;
+  --popover-foreground: #eef3ef;
+  --primary: var(--color-marigold);
+  --primary-foreground: #12271e;
+  --primary-hover: var(--color-marigold-hover);
+  --secondary: #1f4a3a;
+  --secondary-foreground: #eef3ef;
+  --muted: #1a4033;
+  --muted-foreground: #b9cdc1;
+  --subtle-foreground: #93ab9e;
+  --accent: #1f4a3a;
+  --accent-foreground: #eef3ef;
+  --highlight: var(--color-marigold);
+  --highlight-foreground: #12271e;
+  --highlight-hover: var(--color-marigold-hover);
+  --success: #8fd1ad;
+  --success-tint: rgb(143 209 173 / 0.14);
+  --warning: #f4c56f;
+  --warning-tint: rgb(240 178 74 / 0.14);
+  --destructive: #f08a76;
+  --destructive-tint: rgb(240 138 118 / 0.14);
+  --band: var(--color-forest);
+  --border: rgb(255 255 255 / 0.12);
+  --input: rgb(255 255 255 / 0.2);
+  --ring: #a9c2b4;
+  --chart-1: var(--color-marigold);
+  --chart-2: #a9c2b4;
+  --chart-3: #6fb48f;
+  --chart-4: #eef3ef;
+  --chart-5: #93ab9e;
+  --sidebar: #112d23;
+  --sidebar-foreground: #eef3ef;
+  --sidebar-primary: var(--color-marigold);
+  --sidebar-primary-foreground: #12271e;
+  --sidebar-accent: #1f4a3a;
+  --sidebar-accent-foreground: #eef3ef;
+  --sidebar-border: rgb(255 255 255 / 0.12);
+  --sidebar-ring: #a9c2b4;
+}
+
+@theme inline {
+  --font-heading: var(--font-anek), system-ui, sans-serif;
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-band: var(--band);
+  --color-destructive: var(--destructive);
+  --color-destructive-tint: var(--destructive-tint);
+  --color-warning: var(--warning);
+  --color-warning-tint: var(--warning-tint);
+  --color-success: var(--success);
+  --color-success-tint: var(--success-tint);
+  --color-highlight-hover: var(--highlight-hover);
+  --color-highlight-foreground: var(--highlight-foreground);
+  --color-highlight: var(--highlight);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-subtle-foreground: var(--subtle-foreground);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+
+  /* Radius scale, pinned per step (see DESIGN.md). */
+  --radius-sm: 4px; /* checkboxes, small accents */
+  --radius-md: 6px; /* menu, select and command items */
+  --radius-lg: 10px; /* inputs, selects, tabs, popovers, menus */
+  --radius-xl: 12px; /* icon tiles, dialogs, command */
+  --radius-2xl: 16px; /* cards, pricing tiers, toasts */
+  --radius-3xl: 24px; /* product mockups, hero containers */
+  --radius-4xl: 9999px; /* badges, buttons (pill) */
+}
+
+/*
+ * Type scale. Display sizes use Anek Bangla at its narrowest width and
+ * heaviest weight; the same family sets Bangla and English, so mixed
+ * headlines stay consistent. Use these instead of ad-hoc text sizes.
+ */
+@utility type-display-xl {
+  font-size: clamp(3.6rem, 4.5vw + 1.6rem, 5.6rem);
+  font-variation-settings: "wdth" 75;
+  font-weight: 800;
+  letter-spacing: -0.015em;
+  line-height: 0.98;
+  text-wrap: balance;
+}
+@utility type-display-lg {
+  font-size: clamp(2.6rem, 2.4vw + 1.8rem, 3.75rem);
+  font-variation-settings: "wdth" 75;
+  font-weight: 800;
+  letter-spacing: -0.015em;
+  line-height: 0.98;
+  text-wrap: balance;
+}
+@utility type-display-md {
+  font-size: 2.75rem;
+  font-variation-settings: "wdth" 75;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1;
+}
+@utility type-title-lg {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.005em;
+  line-height: 1.2;
+}
+@utility type-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+@utility type-lead {
+  font-size: clamp(1.125rem, 0.4vw + 1rem, 1.25rem);
+  line-height: 1.65;
+}
+@utility type-body {
+  font-size: 15px;
+  line-height: 1.6;
+}
+@utility type-eyebrow {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+@utility type-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.4;
+}
+@utility type-caption {
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+@utility type-numeral {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+/* Legacy alias for the display face; prefer the type-display-* utilities. */
 .display {
   font-variation-settings: "wdth" 75;
   font-weight: 800;
@@ -118,10 +343,29 @@ body {
   line-height: 0.98;
 }
 
-:focus-visible {
-  outline: 2px solid var(--color-forest-2);
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 5rem;
+}
+
+/*
+ * Focus: a solid 2px ring-colored outline with offset on actions. Field
+ * controls keep their own ring (border + 3px halo) from the components.
+ */
+:is(
+    a[href],
+    button,
+    summary,
+    [role="button"],
+    [role="tab"],
+    [role="checkbox"],
+    [role="radio"],
+    [role="switch"],
+    [role="slider"]
+  ):is(:focus-visible, [data-preview~="focus"]) {
+  outline: 2px solid var(--ring);
   outline-offset: 3px;
-  border-radius: 6px;
+  --tw-ring-shadow: 0 0 #0000;
 }
 
 summary {
@@ -143,97 +387,15 @@ summary::-webkit-details-marker {
     transition-duration: 0.01ms !important;
   }
 }
-/*
- ---break---
- */
-@theme inline {
-  --font-heading: var(--font-anek), system-ui, sans-serif;
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
-  --color-card: var(--card);
-  --color-foreground: var(--foreground);
-  --color-background: var(--background);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
-}
-/*
- ---break---
- */
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
-}
-/*
- ---break---
- */
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
-  body {
-    @apply bg-background text-foreground;
-  }
   html {
     @apply font-sans;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
   }
 }

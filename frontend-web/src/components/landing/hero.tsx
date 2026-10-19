@@ -50,11 +50,12 @@ export function Hero() {
           >
             <p className="flex items-center gap-1.5 text-xs text-white/70">
               <Bell className="size-3.5 text-marigold" />
-              Guardian portal, 10:00
+              Guardian app · SMS
             </p>
             <p lang="bn" className="mt-1.5 text-[15px] leading-snug">
-              রাফি আহমেদ আজ বিদ্যালয়ে অনুপস্থিত।
+              আজ রাফি স্কুলে অনুপস্থিত। কারণ জানাতে উত্তর দিন।
             </p>
+            <p className="mt-2 text-xs text-white/60">Sent automatically at 9:15 AM</p>
           </div>
           <div
             aria-hidden="true"

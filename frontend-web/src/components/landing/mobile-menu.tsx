@@ -12,7 +12,7 @@ export function MobileMenu({ children }: { children: ReactNode }) {
   }
 
   return (
-    <details ref={ref} className="group ml-auto lg:hidden">
+    <details ref={ref} className="group lg:hidden">
       <summary
         aria-label="Menu"
         className="flex size-10 cursor-pointer items-center justify-center rounded-full ring-1 ring-line-strong ring-inset"

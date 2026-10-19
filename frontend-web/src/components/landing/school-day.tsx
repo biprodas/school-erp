@@ -40,7 +40,7 @@ const MOMENTS: Moment[] = [
     title: "Guardians know about an absence the same morning",
     text: "Rafi's absence shows up in his guardian's portal, in Bangla or English. If he turns up late and is marked in, the record updates.",
     detail: (
-      <p lang="bn" className="rounded-2xl rounded-tl-sm bg-mint px-4 py-2.5 text-[15px] leading-snug text-forest">
+      <p lang="bn" className="rounded-2xl rounded-tl-sm bg-mint px-4 py-2.5 text-[15px] leading-snug text-secondary-foreground">
         প্রিয় অভিভাবক, রাফি আহমেদ (৬ষ্ঠ ক, রোল ৭) আজ ১৯ অক্টোবর বিদ্যালয়ে অনুপস্থিত।
       </p>
     ),

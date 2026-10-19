@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Anek_Bangla } from "next/font/google";
 import { TooltipProvider } from "~/components/ui/tooltip";
 import { SITE } from "~/config/site";
+import { THEME_SCRIPT } from "~/lib/theme";
 import "./globals.css";
 
 const anek = Anek_Bangla({
@@ -23,7 +24,11 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={anek.variable}>
+    // THEME_SCRIPT may add the `dark` class before hydration.
+    <html lang="en" className={anek.variable} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+      </head>
       <body className="min-h-full">
         <TooltipProvider>{children}</TooltipProvider>
       </body>

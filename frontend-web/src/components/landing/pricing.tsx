@@ -111,7 +111,7 @@ export function Pricing() {
 
               <ButtonLink
                 href={LINKS.signup}
-                variant={dark ? "accent" : "outline"}
+                variant={dark ? "highlight" : "outline"}
                 className="mt-8 w-full"
               >
                 {plan.cta}

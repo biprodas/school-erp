@@ -19,10 +19,10 @@ type GridBackdropProps = {
  */
 export function GridBackdrop({
   cell = 48,
-  line = "20, 63, 48, 0.07",
+  line = "var(--backdrop-line)",
   focusAt = "50% 40%",
   glowAt,
-  glow = "212, 228, 217",
+  glow = "var(--backdrop-glow)",
 }: GridBackdropProps) {
   const mask = `radial-gradient(70% 70% at ${focusAt}, black 30%, transparent 100%)`;
   return (
