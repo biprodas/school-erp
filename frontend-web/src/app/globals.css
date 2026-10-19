@@ -5,27 +5,8 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Lets the design system page pin interaction states with
- * data-preview="hover focus active", so reviewers see every state at once.
- */
-@custom-variant hover {
-  @media (hover: hover) {
-    &:hover {
-      @slot;
-    }
-  }
-  &[data-preview~="hover"] {
-    @slot;
-  }
-}
-@custom-variant focus-visible (&:focus-visible, &[data-preview~="focus"]);
-@custom-variant active (&:active, &[data-preview~="active"]);
-
-/*
- * Kampasy palette (see DESIGN.md). Forest green carries the brand, marigold is
- * the single accent for the most important action on dark surfaces, and red
- * only marks absences, dues and errors. Components never use these directly:
- * they use the role tokens in :root and .dark below.
+ * Brand palette (see DESIGN.md). Components use the role tokens below; the
+ * raw palette is for the landing page and illustrations.
  */
 @theme {
   --color-canvas: #f4f5f1;
@@ -50,9 +31,8 @@
   --color-red-tint: #fbe8e4;
 
   --font-sans: var(--font-anek), system-ui, sans-serif;
-  --font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
 
-  /* Hairlines first: cards and inputs sit on rings, not shadows. */
+  /* Hairlines first: cards and fields sit on rings, so xs is no shadow. */
   --shadow-xs: 0 0 #0000;
   --shadow-sm: 0 1px 2px rgb(18 39 30 / 0.06);
   --shadow-md: 0 4px 12px -2px rgb(18 39 30 / 0.1), 0 2px 4px -2px rgb(18 39 30 / 0.06);
@@ -85,7 +65,6 @@
   }
 }
 
-/* Light theme: the paper register on a canvas desk. */
 :root {
   color-scheme: light;
 
@@ -132,132 +111,148 @@
   --sidebar-border: var(--color-line);
   --sidebar-ring: var(--color-forest-2);
 
-  /* Backdrop colors, as "r, g, b[, a]" lists for rgb()/rgba(). */
-  --backdrop-glow: 212, 228, 217;
-  --backdrop-line: 20, 63, 48, 0.07;
-  --backdrop-rule: 20, 63, 48, 0.08;
+  /* Final call-to-action gradient on the landing page. */
+  --cta-from: var(--color-forest-2);
+  --cta-to: var(--color-forest);
+  --cta-ring: transparent;
+
+  --backdrop-glow: #d4e4d9;
+  --backdrop-line: rgb(20 63 48 / 0.07);
 }
 
 /*
- * Dark theme, derived from the landing page's forest bands: deep forest
- * surfaces, sage for secondary text, and marigold as the primary action.
- * Put `className="dark"` on a forest band to render its components this way.
+ * Dark theme: deep navy surfaces with warm off-white text, the calm,
+ * low-chroma base of study and classroom tools. Brand green is the primary
+ * action; marigold stays a small accent, never a button fill. The surface,
+ * ink and line palette is remapped too, so landing classes like bg-paper
+ * follow it.
  */
 .dark {
   color-scheme: dark;
 
-  /*
-   * The landing page uses the raw palette directly (bg-paper, text-ink-2,
-   * text-forest-2, …), so the surface, ink and line colors swap here too.
-   * Forest, forest-deep and marigold stay put: they are the brand.
-   */
-  --color-canvas: #0e241b;
-  --color-paper: #143428;
-  --color-ink: #eef3ef;
-  --color-ink-2: #b9cdc1;
-  --color-ink-3: #93ab9e;
-  --color-line: rgb(255 255 255 / 0.12);
-  --color-line-strong: rgb(255 255 255 / 0.2);
-  --color-forest-2: #7cc29c;
-  --color-forest-hover: #8fd1ad;
-  --color-mint: #1a4033;
-  --color-mint-2: #24503f;
-  --color-sage: #2f604c;
-  --color-marigold-tint: rgb(240 178 74 / 0.14);
-  --color-red: #f08a76;
-  --color-red-tint: rgb(240 138 118 / 0.14);
-  --backdrop-glow: 29, 90, 67;
-  --backdrop-line: 255, 255, 255, 0.045;
-  --backdrop-rule: 255, 255, 255, 0.05;
+  --color-canvas: oklch(0.16 0.025 255);
+  --color-paper: oklch(0.2 0.03 255);
+  --color-ink: oklch(0.95 0.01 85);
+  --color-ink-2: oklch(0.7 0.03 255);
+  --color-ink-3: oklch(0.62 0.03 255);
+  --color-line: oklch(1 0 0 / 10%);
+  --color-line-strong: oklch(1 0 0 / 18%);
+  --color-forest-2: oklch(0.7 0.13 160);
+  --color-forest-hover: oklch(0.76 0.12 160);
+  --color-mint: oklch(0.28 0.035 255);
+  --color-mint-2: oklch(0.33 0.04 255);
+  --color-sage: oklch(0.4 0.045 255);
+  --color-marigold-tint: oklch(0.8 0.15 75 / 14%);
+  --color-red: oklch(0.7 0.17 27);
+  --color-red-tint: oklch(0.7 0.17 27 / 14%);
 
-  --background: var(--color-forest-deep);
-  --foreground: #eef3ef;
-  --card: #143428;
-  --card-foreground: #eef3ef;
-  --popover: #163a2d;
-  --popover-foreground: #eef3ef;
-  --primary: var(--color-marigold);
-  --primary-foreground: #12271e;
-  --primary-hover: var(--color-marigold-hover);
-  --secondary: #1f4a3a;
-  --secondary-foreground: #eef3ef;
-  --muted: #1a4033;
-  --muted-foreground: #b9cdc1;
-  --subtle-foreground: #93ab9e;
-  --accent: #1f4a3a;
-  --accent-foreground: #eef3ef;
-  --highlight: var(--color-marigold);
-  --highlight-foreground: #12271e;
-  --highlight-hover: var(--color-marigold-hover);
-  --success: #8fd1ad;
-  --success-tint: rgb(143 209 173 / 0.14);
-  --warning: #f4c56f;
-  --warning-tint: rgb(240 178 74 / 0.14);
-  --destructive: #f08a76;
-  --destructive-tint: rgb(240 138 118 / 0.14);
+  --background: var(--color-canvas);
+  --foreground: var(--color-ink);
+  --card: var(--color-paper);
+  --card-foreground: var(--color-ink);
+  --popover: var(--color-paper);
+  --popover-foreground: var(--color-ink);
+  --primary: var(--color-forest-2);
+  --primary-foreground: oklch(0.16 0.025 255);
+  --primary-hover: var(--color-forest-hover);
+  --secondary: oklch(0.25 0.03 255);
+  --secondary-foreground: var(--color-ink);
+  --muted: oklch(0.25 0.03 255);
+  --muted-foreground: var(--color-ink-2);
+  --subtle-foreground: var(--color-ink-3);
+  --accent: var(--color-mint);
+  --accent-foreground: var(--color-ink);
+  --highlight: var(--color-forest-2);
+  --highlight-foreground: oklch(0.16 0.025 255);
+  --highlight-hover: var(--color-forest-hover);
+  --success: oklch(0.62 0.14 155);
+  --success-tint: oklch(0.3 0.06 160 / 60%);
+  --warning: oklch(0.84 0.13 80);
+  --warning-tint: var(--color-marigold-tint);
+  --destructive: var(--color-red);
+  --destructive-tint: var(--color-red-tint);
   --band: var(--color-forest);
-  --border: rgb(255 255 255 / 0.12);
-  --input: rgb(255 255 255 / 0.2);
-  --ring: #a9c2b4;
-  --chart-1: var(--color-marigold);
-  --chart-2: #a9c2b4;
-  --chart-3: #6fb48f;
-  --chart-4: #eef3ef;
-  --chart-5: #93ab9e;
-  --sidebar: #112d23;
-  --sidebar-foreground: #eef3ef;
-  --sidebar-primary: var(--color-marigold);
-  --sidebar-primary-foreground: #12271e;
-  --sidebar-accent: #1f4a3a;
-  --sidebar-accent-foreground: #eef3ef;
-  --sidebar-border: rgb(255 255 255 / 0.12);
-  --sidebar-ring: #a9c2b4;
+  --border: var(--color-line);
+  --input: oklch(1 0 0 / 12%);
+  --ring: var(--color-forest-2);
+  --chart-1: var(--color-forest-2);
+  --chart-2: oklch(0.72 0.1 230);
+  --chart-3: var(--color-marigold);
+  --chart-4: oklch(0.85 0.06 160);
+  --chart-5: var(--color-ink-2);
+  --sidebar: var(--color-paper);
+  --sidebar-foreground: var(--color-ink);
+  --sidebar-primary: var(--color-forest-2);
+  --sidebar-primary-foreground: oklch(0.16 0.025 255);
+  --sidebar-accent: var(--color-mint);
+  --sidebar-accent-foreground: var(--color-ink);
+  --sidebar-border: var(--color-line);
+  --sidebar-ring: var(--color-forest-2);
+
+  --backdrop-glow: oklch(0.3 0.06 160 / 45%);
+  --backdrop-line: oklch(1 0 0 / 5%);
+}
+
+/*
+ * Whole-page dark mode only: forest bands and the brand marigold turn into a
+ * darker navy band and a calmer marigold. Scoped `.dark` bands in the light
+ * theme keep the forest green.
+ */
+:root.dark {
+  --cta-from: oklch(0.31 0.05 250);
+  --cta-to: oklch(0.23 0.035 255);
+  --cta-ring: oklch(1 0 0 / 12%);
+  --color-forest: oklch(0.11 0.02 255);
+  --color-forest-deep: oklch(0.11 0.02 255);
+  --color-marigold: oklch(0.8 0.15 75);
+  --color-marigold-hover: oklch(0.75 0.15 72);
 }
 
 @theme inline {
-  --font-heading: var(--font-anek), system-ui, sans-serif;
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
-  --color-band: var(--band);
-  --color-destructive: var(--destructive);
-  --color-destructive-tint: var(--destructive-tint);
-  --color-warning: var(--warning);
-  --color-warning-tint: var(--warning-tint);
+  --font-heading: var(--font-sans);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-hover: var(--primary-hover);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-subtle-foreground: var(--subtle-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-highlight: var(--highlight);
+  --color-highlight-foreground: var(--highlight-foreground);
+  --color-highlight-hover: var(--highlight-hover);
   --color-success: var(--success);
   --color-success-tint: var(--success-tint);
-  --color-highlight-hover: var(--highlight-hover);
-  --color-highlight-foreground: var(--highlight-foreground);
-  --color-highlight: var(--highlight);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-subtle-foreground: var(--subtle-foreground);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-hover: var(--primary-hover);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
-  --color-card: var(--card);
-  --color-foreground: var(--foreground);
-  --color-background: var(--background);
+  --color-warning: var(--warning);
+  --color-warning-tint: var(--warning-tint);
+  --color-destructive: var(--destructive);
+  --color-destructive-tint: var(--destructive-tint);
+  --color-band: var(--band);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
 
   /* Radius scale, pinned per step (see DESIGN.md). */
   --radius-sm: 4px; /* checkboxes, small accents */
@@ -269,11 +264,69 @@
   --radius-4xl: 9999px; /* badges, buttons (pill) */
 }
 
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply font-sans;
+    scroll-behavior: smooth;
+    scroll-padding-top: 5rem;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+  summary {
+    list-style: none;
+  }
+  summary::-webkit-details-marker {
+    display: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-delay: 0ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
 /*
- * Type scale. Display sizes use Anek Bangla at its narrowest width and
- * heaviest weight; the same family sets Bangla and English, so mixed
- * headlines stay consistent. Use these instead of ad-hoc text sizes.
+ * Focus: a 2px ring-colored outline on actions; fields keep their own ring.
+ * Unlayered on purpose, so it beats the components' `outline-none`.
  */
+:is(
+    a[href],
+    button,
+    summary,
+    [role="button"],
+    [role="tab"],
+    [role="checkbox"],
+    [role="radio"],
+    [role="switch"],
+    [role="slider"]
+  ):focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 3px;
+  --tw-ring-shadow: 0 0 #0000;
+}
+
+/*
+ * Type scale. Display sizes set Anek Bangla at its narrowest width and
+ * heaviest weight, for Bangla and English alike.
+ */
+@utility display {
+  font-variation-settings: "wdth" 75;
+  font-weight: 800;
+  letter-spacing: -0.015em;
+  line-height: 0.98;
+}
 @utility type-display-xl {
   font-size: clamp(3.6rem, 4.5vw + 1.6rem, 5.6rem);
   font-variation-settings: "wdth" 75;
@@ -333,69 +386,4 @@
 @utility type-numeral {
   font-variant-numeric: tabular-nums;
   font-weight: 600;
-}
-
-/* Legacy alias for the display face; prefer the type-display-* utilities. */
-.display {
-  font-variation-settings: "wdth" 75;
-  font-weight: 800;
-  letter-spacing: -0.015em;
-  line-height: 0.98;
-}
-
-html {
-  scroll-behavior: smooth;
-  scroll-padding-top: 5rem;
-}
-
-/*
- * Focus: a solid 2px ring-colored outline with offset on actions. Field
- * controls keep their own ring (border + 3px halo) from the components.
- */
-:is(
-    a[href],
-    button,
-    summary,
-    [role="button"],
-    [role="tab"],
-    [role="checkbox"],
-    [role="radio"],
-    [role="switch"],
-    [role="slider"]
-  ):is(:focus-visible, [data-preview~="focus"]) {
-  outline: 2px solid var(--ring);
-  outline-offset: 3px;
-  --tw-ring-shadow: 0 0 #0000;
-}
-
-summary {
-  list-style: none;
-}
-summary::-webkit-details-marker {
-  display: none;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  html {
-    scroll-behavior: auto;
-  }
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-delay: 0ms !important;
-    transition-duration: 0.01ms !important;
-  }
-}
-
-@layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-  html {
-    @apply font-sans;
-  }
-  body {
-    @apply bg-background text-foreground antialiased;
-  }
 }

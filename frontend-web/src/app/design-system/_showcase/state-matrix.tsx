@@ -2,13 +2,7 @@ import * as React from "react"
 
 import { cn } from "~/lib/utils"
 
-const defaultStates = [
-  "default",
-  "hover",
-  "focus",
-  "active",
-  "disabled",
-] as const
+const defaultStates = ["default", "disabled"] as const
 
 export function StateMatrix<Row extends string>({
   rows,
@@ -58,15 +52,7 @@ export function StateMatrix<Row extends string>({
   )
 }
 
-// Spread onto a component to pin a state without interaction.
+// Spread onto a component to render a state column.
 export function previewState(state: string) {
-  if (state === "disabled") {
-    return { disabled: true }
-  }
-
-  if (["hover", "focus", "active"].includes(state)) {
-    return { "data-preview": state }
-  }
-
-  return {}
+  return state === "disabled" ? { disabled: true } : {}
 }

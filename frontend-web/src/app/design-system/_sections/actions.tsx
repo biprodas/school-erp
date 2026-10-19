@@ -27,7 +27,7 @@ import { Block, BlockGrid, Example, ShowcaseSection } from "../_showcase/block"
 import { previewState, StateMatrix } from "../_showcase/state-matrix"
 
 const BUTTON_VARIANTS = ["default", "outline", "secondary", "ghost", "destructive", "link"] as const
-const BUTTON_STATES = ["default", "hover", "focus", "active", "disabled", "loading"]
+const BUTTON_STATES = ["default", "disabled", "loading"]
 const BUTTON_SIZES = ["xs", "sm", "default", "lg"] as const
 const ICON_SIZES = ["icon-xs", "icon-sm", "icon", "icon-lg"] as const
 

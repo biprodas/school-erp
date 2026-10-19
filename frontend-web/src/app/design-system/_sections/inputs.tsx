@@ -51,7 +51,7 @@ import { Textarea } from "~/components/ui/textarea"
 import { Block, BlockGrid, Example, ShowcaseSection } from "../_showcase/block"
 import { previewState, StateMatrix } from "../_showcase/state-matrix"
 
-const FIELD_STATES = ["default", "hover", "focus", "disabled", "invalid"]
+const FIELD_STATES = ["default", "disabled", "invalid"]
 
 const CLASSES = [
   { label: "Class 6", value: "6" },
@@ -241,7 +241,7 @@ export function Inputs() {
           <Example title="State matrix" frameClassName="block">
             <StateMatrix
               rows={["textarea"] as const}
-              states={["default", "focus", "disabled", "invalid"]}
+              states={["default", "disabled", "invalid"]}
               render={(_, state) => (
                 <Textarea
                   aria-label="Teacher remark"
@@ -328,7 +328,7 @@ export function Inputs() {
           <Example title="State matrix" frameClassName="block">
             <StateMatrix
               rows={["unchecked", "checked"] as const}
-              states={["default", "focus", "disabled", "invalid"]}
+              states={["default", "disabled", "invalid"]}
               render={(row, state) => (
                 <Checkbox
                   aria-label="Notify guardian"

@@ -1,13 +1,13 @@
 type GridBackdropProps = {
   /** Size of each grid square in px. */
   cell?: number;
-  /** Line colour, as "r, g, b, alpha". */
+  /** Line colour, any CSS color. */
   line?: string;
   /** Where the grid is strongest before it fades out, as a CSS position. */
   focusAt?: string;
   /** Where a soft glow sits under the grid, as a CSS position. Omit for no glow. */
   glowAt?: string;
-  /** Glow colour, as "r, g, b". */
+  /** Glow colour, any CSS color. */
   glow?: string;
 };
 
@@ -31,14 +31,14 @@ export function GridBackdrop({
         <div
           className="absolute inset-0"
           style={{
-            backgroundImage: `radial-gradient(55% 75% at ${glowAt}, rgb(${glow}) 0%, rgba(${glow}, 0) 72%)`,
+            backgroundImage: `radial-gradient(55% 75% at ${glowAt}, ${glow} 0%, transparent 72%)`,
           }}
         />
       ) : null}
       <div
         className="absolute inset-0"
         style={{
-          backgroundImage: `linear-gradient(to right, rgba(${line}) 1px, transparent 1px), linear-gradient(to bottom, rgba(${line}) 1px, transparent 1px)`,
+          backgroundImage: `linear-gradient(to right, ${line} 1px, transparent 1px), linear-gradient(to bottom, ${line} 1px, transparent 1px)`,
           backgroundSize: `${cell}px ${cell}px`,
           backgroundPosition: "center top",
           maskImage: mask,

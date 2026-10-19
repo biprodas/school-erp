@@ -10,25 +10,25 @@ A school register, done properly. It should feel calm, trustworthy and quick on 
 
 Components use **role tokens** (`bg-primary`, `text-muted-foreground`, …), never the raw palette.
 
-| Role | Light | Dark (derived) | Use |
+| Role | Light | Dark | Use |
 | --- | --- | --- | --- |
-| `background` | canvas `#f4f5f1` | forest-deep `#0e241b` | Page floor |
-| `foreground` | ink `#12271e` | `#eef3ef` | Headlines, body |
-| `card` / `popover` | paper `#ffffff` | `#143428` / `#163a2d` | Cards, menus, dialogs |
-| `primary` | forest-2 `#1d5a43` | marigold `#f0b24a` | The main action |
-| `primary-hover` | forest-hover `#174a37` | marigold-hover `#e8a333` | Primary hover |
-| `secondary`, `muted`, `accent` | mint `#e5eee8` | `#1f4a3a` | Tinted fills, ghost hover, soft bands |
-| `muted-foreground` | ink-2 `#46564e` | `#b9cdc1` | Descriptions |
-| `subtle-foreground` | ink-3 `#6b7a72` | `#93ab9e` | Captions, meta (large or non-essential text) |
-| `highlight` | marigold `#f0b24a` | marigold | The one key action on a forest surface |
-| `success` / `success-tint` | forest-2 / mint | `#8fd1ad` / 14% | Present, paid |
-| `warning` / `warning-tint` | `#7a4d07` / `#fcefd6` | `#f4c56f` / 14% | Late, due soon |
-| `destructive` / `destructive-tint` | red `#c2412d` / `#fbe8e4` | `#f08a76` / 14% | Absent, overdue, errors |
-| `band` | forest `#143f30` | forest | Dark marketing bands, featured cards |
-| `border` / `input` | line `#dfe5e0` / `#c9d3cc` | white 12% / 20% | Hairlines, field borders |
-| `ring` | forest-2 | sage `#a9c2b4` | Focus |
+| `background` | canvas `#f4f5f1` | navy `oklch(0.16 0.025 255)` | Page floor |
+| `foreground` | ink `#12271e` | warm off-white `oklch(0.95 0.01 85)` | Headlines, body |
+| `card` / `popover` | paper `#ffffff` | `oklch(0.2 0.03 255)` | Cards, menus, dialogs |
+| `primary` | forest-2 `#1d5a43` | green `oklch(0.7 0.13 160)` (navy text) | The main action |
+| `primary-hover` | forest-hover `#174a37` | `oklch(0.76 0.12 160)` | Primary hover |
+| `secondary`, `muted`, `accent` | mint `#e5eee8` | `oklch(0.25 0.03 255)`; accent `oklch(0.28 0.035 255)` with off-white text | Tinted fills, ghost hover, soft bands |
+| `muted-foreground` | ink-2 `#46564e` | `oklch(0.7 0.03 255)` | Descriptions |
+| `subtle-foreground` | ink-3 `#6b7a72` | `oklch(0.62 0.03 255)` | Captions, meta (large or non-essential text) |
+| `highlight` | marigold `#f0b24a` | green, like primary (no gold fills in dark) | The one key action on a forest surface |
+| `success` / `success-tint` | forest-2 / mint | `oklch(0.62 0.14 155)` / accent 60% | Present, paid |
+| `warning` / `warning-tint` | `#7a4d07` / `#fcefd6` | `oklch(0.84 0.13 80)` / marigold 14% | Late, due soon |
+| `destructive` / `destructive-tint` | red `#c2412d` / `#fbe8e4` | `oklch(0.7 0.17 27)` / 14% | Absent, overdue, errors |
+| `band` | forest `#143f30` | deep navy `oklch(0.11 0.02 255)` (scoped bands in light keep forest) | Dark marketing bands, featured cards |
+| `border` / `input` | line `#dfe5e0` / `#c9d3cc` | white 10% / 12% | Hairlines, field borders |
+| `ring` | forest-2 | primary green | Focus |
 
-The dark theme is derived from the forest bands. The theme toggle in the header (`components/theme-toggle.tsx`) sets `.dark` on `<html>` and saves the choice in `localStorage` (`kampasy-theme`). When nothing is saved, the system preference applies. An inline script in `app/layout.tsx` (`lib/theme.ts`) applies it before first paint. `.dark` also remaps the raw surface, ink and line palette (`canvas`, `paper`, `ink-*`, `line*`, `mint*`, `sage`, `forest-2`, red and marigold tints), so landing sections that use those classes follow the theme. `forest`, `forest-deep` and `marigold` don't change. Put `className="dark"` on a forest band or a featured card to render the components inside it with the dark tokens in either theme.
+The dark theme uses deep navy surfaces with warm off-white text, the calm, low-chroma base of study and classroom tools. Brand green is the primary action, and marigold stays a small accent, never a button fill. Every text pair passes WCAG AA. The theme toggle in the header (`components/theme-toggle.tsx`) sets `.dark` on `<html>` and saves the choice in `localStorage` (`kampasy-theme`). When nothing is saved, the system preference applies. An inline script in `app/layout.tsx` (`lib/theme.ts`) applies it before first paint. `.dark` also remaps the raw surface, ink and line palette, so landing classes like `bg-paper` follow it. Whole-page dark mode (`:root.dark`) also turns `forest` bands into deep navy. Put `className="dark"` on a forest band or a featured card to render the components inside it with the dark tokens in either theme.
 
 ## Typography
 
@@ -108,6 +108,5 @@ All motion is disabled under `prefers-reduced-motion`.
 
 ## Known gaps
 
-- Dark mode is derived, not designed. Review it before shipping a dark product UI.
 - `subtle-foreground` on `muted` is about 4:1. Keep it for captions and large text.
 - The landing page sections still use some raw palette classes (`bg-forest`, `text-ink-2`). They will move to role tokens as those sections are next touched.

@@ -7,7 +7,7 @@ export function FinalCta() {
   return (
     <section aria-labelledby="cta-title" className="bg-canvas">
       <div className="mx-auto max-w-6xl px-4 pb-24 sm:px-6">
-        <div className="grid items-center gap-10 rounded-[1.75rem] bg-[linear-gradient(135deg,#1d5a43,#143f30_60%)] p-8 text-white sm:p-12 lg:grid-cols-[minmax(0,1fr)_26rem] lg:gap-16 lg:p-16">
+        <div className="grid items-center gap-10 rounded-[1.75rem] bg-[linear-gradient(135deg,var(--cta-from),var(--cta-to)_60%)] p-8 ring-1 ring-(--cta-ring) ring-inset text-white sm:p-12 lg:grid-cols-[minmax(0,1fr)_26rem] lg:gap-16 lg:p-16">
           <div>
             <h2 id="cta-title" className="display text-[2.8rem] text-balance sm:text-[3.6rem]">
               Start with one section tomorrow morning

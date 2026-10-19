@@ -201,7 +201,7 @@ export function Roles() {
             onKeyDown={onKeyDown}
             className={`rounded-full px-4 py-2 text-[15px] font-semibold transition-colors ${
               i === active
-                ? "bg-marigold text-ink"
+                ? "bg-highlight text-highlight-foreground"
                 : "text-white/85 ring-1 ring-inset ring-white/25 hover:bg-white/10"
             }`}
           >

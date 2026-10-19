@@ -39,7 +39,7 @@ export function StartForm() {
       </p>
       <button
         type="submit"
-        className="mt-5 h-12 w-full rounded-full bg-marigold text-[17px] font-semibold text-ink transition-colors hover:bg-marigold-hover"
+        className="mt-5 h-12 w-full rounded-full bg-highlight text-[17px] font-semibold text-highlight-foreground transition-colors hover:bg-highlight-hover"
       >
         Start free trial
       </button>

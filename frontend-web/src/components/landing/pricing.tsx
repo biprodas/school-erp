@@ -85,7 +85,7 @@ export function Pricing() {
               }`}
             >
               {dark ? (
-                <span className="absolute -top-3 left-6 rounded-full bg-marigold px-3 py-1 text-xs font-semibold text-ink">
+                <span className="absolute -top-3 left-6 rounded-full bg-highlight px-3 py-1 text-xs font-semibold text-highlight-foreground">
                   Included in your free trial
                 </span>
               ) : null}

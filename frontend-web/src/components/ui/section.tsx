@@ -12,7 +12,7 @@ type SectionProps = {
   labelledBy: string;
   tone?: keyof typeof TONES;
   className?: string;
-  /** Decoration drawn behind the content, e.g. a `RuledBackdrop`. */
+  /** Decoration drawn behind the content, e.g. a `GridBackdrop`. */
   backdrop?: ReactNode;
   children: ReactNode;
 };
