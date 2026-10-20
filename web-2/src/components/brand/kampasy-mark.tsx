@@ -2,8 +2,8 @@ import { cn } from "~/lib/utils"
 
 /**
  * The Kampasy mark: a "K" whose upper arm reaches for a highlight dot.
- * Same shape as `frontend-web/`, drawn in this app's theme colors. Keep in
- * sync with `app/icon.svg` and `app/apple-icon.tsx`.
+ * Drawn in this app's theme colors. Keep in sync with `app/icon.svg` and
+ * `app/apple-icon.tsx`.
  */
 export function KampasyMark({ className }: { className?: string }) {
   return (
