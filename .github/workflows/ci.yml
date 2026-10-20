@@ -52,7 +52,7 @@ jobs:
       - run: npm run build
 
   backend-e2e:
-    name: Backend · e2e (Postgres 17, Redis)
+    name: Backend · e2e (Postgres 17)
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     defaults:
@@ -72,26 +72,17 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
     env:
       # test/e2e-env.ts turns DB_NAME into `<DB_NAME>_e2e`, enables schema
       # sync and connects the tenant pool as a restricted role it creates,
-      # so row-level security applies as in production.
+      # so row-level security applies as in production. No Redis: under
+      # NODE_ENV=test (set by Jest) queues run in-process.
       DB_HOST: localhost
       DB_PORT: '5432'
       DB_USERNAME: postgres
       DB_PASSWORD: postgres
       DB_NAME: school_erp
       JWT_SECRET: ci-only-jwt-secret-not-used-anywhere-else
-      REDIS_URL: redis://localhost:6379
       # No SMTP server here: mail failures are logged, never thrown.
       MAIL_HOST: localhost
     steps:
@@ -103,6 +94,7 @@ jobs:
           cache: npm
           cache-dependency-path: backend/package-lock.json
 
+      # Chrome for the PDF e2e test, downloaded by Puppeteer's postinstall.
       - uses: actions/cache@v4
         with:
           path: ~/.cache/puppeteer
@@ -115,7 +107,7 @@ jobs:
         run: npm run test:e2e -- --ci --runInBand
 
   frontend:
-    name: Frontend · build
+    name: Frontend · lint, build
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     defaults:
@@ -138,7 +130,5 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - run: npm ci
-      # TODO: add `npm run lint` once the React Compiler
-      # `set-state-in-effect` errors are fixed (theme toggles, carousel,
-      # use-mobile).
+      - run: npm run lint
       - run: npm run build

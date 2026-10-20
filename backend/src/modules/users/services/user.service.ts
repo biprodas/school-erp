@@ -6,8 +6,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import * as bcrypt from 'bcrypt';
 import { normalizeEmail } from '~/common/identity/identifier';
+import { hashPassword } from '~/common/identity/password';
 import { Repository } from 'typeorm';
 import { RequestContextDto } from '~/common/dto/request-context.dto';
 import { CreateUserDto } from '../dto/create-user.dto';
@@ -65,7 +65,7 @@ export class UserService {
       throw new ConflictException('Email already registered');
     }
 
-    const hashedPassword = await bcrypt.hash(dto.password, 10);
+    const hashedPassword = await hashPassword(dto.password);
     const user = this.userRepo.create({
       email: normalizeEmail(dto.email),
       password: hashedPassword,

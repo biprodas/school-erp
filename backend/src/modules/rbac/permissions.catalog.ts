@@ -111,7 +111,6 @@ export const PERMISSIONS = {
   // Student subject selections
   STUDENT_SUBJECTS_READ: 'student_subjects:read',
   STUDENT_SUBJECTS_CREATE: 'student_subjects:create',
-  STUDENT_SUBJECTS_UPDATE: 'student_subjects:update',
   STUDENT_SUBJECTS_DELETE: 'student_subjects:delete',
 
   // Class teachers
@@ -141,7 +140,6 @@ export const PERMISSIONS = {
   // Student promotions
   PROMOTIONS_READ: 'promotions:read',
   PROMOTIONS_CREATE: 'promotions:create',
-  PROMOTIONS_UPDATE: 'promotions:update',
   PROMOTIONS_DELETE: 'promotions:delete',
 
   // Custom domains (Settings → Domain)

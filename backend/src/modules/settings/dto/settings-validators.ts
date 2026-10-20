@@ -1,17 +1,13 @@
-import {
-  ValidateIf,
-  ValidationOptions,
-  registerDecorator,
-} from 'class-validator';
+import { ValidationOptions, registerDecorator } from 'class-validator';
 import { assertValidPattern } from '~/modules/numbering/numbering-pattern';
 
-/**
- * Optional, but not nullable: the field may be left out of a patch, and
- * `null` is validated (and rejected) like any other value. Use
- * `@IsOptional()` for fields where `null` means "clear it".
+/*
+ * Settings DTOs are patches: the global ValidationPipe runs with
+ * `skipUndefinedProperties`, so a field left out is not validated, while
+ * `null` is validated (and rejected) like any other value. Fields where
+ * `null` means "clear it" add `@IsOptional()`; nested objects add
+ * `@IsObject()`, since `@ValidateNested()` alone would accept an array.
  */
-export const OmitOrValidate = () =>
-  ValidateIf((_obj: object, value: unknown) => value !== undefined);
 
 /** A numbering pattern with exactly one `{SEQ}` (see `formatNumber`). */
 export function IsNumberingPattern(options?: ValidationOptions) {

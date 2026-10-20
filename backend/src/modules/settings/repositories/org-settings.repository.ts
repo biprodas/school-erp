@@ -10,8 +10,28 @@ export class OrgSettingsRepository extends BaseTenantRepository<OrgSettings> {
     super(ds, OrgSettings, 'OrgSettings');
   }
 
-  /** The school's row, if it ever saved a setting (one per org). */
+  /** The school's row (one per org, created with the organization). */
   findCurrent(): Promise<OrgSettings | null> {
     return this.repo.findOne({ where: {} });
+  }
+
+  /**
+   * The row locked until the surrounding transaction ends, so concurrent
+   * settings writes of the school run one after the other. Creates it first
+   * if it's missing (a school created before rows came with organizations
+   * and not yet back-filled); a concurrent create is ignored, not a 409.
+   */
+  async findCurrentForUpdate(): Promise<OrgSettings> {
+    const lock = { mode: 'pessimistic_write' } as const;
+    const row = await this.repo.findOne({ where: {}, lock });
+    if (row) return row;
+    await this.repo
+      .createQueryBuilder()
+      .insert()
+      .into(OrgSettings)
+      .values({ orgId: this.orgId })
+      .orIgnore()
+      .execute();
+    return this.repo.findOneOrFail({ where: {}, lock });
   }
 }

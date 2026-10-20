@@ -147,11 +147,13 @@ export const envValidationSchema = Joi.object({
   PDF_CHROME_PATH: Joi.string().optional(),
   PDF_NO_SANDBOX: Joi.boolean().default(false),
   // `<keyId>:<base64 32-byte key>` for AES-256-GCM field encryption; older
-  // keys (same format, comma-separated) stay readable for rotation.
+  // keys (same format, comma-separated) stay readable for rotation. Required
+  // on every deployed environment (staging too): without it a dev-only key
+  // would encrypt real data.
   FIELD_ENCRYPTION_KEY: Joi.string()
     .pattern(FIELD_KEY_PATTERN)
     .when('NODE_ENV', {
-      is: 'production',
+      is: Joi.exist().valid('staging', 'production'),
       then: Joi.required(),
       otherwise: Joi.optional(),
     }),

@@ -32,6 +32,10 @@ export const AUDIT_ACTIONS = {
   // Settings
   SETTINGS_UPDATED: 'settings.updated',
 
+  // Sensitive data access (PRD 6.3). Recorded without the data itself.
+  STUDENT_MEDICAL_VIEWED: 'student_medical.viewed',
+  STUDENT_NOTE_SENSITIVE_VIEWED: 'student_note.sensitive_viewed',
+
   // Platform
   ORGANIZATION_CREATED: 'organization.created',
   ORGANIZATION_UPDATED: 'organization.updated',

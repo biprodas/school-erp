@@ -3,7 +3,11 @@ import type { ConfigService } from '@nestjs/config';
 import type { Repository } from 'typeorm';
 import { hashToken } from '~/common/tokens/secure-token.util';
 import type { UserSession } from '../entities/user-session.entity';
-import { SessionService } from './session.service';
+import {
+  SESSION_CACHE_MS,
+  SESSION_CACHE_SWEEP_AT,
+  SessionService,
+} from './session.service';
 import type { OrgSettingsReader } from '~/modules/settings/services/org-settings.reader';
 
 const DAY = 86_400_000;
@@ -147,6 +151,26 @@ describe('SessionService', () => {
     await service.revokeFamily('fam-1');
     repo.exists.mockResolvedValue(false);
     await expect(service.isActive('fam-1')).resolves.toBe(false);
+  });
+
+  it('sweeps expired cache entries once the cache grows large', async () => {
+    const now = Date.now();
+    const clock = jest.spyOn(Date, 'now').mockReturnValue(now);
+    try {
+      for (let i = 0; i < SESSION_CACHE_SWEEP_AT; i++) {
+        await service.isActive(`old-${i}`);
+      }
+      const cache = (service as unknown as { activeCache: Map<string, number> })
+        .activeCache;
+      expect(cache.size).toBe(SESSION_CACHE_SWEEP_AT);
+
+      clock.mockReturnValue(now + SESSION_CACHE_MS + 1);
+      await service.isActive('fresh');
+
+      expect([...cache.keys()]).toEqual(['fresh']);
+    } finally {
+      clock.mockRestore();
+    }
   });
 
   it('only revokes a session that belongs to the user on this host', async () => {

@@ -500,4 +500,37 @@ describe('RoleService', () => {
       );
     });
   });
+
+  describe('no-op update', () => {
+    it('neither saves nor records an update that changes nothing', async () => {
+      roleRepo.findByIdOrFail.mockResolvedValue(
+        makeRole({
+          description: 'Teaches',
+          permissions: [PERMISSIONS.STUDENTS_READ, PERMISSIONS.CLASSES_READ],
+        }),
+      );
+
+      await service.update('role-1', {
+        name: 'teacher',
+        description: 'Teaches',
+        // Same keys, another order.
+        permissions: [PERMISSIONS.CLASSES_READ, PERMISSIONS.STUDENTS_READ],
+        scope: RoleScope.SCHOOL,
+      });
+
+      expect(roleRepo.save).not.toHaveBeenCalled();
+      expect(audit.record).not.toHaveBeenCalled();
+    });
+
+    it('still records a real change', async () => {
+      roleRepo.findByIdOrFail.mockResolvedValue(makeRole());
+
+      await service.update('role-1', { description: 'Teaches' });
+
+      expect(roleRepo.save).toHaveBeenCalled();
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'role.updated' }),
+      );
+    });
+  });
 });

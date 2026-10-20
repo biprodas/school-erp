@@ -14,10 +14,14 @@ import { AuditService } from '~/modules/audit/services/audit.service';
 import { AUDIT_ACTIONS } from '~/modules/audit/audit-actions';
 import { FileService, IncomingFile } from '~/modules/files/file.service';
 import { Organization } from '~/modules/organizations/entities/organization.entity';
-import { OrgSettings } from '../entities/org-settings.entity';
 import { OrgSettingsRepository } from '../repositories/org-settings.repository';
-import { settingsCache } from '../settings.cache';
-import { mergeSettings, withDefaults } from '../settings.defaults';
+import { deepFreeze, settingsCache } from '../settings.cache';
+import {
+  DEFAULT_SETTINGS,
+  mergeOverrides,
+  mergeSettings,
+  withDefaults,
+} from '../settings.defaults';
 import type { OrgSettingsValues, SettingsSection } from '../settings.types';
 import { UpdateOrganizationSettingsDto } from '../dto/update-organization-settings.dto';
 
@@ -65,15 +69,16 @@ const orgView = (org: Organization): OrganizationSettingsView => ({
 
 /**
  * The current school's settings (PRD 6.24). `get()` completes what the
- * school saved with the defaults, memoized for the request and cached in
+ * school changed with the defaults, memoized for the request and cached in
  * memory per school (`settingsCache`); every write invalidates the cache and
  * is audited with its before and after.
  *
  * Settings sections live in `org_settings` (tenant connection, so an update
- * and its audit row commit together). The school's own fields on the
- * platform table `organizations` (name, type, EIIN, directory listing, logo)
- * are written through the root connection, since the app role has no grant
- * on it; their audit row follows the change.
+ * and its audit row commit together), which stores only the school's
+ * overrides. The school's own fields on the platform table `organizations`
+ * (name, type, EIIN, directory listing, logo) are written through the root
+ * connection, since the app role has no grant on it (see
+ * `changeOrganization` for how the change and its audit row are ordered).
  */
 @Injectable()
 export class SettingsService {
@@ -93,10 +98,13 @@ export class SettingsService {
   /** Every section, with defaults for anything not saved. */
   async get(): Promise<OrgSettingsValues> {
     if (this.memo) return this.memo;
-    let value = settingsCache.get(this.ds.orgId);
+    const orgId = this.ds.orgId;
+    let value = settingsCache.get(orgId);
     if (!value) {
-      value = withDefaults((await this.settingsRepo.findCurrent()) ?? {});
-      settingsCache.set(this.ds.orgId, value);
+      const generation = settingsCache.generation(orgId);
+      const row = await this.settingsRepo.findCurrent();
+      value = deepFreeze(withDefaults(row ?? {}));
+      settingsCache.set(orgId, value, generation);
     }
     this.memo = value;
     return value;
@@ -136,62 +144,46 @@ export class SettingsService {
 
   /**
    * Merges `patch` into one section (nested objects merge, arrays and
-   * scalars replace) and returns the section as saved. `patch` has been
-   * validated by the section's DTO.
+   * scalars replace) and returns the section as saved, defaults included.
+   * `patch` has been validated by the section's DTO.
    */
   async updateSection<K extends SettingsSection>(
     section: K,
     patch: object,
   ): Promise<OrgSettingsValues[K]> {
-    const saved = await this.ds.runInTransaction(async () => {
-      const row = await this.findOrCreateRow();
-      const before = withDefaults(row)[section];
-      const after = mergeSettings(before, patch);
-      await this.assertReferences(section, after);
-
-      (row as unknown as Record<SettingsSection, unknown>)[section] = after;
-      row.updatedBy = this.actorId();
-      await this.settingsRepo.save(row);
-      await this.audit.record({
-        action: AUDIT_ACTIONS.SETTINGS_UPDATED,
-        entityType: 'settings',
-        entityId: section,
-        before: before as unknown as Record<string, unknown>,
-        after: after as unknown as Record<string, unknown>,
-      });
-      return after;
-    });
-    this.invalidate();
-    return saved;
+    return (await this.writeSection(section, patch)).after;
   }
 
   /** `PATCH /settings/organization`. */
   async updateOrganization(
     dto: UpdateOrganizationSettingsDto,
   ): Promise<OrganizationSettingsView> {
-    const org = await this.findOrganization();
-    const before = orgView(org);
-    if (dto.name !== undefined) org.name = dto.name;
-    if (dto.type !== undefined) org.type = dto.type;
-    if (dto.eiin !== undefined) org.eiin = dto.eiin;
-    if (dto.listedInDirectory !== undefined) {
-      org.listedInDirectory = dto.listedInDirectory;
-    }
-    const saved = await this.organizations.save(org);
-    await this.recordOrganization(before, orgView(saved));
-    return orgView(saved);
+    const { org } = await this.changeOrganization((org) => {
+      if (dto.name !== undefined) org.name = dto.name;
+      if (dto.type !== undefined) org.type = dto.type;
+      if (dto.eiin !== undefined) org.eiin = dto.eiin;
+      if (dto.listedInDirectory !== undefined) {
+        org.listedInDirectory = dto.listedInDirectory;
+      }
+    });
+    return orgView(org);
   }
 
   /** Stores a new logo and points the school at it; the old file goes. */
   async setLogo(file: IncomingFile): Promise<{ fileId: string; url: string }> {
     const stored = await this.files.upload(file, 'org_logo');
-    const org = await this.findOrganization();
-    const before = orgView(org);
-    const previous = org.logoFileId;
-    org.logoFileId = stored.id;
-    await this.organizations.save(org);
-    await this.recordOrganization(before, orgView(org));
-    if (previous) await this.removeQuietly(previous);
+    let previous: string | null;
+    try {
+      ({
+        before: { logoFileId: previous },
+      } = await this.changeOrganization((org) => {
+        org.logoFileId = stored.id;
+      }));
+    } catch (err) {
+      await this.removeQuietly(stored.id);
+      throw err;
+    }
+    if (previous && previous !== stored.id) await this.removeQuietly(previous);
     return {
       fileId: stored.id,
       url: await this.files.getDownloadUrl(stored.id),
@@ -203,23 +195,89 @@ export class SettingsService {
     file: IncomingFile,
   ): Promise<{ fileId: string; url: string }> {
     const stored = await this.files.upload(file, 'signature');
-    const previous = (await this.get()).profile.principalSignatureFileId;
-    await this.updateSection('profile', {
-      principalSignatureFileId: stored.id,
-    });
-    if (previous) await this.removeQuietly(previous);
+    let previous: string | null;
+    try {
+      ({
+        before: { principalSignatureFileId: previous },
+      } = await this.writeSection('profile', {
+        principalSignatureFileId: stored.id,
+      }));
+    } catch (err) {
+      await this.removeQuietly(stored.id);
+      throw err;
+    }
+    if (previous && previous !== stored.id) await this.removeQuietly(previous);
     return {
       fileId: stored.id,
       url: await this.files.getDownloadUrl(stored.id),
     };
   }
 
-  private async findOrCreateRow(): Promise<OrgSettings> {
-    return (
-      (await this.settingsRepo.findCurrent()) ??
-      // A concurrent first save loses on `uq_org_settings_org` (409).
-      (await this.settingsRepo.saveNew({ updatedBy: this.actorId() }))
-    );
+  /**
+   * Stores `patch` over the school's overrides for one section, with the
+   * row locked so concurrent writes serialize, and audits the effective
+   * section before and after. The cache is invalidated after commit.
+   */
+  private async writeSection<K extends SettingsSection>(
+    section: K,
+    patch: object,
+  ): Promise<{ before: OrgSettingsValues[K]; after: OrgSettingsValues[K] }> {
+    const defaults = DEFAULT_SETTINGS[section];
+    const result = await this.ds.runInTransaction(async () => {
+      const row = await this.settingsRepo.findCurrentForUpdate();
+      const stored: unknown = row[section];
+      const overrides = mergeOverrides(defaults, stored, patch);
+      const before = mergeSettings(defaults, stored ?? undefined);
+      const after = mergeSettings(defaults, overrides);
+      await this.assertReferences(section, after);
+
+      (row as unknown as Record<SettingsSection, unknown>)[section] = overrides;
+      row.updatedBy = this.actorId();
+      await this.settingsRepo.save(row);
+      await this.audit.record({
+        action: AUDIT_ACTIONS.SETTINGS_UPDATED,
+        entityType: 'settings',
+        entityId: section,
+        before: before as unknown as Record<string, unknown>,
+        after: after as unknown as Record<string, unknown>,
+      });
+      return { before, after };
+    });
+    this.invalidate();
+    return result;
+  }
+
+  /**
+   * Changes the school's row on `organizations` and audits it. The row
+   * lives on the root connection and the audit log on the tenant one, so
+   * they can't share a transaction. The order makes a failed audit roll the
+   * change back: the root transaction locks and updates the row, then the
+   * audit row is written and committed on the tenant connection, and only
+   * then does the root transaction commit. The remaining window (the root
+   * commit failing after the audit committed) leaves an audit row for a
+   * change that didn't happen, never an unaudited change.
+   *
+   * The lock is FOR NO KEY UPDATE, not FOR UPDATE: the audit insert's
+   * foreign-key check takes FOR KEY SHARE on the same organization row,
+   * which FOR UPDATE would block while this transaction waits for it.
+   */
+  private changeOrganization(
+    apply: (org: Organization) => void,
+  ): Promise<{ before: OrganizationSettingsView; org: Organization }> {
+    return this.organizations.manager.transaction(async (manager) => {
+      const org = await manager.findOne(Organization, {
+        where: { id: this.ds.orgId },
+        lock: { mode: 'for_no_key_update' },
+      });
+      if (!org) throw new NotFoundException('Organization not found');
+      const before = orgView(org);
+      apply(org);
+      const saved = await manager.save(org);
+      await this.ds.runInTransaction(() =>
+        this.recordOrganization(before, orgView(saved)),
+      );
+      return { before, org: saved };
+    });
   }
 
   /** Ids inside a section must point at this school's own records. */

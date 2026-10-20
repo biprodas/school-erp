@@ -15,7 +15,11 @@ const ORG_ID = 'org-test';
 
 describe('SettingsService', () => {
   let service: SettingsService;
-  let repo: { findCurrent: jest.Mock; saveNew: jest.Mock; save: jest.Mock };
+  let repo: {
+    findCurrent: jest.Mock;
+    findCurrentForUpdate: jest.Mock;
+    save: jest.Mock;
+  };
   let audit: { record: jest.Mock };
   let files: {
     findById: jest.Mock;
@@ -23,7 +27,11 @@ describe('SettingsService', () => {
     getDownloadUrl: jest.Mock;
     remove: jest.Mock;
   };
-  let organizations: { findOne: jest.Mock; save: jest.Mock };
+  let rootManager: { findOne: jest.Mock; save: jest.Mock };
+  let organizations: {
+    findOne: jest.Mock;
+    manager: { transaction: jest.Mock };
+  };
   let org: Partial<Organization>;
 
   const build = () =>
@@ -40,7 +48,8 @@ describe('SettingsService', () => {
     settingsCache.invalidate();
     repo = {
       findCurrent: jest.fn().mockResolvedValue(null),
-      saveNew: jest.fn((v: object) => Promise.resolve({ id: 's-1', ...v })),
+      // The row exists from the organization's creation, empty.
+      findCurrentForUpdate: jest.fn(() => Promise.resolve({ id: 's-1' })),
       save: jest.fn((v: object) => Promise.resolve(v)),
     };
     audit = { record: jest.fn() };
@@ -61,9 +70,17 @@ describe('SettingsService', () => {
       listedInDirectory: false,
       logoFileId: null,
     };
-    organizations = {
+    rootManager = {
       findOne: jest.fn(() => Promise.resolve({ ...org })),
       save: jest.fn((v: object) => Promise.resolve(v)),
+    };
+    organizations = {
+      findOne: jest.fn(() => Promise.resolve({ ...org })),
+      manager: {
+        transaction: jest.fn((work: (m: typeof rootManager) => unknown) =>
+          work(rootManager),
+        ),
+      },
     };
     service = build();
   });
@@ -82,10 +99,31 @@ describe('SettingsService', () => {
       expect((await build().get()).fees.billingDay).toBe(5);
       expect(repo.findCurrent).toHaveBeenCalledTimes(1);
     });
+
+    it('hands out frozen values that callers cannot change', async () => {
+      const values = await service.get();
+      expect(() => {
+        values.locale.language = 'bn';
+      }).toThrow(TypeError);
+    });
+
+    it('does not cache a read overtaken by a write', async () => {
+      let finishRead!: (row: object | null) => void;
+      repo.findCurrent.mockReturnValueOnce(
+        new Promise((resolve) => (finishRead = resolve)),
+      );
+      const staleRead = build().get();
+      await service.updateSection('fees', { billingDay: 5 });
+      finishRead(null);
+      await staleRead;
+
+      repo.findCurrent.mockResolvedValue({ fees: { billingDay: 5 } });
+      expect((await build().get()).fees.billingDay).toBe(5);
+    });
   });
 
   describe('updateSection', () => {
-    it('creates the row on first save, merges, audits and returns the section', async () => {
+    it('locks the row, stores only the change, audits and returns the section', async () => {
       const saved = await service.updateSection('locale', {
         language: 'bn',
         weekendDays: ['friday', 'saturday'],
@@ -96,10 +134,12 @@ describe('SettingsService', () => {
         language: 'bn',
         weekendDays: ['friday', 'saturday'],
       });
-      expect(repo.saveNew).toHaveBeenCalledWith({ updatedBy: 'admin-1' });
-      expect(repo.save).toHaveBeenCalledWith(
-        expect.objectContaining({ locale: saved, updatedBy: 'admin-1' }),
-      );
+      expect(repo.findCurrentForUpdate).toHaveBeenCalled();
+      expect(repo.save).toHaveBeenCalledWith({
+        id: 's-1',
+        locale: { language: 'bn', weekendDays: ['friday', 'saturday'] },
+        updatedBy: 'admin-1',
+      });
       expect(audit.record).toHaveBeenCalledWith({
         action: 'settings.updated',
         entityType: 'settings',
@@ -109,8 +149,8 @@ describe('SettingsService', () => {
       });
     });
 
-    it('merges into what the school saved before', async () => {
-      repo.findCurrent.mockResolvedValue({
+    it('merges into what the school changed before', async () => {
+      repo.findCurrentForUpdate.mockResolvedValue({
         id: 's-1',
         profile: { phone: '01712345678', letterhead: { showEiin: false } },
       });
@@ -125,12 +165,18 @@ describe('SettingsService', () => {
         tagline: 'Knowledge is light',
         showLogo: true,
       });
-      expect(repo.saveNew).not.toHaveBeenCalled();
+      expect(repo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          profile: {
+            phone: '01712345678',
+            letterhead: { showEiin: false, tagline: 'Knowledge is light' },
+          },
+        }),
+      );
     });
 
     it('invalidates the cache so the next read sees the change', async () => {
       await service.get();
-      repo.findCurrent.mockResolvedValue({ id: 's-1' });
       await service.updateSection('results', { verifyStep: true });
       repo.findCurrent.mockResolvedValue({ results: { verifyStep: true } });
 
@@ -159,6 +205,10 @@ describe('SettingsService', () => {
       });
 
       expect(view).toMatchObject({ eiin: '108224', listedInDirectory: true });
+      expect(rootManager.findOne).toHaveBeenCalledWith(expect.anything(), {
+        where: { id: ORG_ID },
+        lock: { mode: 'for_no_key_update' },
+      });
       expect(audit.record).toHaveBeenCalledWith(
         expect.objectContaining({
           entityId: 'organization',
@@ -177,7 +227,7 @@ describe('SettingsService', () => {
       });
 
       expect(files.upload).toHaveBeenCalledWith(expect.anything(), 'org_logo');
-      expect(organizations.save).toHaveBeenCalledWith(
+      expect(rootManager.save).toHaveBeenCalledWith(
         expect.objectContaining({ logoFileId: 'file-new' }),
       );
       expect(files.remove).toHaveBeenCalledWith('file-old');
@@ -185,6 +235,55 @@ describe('SettingsService', () => {
         fileId: 'file-new',
         url: 'https://s3/file-new',
       });
+    });
+
+    it('keeps the change out when its audit fails, and drops the new logo', async () => {
+      org.logoFileId = 'file-old';
+      audit.record.mockRejectedValue(new Error('audit down'));
+
+      await expect(
+        service.setLogo({ buffer: Buffer.from(''), originalName: 'logo.png' }),
+      ).rejects.toThrow('audit down');
+      // The failure propagates out of the root transaction, rolling it back.
+      expect(files.remove).toHaveBeenCalledWith('file-new');
+      expect(files.remove).not.toHaveBeenCalledWith('file-old');
+    });
+  });
+
+  describe('principal signature', () => {
+    beforeEach(() => {
+      files.upload.mockResolvedValue({ id: 'sig-new' });
+      files.findById.mockResolvedValue({ id: 'sig-new', purpose: 'signature' });
+    });
+
+    it('takes the previous file from the locked row and removes it after commit', async () => {
+      // A stale cache says "no signature"; the row says otherwise.
+      await service.get();
+      repo.findCurrentForUpdate.mockResolvedValue({
+        id: 's-1',
+        profile: { principalSignatureFileId: 'sig-old' },
+      });
+
+      const result = await service.setPrincipalSignature({
+        buffer: Buffer.from(''),
+        originalName: 'sig.png',
+      });
+
+      expect(result.fileId).toBe('sig-new');
+      expect(files.remove).toHaveBeenCalledWith('sig-old');
+      expect(files.remove).not.toHaveBeenCalledWith('sig-new');
+    });
+
+    it('removes the new upload when saving fails', async () => {
+      repo.save.mockRejectedValue(new Error('db down'));
+
+      await expect(
+        service.setPrincipalSignature({
+          buffer: Buffer.from(''),
+          originalName: 'sig.png',
+        }),
+      ).rejects.toThrow('db down');
+      expect(files.remove).toHaveBeenCalledWith('sig-new');
     });
   });
 

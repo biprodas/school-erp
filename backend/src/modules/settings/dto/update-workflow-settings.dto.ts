@@ -7,18 +7,17 @@ import {
   Max,
   Min,
 } from 'class-validator';
-import { OmitOrValidate } from './settings-validators';
 
 export class UpdateResultsSettingsDto {
   /** Require the Verified step between Submitted and Approved (PRD 6.9). */
-  @OmitOrValidate() @IsBoolean() verifyStep?: boolean;
+  @IsBoolean() verifyStep?: boolean;
 }
 
 export class UpdateAttendanceSettingsDto {
-  @OmitOrValidate() @IsIn(['day', 'period']) mode?: 'day' | 'period';
+  @IsIn(['day', 'period']) mode?: 'day' | 'period';
 
   /** Days after which a record needs `attendance:edit_locked` (0 = same day). */
-  @OmitOrValidate() @IsInt() @Min(0) @Max(365) lockAfterDays?: number;
+  @IsInt() @Min(0) @Max(365) lockAfterDays?: number;
 
   /** Local `HH:mm` by which registers are due, or null for no cutoff. */
   @IsOptional() @IsMilitaryTime() cutoffTime?: string | null;
@@ -26,9 +25,9 @@ export class UpdateAttendanceSettingsDto {
 
 export class UpdateFeesSettingsDto {
   /** 1–28, so every month has the day. */
-  @OmitOrValidate() @IsInt() @Min(1) @Max(28) billingDay?: number;
-  @OmitOrValidate() @IsInt() @Min(0) @Max(90) graceDays?: number;
-  @OmitOrValidate() @IsBoolean() blockResultsOnDues?: boolean;
+  @IsInt() @Min(1) @Max(28) billingDay?: number;
+  @IsInt() @Min(0) @Max(90) graceDays?: number;
+  @IsBoolean() blockResultsOnDues?: boolean;
 }
 
 export class UpdateSecuritySettingsDto {

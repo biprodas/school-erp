@@ -11,11 +11,12 @@ import {
   UpdateSecuritySettingsDto,
 } from './update-workflow-settings.dto';
 
-/** Validates like the global ValidationPipe (whitelist + forbid). */
+/** Validates like the global ValidationPipe (see `app.setup.ts`). */
 async function errors(cls: new () => object, body: object) {
   const result = await validate(plainToInstance(cls, body), {
     whitelist: true,
     forbidNonWhitelisted: true,
+    skipUndefinedProperties: true,
   });
   const paths = (list: typeof result, prefix = ''): string[] =>
     list.flatMap((e) => [
@@ -72,6 +73,22 @@ describe('settings DTOs', () => {
       'letterhead.showLogo',
       'letterhead.watermark',
     ]);
+  });
+
+  it('refuses arrays and null where a nested object belongs', async () => {
+    expect(
+      await errors(UpdateProfileSettingsDto, {
+        address: [],
+        colors: [{ primary: '#123456' }],
+        letterhead: null,
+      }),
+    ).toEqual(['address', 'colors', 'letterhead']);
+    expect(await errors(UpdateNotificationSettingsDto, { events: [] })).toEqual(
+      ['events'],
+    );
+    expect(
+      await errors(UpdateNotificationSettingsDto, { events: { absent: [{}] } }),
+    ).toEqual(['events.absent']);
   });
 
   it('requires exactly one {SEQ} in numbering patterns', async () => {

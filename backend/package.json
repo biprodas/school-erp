@@ -23,7 +23,7 @@
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "test:release": "npm run test:release:unit && npm run test:release:e2e",
     "test:release:unit": "jest --testNamePattern \"\\[(tenant-isolation|gpa-regression|fee-regression)\\]\"",
-    "test:release:e2e": "jest --config ./test/jest-e2e.json --testNamePattern \"\\[(tenant-isolation|gpa-regression|fee-regression)\\]\"",
+    "test:release:e2e": "jest --config ./test/jest-e2e.json --runInBand --testNamePattern \"\\[(tenant-isolation|gpa-regression|fee-regression)\\]\"",
     "typeorm": "typeorm-ts-node-commonjs -d src/database/public.datasource.ts",
     "db:status": "npm run typeorm -- migration:show",
     "db:generate": "npm run typeorm -- migration:generate",

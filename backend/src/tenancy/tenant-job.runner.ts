@@ -37,7 +37,7 @@ export class TenantJobRunner {
     const request = {
       orgId,
       headers: {},
-      user: actor ? { ...actor, email: '', orgId } : undefined,
+      user: actor ? { ...actor, orgId } : undefined,
     } as unknown as RequestWithOrg;
     this.moduleRef.registerRequestByContextId(request, contextId);
 

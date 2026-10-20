@@ -18,6 +18,7 @@ const like = (shape: object): unknown =>
   expect.objectContaining(shape) as unknown;
 
 interface AuditRow {
+  id: string;
   action: string;
   actorUserId: string | null;
   actorType: string;
@@ -138,7 +139,23 @@ describe('Audit log (e2e)', () => {
   });
 
   it("never shows one school's rows to another [tenant-isolation]", async () => {
-    expect(await auditOf(orgB, '?action=role.')).toEqual([]);
+    // Both schools hold a role event, so an empty list can't pass by itself.
+    const res = await as(orgB)
+      .post('/api/roles', {
+        name: `auditor_b_${runId}`,
+        permissions: ['students:read'],
+      })
+      .expect(201);
+    const roleIdB = (res.body as { data: { id: string } }).data.id;
+    const [rowA] = await auditOf(orgA, '?action=role.created');
+    expect(rowA).toBeDefined();
+
+    const rowsB = await auditOf(orgB, '?action=role.');
+    const ids = rowsB.map((row) => row.id);
+    expect(ids).not.toContain(rowA.id);
+    expect(rowsB).toEqual([
+      like({ action: 'role.created', entityType: 'role', entityId: roleIdB }),
+    ]);
   });
 
   it('records a failed sign-in for an unknown account anonymously', async () => {

@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { Repository } from 'typeorm';
 import { parseIdentifier } from '~/common/identity/identifier';
+import { hashPassword } from '~/common/identity/password';
 import { User } from '~/modules/users/entities/user.entity';
 import { UserStatus } from '~/modules/users/enums/user-status.enum';
 import { Membership } from '~/modules/memberships/entities/membership.entity';
@@ -10,7 +11,6 @@ import { MembershipStatus } from '~/modules/memberships/enums/membership-status.
 
 export const MAX_FAILED_LOGINS = 5;
 export const LOCK_MINUTES = 15;
-const BCRYPT_COST = 10;
 /** Compared against when no account matches, so timing doesn't reveal it. */
 const DUMMY_HASH =
   '$2b$10$K3KmTcYrbcI/j3wvpB8cx.51wD9gVl2QXnoZeSpozS6.XPiL3svzy';
@@ -29,9 +29,8 @@ const WITH_PASSWORD = {
   lockedUntil: true,
 } as const;
 
-export function hashPassword(plain: string): Promise<string> {
-  return bcrypt.hash(plain, BCRYPT_COST);
-}
+// Re-exported for the auth services that already import it from here.
+export { hashPassword };
 
 export class AccountLockedException extends UnauthorizedException {
   constructor(readonly lockedUntil: Date) {
@@ -60,12 +59,6 @@ export class CredentialService {
   constructor(
     @InjectRepository(User) private readonly users: Repository<User>,
   ) {}
-
-  /** The account a login identifier points at (no password loaded). */
-  findByIdentifier(identifier: string): Promise<User | null> {
-    const where = parseIdentifier(identifier);
-    return where ? this.users.findOne({ where }) : Promise.resolve(null);
-  }
 
   /**
    * The account, if `password` is right and it isn't locked. Throws

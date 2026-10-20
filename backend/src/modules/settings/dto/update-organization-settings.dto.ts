@@ -7,7 +7,6 @@ import {
   Matches,
 } from 'class-validator';
 import { OrganizationType } from '~/modules/organizations/enums/organization-type.enum';
-import { OmitOrValidate } from './settings-validators';
 
 /**
  * `PATCH /settings/organization`: the school's own fields on
@@ -15,12 +14,12 @@ import { OmitOrValidate } from './settings-validators';
  * have their own flows.
  */
 export class UpdateOrganizationSettingsDto {
-  @OmitOrValidate() @IsString() @Length(3, 100) name?: string;
-  @OmitOrValidate() @IsEnum(OrganizationType) type?: OrganizationType;
+  @IsString() @Length(3, 100) name?: string;
+  @IsEnum(OrganizationType) type?: OrganizationType;
 
   /** Bangladesh EIIN (institution id), digits only; null clears it. */
   @IsOptional() @Matches(/^\d{4,10}$/) eiin?: string | null;
 
   /** Show the school in the public "Find your school" directory. */
-  @OmitOrValidate() @IsBoolean() listedInDirectory?: boolean;
+  @IsBoolean() listedInDirectory?: boolean;
 }

@@ -80,6 +80,8 @@ export class IdempotencyInterceptor implements NestInterceptor {
               code: 'IDEMPOTENCY_IN_PROGRESS',
             });
           case 'completed':
+            // Sticks: Nest applies the route default before interceptors and
+            // its reply doesn't reapply it (covered by the HTTP spec).
             res.status(claim.statusCode);
             res.setHeader('Idempotent-Replayed', 'true');
             return of(claim.response);

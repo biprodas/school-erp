@@ -7,9 +7,9 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'node:crypto';
 import { normalizeEmail, normalizePhone } from '~/common/identity/identifier';
+import { hashPassword } from '~/common/identity/password';
 import type { User } from '../entities/user.entity';
 import { Membership } from '~/modules/memberships/entities/membership.entity';
 import { MembershipStatus } from '~/modules/memberships/enums/membership-status.enum';
@@ -213,8 +213,8 @@ export class OrgUserService {
     // verified: nobody has proved they own that email, so its password
     // (chosen by whoever registered it) must not carry over into the school.
     const createdAccount = !account || account.status === UserStatus.PENDING;
-    const hashPassword = () =>
-      bcrypt.hash(input.password ?? randomBytes(32).toString('base64url'), 10);
+    const newPassword = () =>
+      hashPassword(input.password ?? randomBytes(32).toString('base64url'));
     if (account) {
       if (await this.memberRepo.findByUserId(account.id)) {
         throw new ConflictException({
@@ -223,7 +223,7 @@ export class OrgUserService {
         });
       }
       if (createdAccount) {
-        account.password = await hashPassword();
+        account.password = await newPassword();
         account.mustChangePassword = input.password !== undefined;
         // A temporary password handed over by the school vouches for the
         // person; otherwise the account stays pending until the activation
@@ -236,7 +236,7 @@ export class OrgUserService {
         name: input.name,
         email: email ?? null,
         phone: phone ?? null,
-        password: await hashPassword(),
+        password: await newPassword(),
         mustChangePassword: input.password !== undefined,
         status: UserStatus.ACTIVE,
       });

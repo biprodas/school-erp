@@ -5,6 +5,7 @@ import { JobQueue, type EnqueueOptions, type QueueName } from '~/shared/queue';
 import { TENANT_DATASOURCE } from '~/tenancy/tenancy.constants';
 import { TenantDataSourceProxy } from '~/tenancy/tenant-datasource.proxy';
 import { Job } from '../entities/job.entity';
+import { JobStatus } from '../enums/job-status.enum';
 import { JobRepository } from '../repositories/job.repository';
 
 export interface StartJobInput<T> {
@@ -30,7 +31,9 @@ export class JobService {
   /**
    * Creates the tracking row, then enqueues the job with its id. Call it
    * after the data the job needs is committed: workers read through their
-   * own connection and can't see this request's open transaction.
+   * own connection and can't see this request's open transaction. If the
+   * enqueue fails the row is marked failed (nothing will ever run it) and
+   * the error is rethrown.
    */
   async start<T>(input: StartJobInput<T>): Promise<Job> {
     const actorUserId = this.req.user?.userId ?? null;
@@ -38,17 +41,26 @@ export class JobService {
       type: input.type,
       createdBy: actorUserId,
     });
-    await this.queue.enqueue(
-      input.queue,
-      input.name,
-      {
-        orgId: this.ds.orgId,
-        actorUserId,
-        trackingId: job.id,
-        data: input.data,
-      },
-      { ...input.options, jobId: job.id },
-    );
+    try {
+      await this.queue.enqueue(
+        input.queue,
+        input.name,
+        {
+          orgId: this.ds.orgId,
+          actorUserId,
+          trackingId: job.id,
+          data: input.data,
+        },
+        { ...input.options, jobId: job.id },
+      );
+    } catch (err) {
+      await this.jobRepo.patch(job.id, {
+        status: JobStatus.FAILED,
+        error: 'The job could not be queued',
+        finishedAt: new Date(),
+      });
+      throw err;
+    }
     return job;
   }
 

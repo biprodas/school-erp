@@ -15,7 +15,7 @@ import { AuditActorType } from '../enums/audit-actor-type.enum';
  * school's deletion. Root connection only: no RLS, no app-role grant.
  */
 @Entity('platform_audit_logs')
-@Index('idx_platform_audit_logs_created', ['createdAt'])
+@Index('idx_platform_audit_logs_created', ['createdAt', 'seq'])
 @Index('idx_platform_audit_logs_org', ['orgId', 'createdAt'])
 @Index('idx_platform_audit_logs_actor', ['actorUserId', 'createdAt'])
 @Index('idx_platform_audit_logs_action', ['action', 'createdAt'])
@@ -62,6 +62,27 @@ export class PlatformAuditLog {
   @Column({ name: 'impersonator_id', type: 'uuid', nullable: true })
   impersonatorId: string | null;
 
-  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
+  /**
+   * `clock_timestamp()`, not `now()`: `now()` is the transaction start, so
+   * every row of one transaction would share it.
+   */
+  @CreateDateColumn({
+    name: 'created_at',
+    type: 'timestamptz',
+    default: () => 'clock_timestamp()',
+  })
   createdAt: Date;
+
+  /**
+   * Insertion order, the tie-breaker after `createdAt` so paging is stable
+   * when two rows share a timestamp. A bigint, so pg returns it as a string.
+   */
+  @Column({
+    type: 'bigint',
+    generated: 'identity',
+    generatedIdentity: 'ALWAYS',
+    insert: false,
+    update: false,
+  })
+  seq: string;
 }

@@ -26,7 +26,11 @@ export interface TeachingAssignments {
   subjects: SubjectAssignmentRef[];
 }
 
-const NONE: TeachingAssignments = { classSections: [], subjects: [] };
+/** A fresh empty result, so callers can't mutate a shared one. */
+const noAssignments = (): TeachingAssignments => ({
+  classSections: [],
+  subjects: [],
+});
 
 /**
  * Read-only view of who teaches what, for other modules (`AccessScope`).
@@ -49,9 +53,9 @@ export class TeachingService {
   async activeAssignmentsForUser(userId: string): Promise<TeachingAssignments> {
     // Sequential on purpose: every query shares the request's QueryRunner.
     const employee = await this.employeeService.findByUserId(userId);
-    if (!employee) return NONE;
+    if (!employee) return noAssignments();
     const year = await this.academicYearService.findCurrent();
-    if (!year) return NONE;
+    if (!year) return noAssignments();
 
     const classTeachers = await this.classTeacherRepo.findByEmployee(
       employee.id,

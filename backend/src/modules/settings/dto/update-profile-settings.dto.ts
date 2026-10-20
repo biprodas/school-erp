@@ -3,6 +3,7 @@ import {
   IsBoolean,
   IsEmail,
   IsInt,
+  IsObject,
   IsOptional,
   IsString,
   IsUrl,
@@ -13,7 +14,6 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator';
-import { OmitOrValidate } from './settings-validators';
 
 const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
 
@@ -31,10 +31,10 @@ export class ColorSettingsDto {
 }
 
 export class LetterheadSettingsDto {
-  @OmitOrValidate() @IsBoolean() showLogo?: boolean;
-  @OmitOrValidate() @IsBoolean() showAddress?: boolean;
-  @OmitOrValidate() @IsBoolean() showContact?: boolean;
-  @OmitOrValidate() @IsBoolean() showEiin?: boolean;
+  @IsBoolean() showLogo?: boolean;
+  @IsBoolean() showAddress?: boolean;
+  @IsBoolean() showContact?: boolean;
+  @IsBoolean() showEiin?: boolean;
   @IsOptional() @IsString() @MaxLength(200) tagline?: string | null;
   @IsOptional() @IsString() @MaxLength(300) footerText?: string | null;
 }
@@ -43,7 +43,7 @@ export class LetterheadSettingsDto {
 export class UpdateProfileSettingsDto {
   @IsOptional() @IsString() @MaxLength(150) nameBn?: string | null;
 
-  @OmitOrValidate()
+  @IsObject()
   @ValidateNested()
   @Type(() => AddressSettingsDto)
   address?: AddressSettingsDto;
@@ -67,12 +67,12 @@ export class UpdateProfileSettingsDto {
   /** A file uploaded through `POST /settings/files/signature`, or null. */
   @IsOptional() @IsUUID() principalSignatureFileId?: string | null;
 
-  @OmitOrValidate()
+  @IsObject()
   @ValidateNested()
   @Type(() => ColorSettingsDto)
   colors?: ColorSettingsDto;
 
-  @OmitOrValidate()
+  @IsObject()
   @ValidateNested()
   @Type(() => LetterheadSettingsDto)
   letterhead?: LetterheadSettingsDto;

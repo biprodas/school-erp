@@ -19,22 +19,26 @@ export interface AuditEntry {
   actorType?: AuditActorType;
 }
 
-/** Key words never written to the log, at any depth (`tokenHash`, `password`). */
-const SECRET_WORDS = new Set([
+/** Keys never written to the log, at any depth (compared case-insensitively). */
+const SECRET_KEYS = new Set([
   'password',
-  'pass',
+  'passwordhash',
   'secret',
-  'token',
-  'hash',
   'otp',
+  'token',
+  'refreshtoken',
+  'accesstoken',
 ]);
 
+/**
+ * Suffixes that mark a secret, either case on the first letter: `resetToken`,
+ * `refresh_token`, `tokenHash`, `client_secret`. Exact names and suffixes only, so `passMark`,
+ * `mustChangePassword` and `passwordChangedAt` are kept.
+ */
+const SECRET_SUFFIX = /(?:[Tt]oken|[Hh]ash|[Ss]ecret)$/;
+
 function isSecretKey(key: string): boolean {
-  return key
-    .replace(/([a-z0-9])([A-Z])/g, '$1_$2')
-    .toLowerCase()
-    .split(/[^a-z0-9]+/)
-    .some((word) => SECRET_WORDS.has(word));
+  return SECRET_KEYS.has(key.toLowerCase()) || SECRET_SUFFIX.test(key);
 }
 
 /** Copies a value without secret-looking keys (`password`, `tokenHash`, …). */
@@ -51,10 +55,11 @@ export function redactSecrets<T>(value: T): T {
 }
 
 /**
- * The row columns for an entry, given the request context. A known actor
- * gets `signedInType` (`user` in a school, `platform` on the platform log);
- * an explicit `null` actor is an anonymous user; no actor at all is the
- * system (a job without an actor).
+ * The row columns for an entry, given the request context. The signed-in
+ * actor gets `signedInType` (`user` in a school, `platform` for a
+ * super-admin on the platform log); an actor named by the caller (sign-in
+ * flows) or an explicit `null` one (anonymous) is a `user`; no actor at all
+ * is the system (a job without an actor). `entry.actorType` wins over all.
  */
 export function auditRow(
   entry: AuditEntry,
@@ -65,9 +70,9 @@ export function auditRow(
     entry.actorUserId !== undefined ? entry.actorUserId : ctx.userId;
   const actorType =
     entry.actorType ??
-    (actorUserId
+    (actorUserId && actorUserId === ctx.userId
       ? signedInType
-      : entry.actorUserId === null
+      : actorUserId || entry.actorUserId === null
         ? AuditActorType.USER
         : AuditActorType.SYSTEM);
   return {

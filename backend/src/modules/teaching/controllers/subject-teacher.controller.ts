@@ -5,6 +5,7 @@ import {
   Get,
   Param,
   ParseUUIDPipe,
+  Patch,
   Post,
   Query,
   UseGuards,
@@ -16,6 +17,7 @@ import { PERMISSIONS } from '~/modules/rbac/permissions.catalog';
 import { RequirePermissions } from '~/modules/rbac/decorators/require-permissions.decorator';
 import { CreateSubjectTeacherDto } from '../dto/create-subject-teacher.dto';
 import { FilterSubjectTeacherDto } from '../dto/filter-subject-teacher.dto';
+import { UpdateSubjectTeacherDto } from '../dto/update-subject-teacher.dto';
 import { SubjectTeacherService } from '../services/subject-teacher.service';
 import { ResponseMessage } from '~/common/decorators/response.decorators';
 
@@ -50,6 +52,16 @@ export class SubjectTeacherController {
   @ResponseMessage('Subject teacher found')
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.subjectTeacherService.findById(id);
+  }
+
+  @Patch(':id')
+  @RequirePermissions(PERMISSIONS.SUBJECT_TEACHERS_UPDATE)
+  @ResponseMessage('Subject teacher updated')
+  update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateSubjectTeacherDto,
+  ) {
+    return this.subjectTeacherService.update(id, dto);
   }
 
   @Delete(':id')

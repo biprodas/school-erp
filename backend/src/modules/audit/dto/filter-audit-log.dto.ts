@@ -1,5 +1,5 @@
 import {
-  IsDateString,
+  IsISO8601,
   IsOptional,
   IsString,
   IsUUID,
@@ -28,14 +28,22 @@ export class FilterAuditLogDto extends PaginationQueryDto {
   @IsUUID()
   actorUserId?: string;
 
-  /** Inclusive lower bound (ISO 8601). */
+  /**
+   * Inclusive lower bound, an instant in ISO 8601
+   * (`2026-10-01T06:00:00+06:00`). A date alone means midnight UTC, not the
+   * school's local midnight. Impossible dates (`2026-02-30`) are rejected.
+   */
   @IsOptional()
-  @IsDateString()
+  @IsISO8601({ strict: true })
   from?: string;
 
-  /** Exclusive upper bound (ISO 8601). */
+  /**
+   * Exclusive upper bound, an instant in ISO 8601. A date alone means
+   * midnight UTC at the start of that day, so `to=2026-10-02` ends with
+   * October 1st (UTC).
+   */
   @IsOptional()
-  @IsDateString()
+  @IsISO8601({ strict: true })
   to?: string;
 }
 

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { TenantConnectionService } from '~/tenancy/tenant-connection.service';
 import { OrgSettings } from '../entities/org-settings.entity';
-import { settingsCache } from '../settings.cache';
+import { deepFreeze, settingsCache } from '../settings.cache';
 import { withDefaults } from '../settings.defaults';
 import type { OrgSettingsValues } from '../settings.types';
 
@@ -18,13 +18,14 @@ export class OrgSettingsReader {
   async get(orgId: string): Promise<OrgSettingsValues> {
     const cached = settingsCache.get(orgId);
     if (cached) return cached;
+    const generation = settingsCache.generation(orgId);
     const ds = await this.connections.getScopedConnection(orgId);
     try {
       const row = await ds
         .getRepository(OrgSettings)
         .findOne({ where: { orgId } });
-      const value = withDefaults(row ?? {});
-      settingsCache.set(orgId, value);
+      const value = deepFreeze(withDefaults(row ?? {}));
+      settingsCache.set(orgId, value, generation);
       return value;
     } finally {
       await ds.release();

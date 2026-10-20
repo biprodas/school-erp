@@ -247,7 +247,8 @@ export class PlatformAuthService {
     const { user, record } = await this.resolveVerification(rawToken);
 
     user.emailVerifiedAt = new Date();
-    if (user.status === UserStatus.PENDING) {
+    const activates = user.status === UserStatus.PENDING;
+    if (activates) {
       user.status = UserStatus.ACTIVE;
     }
     await this.userRepository.save(user);
@@ -255,6 +256,15 @@ export class PlatformAuthService {
     record.usedAt = new Date();
     await this.tokenRepo.save(record);
 
+    if (activates) {
+      await this.audit.record({
+        action: AUDIT_ACTIONS.ACCOUNT_ACTIVATED,
+        entityType: 'user',
+        entityId: user.id,
+        actorUserId: user.id,
+        after: { method: 'email_verification' },
+      });
+    }
     return this.startSession(user, client, 'email_verification');
   }
 

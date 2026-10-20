@@ -18,7 +18,8 @@ export interface PlatformAuditEntry extends AuditEntry {
 /**
  * Writes the platform audit log through the root connection. Pass the
  * transaction's `manager` to commit the row with the change; without one it
- * commits at once. A signed-in actor is recorded as `platform`.
+ * commits at once. A signed-in super-admin is recorded as `platform`, other
+ * actors as `user`, and work without an actor as `system`.
  */
 @Injectable()
 export class PlatformAuditService {
@@ -33,7 +34,14 @@ export class PlatformAuditService {
     manager?: EntityManager,
   ): Promise<void> {
     const { orgId, ...rest } = entry;
-    const row = auditRow(rest, this.context.current(), AuditActorType.PLATFORM);
+    const ctx = this.context.current();
+    // Only a signed-in super-admin acts as `platform`; anyone else signed in
+    // to the platform realm (a school user managing their account) is a
+    // `user`. Sign-in flows name their actor, who isn't signed in yet: `user`.
+    const signedInType = ctx.isAdmin
+      ? AuditActorType.PLATFORM
+      : AuditActorType.USER;
+    const row = auditRow(rest, ctx, signedInType);
     const repo = manager ? manager.getRepository(PlatformAuditLog) : this.repo;
     await repo.save(repo.create({ ...row, orgId: orgId ?? null }));
   }
@@ -47,7 +55,8 @@ export class PlatformAuditService {
     const limit = filter.limit ?? DEFAULT_PAGE_SIZE;
     const [items, total] = await this.repo.findAndCount({
       where,
-      order: { createdAt: 'DESC' },
+      // `seq` breaks ties between rows written at the same instant.
+      order: { createdAt: 'DESC', seq: 'DESC' },
       skip: (page - 1) * limit,
       take: limit,
     });

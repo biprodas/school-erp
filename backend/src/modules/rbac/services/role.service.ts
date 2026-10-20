@@ -1,3 +1,4 @@
+import { isDeepStrictEqual } from 'node:util';
 import {
   BadRequestException,
   ConflictException,
@@ -173,6 +174,10 @@ export class RoleService {
       role.scope = dto.scope;
     }
     await this.assertCanGrant(role.permissions, role.scope);
+
+    // Nothing changed (same values, or permissions only reordered): no write
+    // and no `role.updated` row.
+    if (isDeepStrictEqual(roleSnapshot(role), before)) return role;
 
     const saved = await this.roleRepo.save(role);
     await this.recordRole(AUDIT_ACTIONS.ROLE_UPDATED, saved, before);

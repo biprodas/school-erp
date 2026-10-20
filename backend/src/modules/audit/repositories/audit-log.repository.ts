@@ -21,6 +21,11 @@ export class AuditLogRepository extends BaseTenantRepository<AuditLog> {
     where: FindOptionsWhere<AuditLog>,
     page: PaginationQueryDto,
   ): Promise<Paginated<AuditLog>> {
-    return this.findPage({ where, order: { createdAt: 'DESC' } }, page);
+    // `seq` breaks ties between rows written at the same instant, so OFFSET
+    // paging neither repeats nor skips rows.
+    return this.findPage(
+      { where, order: { createdAt: 'DESC', seq: 'DESC' } },
+      page,
+    );
   }
 }

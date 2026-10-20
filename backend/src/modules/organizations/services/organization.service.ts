@@ -21,6 +21,7 @@ import {
 } from '~/tenancy/tenant-slug.cache';
 import { UserRole } from '~/modules/rbac/entities/user-role.entity';
 import { RbacSeederService } from '~/modules/rbac/services/rbac-seeder.service';
+import { OrgSettingsSeeder } from '~/modules/settings/services/org-settings.seeder';
 import { SessionService } from '~/modules/auth/services/session.service';
 import { OwnerProvisioningService } from '~/modules/auth/services/owner-provisioning.service';
 import { CreateOrganizationDto } from '../dto/create-organization.dto';
@@ -63,6 +64,7 @@ export class OrganizationService {
     @InjectDataSource()
     private dataSource: DataSource,
     private rbacSeederService: RbacSeederService,
+    private orgSettingsSeeder: OrgSettingsSeeder,
     private userService: UserService,
     private ownerProvisioning: OwnerProvisioningService,
     private platformAudit: PlatformAuditService,
@@ -77,8 +79,8 @@ export class OrganizationService {
    * - Admin caller without `dto.ownerUserId`: the organization is created
    *   with no membership; assign an owner later via `transferOwnership`.
    *
-   * Everything (org row, system roles, owner membership + activation token)
-   * is written in one transaction, so a failure leaves nothing behind. The
+   * Everything (org row, system roles, settings row, owner membership +
+   * activation token) is written in one transaction, so a failure leaves nothing behind. The
    * activation email is sent after commit.
    */
   async createOrganization(
@@ -115,6 +117,8 @@ export class OrganizationService {
 
         // Seed the standard school roles for the new organization.
         await this.rbacSeederService.seedSystemRoles(manager, organization.id);
+        // Its settings row, so settings writes only ever update (and lock) it.
+        await this.orgSettingsSeeder.createRow(manager, organization.id);
 
         let token: string | undefined;
         if (owner) {

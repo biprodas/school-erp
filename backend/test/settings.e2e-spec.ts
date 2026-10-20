@@ -16,7 +16,7 @@ interface SettingsBody {
   data: {
     organization: { name: string; eiin: string | null };
     locale: { language: string; weekendDays: string[]; timeZone: string };
-    fees: { billingDay: number };
+    fees: { billingDay: number; graceDays: number };
   };
 }
 
@@ -110,6 +110,34 @@ describe('Settings (e2e)', () => {
     expect((other.body as SettingsBody).data.locale.language).toBe('en');
   });
 
+  it('stores only what the school changed', async () => {
+    const [row] = await rootDs.query<{ locale: unknown; fees: unknown }[]>(
+      'SELECT locale, fees FROM org_settings WHERE org_id = $1',
+      [orgA.id],
+    );
+    expect(row.locale).toEqual({
+      language: 'bn',
+      numerals: 'bn',
+      weekendDays: ['friday', 'saturday'],
+    });
+    expect(row.fees).toBeNull();
+  });
+
+  it('serializes concurrent changes without losing either', async () => {
+    // These schools were inserted directly, without the row that
+    // organization creation (or the back-fill migration) adds, so the first
+    // writes also exercise the conflict-free create.
+    await Promise.all([
+      as(orgB).patch('/api/settings/fees', { billingDay: 5 }).expect(200),
+      as(orgB).patch('/api/settings/fees', { graceDays: 3 }).expect(200),
+    ]);
+    const res = await as(orgB).get('/api/settings').expect(200);
+    expect((res.body as SettingsBody).data.fees).toMatchObject({
+      billingDay: 5,
+      graceDays: 3,
+    });
+  });
+
   it('rejects invalid and unknown values', async () => {
     await as(orgA).patch('/api/settings/fees', { billingDay: 31 }).expect(400);
     await as(orgA)
@@ -117,6 +145,11 @@ describe('Settings (e2e)', () => {
       .expect(400);
     await as(orgA)
       .patch('/api/settings/results', { verifyStep: true, extra: 1 })
+      .expect(400);
+    // A nested object can't be replaced by an array.
+    await as(orgA).patch('/api/settings/profile', { address: [] }).expect(400);
+    await as(orgA)
+      .patch('/api/settings/notifications', { events: { absent: [{}] } })
       .expect(400);
   });
 

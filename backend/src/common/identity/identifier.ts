@@ -12,13 +12,16 @@ export function normalizeEmail(input: string): string {
 /**
  * E.164 form of a phone number, or null when it isn't one we accept.
  * Bangladesh mobiles may be typed locally (`01712345678`), with the country
- * code (`8801712345678`, `+880 1712-345678`); other countries need the full
- * `+<country><number>` form.
+ * code (`8801712345678`, `+880 1712-345678`), including the common
+ * `+880 01712…` mix of both; other countries need the full
+ * `+<country><number>` form. Any other `+880…` is rejected rather than
+ * accepted as a generic international number.
  */
 export function normalizePhone(input: string): string | null {
   const compact = input.trim().replace(/[\s\-().]/g, '');
-  const bd = /^(?:\+?880|0)?(1[3-9]\d{8})$/.exec(compact);
+  const bd = /^(?:\+?880)?0?(1[3-9]\d{8})$/.exec(compact);
   if (bd) return `+880${bd[1]}`;
+  if (compact.startsWith('+880')) return null;
   if (/^\+[1-9]\d{7,14}$/.test(compact)) return compact;
   return null;
 }

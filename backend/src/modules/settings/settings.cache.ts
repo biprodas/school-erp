@@ -9,9 +9,30 @@ const cache = new Map<
 >();
 
 /**
+ * Bumped by every invalidation: a reader takes the generation before its
+ * database read and only caches what it read if no write invalidated the
+ * school in between (otherwise it could cache the old row for a full TTL).
+ */
+let counter = 0;
+let epoch = 0;
+const generations = new Map<string, number>();
+const currentGeneration = (orgId: string): number =>
+  generations.get(orgId) ?? epoch;
+
+/** Freezes `value` and everything in it, so shared cached objects stay as read. */
+export function deepFreeze<T>(value: T): T {
+  if (typeof value === 'object' && value !== null && !Object.isFrozen(value)) {
+    for (const child of Object.values(value)) deepFreeze(child);
+    Object.freeze(value);
+  }
+  return value;
+}
+
+/**
  * In-memory settings per school, shared by every request and singleton in
  * the process. A write invalidates its own process at once; other processes
- * pick the change up within {@link SETTINGS_CACHE_TTL_MS}.
+ * pick the change up within {@link SETTINGS_CACHE_TTL_MS}. Cached values are
+ * deep-frozen.
  */
 export const settingsCache = {
   get(orgId: string): OrgSettingsValues | undefined {
@@ -23,11 +44,24 @@ export const settingsCache = {
     }
     return hit.value;
   },
-  set(orgId: string, value: OrgSettingsValues): void {
-    cache.set(orgId, { value, expiresAt: Date.now() + SETTINGS_CACHE_TTL_MS });
+  /** Take this before reading the row, and pass it to {@link set}. */
+  generation: currentGeneration,
+  /** Caches `value` unless the school was invalidated since `generation`. */
+  set(orgId: string, value: OrgSettingsValues, generation: number): void {
+    if (currentGeneration(orgId) !== generation) return;
+    cache.set(orgId, {
+      value: deepFreeze(value),
+      expiresAt: Date.now() + SETTINGS_CACHE_TTL_MS,
+    });
   },
   invalidate(orgId?: string): void {
-    if (orgId) cache.delete(orgId);
-    else cache.clear();
+    if (orgId) {
+      cache.delete(orgId);
+      generations.set(orgId, ++counter);
+    } else {
+      cache.clear();
+      generations.clear();
+      epoch = ++counter;
+    }
   },
 };

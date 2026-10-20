@@ -14,8 +14,9 @@ type Stored<K extends keyof OrgSettingsValues> = Partial<
 > | null;
 
 /**
- * One row per school, created on the first settings change. Each section is
- * a jsonb column holding what the school saved; null means "all defaults".
+ * One row per school, created with the organization (`OrgSettingsSeeder`).
+ * Each section is a jsonb column holding only what the school changed; null
+ * means "all defaults".
  * Read through `SettingsService`, which completes it with the defaults.
  */
 @Entity('org_settings')

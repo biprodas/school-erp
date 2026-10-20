@@ -2,7 +2,10 @@ import { NOTIFICATION_EVENTS, OrgSettingsValues } from './settings.types';
 
 const channels = (sms = false) => ({ inApp: true, email: true, sms });
 
-/** What a school starts with; every stored value is merged over these. */
+/**
+ * What a school starts with. `org_settings` stores only what the school
+ * changed, and reads merge that over these.
+ */
 export const DEFAULT_SETTINGS: OrgSettingsValues = {
   profile: {
     nameBn: null,
@@ -68,12 +71,17 @@ const isPlainObject = (v: unknown): v is Record<string, unknown> =>
 
 /**
  * `patch` over `base`: plain objects merge key by key, anything else
- * (arrays, scalars, null) replaces. `undefined` keeps the base value. Keys
- * not in `base` are dropped, so a stale stored field never resurfaces. The
- * result never shares objects with `base` (the defaults stay untouched).
+ * (arrays, scalars, null) replaces. `undefined` keeps the base value, and so
+ * does anything that isn't a plain object where `base` has one (a nested
+ * object is never replaced by an array, scalar or null). Keys not in `base`
+ * are dropped, so a stale stored field never resurfaces. The result never
+ * shares objects with `base` (the defaults stay untouched).
  */
 export function mergeSettings<T>(base: T, patch: unknown): T {
   if (patch === undefined) return structuredClone(base);
+  if (isPlainObject(base) && !isPlainObject(patch)) {
+    return structuredClone(base);
+  }
   if (!isPlainObject(base) || !isPlainObject(patch)) {
     return structuredClone(patch) as T;
   }
@@ -82,6 +90,37 @@ export function mergeSettings<T>(base: T, patch: unknown): T {
     out[key] = mergeSettings(base[key], key in patch ? patch[key] : undefined);
   }
   return out as T;
+}
+
+/**
+ * A validated section patch over what the school stored before (its
+ * overrides, not the full section): nested objects merge, other values
+ * replace, `undefined` leaves the stored value (or its absence) alone, and
+ * `null` is stored, since for a nullable field it means "cleared" rather
+ * than "default". Keys the defaults don't know are dropped. Only what the
+ * school changed is kept, so later changes to the defaults still reach it.
+ */
+export function mergeOverrides(
+  shape: unknown,
+  stored: unknown,
+  patch: unknown,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = isPlainObject(stored)
+    ? structuredClone(stored)
+    : {};
+  if (!isPlainObject(shape) || !isPlainObject(patch)) return out;
+  for (const key of Object.keys(patch)) {
+    const value = patch[key];
+    if (value === undefined || !(key in shape)) continue;
+    if (isPlainObject(shape[key])) {
+      // Nested objects only ever merge (see `mergeSettings`).
+      if (!isPlainObject(value)) continue;
+      out[key] = mergeOverrides(shape[key], out[key], value);
+    } else {
+      out[key] = structuredClone(value);
+    }
+  }
+  return out;
 }
 
 /** Stored sections (null = never saved) completed with the defaults. */

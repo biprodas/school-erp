@@ -12,6 +12,7 @@ import { SectionService } from '~/modules/sections/section.service';
 import { SubjectService } from '~/modules/subjects/subject.service';
 import { CreateSubjectTeacherDto } from '../dto/create-subject-teacher.dto';
 import { FilterSubjectTeacherDto } from '../dto/filter-subject-teacher.dto';
+import { UpdateSubjectTeacherDto } from '../dto/update-subject-teacher.dto';
 import { SubjectTeacher } from '../entities/subject-teacher.entity';
 import { SubjectTeacherRepository } from '../repositories/subject-teacher.repository';
 import { Paginated } from '~/common/dto/paginated.dto';
@@ -78,6 +79,43 @@ export class SubjectTeacherService {
       academicYearId: dto.academicYearId,
     });
     return this.findById(created.id);
+  }
+
+  async update(
+    id: string,
+    dto: UpdateSubjectTeacherDto,
+  ): Promise<SubjectTeacher> {
+    const entity = await this.findById(id);
+    if (dto.classId) await this.classService.findById(dto.classId);
+    if (dto.sectionId) await this.sectionService.findById(dto.sectionId);
+    if (dto.subjectId) await this.subjectService.findById(dto.subjectId);
+    if (dto.academicYearId) {
+      await this.academicYearService.findById(dto.academicYearId);
+    }
+    if (dto.employeeId) await this.employeeService.findById(dto.employeeId);
+
+    const next = {
+      classId: dto.classId ?? entity.classId,
+      sectionId: dto.sectionId ?? entity.sectionId,
+      subjectId: dto.subjectId ?? entity.subjectId,
+      employeeId: dto.employeeId ?? entity.employeeId,
+      academicYearId: dto.academicYearId ?? entity.academicYearId,
+    };
+    const existing = await this.subjectTeacherRepo.findLink(
+      next.academicYearId,
+      next.classId,
+      next.sectionId,
+      next.subjectId,
+      next.employeeId,
+    );
+    if (existing && existing.id !== id) {
+      throw new ConflictException(
+        'This subject-teacher assignment already exists',
+      );
+    }
+
+    await this.subjectTeacherRepo.updateLink(id, next);
+    return this.findById(id);
   }
 
   async remove(id: string): Promise<void> {

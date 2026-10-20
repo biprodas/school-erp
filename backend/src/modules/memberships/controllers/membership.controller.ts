@@ -10,7 +10,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { RequestContext } from '~/common/decorators/request-context.decorator';
+import { ReqContext } from '~/common/decorators/request-context.decorator';
 import { RequestContextDto } from '~/common/dto/request-context.dto';
 import { PlatformJwtAuthGuard } from '~/common/guards/platform-jwt-auth.guard';
 import { CreateMembershipDto } from '../dto/create-membership.dto';
@@ -29,7 +29,7 @@ export class MembershipController {
   @Get()
   @ResponseMessage('List of memberships')
   findAll(
-    @RequestContext() ctx: RequestContextDto,
+    @ReqContext() ctx: RequestContextDto,
     @Query() dto: FilterMembershipDto,
   ) {
     return this.membershipService.findAll(ctx, dto);
@@ -38,7 +38,7 @@ export class MembershipController {
   @Get('organization/:orgId')
   @ResponseMessage('List of memberships')
   findByOrganization(
-    @RequestContext() ctx: RequestContextDto,
+    @ReqContext() ctx: RequestContextDto,
     @Param('orgId') orgId: string,
   ) {
     return this.membershipService.findByOrgId(ctx, orgId);
@@ -47,7 +47,7 @@ export class MembershipController {
   @Get('user/:userId')
   @ResponseMessage('List of memberships')
   findByUser(
-    @RequestContext() ctx: RequestContextDto,
+    @ReqContext() ctx: RequestContextDto,
     @Param('userId') userId: string,
   ) {
     return this.membershipService.findByUserId(ctx, userId);
@@ -55,20 +55,20 @@ export class MembershipController {
 
   @Get('me')
   @ResponseMessage('List of memberships')
-  findMine(@RequestContext() ctx: RequestContextDto) {
+  findMine(@ReqContext() ctx: RequestContextDto) {
     return this.membershipService.findByUserId(ctx, ctx.user?.id ?? '');
   }
 
   @Get(':id')
   @ResponseMessage('Membership found')
-  findOne(@RequestContext() ctx: RequestContextDto, @Param('id') id: string) {
+  findOne(@ReqContext() ctx: RequestContextDto, @Param('id') id: string) {
     return this.membershipService.findById(ctx, id);
   }
 
   @Post()
   @ResponseMessage('Membership created successfully')
   async create(
-    @RequestContext() ctx: RequestContextDto,
+    @ReqContext() ctx: RequestContextDto,
     @Body() dto: CreateMembershipDto,
   ) {
     const { membership, ownerActivation } = await this.membershipService.create(
@@ -81,7 +81,7 @@ export class MembershipController {
   @Patch(':id')
   @ResponseMessage('Membership updated successfully')
   updateRole(
-    @RequestContext() ctx: RequestContextDto,
+    @ReqContext() ctx: RequestContextDto,
     @Param('id') id: string,
     @Body() dto: UpdateMembershipRoleDto,
   ) {
@@ -90,10 +90,7 @@ export class MembershipController {
 
   @Delete(':id')
   @ResponseMessage('Membership removed successfully')
-  async remove(
-    @RequestContext() ctx: RequestContextDto,
-    @Param('id') id: string,
-  ) {
+  async remove(@ReqContext() ctx: RequestContextDto, @Param('id') id: string) {
     await this.membershipService.remove(ctx, id);
   }
 }

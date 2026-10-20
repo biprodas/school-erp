@@ -34,6 +34,31 @@ describe('redactSecrets', () => {
     });
   });
 
+  it('matches exact names and suffixes, not words inside a key', () => {
+    expect(
+      redactSecrets({
+        passMark: 33,
+        mustChangePassword: true,
+        passwordChangedAt: 'x',
+        hashtag: 'keep',
+        password: 'x',
+        passwordHash: 'x',
+        tokenHash: 'x',
+        refresh_token: 'x',
+        resetToken: 'x',
+        accessToken: 'x',
+        token: 'x',
+        a: { password: 'x', b: 1 },
+      }),
+    ).toEqual({
+      passMark: 33,
+      mustChangePassword: true,
+      passwordChangedAt: 'x',
+      hashtag: 'keep',
+      a: { b: 1 },
+    });
+  });
+
   it('keeps dates and drops undefined values', () => {
     const at = new Date();
     expect(redactSecrets({ at, gone: undefined })).toEqual({ at });
@@ -75,6 +100,22 @@ describe('auditRow', () => {
       actorUserId: null,
       actorType: AuditActorType.SYSTEM,
     });
+  });
+
+  it('records an actor other than the signed-in user as a user', () => {
+    expect(
+      auditRow(
+        { ...entry, actorUserId: 'u-other' },
+        ctx(),
+        AuditActorType.PLATFORM,
+      ).actorType,
+    ).toBe(AuditActorType.USER);
+  });
+
+  it('keeps an explicit actor type', () => {
+    expect(
+      auditRow({ ...entry, actorType: AuditActorType.SYSTEM }, ctx()).actorType,
+    ).toBe(AuditActorType.SYSTEM);
   });
 
   it('uses the realm type for a signed-in actor', () => {

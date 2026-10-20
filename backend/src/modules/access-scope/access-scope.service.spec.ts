@@ -52,7 +52,6 @@ describe('AccessScope', () => {
     it('is unrestricted without reading roles or assignments', async () => {
       const scope = build({}, { userId: 'u1', isAdmin: true });
 
-      await expect(scope.can(P.STUDENTS_UPDATE)).resolves.toBe(true);
       await expect(scope.sections(P.STUDENTS_READ)).resolves.toBeNull();
       await expect(
         scope.subjectAssignments(P.STUDENTS_READ),
@@ -66,7 +65,6 @@ describe('AccessScope', () => {
     it('is unrestricted for the keys it grants', async () => {
       const scope = build({ [P.STUDENTS_READ]: RoleScope.SCHOOL });
 
-      await expect(scope.can(P.STUDENTS_READ)).resolves.toBe(true);
       await expect(scope.sections(P.STUDENTS_READ)).resolves.toBeNull();
       await expect(
         scope.canAccessSection(P.STUDENTS_READ, {
@@ -142,7 +140,6 @@ describe('AccessScope', () => {
       });
       const scope = build({ [P.STUDENTS_READ]: RoleScope.ASSIGNED });
 
-      await expect(scope.can(P.STUDENTS_READ)).resolves.toBe(true);
       await expect(scope.sections(P.STUDENTS_READ)).resolves.toEqual([]);
     });
 
@@ -177,7 +174,6 @@ describe('AccessScope', () => {
     it('denies and reaches nothing, without loading assignments', async () => {
       const scope = build({ [P.STUDENTS_READ]: RoleScope.SCHOOL });
 
-      await expect(scope.can(P.STUDENTS_DELETE)).resolves.toBe(false);
       await expect(scope.sections(P.STUDENTS_DELETE)).resolves.toEqual([]);
       await expect(
         scope.subjectAssignments(P.STUDENTS_DELETE),
@@ -191,18 +187,18 @@ describe('AccessScope', () => {
       expect(teaching.activeAssignmentsForUser).not.toHaveBeenCalled();
     });
 
-    it('denies staff keys to a portal-only role', async () => {
+    it('reaches no section with staff keys for a portal-only role', async () => {
       const scope = build({ [P.PORTAL_ACCESS]: RoleScope.SCHOOL });
 
-      await expect(scope.can(P.STUDENTS_READ)).resolves.toBe(false);
-      await expect(scope.can(P.PORTAL_ACCESS)).resolves.toBe(true);
+      await expect(scope.sections(P.STUDENTS_READ)).resolves.toEqual([]);
+      await expect(scope.sections(P.PORTAL_ACCESS)).resolves.toBeNull();
     });
   });
 
   it('refuses to answer without an authenticated user', async () => {
     const scope = build({}, null);
 
-    await expect(scope.can(P.STUDENTS_READ)).rejects.toThrow(
+    await expect(scope.sections(P.STUDENTS_READ)).rejects.toThrow(
       'without an authenticated user',
     );
   });

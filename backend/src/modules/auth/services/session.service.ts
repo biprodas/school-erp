@@ -11,6 +11,8 @@ import { UserSession } from '../entities/user-session.entity';
 
 /** How long a positive "session is active" answer is reused per process. */
 export const SESSION_CACHE_MS = 60_000;
+/** Above this many cached sessions, expired entries are swept on insert. */
+export const SESSION_CACHE_SWEEP_AT = 1_000;
 
 export interface IssuedSession {
   /** The family id: goes into access tokens as `sid`. */
@@ -129,7 +131,7 @@ export class SessionService {
         expiresAt: MoreThan(new Date()),
       },
     });
-    if (active) this.activeCache.set(sessionId, Date.now() + SESSION_CACHE_MS);
+    if (active) this.cacheActive(sessionId);
     else this.activeCache.delete(sessionId);
     return active;
   }
@@ -243,8 +245,23 @@ export class SessionService {
       lastUsedAt: now,
       expiresAt: refreshExpiresAt,
     });
-    this.activeCache.set(familyId, Date.now() + SESSION_CACHE_MS);
+    this.cacheActive(familyId);
     return { sessionId: familyId, refreshToken, refreshExpiresAt };
+  }
+
+  /**
+   * Remembers an active session for `SESSION_CACHE_MS`. Entries only expire
+   * logically, so once the map grows past `SESSION_CACHE_SWEEP_AT` the
+   * expired ones are dropped to keep it bounded by recent activity.
+   */
+  private cacheActive(sessionId: string): void {
+    const now = Date.now();
+    if (this.activeCache.size >= SESSION_CACHE_SWEEP_AT) {
+      for (const [id, until] of this.activeCache) {
+        if (until <= now) this.activeCache.delete(id);
+      }
+    }
+    this.activeCache.set(sessionId, now + SESSION_CACHE_MS);
   }
 }
 

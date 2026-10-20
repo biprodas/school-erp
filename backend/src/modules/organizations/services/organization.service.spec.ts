@@ -22,6 +22,7 @@ import { UserService } from '~/modules/users/services/user.service';
 import { UserStatus } from '~/modules/users/enums/user-status.enum';
 import { UserRole } from '~/modules/rbac/entities/user-role.entity';
 import { RbacSeederService } from '~/modules/rbac/services/rbac-seeder.service';
+import { OrgSettingsSeeder } from '~/modules/settings/services/org-settings.seeder';
 import { OwnerProvisioningService } from '~/modules/auth/services/owner-provisioning.service';
 import { RequestContextDto } from '~/common/dto/request-context.dto';
 
@@ -100,6 +101,7 @@ describe('OrganizationService', () => {
   let domainRepo: Record<string, jest.Mock>;
   let userService: Record<string, jest.Mock>;
   let rbacSeeder: Record<string, jest.Mock>;
+  let settingsSeeder: Record<string, jest.Mock>;
   let ownerProvisioning: Record<string, jest.Mock>;
   let txMembershipRepo: Record<string, jest.Mock>;
   let txUserRoleRepo: Record<string, jest.Mock>;
@@ -135,6 +137,7 @@ describe('OrganizationService', () => {
     };
 
     rbacSeeder = { seedSystemRoles: jest.fn() };
+    settingsSeeder = { createRow: jest.fn() };
     ownerProvisioning = {
       provisionOwner: jest
         .fn()
@@ -191,6 +194,7 @@ describe('OrganizationService', () => {
         },
         { provide: getDataSourceToken(), useValue: mockDataSource },
         { provide: RbacSeederService, useValue: rbacSeeder },
+        { provide: OrgSettingsSeeder, useValue: settingsSeeder },
         { provide: OwnerProvisioningService, useValue: ownerProvisioning },
         { provide: UserService, useValue: userService },
         { provide: PlatformAuditService, useValue: platformAudit },
@@ -354,6 +358,10 @@ describe('OrganizationService', () => {
       expect(result.organization.id).toBe('new-org-id');
       expect(result.ownerActivation).toBeUndefined();
       expect(rbacSeeder.seedSystemRoles).toHaveBeenCalledWith(
+        manager,
+        'new-org-id',
+      );
+      expect(settingsSeeder.createRow).toHaveBeenCalledWith(
         manager,
         'new-org-id',
       );

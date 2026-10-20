@@ -70,4 +70,16 @@ describe('TeachingService', () => {
     });
     expect(subjectTeacherRepo.findByEmployee).not.toHaveBeenCalled();
   });
+
+  it('returns a fresh empty result each time', async () => {
+    employeeService.findByUserId.mockResolvedValue(null);
+
+    const first = await service.activeAssignmentsForUser('u1');
+    first.subjects.push({ classId: 'c', sectionId: 's', subjectId: 'x' });
+
+    await expect(service.activeAssignmentsForUser('u1')).resolves.toEqual({
+      classSections: [],
+      subjects: [],
+    });
+  });
 });

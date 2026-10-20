@@ -13,7 +13,7 @@ import {
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { AUTH_THROTTLE } from '~/common/throttling/throttle.constants';
-import { RequestContext } from '~/common/decorators/request-context.decorator';
+import { ReqContext } from '~/common/decorators/request-context.decorator';
 import { RequestContextDto } from '~/common/dto/request-context.dto';
 import { PlatformJwtAuthGuard } from '~/common/guards/platform-jwt-auth.guard';
 import { PlatformLoginDto } from '../dto/platform-login.dto';
@@ -70,7 +70,7 @@ export class PlatformAuthController {
   @UseGuards(PlatformJwtAuthGuard)
   @AllowPendingPasswordChange()
   @ResponseMessage('Logged out.')
-  async logout(@RequestContext() ctx: RequestContextDto) {
+  async logout(@ReqContext() ctx: RequestContextDto) {
     await this.platformAuthService.logout(ctx.sessionId!);
     return {};
   }
@@ -79,7 +79,7 @@ export class PlatformAuthController {
   @Get('sessions')
   @UseGuards(PlatformJwtAuthGuard)
   @ResponseMessage('Active sessions.')
-  listSessions(@RequestContext() ctx: RequestContextDto) {
+  listSessions(@ReqContext() ctx: RequestContextDto) {
     return this.platformAuthService.listSessions(ctx.userId!, ctx.sessionId!);
   }
 
@@ -87,7 +87,7 @@ export class PlatformAuthController {
   @UseGuards(PlatformJwtAuthGuard)
   @ResponseMessage('Session ended.')
   async revokeSession(
-    @RequestContext() ctx: RequestContextDto,
+    @ReqContext() ctx: RequestContextDto,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
     await this.platformAuthService.revokeSession(ctx.userId!, id);
@@ -100,7 +100,7 @@ export class PlatformAuthController {
   @UseGuards(PlatformJwtAuthGuard)
   @AllowPendingPasswordChange()
   @ResponseMessage('Logged out everywhere.')
-  async logoutEverywhere(@RequestContext() ctx: RequestContextDto) {
+  async logoutEverywhere(@ReqContext() ctx: RequestContextDto) {
     await this.platformAuthService.logoutEverywhere(ctx.userId!);
     return {};
   }
@@ -158,7 +158,7 @@ export class PlatformAuthController {
   @AllowPendingPasswordChange()
   @ResponseMessage('Password changed.')
   changePassword(
-    @RequestContext() ctx: RequestContextDto,
+    @ReqContext() ctx: RequestContextDto,
     @Body() dto: ChangePasswordDto,
   ) {
     return this.platformAuthService.changePassword(
@@ -175,7 +175,7 @@ export class PlatformAuthController {
   @UseGuards(PlatformJwtAuthGuard)
   @ResponseMessage('Sign-in code issued.')
   issueHandoff(
-    @RequestContext() ctx: RequestContextDto,
+    @ReqContext() ctx: RequestContextDto,
     @Body() dto: IssueHandoffDto,
   ) {
     return this.platformAuthService.issueHandoff(ctx.userId!, dto.orgId);
@@ -185,7 +185,7 @@ export class PlatformAuthController {
   @UseGuards(PlatformJwtAuthGuard)
   @AllowPendingPasswordChange()
   @ResponseMessage('User found.')
-  getProfile(@RequestContext() ctx: RequestContextDto) {
+  getProfile(@ReqContext() ctx: RequestContextDto) {
     return this.platformAuthService.getProfile(ctx.userId!);
   }
 }

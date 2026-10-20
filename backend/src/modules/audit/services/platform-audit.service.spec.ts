@@ -9,9 +9,11 @@ describe('PlatformAuditService', () => {
   let service: PlatformAuditService;
   let repo: { create: jest.Mock; save: jest.Mock; findAndCount: jest.Mock };
   let userId: string | null;
+  let isAdmin: boolean;
 
   beforeEach(() => {
     userId = 'super-1';
+    isAdmin = true;
     repo = {
       create: jest.fn((v: object) => v),
       save: jest.fn(),
@@ -21,7 +23,7 @@ describe('PlatformAuditService', () => {
       current: () => ({
         orgId: null,
         userId,
-        isAdmin: true,
+        isAdmin,
         sessionId: null,
         ip: '192.0.2.1',
         userAgent: 'jest',
@@ -34,7 +36,7 @@ describe('PlatformAuditService', () => {
     );
   });
 
-  it('records a signed-in actor as platform, with the school concerned', async () => {
+  it('records a signed-in super-admin as platform, with the school concerned', async () => {
     await service.record({
       action: AUDIT_ACTIONS.ORGANIZATION_UPDATED,
       orgId: 'org-9',
@@ -48,6 +50,45 @@ describe('PlatformAuditService', () => {
         actorUserId: 'super-1',
         actorType: AuditActorType.PLATFORM,
         requestId: 'req-p',
+      }),
+    );
+  });
+
+  it('records another signed-in platform user as a user', async () => {
+    userId = 'member-1';
+    isAdmin = false;
+    await service.record({ action: AUDIT_ACTIONS.LOGOUT });
+
+    expect(repo.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorUserId: 'member-1',
+        actorType: AuditActorType.USER,
+      }),
+    );
+  });
+
+  it('records a sign-in flow actor (nobody signed in) as a user', async () => {
+    userId = null;
+    isAdmin = false;
+    await service.record({ action: AUDIT_ACTIONS.LOGIN, actorUserId: 'u-2' });
+
+    expect(repo.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorUserId: 'u-2',
+        actorType: AuditActorType.USER,
+      }),
+    );
+  });
+
+  it('records work without an actor as the system', async () => {
+    userId = null;
+    isAdmin = false;
+    await service.record({ action: AUDIT_ACTIONS.ORGANIZATION_UPDATED });
+
+    expect(repo.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorUserId: null,
+        actorType: AuditActorType.SYSTEM,
       }),
     );
   });
@@ -92,7 +133,7 @@ describe('PlatformAuditService', () => {
 
     expect(repo.findAndCount).toHaveBeenCalledWith({
       where: { orgId: 'org-9' },
-      order: { createdAt: 'DESC' },
+      order: { createdAt: 'DESC', seq: 'DESC' },
       skip: 10,
       take: 5,
     });

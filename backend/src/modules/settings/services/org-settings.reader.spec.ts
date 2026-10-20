@@ -37,4 +37,17 @@ describe('OrgSettingsReader', () => {
     await expect(reader.get('org-2')).rejects.toThrow('db down');
     expect(release).toHaveBeenCalled();
   });
+
+  it('does not cache a row read before a write invalidated the school', async () => {
+    findOne.mockImplementationOnce(() => {
+      // A settings write commits while this read is in flight.
+      settingsCache.invalidate('org-3');
+      return Promise.resolve(null);
+    });
+    await reader.get('org-3');
+
+    findOne.mockResolvedValue({ fees: { billingDay: 5 } });
+    expect((await reader.get('org-3')).fees.billingDay).toBe(5);
+    expect(Object.isFrozen((await reader.get('org-3')).fees)).toBe(true);
+  });
 });

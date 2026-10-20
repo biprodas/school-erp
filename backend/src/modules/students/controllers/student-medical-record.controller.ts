@@ -36,8 +36,12 @@ export class StudentMedicalRecordController {
     return this.medicalService.getForStudent(studentId);
   }
 
+  // Upsert: the first save creates the record, so either key is enough.
   @Put()
-  @RequirePermissions(PERMISSIONS.STUDENT_MEDICAL_UPDATE)
+  @RequirePermissions(
+    PERMISSIONS.STUDENT_MEDICAL_CREATE,
+    PERMISSIONS.STUDENT_MEDICAL_UPDATE,
+  )
   @ResponseMessage('Medical record saved')
   upsert(
     @Param('studentId', ParseUUIDPipe) studentId: string,
