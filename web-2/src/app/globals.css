@@ -1,0 +1,151 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+    --font-heading: var(--font-sans);
+    --font-bangla: var(--font-bangla);
+    --color-brand: var(--brand);
+    --color-brand-foreground: var(--brand-foreground);
+    --color-highlight: var(--highlight);
+    --color-highlight-foreground: var(--highlight-foreground);
+    --font-sans: var(--font-sans);
+    --color-sidebar-ring: var(--sidebar-ring);
+    --color-sidebar-border: var(--sidebar-border);
+    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    --color-sidebar-primary: var(--sidebar-primary);
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar: var(--sidebar);
+    --color-chart-5: var(--chart-5);
+    --color-chart-4: var(--chart-4);
+    --color-chart-3: var(--chart-3);
+    --color-chart-2: var(--chart-2);
+    --color-chart-1: var(--chart-1);
+    --color-ring: var(--ring);
+    --color-input: var(--input);
+    --color-border: var(--border);
+    --color-destructive: var(--destructive);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-accent: var(--accent);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-muted: var(--muted);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-secondary: var(--secondary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-primary: var(--primary);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-popover: var(--popover);
+    --color-card-foreground: var(--card-foreground);
+    --color-card: var(--card);
+    --color-foreground: var(--foreground);
+    --color-background: var(--background);
+    --radius-sm: calc(var(--radius) * 0.6);
+    --radius-md: calc(var(--radius) * 0.8);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) * 1.4);
+    --radius-2xl: calc(var(--radius) * 1.8);
+    --radius-3xl: calc(var(--radius) * 2.2);
+    --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+    /* Kampasy brand: deep school green, warm paper neutrals, amber highlight. */
+    --background: oklch(0.968 0.005 106);
+    --foreground: oklch(0.24 0.035 165);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.24 0.035 165);
+    --popover: oklch(1 0 0);
+    --popover-foreground: oklch(0.24 0.035 165);
+    --primary: oklch(0.39 0.068 163);
+    --primary-foreground: oklch(0.985 0.005 106);
+    --secondary: oklch(0.935 0.014 160);
+    --secondary-foreground: oklch(0.33 0.055 163);
+    --muted: oklch(0.945 0.007 120);
+    --muted-foreground: oklch(0.47 0.025 160);
+    --accent: oklch(0.935 0.014 160);
+    --accent-foreground: oklch(0.33 0.055 163);
+    --destructive: oklch(0.577 0.2 27);
+    --border: oklch(0.885 0.01 140);
+    --input: oklch(0.86 0.012 140);
+    --ring: oklch(0.55 0.07 163);
+    --brand: oklch(0.33 0.052 166);
+    --brand-foreground: oklch(0.975 0.005 106);
+    --highlight: oklch(0.8 0.135 75);
+    --highlight-foreground: oklch(0.25 0.04 70);
+    --chart-1: oklch(0.39 0.068 163);
+    --chart-2: oklch(0.86 0.03 160);
+    --chart-3: oklch(0.8 0.135 75);
+    --chart-4: oklch(0.6 0.06 163);
+    --chart-5: oklch(0.47 0.025 160);
+    --radius: 0.75rem;
+    --sidebar: oklch(0.985 0.003 106);
+    --sidebar-foreground: oklch(0.24 0.035 165);
+    --sidebar-primary: oklch(0.39 0.068 163);
+    --sidebar-primary-foreground: oklch(0.985 0.005 106);
+    --sidebar-accent: oklch(0.935 0.014 160);
+    --sidebar-accent-foreground: oklch(0.33 0.055 163);
+    --sidebar-border: oklch(0.885 0.01 140);
+    --sidebar-ring: oklch(0.55 0.07 163);
+}
+
+.dark {
+    --background: oklch(0.18 0.012 170);
+    --foreground: oklch(0.95 0.008 120);
+    --card: oklch(0.225 0.016 170);
+    --card-foreground: oklch(0.95 0.008 120);
+    --popover: oklch(0.225 0.016 170);
+    --popover-foreground: oklch(0.95 0.008 120);
+    --primary: oklch(0.74 0.1 163);
+    --primary-foreground: oklch(0.2 0.03 165);
+    --secondary: oklch(0.28 0.025 165);
+    --secondary-foreground: oklch(0.9 0.03 160);
+    --muted: oklch(0.26 0.016 170);
+    --muted-foreground: oklch(0.72 0.02 150);
+    --accent: oklch(0.28 0.025 165);
+    --accent-foreground: oklch(0.9 0.03 160);
+    --destructive: oklch(0.704 0.191 22.216);
+    --border: oklch(1 0 0 / 10%);
+    --input: oklch(1 0 0 / 15%);
+    --ring: oklch(0.6 0.08 163);
+    --brand: oklch(0.27 0.042 166);
+    --brand-foreground: oklch(0.96 0.006 106);
+    --highlight: oklch(0.8 0.135 75);
+    --highlight-foreground: oklch(0.25 0.04 70);
+    --chart-1: oklch(0.74 0.1 163);
+    --chart-2: oklch(0.36 0.03 165);
+    --chart-3: oklch(0.8 0.135 75);
+    --chart-4: oklch(0.6 0.06 163);
+    --chart-5: oklch(0.72 0.02 150);
+    --sidebar: oklch(0.225 0.016 170);
+    --sidebar-foreground: oklch(0.95 0.008 120);
+    --sidebar-primary: oklch(0.74 0.1 163);
+    --sidebar-primary-foreground: oklch(0.2 0.03 165);
+    --sidebar-accent: oklch(0.28 0.025 165);
+    --sidebar-accent-foreground: oklch(0.9 0.03 160);
+    --sidebar-border: oklch(1 0 0 / 10%);
+    --sidebar-ring: oklch(0.6 0.08 163);
+}
+
+/* Condensed headline face used on marketing pages. */
+@utility font-display {
+  font-family: var(--font-display);
+  font-stretch: 75%;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+    }
+  body {
+    @apply bg-background text-foreground;
+    }
+  html {
+    @apply font-sans;
+    }
+}

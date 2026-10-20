@@ -14,7 +14,7 @@ This document records the tech stack and architecture for the new frontend and w
 
 | Requirement | Source | Consequence |
 | ----------- | ------ | ----------- |
-| One app serves many hosts: `<slug>.kampasy.com`, custom domains, `admin.kampasy.com`, the marketing apex | `domains-and-routing.md` 1, 7 | Host-based routing on the server |
+| One app serves many hosts: `<slug>.mydomain.com`, custom domains, `admin.mydomain.com`, the marketing apex | `domains-and-routing.md` 1, 7 | Host-based routing on the server |
 | Host-only session cookies; cross-host sign-in via one-time handoff codes | `domains-and-routing.md` 5, PRD 6.3, 8.1 | Server route handlers that set cookies |
 | Browsers call `/api/*` on their own host (no CORS per custom domain) | `domains-and-routing.md` 6 | A same-origin proxy in the frontend server |
 | Public school home page and marketing site | `domains-and-routing.md` 1 | Server rendering, SEO |
@@ -128,9 +128,9 @@ One Next.js app serves every host. `src/proxy.ts` resolves the host and rewrites
 
 | Host | Internal tree | Contents |
 | ---- | ------------- | -------- |
-| `kampasy.com` | `app/(marketing)` | Landing, pricing, signup, "Find your school" |
-| `admin.kampasy.com` | `app/(platform)` | Super-admin: schools, plans, platform users |
-| `<slug>.kampasy.com`, custom domains | `app/(school)` | `/`, `/login`, `/activate`, `/onboarding`, `/dashboard/*`, `/student/*`, `/auth/handoff` |
+| `mydomain.com` | `app/(marketing)` | Landing, pricing, signup, "Find your school" |
+| `admin.mydomain.com` | `app/(platform)` | Super-admin: schools, plans, platform users |
+| `<slug>.mydomain.com`, custom domains | `app/(school)` | `/`, `/login`, `/activate`, `/onboarding`, `/dashboard/*`, `/student/*`, `/auth/handoff` |
 
 `proxy.ts` responsibilities, in order:
 
@@ -201,7 +201,7 @@ Browser ──/api/*──► Next route handler ──Bearer + x-tenant-id─�
 | ---- | -------------- |
 | Login | Server action or `POST /api/session/login` → backend `POST /auth/login` → set cookie → redirect |
 | Handoff | `GET /auth/handoff?code&next` → backend `POST /auth/handoff` → set cookie → redirect to same-host `next` |
-| Google | Redirect to the start URL on `kampasy.com`; it returns through `/auth/handoff` |
+| Google | Redirect to the start URL on `mydomain.com`; it returns through `/auth/handoff` |
 | Refresh | Inside the BFF on 401 or near expiry: call the backend refresh endpoint once, rewrite the cookie, retry. Concurrent requests share one in-flight refresh per session to avoid triggering refresh-token reuse detection |
 | Logout | Backend revoke, then clear the cookie |
 | Must change password | `mustChangePassword` in the snapshot; `proxy.ts` restricts navigation to the change-password page |
