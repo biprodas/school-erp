@@ -24,6 +24,7 @@ import { SubjectGroupModule } from '~/modules/subject-groups/subject-group.modul
 import { ClassCurriculumModule } from '~/modules/class-curriculum/class-curriculum.module';
 import { EnrollmentModule } from '~/modules/enrollments/enrollment.module';
 import { TeachingModule } from '~/modules/teaching/teaching.module';
+import { AccessScopeModule } from '~/modules/access-scope/access-scope.module';
 import { TimetableModule } from '~/modules/timetable/timetable.module';
 import { PromotionModule } from '~/modules/promotions/promotion.module';
 import { JobModule } from '~/modules/jobs/job.module';
@@ -41,6 +42,9 @@ import { FileModule } from '~/modules/files/file.module';
 import { NumberingModule } from '~/modules/numbering/numbering.module';
 import { IdempotencyModule } from '~/modules/idempotency/idempotency.module';
 import { TenancyModule } from '~/tenancy/tenancy.module';
+import { RequestContextModule } from '~/shared/request-context/request-context.module';
+import { AuditModule } from '~/modules/audit/audit.module';
+import { SettingsModule } from '~/modules/settings/settings.module';
 
 const nodeEnv = process.env.NODE_ENV ?? 'development';
 const envFilePath = ['.env', `.env.${nodeEnv}`];
@@ -72,6 +76,7 @@ const envFilePath = ['.env', `.env.${nodeEnv}`];
       },
     }),
     LoggingModule,
+    RequestContextModule,
     DatabaseModule,
     HealthModule,
     MailModule,
@@ -97,12 +102,15 @@ const envFilePath = ['.env', `.env.${nodeEnv}`];
     ClassCurriculumModule,
     EnrollmentModule,
     TeachingModule,
+    AccessScopeModule,
     TimetableModule,
     PromotionModule,
     JobModule,
     FileModule,
     NumberingModule,
     IdempotencyModule,
+    AuditModule,
+    SettingsModule,
   ],
   controllers: [AppController],
   providers: [
@@ -134,6 +142,8 @@ export class AppModule {
         { path: 'platform/auth/*path', method: RequestMethod.ALL },
         { path: 'platform/users', method: RequestMethod.ALL },
         { path: 'platform/users/*path', method: RequestMethod.ALL },
+        { path: 'platform/audit-logs', method: RequestMethod.ALL },
+        { path: 'platform/audit-logs/*path', method: RequestMethod.ALL },
         { path: 'public', method: RequestMethod.ALL },
         { path: 'public/*path', method: RequestMethod.ALL },
         { path: 'dev/mail', method: RequestMethod.ALL },

@@ -4,6 +4,9 @@ import * as bcrypt from 'bcrypt';
 import { Repository } from 'typeorm';
 import { parseIdentifier } from '~/common/identity/identifier';
 import { User } from '~/modules/users/entities/user.entity';
+import { UserStatus } from '~/modules/users/enums/user-status.enum';
+import { Membership } from '~/modules/memberships/entities/membership.entity';
+import { MembershipStatus } from '~/modules/memberships/enums/membership-status.enum';
 
 export const MAX_FAILED_LOGINS = 5;
 export const LOCK_MINUTES = 15;
@@ -68,6 +71,11 @@ export class CredentialService {
    * The account, if `password` is right and it isn't locked. Throws
    * 401 `Invalid credentials` (same answer for unknown accounts) or
    * {@link AccountLockedException}. `onFailure` sees every failure.
+   *
+   * Each attempt claims a slot in `failed_login_count` before the
+   * password is compared, so parallel guesses can't all slip in before the
+   * lock is set: at most {@link MAX_FAILED_LOGINS} are ever in flight, and
+   * a right password that finishes after the lock started is refused.
    */
   async verify(
     identifier: string,
@@ -86,18 +94,20 @@ export class CredentialService {
     if (user.lockedUntil && user.lockedUntil.getTime() > Date.now()) {
       throw new AccountLockedException(user.lockedUntil);
     }
+    const attempt = await this.claimAttempt(user.id);
+    if (attempt === null) {
+      // Locked meanwhile, or the limit is used up by attempts in flight.
+      throw new AccountLockedException(await this.lock(user.id));
+    }
     if (!(await bcrypt.compare(password, user.password))) {
-      const lockedUntil = await this.recordFailure(user.id);
-      await onFailure?.({ userId: user.id, locked: !!lockedUntil });
+      const locked = attempt >= MAX_FAILED_LOGINS;
+      const lockedUntil = locked ? await this.lock(user.id) : null;
+      await onFailure?.({ userId: user.id, locked });
       if (lockedUntil) throw new AccountLockedException(lockedUntil);
       throw invalidCredentials();
     }
-    if (user.failedLoginCount > 0 || user.lockedUntil) {
-      await this.users.update(user.id, {
-        failedLoginCount: 0,
-        lockedUntil: null,
-      });
-    }
+    const lockedUntil = await this.clearFailures(user.id);
+    if (lockedUntil) throw new AccountLockedException(lockedUntil);
     return user;
   }
 
@@ -108,6 +118,32 @@ export class CredentialService {
       select: { id: true, password: true },
     });
     return !!user?.password && bcrypt.compare(password, user.password);
+  }
+
+  /**
+   * Whether the account signs in with a password its owner chose: active,
+   * not on a temporary password, and verified or active in some school.
+   * Activation links must never replace such a password, or whoever holds
+   * the link (an owner-transfer response, a forwarded email) would take
+   * the account over. Reads memberships across schools (root connection).
+   */
+  async hasOwnPassword(userId: string): Promise<boolean> {
+    const user = await this.users.findOne({
+      where: { id: userId },
+      select: {
+        id: true,
+        status: true,
+        emailVerifiedAt: true,
+        mustChangePassword: true,
+      },
+    });
+    if (!user || user.status !== UserStatus.ACTIVE || user.mustChangePassword) {
+      return false;
+    }
+    if (user.emailVerifiedAt) return true;
+    return this.users.manager.exists(Membership, {
+      where: { userId, status: MembershipStatus.ACTIVE },
+    });
   }
 
   /** Sets a password the user chose; clears the forced-change flag. */
@@ -121,23 +157,55 @@ export class CredentialService {
   }
 
   /**
-   * One atomic step: count the failure and, at the limit, start the lock
-   * (and reset the count). Returns the lock end when this failure locked it.
+   * Counts an attempt unless the account is locked or the limit is used
+   * up; an expired lock is cleared on the way. Returns the attempt number,
+   * or null when the attempt may not go ahead.
    */
-  private async recordFailure(userId: string): Promise<Date | null> {
+  private async claimAttempt(userId: string): Promise<number | null> {
     const [row] = await this.users.manager.query<
-      Array<{ locked_until: Date | null; failed_login_count: number }>
+      Array<{ failed_login_count: number }>
     >(
       `UPDATE "users" SET
-         "failed_login_count" = CASE WHEN "failed_login_count" + 1 >= $2 THEN 0 ELSE "failed_login_count" + 1 END,
-         "locked_until" = CASE WHEN "failed_login_count" + 1 >= $2 THEN now() + make_interval(mins => $3) ELSE "locked_until" END
+         "failed_login_count" = CASE WHEN "locked_until" IS NULL THEN "failed_login_count" + 1 ELSE 1 END,
+         "locked_until" = NULL
        WHERE "id" = $1
-       RETURNING "locked_until", "failed_login_count"`,
-      [userId, MAX_FAILED_LOGINS, LOCK_MINUTES],
+         AND ("locked_until" IS NULL OR "locked_until" <= now())
+         AND ("failed_login_count" < $2 OR "locked_until" IS NOT NULL)
+       RETURNING "failed_login_count"`,
+      [userId, MAX_FAILED_LOGINS],
     );
-    return row && row.failed_login_count === 0 && row.locked_until
-      ? new Date(row.locked_until)
-      : null;
+    return row ? row.failed_login_count : null;
+  }
+
+  /** Starts the lock (keeping one already running) and resets the count. */
+  private async lock(userId: string): Promise<Date> {
+    const [row] = await this.users.manager.query<Array<{ locked_until: Date }>>(
+      `UPDATE "users" SET
+         "failed_login_count" = 0,
+         "locked_until" = CASE WHEN "locked_until" > now() THEN "locked_until"
+                               ELSE now() + make_interval(mins => $2) END
+       WHERE "id" = $1
+       RETURNING "locked_until"`,
+      [userId, LOCK_MINUTES],
+    );
+    return new Date(row.locked_until);
+  }
+
+  /**
+   * Resets the count after a right password, unless a lock started while
+   * it was being checked; then returns that lock's end.
+   */
+  private async clearFailures(userId: string): Promise<Date | null> {
+    const [row] = await this.users.manager.query<
+      Array<{ locked_until: Date | null }>
+    >(
+      `UPDATE "users" SET "failed_login_count" = 0
+       WHERE "id" = $1
+       RETURNING "locked_until"`,
+      [userId],
+    );
+    const until = row?.locked_until ? new Date(row.locked_until) : null;
+    return until && until.getTime() > Date.now() ? until : null;
   }
 }
 

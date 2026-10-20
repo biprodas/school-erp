@@ -45,7 +45,7 @@ const makeRepo = (): RepoMock =>
 
 const asRepo = (raw: RepoMock) => raw as unknown as Repository<Row>;
 
-describe('scopeWhere', () => {
+describe('scopeWhere [tenant-isolation]', () => {
   it('adds orgId to an object where', () => {
     expect(scopeWhere({ name: 'x' }, ORG)).toEqual({ name: 'x', orgId: ORG });
   });
@@ -66,7 +66,7 @@ describe('scopeWhere', () => {
   });
 });
 
-describe('scopeRepository', () => {
+describe('scopeRepository [tenant-isolation]', () => {
   let raw: RepoMock;
   let repo: Repository<Row>;
 
@@ -250,7 +250,7 @@ describe('scopeRepository', () => {
   });
 });
 
-describe('BaseTenantRepository', () => {
+describe('BaseTenantRepository [tenant-isolation]', () => {
   class Entity {
     id: string;
     orgId: string;

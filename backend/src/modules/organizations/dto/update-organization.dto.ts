@@ -8,7 +8,7 @@ import { CreateOrganizationDto } from './create-organization.dto';
  * endpoint). Custom domains live in `organization_domains`.
  */
 export class UpdateOrganizationDto extends PartialType(
-  PickType(CreateOrganizationDto, ['name'] as const),
+  PickType(CreateOrganizationDto, ['name', 'type'] as const),
 ) {
   /** Platform admins only (enforced in OrganizationService). */
   @IsOptional()

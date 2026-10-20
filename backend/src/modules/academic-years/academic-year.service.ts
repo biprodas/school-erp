@@ -33,6 +33,11 @@ export class AcademicYearService {
     return this.academicYearRepo.findByIdOrFail(id);
   }
 
+  /** The academic year marked current, if one is. */
+  findCurrent(): Promise<AcademicYear | null> {
+    return this.academicYearRepo.findCurrent();
+  }
+
   create(dto: CreateAcademicYearDto): Promise<AcademicYear> {
     return this.ds.runInTransaction(async () => {
       const existing = await this.academicYearRepo.findByName(dto.name);

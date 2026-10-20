@@ -152,11 +152,34 @@ export const PERMISSIONS = {
   ROLES_READ: 'roles:read',
   ROLES_MANAGE: 'roles:manage',
   ROLES_ASSIGN: 'roles:assign',
+
+  // Audit log
+  AUDIT_READ: 'audit:read',
+
+  // School settings (PRD 6.24)
+  SETTINGS_READ: 'settings:read',
+  SETTINGS_UPDATE: 'settings:update',
+
+  // Guardian/student portal (the /portal endpoints, M7)
+  PORTAL_ACCESS: 'portal:access',
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
 
 export const ALL_PERMISSIONS = Object.values(PERMISSIONS) as PermissionKey[];
+
+/**
+ * Portal keys, held only by the guardian and student roles. Those roles get
+ * nothing else, so their tokens are refused on every staff endpoint.
+ */
+export const PORTAL_PERMISSIONS = ALL_PERMISSIONS.filter((key) =>
+  key.startsWith('portal:'),
+);
+
+/** Every key except the portal ones: what the admin role holds. */
+export const STAFF_PERMISSIONS = ALL_PERMISSIONS.filter(
+  (key) => !key.startsWith('portal:'),
+);
 
 /** O(1) lookup set used to validate permission keys coming from clients. */
 export const PERMISSION_SET: ReadonlySet<string> = new Set(ALL_PERMISSIONS);

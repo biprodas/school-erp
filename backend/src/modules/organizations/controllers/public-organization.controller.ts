@@ -6,7 +6,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { OrganizationStatus } from '../enums/organization-status.enum';
+import { isOperationalOrganization } from '../enums/organization-status.enum';
 import { OrganizationService } from '../services/organization.service';
 import { ResponseMessage } from '~/common/decorators/response.decorators';
 
@@ -31,7 +31,7 @@ export class PublicOrganizationController {
     }
 
     const organization = await this.organizationService.findByDomain(host);
-    if (!organization || organization.status !== OrganizationStatus.ACTIVE) {
+    if (!organization || !isOperationalOrganization(organization.status)) {
       throw new NotFoundException('No active organization for this host');
     }
 
@@ -54,7 +54,7 @@ export class PublicOrganizationController {
       throw new BadRequestException('domain query parameter is required');
     }
     const organization = await this.organizationService.findByDomain(domain);
-    if (!organization || organization.status !== OrganizationStatus.ACTIVE) {
+    if (!organization || !isOperationalOrganization(organization.status)) {
       throw new NotFoundException('Unknown domain');
     }
     return { allowed: true };
@@ -68,7 +68,7 @@ export class PublicOrganizationController {
     }
 
     const organization = await this.organizationService.findBySlug(slug);
-    if (!organization || organization.status !== OrganizationStatus.ACTIVE) {
+    if (!organization || !isOperationalOrganization(organization.status)) {
       throw new NotFoundException('No active organization for this slug');
     }
 

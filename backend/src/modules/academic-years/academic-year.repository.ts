@@ -17,6 +17,10 @@ export class AcademicYearRepository extends BaseTenantRepository<AcademicYear> {
     return this.repo.findOne({ where: { name } });
   }
 
+  findCurrent(): Promise<AcademicYear | null> {
+    return this.repo.findOne({ where: { isCurrent: true } });
+  }
+
   findFiltered(
     where: FindOptionsWhere<AcademicYear>,
     page: PaginationQueryDto,

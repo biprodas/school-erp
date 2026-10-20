@@ -1,10 +1,12 @@
 import {
   IsArray,
+  IsEnum,
   IsOptional,
   IsString,
   MaxLength,
   MinLength,
 } from 'class-validator';
+import { RoleScope } from '../enums/role-scope.enum';
 
 export class CreateRoleDto {
   @IsString()
@@ -22,4 +24,9 @@ export class CreateRoleDto {
   @IsArray()
   @IsString({ each: true })
   permissions?: string[];
+
+  /** Defaults to `school`; `assigned` limits the role to taught sections. */
+  @IsOptional()
+  @IsEnum(RoleScope)
+  scope?: RoleScope;
 }

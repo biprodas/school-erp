@@ -45,6 +45,9 @@ npm run build          # compile to dist/
 npm run start:prod     # node dist/main
 npm run lint           # eslint --fix
 npm run format         # prettier
+npm run lint:check     # eslint without fixing, no warnings allowed (CI)
+npm run format:check   # prettier --check (CI)
+npm run typecheck      # tsc --noEmit over src and test (CI)
 
 npm test               # unit tests (src/**/*.spec.ts)
 npm run test:cov       # with coverage
@@ -52,10 +55,35 @@ npm run test:e2e       # test/*.e2e-spec.ts. Loads .env.development and needs a 
 
 npx jest src/modules/students/services/student.service.spec.ts   # single file
 npx jest -t "creates a student"                                          # single test by name
+npm run test:release   # the PRD 11.5 release suites only (unit + e2e), see "CI"
 
 npm run db:migrate     # apply pending migrations (see "Database migrations")
 npm run db:seed:core   # seed platform accounts (see "Database seeding")
 ```
+
+## CI
+
+`.github/workflows/ci.yml` runs on every pull request and every push to `main`:
+
+| Job | What it runs |
+| --- | ------------ |
+| Backend · lint, unit tests, build | `format:check`, `lint:check`, `typecheck`, `npm test`, `build` |
+| Backend · e2e (Postgres 17, Redis) | `npm run test:e2e --runInBand` against service containers; the run creates its own `school_erp_e2e` database and restricted app role, so RLS is enforced |
+| Frontend · build | `next build` (lint joins once its React Compiler errors are fixed) |
+
+To reproduce the e2e job locally: `docker compose up -d postgres redis`, then `npm run test:e2e`.
+
+### Release suites (PRD 11.5)
+
+Every release needs the tenant isolation, GPA and fee regression suites at 100%. Tests that belong to one carry its tag in their `describe` or `it` name, so `npm run test:release` (or `-t "\[tenant-isolation\]"`) runs exactly them. CI runs them as part of the full suites.
+
+| Tag | Covers | Where |
+| --- | ------ | ----- |
+| `[tenant-isolation]` | Repository scoping, RLS, cross-school tokens, handoff codes, job connections, per-school audit and settings | `test/tenant-isolation.e2e-spec.ts`, `src/tenancy/org-scoped-repository.spec.ts`, single cases in `jwt.strategy.spec.ts`, `handoff.spec.ts`, `tenant-job.runner.spec.ts`, `audit-log.e2e-spec.ts`, `settings.e2e-spec.ts` |
+| `[gpa-regression]` | Grading engine regression suites (M5) | `src/modules/grading/engine/` (to come) |
+| `[fee-regression]` | Fee calculation and allocation invariants (M6) | fees module (to come) |
+
+A new test that checks one school can't see or change another school's data gets the `[tenant-isolation]` tag.
 
 ## Architecture
 
@@ -76,7 +104,9 @@ Platform and public routes (`organizations`, `memberships`, `platform/auth`, `pl
 
 - **Platform realm** (`platform-jwt`): super-admin and tenant management. `PlatformAdminGuard` requires `users.is_admin = true`.
 - **Tenant realm** (`JwtAuthGuard`): everything inside a school. Handlers use `@RequirePermissions(PERMISSIONS.X)` with `PermissionsGuard`.
-- **Permissions** are defined in code in `src/modules/rbac/permissions.catalog.ts`, as `resource:action` keys. Roles are stored per tenant, and system roles are seeded from `system-roles.seed.ts`. Tenant users with `isAdmin` bypass permission checks.
+- **Permissions** are defined in code in `src/modules/rbac/permissions.catalog.ts`, as `resource:action` keys. Roles are stored per tenant, and system roles are seeded from `system-roles.seed.ts`. Tenant users with `isAdmin` bypass permission checks. Roles have a scope (`school` or `assigned`); `AccessScope` (`src/modules/access-scope/`) tells section- and subject-level endpoints which class-sections and subjects a scoped teacher may reach.
+- **Settings:** `GET /settings` and `PATCH /settings/<section>` (profile, locale, numbering, portal, results, attendance, fees, notifications, security, organization), stored per school in `org_settings` and read through `SettingsService` with defaults filled in.
+- **Audit log:** sign-ins, role and member changes go to the school's append-only `audit_logs` (`AuditService`, `GET /audit-logs` with `audit:read`); platform actions go to `platform_audit_logs` (`PlatformAuditService`, `GET /platform/audit-logs`).
 
 ### Conventions
 

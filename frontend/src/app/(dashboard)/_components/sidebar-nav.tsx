@@ -219,7 +219,6 @@ export const sidebarNavCategories: NavCategory[] = [
             url: "/dashboard/academics/lesson-plans",
             icon: NotebookPen,
           },
-          { title: "Timetable", url: "/dashboard/academics/timetable", icon: CalendarClock },
           {
             title: "Homework",
             url: "/dashboard/academics/homework",

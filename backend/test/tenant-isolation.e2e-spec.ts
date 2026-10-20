@@ -18,7 +18,7 @@ import { TENANT_POOL_DATASOURCE } from '~/tenancy/tenancy.constants';
  * `e2e-env.ts`) with the full AppModule, so it covers tenant resolution,
  * JWT org binding, repository scoping and row-level security together.
  */
-describe('Tenant isolation (e2e)', () => {
+describe('Tenant isolation (e2e) [tenant-isolation]', () => {
   let app: INestApplication<App>;
   let rootDs: DataSource;
   let tenantPool: DataSource;

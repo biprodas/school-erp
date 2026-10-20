@@ -1,0 +1,29 @@
+@base = http://localhost:3900/api
+@tenant = acme
+# A school admin's access token (auth.http → login), and a platform admin's
+@token = paste-tenant-access-token
+@platformToken = paste-platform-access-token
+
+### The school's audit log, newest first (audit:read)
+GET {{base}}/audit-logs?page=1&limit=20
+X-Tenant-ID: {{tenant}}
+Authorization: Bearer {{token}}
+
+### Lockouts (PRD 6.3: the admin can see these events)
+GET {{base}}/audit-logs?action=auth.account_locked
+X-Tenant-ID: {{tenant}}
+Authorization: Bearer {{token}}
+
+### Every role and permission change in October
+GET {{base}}/audit-logs?action=role.&from=2026-10-01T00:00:00Z&to=2026-11-01T00:00:00Z
+X-Tenant-ID: {{tenant}}
+Authorization: Bearer {{token}}
+
+### History of one user (role assignments, admin rights, removal)
+GET {{base}}/audit-logs?entityType=user&entityId=paste-user-id
+X-Tenant-ID: {{tenant}}
+Authorization: Bearer {{token}}
+
+### Platform audit log for one school (super-admin)
+GET {{base}}/platform/audit-logs?orgId=paste-org-id
+Authorization: Bearer {{platformToken}}

@@ -15,6 +15,7 @@ import { FilterUserDto } from '../dto/filter-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
 import { User } from '../entities/user.entity';
 import { UserStatus } from '../enums/user-status.enum';
+import { SessionService } from '~/modules/auth/services/session.service';
 
 @Injectable()
 export class UserService {
@@ -23,6 +24,7 @@ export class UserService {
   constructor(
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
+    private readonly sessions: SessionService,
   ) {}
 
   async findAll(
@@ -67,6 +69,8 @@ export class UserService {
     const user = this.userRepo.create({
       email: normalizeEmail(dto.email),
       password: hashedPassword,
+      // Chosen by an admin: temporary until the user replaces it.
+      mustChangePassword: true,
       name: dto.name,
       status: dto.status ?? UserStatus.ACTIVE,
       isAdmin: dto.isAdmin ?? false,
@@ -97,8 +101,19 @@ export class UserService {
     }
 
     const user = await this.findById(ctx, targetId);
+    const wasAdmin = user.isAdmin;
     Object.assign(user, dto);
-    return this.userRepo.save(user);
+    const saved = await this.userRepo.save(user);
+    // Blocked accounts and lost super-admin rights end every sign-in
+    // (`isAdmin` is in the platform access token).
+    const blocked =
+      dto.status !== undefined &&
+      dto.status !== UserStatus.ACTIVE &&
+      dto.status !== UserStatus.PENDING;
+    if (blocked || (wasAdmin && !saved.isAdmin)) {
+      await this.sessions.revokeAllForUser(saved.id);
+    }
+    return saved;
   }
 
   async remove(ctx: RequestContextDto, targetId: string): Promise<void> {

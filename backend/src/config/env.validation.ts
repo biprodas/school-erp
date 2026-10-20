@@ -93,6 +93,8 @@ export const envValidationSchema = Joi.object({
     then: Joi.required(),
     otherwise: Joi.optional(),
   }),
+  // Express `trust proxy` (see config/trust-proxy.ts).
+  TRUST_PROXY: Joi.string().optional(),
   SWAGGER_ENABLED: Joi.boolean().default(true),
   SWAGGER_PATH: Joi.string().default('api/docs'),
   SWAGGER_TITLE: Joi.string().optional(),

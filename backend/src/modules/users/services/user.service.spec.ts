@@ -9,6 +9,7 @@ import { UserService } from './user.service';
 import { User } from '../entities/user.entity';
 import { UserStatus } from '../enums/user-status.enum';
 import { RequestContextDto } from '~/common/dto/request-context.dto';
+import { SessionService } from '~/modules/auth/services/session.service';
 
 // --- Helpers ---
 
@@ -68,8 +69,14 @@ const makeUser = (overrides: Partial<User> = {}): User =>
 describe('UserService', () => {
   let service: UserService;
   let userRepo: Record<string, jest.Mock>;
+  const sessions = {
+    revokeAllForUser: jest.fn(),
+    revokeAllForUserInOrg: jest.fn(),
+  };
 
   beforeEach(async () => {
+    sessions.revokeAllForUser.mockClear();
+    sessions.revokeAllForUserInOrg.mockClear();
     userRepo = {
       findOne: jest.fn(),
       find: jest.fn(),
@@ -82,6 +89,7 @@ describe('UserService', () => {
       providers: [
         UserService,
         { provide: getRepositoryToken(User), useValue: userRepo },
+        { provide: SessionService, useValue: sessions },
       ],
     }).compile();
 
@@ -180,6 +188,19 @@ describe('UserService', () => {
       });
       expect(result.status).toBe(UserStatus.SUSPENDED);
       expect(result.isAdmin).toBe(true);
+      // A suspended account is signed out everywhere.
+      expect(sessions.revokeAllForUser).toHaveBeenCalledWith('other-user');
+    });
+
+    it('signs out a super-admin who loses the admin flag, not a renamed user', async () => {
+      userRepo.save.mockImplementation((entity) => Promise.resolve(entity));
+      userRepo.findOne.mockResolvedValue(makeUser({ id: 'u2' }));
+      await service.update(superAdminCtx(), 'u2', { name: 'Renamed' });
+      expect(sessions.revokeAllForUser).not.toHaveBeenCalled();
+
+      userRepo.findOne.mockResolvedValue(makeUser({ id: 'u2', isAdmin: true }));
+      await service.update(superAdminCtx(), 'u2', { isAdmin: false });
+      expect(sessions.revokeAllForUser).toHaveBeenCalledWith('u2');
     });
 
     it('User can update own profile', async () => {

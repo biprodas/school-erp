@@ -46,7 +46,7 @@ export class CreateGuardianDto {
   @IsUUID('4')
   userId?: string;
 
-  /** Provision a new tenant user (with the 'parent' role) and link it. */
+  /** Provision a new tenant user (with the 'guardian' role) and link it. */
   @IsOptional()
   @ValidateNested()
   @Type(() => CreateGuardianUserDto)

@@ -6,6 +6,8 @@ import {
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
+import { PlatformAuditService } from '~/modules/audit/services/platform-audit.service';
+import { SessionService } from '~/modules/auth/services/session.service';
 import { OrganizationService } from './organization.service';
 import { Organization } from '../entities/organization.entity';
 import { OrganizationDomain } from '../entities/organization-domain.entity';
@@ -102,6 +104,11 @@ describe('OrganizationService', () => {
   let txMembershipRepo: Record<string, jest.Mock>;
   let txUserRoleRepo: Record<string, jest.Mock>;
   let manager: Record<string, jest.Mock>;
+  let platformAudit: { record: jest.Mock };
+  const sessions = {
+    revokeAllForUser: jest.fn(),
+    revokeAllForUserInOrg: jest.fn(),
+  };
 
   beforeEach(async () => {
     orgRepo = {
@@ -160,10 +167,12 @@ describe('OrganizationService', () => {
         ...data,
       })),
       save: jest.fn((entity) => Promise.resolve(entity)),
+      delete: jest.fn(),
       getRepository: jest.fn((entity) =>
         entity === UserRole ? txUserRoleRepo : txMembershipRepo,
       ),
     };
+    platformAudit = { record: jest.fn() };
 
     const mockDataSource = {
       transaction: jest.fn((cb: (m: typeof manager) => unknown) =>
@@ -184,6 +193,8 @@ describe('OrganizationService', () => {
         { provide: RbacSeederService, useValue: rbacSeeder },
         { provide: OwnerProvisioningService, useValue: ownerProvisioning },
         { provide: UserService, useValue: userService },
+        { provide: PlatformAuditService, useValue: platformAudit },
+        { provide: SessionService, useValue: sessions },
       ],
     }).compile();
 
@@ -300,7 +311,7 @@ describe('OrganizationService', () => {
           status: OrganizationStatus.ACTIVE,
         }),
       ).rejects.toThrow(ForbiddenException);
-      expect(orgRepo.save).not.toHaveBeenCalled();
+      expect(manager.save).not.toHaveBeenCalled();
     });
 
     it('ADMIN can change the organization status', async () => {
@@ -601,7 +612,16 @@ describe('OrganizationService', () => {
 
       await service.deleteOrganization(superAdminCtx(), ORG_ID);
 
-      expect(orgRepo.delete).toHaveBeenCalledWith(ORG_ID);
+      expect(manager.delete).toHaveBeenCalledWith(Organization, ORG_ID);
+      // Recorded in the same transaction, on the platform log.
+      expect(platformAudit.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'organization.deleted',
+          orgId: ORG_ID,
+          entityId: ORG_ID,
+        }),
+        manager,
+      );
     });
 
     it("drops the org's custom domains from the host cache", async () => {

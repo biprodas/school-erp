@@ -27,6 +27,7 @@ export class RbacSeederService {
           orgId,
           name: def.name,
           description: def.description,
+          scope: def.scope,
           permissions: [...def.permissions],
           isSystem: true,
         }),

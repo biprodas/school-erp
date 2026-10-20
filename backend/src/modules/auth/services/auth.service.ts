@@ -30,7 +30,15 @@ import { LoginDto, loginIdentifier } from '../dto/login.dto';
 import { ActivateDto } from '../dto/activate.dto';
 import { AuthTokenRepository } from '../repositories/auth-token.repository';
 import type { TenantJwtPayload } from '../strategies/jwt.strategy';
-import { CredentialService, hashPassword } from './credential.service';
+import {
+  CredentialService,
+  hashPassword,
+  LOCK_MINUTES,
+  type FailedSignIn,
+} from './credential.service';
+import { AuditService } from '~/modules/audit/services/audit.service';
+import { AUDIT_ACTIONS } from '~/modules/audit/audit-actions';
+import { signInRefusalReason } from './sign-in-audit';
 import { SessionService, type IssuedSession } from './session.service';
 
 /** Global account states that may never sign in, in any organization. */
@@ -57,6 +65,7 @@ export class AuthService {
     private readonly credentials: CredentialService,
     private readonly sessions: SessionService,
     private readonly mail: MailService,
+    private readonly audit: AuditService,
     @Inject(REQUEST) private readonly request: RequestWithOrg,
     private readonly jwtService: JwtService,
   ) {}
@@ -79,13 +88,19 @@ export class AuthService {
       phone: user.phone,
       name: user.name,
       organization: this.organization,
+      // True: the account keeps its password, which activation asks for.
+      hasPassword: await this.credentials.hasOwnPassword(user.id),
     };
   }
 
   /**
-   * Set the account password via an activation token, activate the
-   * membership in this org, then sign in. Activation through an emailed link
-   * proves ownership of the email, so the account is also marked verified.
+   * Accept an invitation (provisioned owners, invited members) and sign in.
+   * A new account sets its password here; activation through an emailed
+   * link proves ownership of the email, so it is also marked verified. An
+   * account that already has its own password keeps it: the password in
+   * the request must be that one (with the usual lockout), so the link
+   * alone never takes over an account. Only a pending membership is
+   * activated, and the link is consumed atomically.
    */
   async activate(dto: ActivateDto, client: ClientInfo) {
     const { user, record } = await this.resolveToken(
@@ -97,34 +112,70 @@ export class AuthService {
     if (!membership) {
       throw new BadRequestException('Invalid activation link');
     }
-
-    user.password = await hashPassword(dto.password);
-    user.mustChangePassword = false;
-    if (user.email) user.emailVerifiedAt ??= new Date();
-    if (user.status === UserStatus.PENDING) {
-      user.status = UserStatus.ACTIVE;
+    if (
+      membership.status !== MembershipStatus.PENDING &&
+      membership.status !== MembershipStatus.ACTIVE
+    ) {
+      throw new ForbiddenException({
+        message: `Membership is ${membership.status}`,
+        code: `MEMBERSHIP_${membership.status.toUpperCase()}`,
+      });
     }
-    await this.accountRepo.save(user);
 
-    membership.status = MembershipStatus.ACTIVE;
-    await this.memberRepo.save(membership);
+    const keepsPassword = await this.credentials.hasOwnPassword(user.id);
+    if (keepsPassword) {
+      const identifier = (user.email ?? user.phone)!;
+      await this.credentials.verify(identifier, dto.password, (failure) =>
+        this.recordFailedPassword(identifier, failure),
+      );
+    }
+    if (!(await this.authTokenRepo.consume(record.id))) {
+      throw new BadRequestException('Invalid or expired activation link');
+    }
 
-    record.usedAt = new Date();
-    await this.authTokenRepo.save(record);
+    if (!keepsPassword) {
+      user.password = await hashPassword(dto.password);
+      user.mustChangePassword = false;
+      if (user.email) user.emailVerifiedAt ??= new Date();
+      if (user.status === UserStatus.PENDING) {
+        user.status = UserStatus.ACTIVE;
+      }
+      await this.accountRepo.save(user);
+      // Whoever knew the previous (temporary or unverified) password is out.
+      await this.sessions.revokeAllForUser(user.id);
+    }
 
-    return this.startSession(user, membership, client);
+    if (membership.status === MembershipStatus.PENDING) {
+      membership.status = MembershipStatus.ACTIVE;
+      await this.memberRepo.save(membership);
+    }
+
+    await this.audit.record({
+      action: AUDIT_ACTIONS.ACCOUNT_ACTIVATED,
+      entityType: 'user',
+      entityId: user.id,
+      actorUserId: user.id,
+      after: { passwordSet: !keepsPassword },
+    });
+    return this.startSession(user, membership, client, 'activation');
   }
 
   // --- Login / session -----------------------------------------------------
 
   async login(dto: LoginDto, client: ClientInfo) {
+    const identifier = loginIdentifier(dto);
     const user = await this.credentials.verify(
-      loginIdentifier(dto),
+      identifier,
       dto.password,
+      (failure) => this.recordFailedPassword(identifier, failure),
     );
-    const membership = await this.memberRepo.findByUserId(user.id);
-    this.assertCanSignIn(user, membership);
-    return this.startSession(user, membership, client);
+    const membership = await this.assertCanSignInAudited(
+      user,
+      await this.memberRepo.findByUserId(user.id),
+      'password',
+      { identifier },
+    );
+    return this.startSession(user, membership, client, 'password');
   }
 
   /**
@@ -142,9 +193,12 @@ export class AuthService {
       throw new BadRequestException('Invalid or expired sign-in link');
     }
 
-    const membership = await this.memberRepo.findByUserId(user.id);
-    this.assertCanSignIn(user, membership);
-    return this.startSession(user, membership, client);
+    const membership = await this.assertCanSignInAudited(
+      user,
+      await this.memberRepo.findByUserId(user.id),
+      'handoff',
+    );
+    return this.startSession(user, membership, client, 'handoff');
   }
 
   /**
@@ -172,8 +226,13 @@ export class AuthService {
     return this.tokenResponse(user, membership, rotated);
   }
 
-  logout(sessionId: string): Promise<void> {
-    return this.sessions.revokeFamily(sessionId);
+  async logout(sessionId: string): Promise<void> {
+    await this.sessions.revokeFamily(sessionId);
+    await this.audit.record({
+      action: AUDIT_ACTIONS.LOGOUT,
+      entityType: 'session',
+      entityId: sessionId,
+    });
   }
 
   /** The user's active sign-ins on this school's host. */
@@ -191,11 +250,82 @@ export class AuthService {
     ) {
       throw new NotFoundException('Session not found');
     }
+    await this.audit.record({
+      action: AUDIT_ACTIONS.SESSION_REVOKED,
+      entityType: 'session',
+      entityId: sessionId,
+    });
   }
 
   /** Signs the user out of every school and the platform. */
-  logoutEverywhere(userId: string): Promise<void> {
-    return this.sessions.revokeAllForUser(userId);
+  async logoutEverywhere(userId: string): Promise<void> {
+    await this.sessions.revokeAllForUser(userId);
+    await this.audit.record({
+      action: AUDIT_ACTIONS.LOGOUT_ALL,
+      entityType: 'user',
+      entityId: userId,
+    });
+  }
+
+  /**
+   * A wrong password (or unknown account). Only members of this school are
+   * named in its log: for anyone else the row is anonymous, so the log never
+   * reveals which accounts exist elsewhere.
+   */
+  private async recordFailedPassword(
+    identifier: string,
+    failure: FailedSignIn,
+  ): Promise<void> {
+    const memberId =
+      failure.userId && (await this.memberRepo.findByUserId(failure.userId))
+        ? failure.userId
+        : null;
+    await this.audit.record({
+      action: AUDIT_ACTIONS.LOGIN_FAILED,
+      actorUserId: memberId,
+      after: {
+        method: 'password',
+        identifier: identifier.trim().slice(0, 128),
+        reason: memberId ? 'wrong_password' : 'unknown_account',
+        ...(memberId && failure.locked ? { locked: true } : {}),
+      },
+    });
+    if (memberId && failure.locked) {
+      await this.audit.record({
+        action: AUDIT_ACTIONS.ACCOUNT_LOCKED,
+        entityType: 'user',
+        entityId: memberId,
+        actorUserId: memberId,
+        after: { lockMinutes: LOCK_MINUTES },
+      });
+    }
+  }
+
+  /**
+   * `assertCanSignIn`, recording a refusal as a failed sign-in. Returns the
+   * (now known to exist) membership.
+   */
+  private async assertCanSignInAudited(
+    user: User,
+    membership: Membership | null,
+    method: 'password' | 'handoff',
+    details: Record<string, unknown> = {},
+  ): Promise<Membership> {
+    try {
+      this.assertCanSignIn(user, membership);
+      return membership;
+    } catch (err) {
+      await this.audit.record({
+        action: AUDIT_ACTIONS.LOGIN_FAILED,
+        actorUserId: membership ? user.id : null,
+        after: {
+          method,
+          ...details,
+          reason: membership ? signInRefusalReason(err) : 'unknown_account',
+        },
+      });
+      throw err;
+    }
   }
 
   /** Account and membership checks shared by every way of signing in. */
@@ -212,7 +342,10 @@ export class AuthService {
       });
     }
     if (BLOCKED_ACCOUNT_STATUSES.has(user.status)) {
-      throw new UnauthorizedException(`Account is ${user.status}`);
+      throw new UnauthorizedException({
+        message: `Account is ${user.status}`,
+        code: `ACCOUNT_${user.status.toUpperCase()}`,
+      });
     }
     if (membership.status === MembershipStatus.PENDING) {
       throw new ForbiddenException({
@@ -220,8 +353,19 @@ export class AuthService {
         code: 'MEMBERSHIP_PENDING',
       });
     }
+    // Registered on the platform but never verified: nobody has proved
+    // they own the email, so the account can't open a school session.
+    if (user.status === UserStatus.PENDING) {
+      throw new ForbiddenException({
+        message: 'Please verify your email or use your invitation link.',
+        code: 'ACCOUNT_PENDING',
+      });
+    }
     if (membership.status !== MembershipStatus.ACTIVE) {
-      throw new UnauthorizedException(`Membership is ${membership.status}`);
+      throw new UnauthorizedException({
+        message: `Membership is ${membership.status}`,
+        code: `MEMBERSHIP_${membership.status.toUpperCase()}`,
+      });
     }
   }
 
@@ -251,12 +395,20 @@ export class AuthService {
     user: User,
     membership: Membership,
     client: ClientInfo,
+    method: 'password' | 'handoff' | 'activation',
   ) {
     const session = await this.sessions.start(
       user.id,
       membership.orgId,
       client,
     );
+    await this.audit.record({
+      action: AUDIT_ACTIONS.LOGIN,
+      entityType: 'session',
+      entityId: session.sessionId,
+      actorUserId: user.id,
+      after: { method },
+    });
     return this.tokenResponse(user, membership, session);
   }
 
@@ -405,6 +557,12 @@ export class AuthService {
     record.usedAt = new Date();
     await this.authTokenRepo.save(record);
     await this.sessions.revokeAllForUser(user.id);
+    await this.audit.record({
+      action: AUDIT_ACTIONS.PASSWORD_RESET,
+      entityType: 'user',
+      entityId: user.id,
+      actorUserId: user.id,
+    });
   }
 
   /**
@@ -426,6 +584,11 @@ export class AuthService {
     }
     await this.credentials.setPassword(userId, newPassword);
     await this.sessions.revokeAllForUser(userId, sessionId);
+    await this.audit.record({
+      action: AUDIT_ACTIONS.PASSWORD_CHANGED,
+      entityType: 'user',
+      entityId: userId,
+    });
 
     const membership = await this.memberRepo.findByUserId(userId);
     if (!membership) throw new UnauthorizedException('User not found');

@@ -6,6 +6,7 @@ import { IsNull, MoreThan, Not, Repository } from 'typeorm';
 import type { JwtConfig } from '~/config';
 import type { ClientInfo } from '~/common/decorators/client.decorator';
 import { generateToken, hashToken } from '~/common/tokens/secure-token.util';
+import { OrgSettingsReader } from '~/modules/settings/services/org-settings.reader';
 import { UserSession } from '../entities/user-session.entity';
 
 /** How long a positive "session is active" answer is reused per process. */
@@ -46,6 +47,7 @@ export class SessionService {
     @InjectRepository(UserSession)
     private readonly sessions: Repository<UserSession>,
     config: ConfigService,
+    private readonly settings: OrgSettingsReader,
   ) {
     this.ttlMs = config.get<JwtConfig>('jwt')!.refreshTtlMs;
   }
@@ -79,7 +81,10 @@ export class SessionService {
       throw invalidRefresh('REFRESH_TOKEN_REUSED');
     }
     if (row.expiresAt.getTime() <= Date.now()) throw invalidRefresh();
-    // TODO(4.6): refuse when the school's idle timeout passed since lastUsedAt.
+    if (await this.idleTooLong(row)) {
+      await this.revokeFamily(row.familyId);
+      throw invalidRefresh('SESSION_IDLE_TIMEOUT');
+    }
 
     // Atomic: of two concurrent refreshes with the same token, one loses.
     const claimed = await this.sessions.update(
@@ -96,6 +101,21 @@ export class SessionService {
       createdAt: row.createdAt,
     });
     return { ...next, userId: row.userId };
+  }
+
+  /**
+   * Whether the school's idle timeout (`settings.security`) passed since the
+   * token was issued, i.e. since the sign-in was last used to refresh.
+   * Platform sessions have no idle limit.
+   */
+  private async idleTooLong(row: UserSession): Promise<boolean> {
+    if (!row.orgId) return false;
+    const { sessionIdleMinutes } = (await this.settings.get(row.orgId))
+      .security;
+    return (
+      !!sessionIdleMinutes &&
+      row.lastUsedAt.getTime() + sessionIdleMinutes * 60_000 <= Date.now()
+    );
   }
 
   /** True while the family has an unrevoked, unexpired token. */
@@ -160,6 +180,21 @@ export class SessionService {
       },
       { revokedAt: new Date() },
     );
+  }
+
+  /**
+   * Ends the user's sessions in one school, e.g. when they are removed,
+   * suspended or lose school-admin rights there (`isAdmin` lives in the
+   * access token, so the old token must stop working).
+   */
+  async revokeAllForUserInOrg(userId: string, orgId: string): Promise<void> {
+    const where = { userId, orgId, revokedAt: IsNull() };
+    const families = await this.sessions.find({
+      select: { familyId: true },
+      where,
+    });
+    for (const { familyId } of families) this.activeCache.delete(familyId);
+    await this.sessions.update(where, { revokedAt: new Date() });
   }
 
   /** Active sessions of the user on this host (one school, or the platform). */

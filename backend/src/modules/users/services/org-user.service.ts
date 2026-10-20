@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Inject,
   Injectable,
   Logger,
@@ -14,6 +15,7 @@ import { Membership } from '~/modules/memberships/entities/membership.entity';
 import { MembershipStatus } from '~/modules/memberships/enums/membership-status.enum';
 import { UserStatus } from '../enums/user-status.enum';
 import { RoleService } from '~/modules/rbac/services/role.service';
+import type { Role } from '~/modules/rbac/entities/role.entity';
 import { AccountRepository } from '../repositories/account.repository';
 import { MemberRepository } from '../repositories/member.repository';
 import { CreateOrgUserDto } from '../dto/create-org-user.dto';
@@ -21,6 +23,10 @@ import { FilterOrgUserDto } from '../dto/filter-org-user.dto';
 import { UpdateOrgUserDto } from '../dto/update-org-user.dto';
 import { TENANT_DATASOURCE } from '~/tenancy/tenancy.constants';
 import { TenantDataSourceProxy } from '~/tenancy/tenant-datasource.proxy';
+import { AuditService } from '~/modules/audit/services/audit.service';
+import { AUDIT_ACTIONS } from '~/modules/audit/audit-actions';
+import { RequestContext } from '~/shared/request-context/request-context.service';
+import { SessionService } from '~/modules/auth/services/session.service';
 
 /**
  * A member of the current organization: the global user account merged with
@@ -54,7 +60,11 @@ export interface AddMemberInput {
 export interface AddMemberResult {
   userId: string;
   account: User;
-  /** False when an existing global account was linked. */
+  /**
+   * True when this school set up the sign-in: a new account, or one that
+   * was registered but never verified (see `addMember`). False when an
+   * existing account was linked and keeps its password.
+   */
   createdAccount: boolean;
 }
 
@@ -71,6 +81,9 @@ export class OrgUserService {
     private readonly accountRepo: AccountRepository,
     private readonly memberRepo: MemberRepository,
     private readonly roleService: RoleService,
+    private readonly audit: AuditService,
+    private readonly context: RequestContext,
+    private readonly sessions: SessionService,
     @Inject(TENANT_DATASOURCE) private readonly ds: TenantDataSourceProxy,
   ) {}
 
@@ -184,7 +197,7 @@ export class OrgUserService {
     // and then fail half-way through assigning roles.
     const roleIds = [...new Set(input.roleIds ?? [])];
     for (const roleId of roleIds) {
-      await this.roleService.findById(roleId);
+      await this.roleService.findAssignable(roleId);
     }
 
     const byEmail = email ? await this.accountRepo.findByEmail(email) : null;
@@ -196,7 +209,12 @@ export class OrgUserService {
       });
     }
     let account = byEmail ?? byPhone;
-    const createdAccount = !account;
+    // A new account, or one that registered on the platform but never
+    // verified: nobody has proved they own that email, so its password
+    // (chosen by whoever registered it) must not carry over into the school.
+    const createdAccount = !account || account.status === UserStatus.PENDING;
+    const hashPassword = () =>
+      bcrypt.hash(input.password ?? randomBytes(32).toString('base64url'), 10);
     if (account) {
       if (await this.memberRepo.findByUserId(account.id)) {
         throw new ConflictException({
@@ -204,21 +222,33 @@ export class OrgUserService {
           code: 'ALREADY_MEMBER',
         });
       }
+      if (createdAccount) {
+        account.password = await hashPassword();
+        account.mustChangePassword = input.password !== undefined;
+        // A temporary password handed over by the school vouches for the
+        // person; otherwise the account stays pending until the activation
+        // link is used.
+        if (input.password !== undefined) account.status = UserStatus.ACTIVE;
+        await this.accountRepo.save(account);
+      }
     } else {
       account = await this.accountRepo.saveNew({
         name: input.name,
         email: email ?? null,
         phone: phone ?? null,
-        password: await bcrypt.hash(
-          input.password ?? randomBytes(32).toString('base64url'),
-          10,
-        ),
+        password: await hashPassword(),
         mustChangePassword: input.password !== undefined,
         status: UserStatus.ACTIVE,
       });
     }
 
     await this.memberRepo.saveNew({ userId: account.id, status: input.status });
+    await this.audit.record({
+      action: AUDIT_ACTIONS.MEMBER_ADDED,
+      entityType: 'user',
+      entityId: account.id,
+      after: { status: input.status, createdAccount },
+    });
     for (const roleId of roleIds) {
       await this.roleService.assignRole(account.id, roleId);
     }
@@ -229,35 +259,101 @@ export class OrgUserService {
   async activateMembership(userId: string): Promise<void> {
     const member = await this.getMemberOrFail(userId);
     if (member.status !== MembershipStatus.ACTIVE) {
+      const before = { status: member.status };
       member.status = MembershipStatus.ACTIVE;
       await this.memberRepo.save(member);
+      await this.audit.record({
+        action: AUDIT_ACTIONS.MEMBER_UPDATED,
+        entityType: 'user',
+        entityId: userId,
+        before,
+        after: { status: member.status },
+      });
     }
   }
 
   async update(id: string, dto: UpdateOrgUserDto): Promise<SerializedUser> {
-    this.logger.log(`${this.update.name} Service Called`);
-
-    const member = await this.getMemberOrFail(id);
-    if (dto.status !== undefined && dto.status !== member.status) {
-      member.status = dto.status;
-      await this.memberRepo.save(member);
-    }
-    if (dto.name !== undefined && dto.name !== member.user.name) {
-      member.user.name = dto.name;
-      await this.accountRepo.save(member.user);
-    }
-    return this.findById(id);
+    let endSessions = false;
+    const updated = await this.ds.runInTransaction(async () => {
+      const member = await this.getMemberOrFail(id);
+      await this.assertCanManageMember(member);
+      const before = { status: member.status, name: member.user.name };
+      if (dto.status !== undefined && dto.status !== member.status) {
+        member.status = dto.status;
+        await this.memberRepo.save(member);
+        endSessions = member.status !== MembershipStatus.ACTIVE;
+      }
+      if (dto.name !== undefined && dto.name !== member.user.name) {
+        member.user.name = dto.name;
+        await this.accountRepo.save(member.user);
+      }
+      const after = { status: member.status, name: member.user.name };
+      if (before.status !== after.status || before.name !== after.name) {
+        await this.audit.record({
+          action: AUDIT_ACTIONS.MEMBER_UPDATED,
+          entityType: 'user',
+          entityId: id,
+          before,
+          after,
+        });
+      }
+      return this.findById(id);
+    });
+    if (endSessions) await this.endSessions(id);
+    return updated;
   }
 
   /** Removes the user from this org (membership + role assignments only). */
-  remove(id: string): Promise<void> {
-    return this.ds.runInTransaction(async () => {
+  async remove(id: string): Promise<void> {
+    await this.ds.runInTransaction(async () => {
       this.logger.log(`${this.remove.name} Service Called`);
 
       const member = await this.getMemberOrFail(id);
+      const roles = await this.roleService.getUserRoles(id);
+      await this.assertCanManageMember(member, roles);
       await this.roleService.unassignAll(id);
       await this.memberRepo.deleteById(member.id);
+      await this.audit.record({
+        action: AUDIT_ACTIONS.MEMBER_REMOVED,
+        entityType: 'user',
+        entityId: id,
+        before: {
+          status: member.status,
+          isAdmin: member.isAdmin,
+          roles: roles.map((r) => ({ id: r.id, name: r.name })),
+        },
+      });
     });
+    await this.endSessions(id);
+  }
+
+  /**
+   * Signs the user out of this school after their access shrank. Their
+   * access token carries `isAdmin`, so it must stop working rather than
+   * live on until it expires. Runs after commit (sessions are identity
+   * data on the root connection).
+   */
+  private endSessions(userId: string): Promise<void> {
+    return this.sessions.revokeAllForUserInOrg(userId, this.ds.orgId);
+  }
+
+  /**
+   * Only school admins change or remove a school admin, and nobody else
+   * changes someone whose roles reach further than their own.
+   */
+  private async assertCanManageMember(
+    member: Membership,
+    roles?: Role[],
+  ): Promise<void> {
+    if (member.isAdmin && !this.context.current().isAdmin) {
+      throw new ForbiddenException({
+        message: 'Only a school admin can change a school admin',
+        code: 'ADMIN_ONLY',
+      });
+    }
+    await this.roleService.assertCanManageRoles(
+      roles ?? (await this.roleService.getUserRoles(member.userId)),
+    );
   }
 
   async getProfile(userId: string): Promise<SerializedUser> {
@@ -273,11 +369,26 @@ export class OrgUserService {
   }
 
   private async setAdmin(id: string, value: boolean): Promise<SerializedUser> {
-    const member = await this.getMemberOrFail(id);
-    if (member.isAdmin !== value) {
-      member.isAdmin = value;
-      await this.memberRepo.save(member);
-    }
-    return this.findById(id);
+    let revoked = false;
+    const updated = await this.ds.runInTransaction(async () => {
+      const member = await this.getMemberOrFail(id);
+      if (member.isAdmin !== value) {
+        revoked = !value;
+        member.isAdmin = value;
+        await this.memberRepo.save(member);
+        await this.audit.record({
+          action: value
+            ? AUDIT_ACTIONS.MEMBER_ADMIN_GRANTED
+            : AUDIT_ACTIONS.MEMBER_ADMIN_REVOKED,
+          entityType: 'user',
+          entityId: id,
+          before: { isAdmin: !value },
+          after: { isAdmin: value },
+        });
+      }
+      return this.findById(id);
+    });
+    if (revoked) await this.endSessions(id);
+    return updated;
   }
 }

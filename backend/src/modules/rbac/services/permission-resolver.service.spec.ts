@@ -1,6 +1,7 @@
 import { PermissionResolverService } from './permission-resolver.service';
 import { UserRoleRepository } from '../repositories/user-role.repository';
 import { PERMISSIONS } from '../permissions.catalog';
+import { RoleScope } from '../enums/role-scope.enum';
 
 describe('PermissionResolverService', () => {
   let service: PermissionResolverService;
@@ -55,5 +56,61 @@ describe('PermissionResolverService', () => {
     const perms = await service.getEffectivePermissions('u1');
 
     expect([...perms]).toEqual([PERMISSIONS.SUBJECTS_READ]);
+  });
+
+  describe('getPermissionScopes', () => {
+    it('keeps the widest scope among the roles granting a key', async () => {
+      userRoleRepo.findByUserId.mockResolvedValue([
+        {
+          role: {
+            scope: RoleScope.ASSIGNED,
+            permissions: [PERMISSIONS.STUDENTS_READ, PERMISSIONS.CLASSES_READ],
+          },
+        },
+        {
+          role: {
+            scope: RoleScope.SCHOOL,
+            permissions: [PERMISSIONS.STUDENTS_READ],
+          },
+        },
+      ]);
+
+      const scopes = await service.getPermissionScopes('u1');
+
+      expect(scopes.get(PERMISSIONS.STUDENTS_READ)).toBe(RoleScope.SCHOOL);
+      expect(scopes.get(PERMISSIONS.CLASSES_READ)).toBe(RoleScope.ASSIGNED);
+      expect(scopes.has(PERMISSIONS.SUBJECTS_READ)).toBe(false);
+    });
+
+    it('does not narrow a school-wide grant when an assigned role comes later', async () => {
+      userRoleRepo.findByUserId.mockResolvedValue([
+        {
+          role: {
+            scope: RoleScope.SCHOOL,
+            permissions: [PERMISSIONS.STUDENTS_READ],
+          },
+        },
+        {
+          role: {
+            scope: RoleScope.ASSIGNED,
+            permissions: [PERMISSIONS.STUDENTS_READ],
+          },
+        },
+      ]);
+
+      const scopes = await service.getPermissionScopes('u1');
+
+      expect(scopes.get(PERMISSIONS.STUDENTS_READ)).toBe(RoleScope.SCHOOL);
+    });
+
+    it('reads the roles once per request', async () => {
+      userRoleRepo.findByUserId.mockResolvedValue([]);
+
+      await service.getEffectivePermissions('u1');
+      await service.getPermissionScopes('u1');
+      await service.getRoles('u1');
+
+      expect(userRoleRepo.findByUserId).toHaveBeenCalledTimes(1);
+    });
   });
 });

@@ -37,6 +37,14 @@ export class SubjectTeacherRepository extends BaseTenantRepository<SubjectTeache
     });
   }
 
+  /** An employee's subject-teacher rows in one academic year. */
+  findByEmployee(
+    employeeId: string,
+    academicYearId: string,
+  ): Promise<SubjectTeacher[]> {
+    return this.repo.find({ where: { employeeId, academicYearId } });
+  }
+
   findFiltered(
     where: FindOptionsWhere<SubjectTeacher>,
     page: PaginationQueryDto,

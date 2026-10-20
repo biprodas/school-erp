@@ -1,5 +1,6 @@
 import { Injectable, Type } from '@nestjs/common';
 import { ContextIdFactory, ModuleRef } from '@nestjs/core';
+import { CLS_REQ, ClsService } from 'nestjs-cls';
 import type { AuthUser } from '~/common/auth/auth-user';
 import { TENANT_DATASOURCE } from './tenancy.constants';
 import type { TenantDataSourceProxy } from './tenant-datasource.proxy';
@@ -16,11 +17,16 @@ export type TenantResolver = <T>(
  * actor) for a fresh DI context, so `TENANT_DATASOURCE` takes a tenant-pool
  * connection with `app.org_id` set and every tenant repository resolved
  * through `resolve` is org-scoped and under RLS. The connection is released
- * when `work` settles. Never read tenant data through the root connection.
+ * when `work` settles. The work also runs in its own CLS context holding the
+ * synthetic request, so `RequestContext` (audit actor) sees the job's actor.
+ * Never read tenant data through the root connection.
  */
 @Injectable()
 export class TenantJobRunner {
-  constructor(private readonly moduleRef: ModuleRef) {}
+  constructor(
+    private readonly moduleRef: ModuleRef,
+    private readonly cls: ClsService,
+  ) {}
 
   async run<R>(
     orgId: string,
@@ -38,11 +44,14 @@ export class TenantJobRunner {
     const resolve: TenantResolver = (token) =>
       this.moduleRef.resolve(token, contextId, { strict: false });
 
-    const ds = await resolve<TenantDataSourceProxy>(TENANT_DATASOURCE);
-    try {
-      return await work(resolve);
-    } finally {
-      await ds.release();
-    }
+    return this.cls.run(async () => {
+      this.cls.set(CLS_REQ, request);
+      const ds = await resolve<TenantDataSourceProxy>(TENANT_DATASOURCE);
+      try {
+        return await work(resolve);
+      } finally {
+        await ds.release();
+      }
+    });
   }
 }

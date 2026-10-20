@@ -11,6 +11,7 @@ import { ClassTeacherRepository } from './repositories/class-teacher.repository'
 import { SubjectTeacherRepository } from './repositories/subject-teacher.repository';
 import { ClassTeacherService } from './services/class-teacher.service';
 import { SubjectTeacherService } from './services/subject-teacher.service';
+import { TeachingService } from './services/teaching.service';
 
 @Module({
   imports: [
@@ -27,7 +28,8 @@ import { SubjectTeacherService } from './services/subject-teacher.service';
     SubjectTeacherRepository,
     ClassTeacherService,
     SubjectTeacherService,
+    TeachingService,
   ],
-  exports: [ClassTeacherService, SubjectTeacherService],
+  exports: [ClassTeacherService, SubjectTeacherService, TeachingService],
 })
 export class TeachingModule {}

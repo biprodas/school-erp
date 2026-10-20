@@ -6,7 +6,7 @@ Legend: **menu** → optional submenu (indented). `…/x` is shorthand for the p
 
 ## Role gating
 
-Any category, menu or submenu can carry `roles: string[]`. The values are tenant role names (system roles are seeded from `backend/src/modules/rbac/system-roles.seed.ts`: `admin`, `staff`, `teacher`, `accountant`, `librarian`, `parent`, `student`) read from `session.user.roles`.
+Any category, menu or submenu can carry `roles: string[]`. The values are tenant role names (system roles are seeded from `backend/src/modules/rbac/system-roles.seed.ts`: `admin`, `principal`, `accountant`, `teacher`, `class_teacher`, `receptionist`, `librarian`, `committee_member`, `student`, `guardian`) read from `session.user.roles`.
 
 - Items without `roles` are visible to every staff user.
 - Tenant admins (`session.user.isAdmin`) and users holding the `admin` role see everything.
@@ -69,7 +69,6 @@ Every other `/dashboard/...` link, including `/dashboard/settings` in the footer
   - Subjects → `/dashboard/academics/subjects`
   - Curriculum → `/dashboard/academics/curriculum`
   - Lesson Plans → `/dashboard/academics/lesson-plans`
-  - Timetable → `/dashboard/academics/timetable`
   - Homework → `/dashboard/academics/homework`
   - Online Classes → `/dashboard/academics/online-classes`
   - Study Materials → `/dashboard/academics/study-materials`

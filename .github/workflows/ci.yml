@@ -1,0 +1,144 @@
+# Checks every pull request and every push to main (backend plan 4.7).
+# Make the jobs below required checks on `main` in the branch protection
+# settings so a PR can't merge while any of them fails.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: '24'
+
+jobs:
+  backend:
+    name: Backend · lint, unit tests, build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      # Chrome for the PDF smoke test, downloaded by Puppeteer's postinstall.
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/puppeteer
+          key: puppeteer-${{ runner.os }}-${{ hashFiles('backend/package-lock.json') }}
+
+      - run: npm ci
+      - run: npm run format:check
+      - run: npm run lint:check
+      - run: npm run typecheck
+      # Includes the [tenant-isolation] release suite (and later
+      # [gpa-regression], [fee-regression]); see backend/README.md.
+      - name: Unit tests
+        run: npm test -- --ci
+      - run: npm run build
+
+  backend-e2e:
+    name: Backend · e2e (Postgres 17, Redis)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # test/e2e-env.ts turns DB_NAME into `<DB_NAME>_e2e`, enables schema
+      # sync and connects the tenant pool as a restricted role it creates,
+      # so row-level security applies as in production.
+      DB_HOST: localhost
+      DB_PORT: '5432'
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: school_erp
+      JWT_SECRET: ci-only-jwt-secret-not-used-anywhere-else
+      REDIS_URL: redis://localhost:6379
+      # No SMTP server here: mail failures are logged, never thrown.
+      MAIL_HOST: localhost
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/puppeteer
+          key: puppeteer-${{ runner.os }}-${{ hashFiles('backend/package-lock.json') }}
+
+      - run: npm ci
+      # One spec at a time: each boots the app, which syncs the schema and
+      # re-applies RLS policies on start.
+      - name: E2E tests
+        run: npm run test:e2e -- --ci --runInBand
+
+  frontend:
+    name: Frontend · build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      NEXT_PUBLIC_BASE_API_URL: http://localhost:3900/api
+      NEXT_PUBLIC_ROOT_DOMAIN: lvh.me
+      AUTH_SECRET: ci-only-auth-secret-not-used-anywhere-else
+      AUTH_TRUST_HOST: 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+      # TODO: add `npm run lint` once the React Compiler
+      # `set-state-in-effect` errors are fixed (theme toggles, carousel,
+      # use-mobile).
+      - run: npm run build

@@ -23,6 +23,8 @@ import { RoleService } from '~/modules/rbac/services/role.service';
 import { AuthToken } from '../entities/auth-token.entity';
 import { AuthTokenRepository } from '../repositories/auth-token.repository';
 import { AuthService } from './auth.service';
+import { AuditService } from '~/modules/audit/services/audit.service';
+import { PlatformAuditService } from '~/modules/audit/services/platform-audit.service';
 import { CredentialService } from './credential.service';
 import { SessionService } from './session.service';
 import { PlatformAuthService } from './platform-auth.service';
@@ -83,6 +85,7 @@ describe('PlatformAuthService.issueHandoff', () => {
         { provide: SessionService, useValue: {} },
         { provide: MailService, useValue: {} },
         { provide: JwtService, useValue: {} },
+        { provide: PlatformAuditService, useValue: { record: jest.fn() } },
       ],
     }).compile();
     service = module.get(PlatformAuthService);
@@ -191,6 +194,7 @@ describe('AuthService.exchangeHandoff', () => {
         { provide: SessionService, useValue: sessions },
         { provide: MailService, useValue: {} },
         { provide: JwtService, useValue: jwtService },
+        { provide: AuditService, useValue: { record: jest.fn() } },
         { provide: REQUEST, useValue: { orgId: ORG_ID, orgSlug: 'acme' } },
       ],
     }).compile();
@@ -227,7 +231,7 @@ describe('AuthService.exchangeHandoff', () => {
     });
   });
 
-  it('rejects an unknown code (including one issued for another school)', async () => {
+  it('rejects an unknown code (including one issued for another school) [tenant-isolation]', async () => {
     authTokenRepo.findByHash.mockResolvedValue(null);
     await expect(service.exchangeHandoff('raw-code', client)).rejects.toThrow(
       BadRequestException,

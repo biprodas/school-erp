@@ -62,7 +62,7 @@ describe('EmployeeService', () => {
       create: jest.fn(),
     };
     roleRepo = {
-      findById: jest.fn(),
+      findAssignable: jest.fn(),
     };
     departmentRepo = {
       findById: jest.fn(),
@@ -131,7 +131,7 @@ describe('EmployeeService', () => {
 
     it('provisions a new user with the given roles when createUser is set', async () => {
       employeeRepo.findByEmployeeNumber.mockResolvedValue(null);
-      roleRepo.findById.mockResolvedValue({ id: 'role-teacher' });
+      roleRepo.findAssignable.mockResolvedValue({ id: 'role-teacher' });
       userService.create.mockResolvedValue({ id: 'new-user' });
       employeeRepo.findByIdWithRelations.mockResolvedValue(
         makeEmployee({ id: 'new-emp', userId: 'new-user' }),
@@ -148,7 +148,7 @@ describe('EmployeeService', () => {
         },
       });
 
-      expect(roleRepo.findById).toHaveBeenCalledWith('role-teacher');
+      expect(roleRepo.findAssignable).toHaveBeenCalledWith('role-teacher');
       expect(userService.create).toHaveBeenCalledWith({
         name: 'Linus Torvalds',
         email: 'linus@example.com',

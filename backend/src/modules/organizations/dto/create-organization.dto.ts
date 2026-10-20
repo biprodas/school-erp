@@ -6,7 +6,9 @@ import {
   IsOptional,
   IsDefined,
   IsUUID,
+  IsEnum,
 } from 'class-validator';
+import { OrganizationType } from '../enums/organization-type.enum';
 
 export class CreateOrganizationDto {
   @IsDefined()
@@ -32,4 +34,9 @@ export class CreateOrganizationDto {
   @IsOptional()
   @IsUUID('4')
   ownerUserId?: string;
+
+  /** Defaults to `school`. */
+  @IsOptional()
+  @IsEnum(OrganizationType)
+  type?: OrganizationType;
 }

@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { ThrottlerGuard } from '@nestjs/throttler';
-import { Key } from '../enums/keys.enum';
 import { RequestWithOrg } from '~/tenancy/tenant.middleware';
 
 type AuthedRequest = RequestWithOrg & {
@@ -31,9 +30,9 @@ export class TenantThrottlerGuard extends ThrottlerGuard {
       return Promise.resolve(`${tenant}:u:${userId}`);
     }
 
-    const forwarded = req.headers[Key.ForwardedForTokenHeader] as
-      string | undefined;
-    const ip = forwarded?.split(',')[0]?.trim() || req.ip || 'unknown';
+    // `req.ip` follows X-Forwarded-For only through trusted proxies, so a
+    // client can't dodge the limit by sending a new address each time.
+    const ip = req.ip || 'unknown';
     return Promise.resolve(`${tenant}:ip:${ip}`);
   }
 }

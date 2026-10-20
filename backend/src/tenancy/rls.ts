@@ -57,6 +57,12 @@ export async function ensureAppRole(
 export const APP_ROLE_GLOBAL_TABLES = ['users', 'auth_tokens'];
 
 /**
+ * Org-scoped tables the app role may only read and append to, so their rows
+ * can't be changed or removed through the app (the audit log).
+ */
+export const APP_ROLE_APPEND_ONLY_TABLES = ['audit_logs'];
+
+/**
  * Gives the restricted app role DML on exactly the tables tenant requests
  * use, and nothing else (no `organizations`, no `migrations`, no future
  * tables by default). Mirrors the AppRoleGrants migration.
@@ -78,6 +84,12 @@ async function grantAppRole(
   await ds.query(
     `GRANT SELECT, INSERT, UPDATE, DELETE ON ${tables} TO ${role}`,
   );
+  for (const table of APP_ROLE_APPEND_ONLY_TABLES) {
+    if (!orgTables.includes(table)) continue;
+    await ds.query(
+      `REVOKE UPDATE, DELETE ON public.${quoteIdent(table)} FROM ${role}`,
+    );
+  }
   await ds.query(
     `GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO ${role}`,
   );
