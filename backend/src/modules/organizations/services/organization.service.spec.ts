@@ -6,6 +6,8 @@ import {
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
+import { PlatformAuditService } from '~/modules/audit/services/platform-audit.service';
+import { SessionService } from '~/modules/auth/services/session.service';
 import { OrganizationService } from './organization.service';
 import { Organization } from '../entities/organization.entity';
 import { OrganizationDomain } from '../entities/organization-domain.entity';
@@ -20,6 +22,7 @@ import { UserService } from '~/modules/users/services/user.service';
 import { UserStatus } from '~/modules/users/enums/user-status.enum';
 import { UserRole } from '~/modules/rbac/entities/user-role.entity';
 import { RbacSeederService } from '~/modules/rbac/services/rbac-seeder.service';
+import { OrgSettingsSeeder } from '~/modules/settings/services/org-settings.seeder';
 import { OwnerProvisioningService } from '~/modules/auth/services/owner-provisioning.service';
 import { RequestContextDto } from '~/common/dto/request-context.dto';
 
@@ -98,10 +101,16 @@ describe('OrganizationService', () => {
   let domainRepo: Record<string, jest.Mock>;
   let userService: Record<string, jest.Mock>;
   let rbacSeeder: Record<string, jest.Mock>;
+  let settingsSeeder: Record<string, jest.Mock>;
   let ownerProvisioning: Record<string, jest.Mock>;
   let txMembershipRepo: Record<string, jest.Mock>;
   let txUserRoleRepo: Record<string, jest.Mock>;
   let manager: Record<string, jest.Mock>;
+  let platformAudit: { record: jest.Mock };
+  const sessions = {
+    revokeAllForUser: jest.fn(),
+    revokeAllForUserInOrg: jest.fn(),
+  };
 
   beforeEach(async () => {
     orgRepo = {
@@ -128,6 +137,7 @@ describe('OrganizationService', () => {
     };
 
     rbacSeeder = { seedSystemRoles: jest.fn() };
+    settingsSeeder = { createRow: jest.fn() };
     ownerProvisioning = {
       provisionOwner: jest
         .fn()
@@ -160,10 +170,12 @@ describe('OrganizationService', () => {
         ...data,
       })),
       save: jest.fn((entity) => Promise.resolve(entity)),
+      delete: jest.fn(),
       getRepository: jest.fn((entity) =>
         entity === UserRole ? txUserRoleRepo : txMembershipRepo,
       ),
     };
+    platformAudit = { record: jest.fn() };
 
     const mockDataSource = {
       transaction: jest.fn((cb: (m: typeof manager) => unknown) =>
@@ -182,8 +194,11 @@ describe('OrganizationService', () => {
         },
         { provide: getDataSourceToken(), useValue: mockDataSource },
         { provide: RbacSeederService, useValue: rbacSeeder },
+        { provide: OrgSettingsSeeder, useValue: settingsSeeder },
         { provide: OwnerProvisioningService, useValue: ownerProvisioning },
         { provide: UserService, useValue: userService },
+        { provide: PlatformAuditService, useValue: platformAudit },
+        { provide: SessionService, useValue: sessions },
       ],
     }).compile();
 
@@ -300,7 +315,7 @@ describe('OrganizationService', () => {
           status: OrganizationStatus.ACTIVE,
         }),
       ).rejects.toThrow(ForbiddenException);
-      expect(orgRepo.save).not.toHaveBeenCalled();
+      expect(manager.save).not.toHaveBeenCalled();
     });
 
     it('ADMIN can change the organization status', async () => {
@@ -343,6 +358,10 @@ describe('OrganizationService', () => {
       expect(result.organization.id).toBe('new-org-id');
       expect(result.ownerActivation).toBeUndefined();
       expect(rbacSeeder.seedSystemRoles).toHaveBeenCalledWith(
+        manager,
+        'new-org-id',
+      );
+      expect(settingsSeeder.createRow).toHaveBeenCalledWith(
         manager,
         'new-org-id',
       );
@@ -601,7 +620,16 @@ describe('OrganizationService', () => {
 
       await service.deleteOrganization(superAdminCtx(), ORG_ID);
 
-      expect(orgRepo.delete).toHaveBeenCalledWith(ORG_ID);
+      expect(manager.delete).toHaveBeenCalledWith(Organization, ORG_ID);
+      // Recorded in the same transaction, on the platform log.
+      expect(platformAudit.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'organization.deleted',
+          orgId: ORG_ID,
+          entityId: ORG_ID,
+        }),
+        manager,
+      );
     });
 
     it("drops the org's custom domains from the host cache", async () => {

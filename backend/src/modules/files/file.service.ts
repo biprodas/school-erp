@@ -58,6 +58,11 @@ export class FileService {
     return this.store(file, 'generated');
   }
 
+  /** A stored file of this school; 404 if there is none. */
+  findById(id: string): Promise<StoredFile> {
+    return this.fileRepo.findByIdOrFail(id);
+  }
+
   async getDownloadUrl(id: string): Promise<string> {
     const file = await this.fileRepo.findByIdOrFail(id);
     return this.storage.getSignedUrl(file.key);

@@ -10,6 +10,7 @@ import { ClassService } from '~/modules/classes/services/class.service';
 import { SubjectGroupService } from '~/modules/subject-groups/services/subject-group.service';
 import { CreateClassSubjectGroupDto } from '../dto/create-class-subject-group.dto';
 import { FilterClassSubjectGroupDto } from '../dto/filter-class-subject-group.dto';
+import { UpdateClassSubjectGroupDto } from '../dto/update-class-subject-group.dto';
 import { ClassSubjectGroup } from '../entities/class-subject-group.entity';
 import { ClassSubjectGroupRepository } from '../repositories/class-subject-group.repository';
 import { Paginated } from '~/common/dto/paginated.dto';
@@ -68,6 +69,39 @@ export class ClassSubjectGroupService {
       academicYearId: dto.academicYearId,
     });
     return this.findById(created.id);
+  }
+
+  async update(
+    id: string,
+    dto: UpdateClassSubjectGroupDto,
+  ): Promise<ClassSubjectGroup> {
+    const entity = await this.findById(id);
+    if (dto.classId) await this.classService.findById(dto.classId);
+    if (dto.subjectGroupId) {
+      await this.subjectGroupService.findById(dto.subjectGroupId);
+    }
+    if (dto.academicYearId) {
+      await this.academicYearService.findById(dto.academicYearId);
+    }
+
+    const next = {
+      classId: dto.classId ?? entity.classId,
+      subjectGroupId: dto.subjectGroupId ?? entity.subjectGroupId,
+      academicYearId: dto.academicYearId ?? entity.academicYearId,
+    };
+    const existing = await this.classSubjectGroupRepo.findLink(
+      next.classId,
+      next.subjectGroupId,
+      next.academicYearId,
+    );
+    if (existing && existing.id !== id) {
+      throw new ConflictException(
+        'Subject group is already offered to this class for the year',
+      );
+    }
+
+    await this.classSubjectGroupRepo.updateLink(id, next);
+    return this.findById(id);
   }
 
   async remove(id: string): Promise<void> {

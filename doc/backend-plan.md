@@ -15,7 +15,7 @@
 - This is a starting plan, not a fixed spec. When implementation shows a better way, change the code and update this doc to match.
 - Items marked **(1b)** are listed only so Phase 1a leaves room for them; they are tracked in section 14.
 
-**Current state:** M0 in progress (4.1, 4.2 and 4.3 done; DB-backed checks wait for the local database). Section 1 lists what already exists and can be reused.
+**Current state:** M0 in progress (4.1–4.7 done; DB-backed checks wait for the local database or the first CI run). Section 1 lists what already exists and can be reused.
 
 ---
 
@@ -37,7 +37,7 @@
 | ---- | --- |
 | Identity | `users.email` is required, there is no `phone`; no lockout after failed logins; one long-lived JWT (1 day), no refresh tokens or session list; no general invite flow (tenant `POST /users` sets a password directly) |
 | Platform | `POST /organizations` is open to any platform user; `organizations` has no plan, trial, type, profile or onboarding columns; no plans/entitlements; no self-serve "sign up a school" flow; slug regex allows `_` and there is no reserved list; no slug history |
-| RBAC | No scope rules (own sections/subjects); system roles don't match PRD 6.3 (`staff`, `parent`, `stakeholder` exist; Principal, Class Teacher, Receptionist, Guardian don't) |
+| RBAC | ~~No scope rules; system roles don't match PRD 6.3~~ (done in 4.4) |
 | Academic | No shifts, terms, rooms; sections are a global name list joined to classes by `class_sections` (no session, no shift); teacher assignments are not effective-dated; no rollover |
 | SIS | No generated student ID; status enum lacks suspended/left/dropped_out; no Bangla name fields; promotion is a single audit row with no enrollment change, no preview, no rollback; no file upload; no Excel import; guardian relation enum has `BROTHER = 'BROTHER'` |
 | Missing modules | Settings, audit log, numbering, file storage, queues, PDFs, attendance, holidays, exams/grading, fees, notices/notifications, portal, dashboards/reports |
@@ -112,7 +112,7 @@ M4, M5 and M6 don't depend on one another, so they can be reordered (fees first 
 - [x] Fix `GuardianRelation.BROTHER` to `'brother'`, with a data migration (`1792330000001-GuardianRelationLowercase`).
 - [x] Remove the `console.log` entity hooks in `User`.
 - [x] Restrict `POST /organizations` to `PlatformAdminGuard` (self-serve creation moves to the signup flow, M1).
-- [ ] Leave `timetable` dormant: no new work, out of seeded roles and the frontend menu (its `section_id` FK moves in M2). *Seed and menu changes happen with the M0 role alignment (4.4).*
+- [x] Leave `timetable` dormant: no new work, out of seeded roles and the frontend menu (its `section_id` FK moves in M2). *Only `admin` holds `timetables:*`/`periods:*`; the staff sidebar entry is gone (the student portal's own timetable link stays until M7).*
 
 ### 4.2 Infrastructure modules
 
@@ -160,13 +160,13 @@ M4, M5 and M6 don't depend on one another, so they can be reordered (fees first 
   - [x] Login DTOs take `identifier` (email or phone) + password in both realms; `email` is still accepted as a deprecated alias so the current frontend keeps working.
   - [x] JWT payload drops `email`; `AuthUser` and both strategies follow (`sessionId`, `mustChangePassword` added).
 - [x] **Lockout** (`CredentialService`, shared by both realms): `failed_login_count`, `locked_until`; the 5th wrong password locks for 15 minutes (atomic SQL step), success resets; unknown accounts get the same answer after a dummy bcrypt compare.
-  - [ ] Lockouts written to the audit log and listable by school admins. *Comes with 4.5 (`verify()` already reports each failure through `onFailure`).*
+  - [x] Lockouts written to the audit log and listable by school admins (`GET /audit-logs?action=auth.account_locked`).
 - [x] **Sessions and refresh tokens** (`SessionService`):
   - [x] `user_sessions (user_id, org_id nullable, refresh_hash, family_id, user_agent, ip, created_at, last_used_at, expires_at, revoked_at)`; root connection only (identity data), no RLS.
   - [x] Access JWT carries `sid` (the family id). *Access lifetime stays `JWT_EXPIRES_IN` (long) until the frontend refreshes tokens, then set it to `15m` (decision 2026-10-18).* Refresh tokens (`JWT_REFRESH_TTL`, default 30d) rotate on every use; reusing one, or losing a concurrent refresh, revokes the family (`REFRESH_TOKEN_REUSED`).
   - [x] Both realms: `POST …/refresh`, `POST …/logout`, `GET …/sessions`, `DELETE …/sessions/:id`, `POST …/logout-all` (every school and the platform).
   - [x] Strategies refuse tokens without `sid` or with a revoked one (`SESSION_REVOKED`); positive answers are cached 60 s per process, and revocations clear the local cache at once.
-  - [ ] Idle timeout from org settings. *Needs 4.6; `TODO(4.6)` in `SessionService.rotate`.*
+  - [x] Idle timeout from org settings (`security.sessionIdleMinutes`): `SessionService.rotate` refuses and revokes a school sign-in not refreshed within it (`SESSION_IDLE_TIMEOUT`). *Checked at refresh, so it bites once access tokens are short-lived (15m).*
   - [x] A session is only refreshable on its own school (or the platform), so a token from one school can't be refreshed on another.
   - [x] Password reset ends every session; password change ends the others and returns a fresh access token for the current one.
 - [x] **Invites** (`POST /users/invite`, `InviteService` in AuthModule because it mints activation tokens):
@@ -182,53 +182,84 @@ M4, M5 and M6 don't depend on one another, so they can be reordered (fees first 
 
 ### 4.4 RBAC alignment and scope rules (PRD 4.4, 6.3)
 
-- [ ] **System roles** per PRD 6.3: `admin`, `principal`, `accountant`, `teacher`, `class_teacher`, `receptionist`, `librarian`, `committee_member`, `student`, `guardian`, with permission sets from the 4.4 matrix (updated as milestones add keys). `committee_member` gets read-only keys only (dashboards, reports, settings, academic setup, finance summaries), never the sensitive student keys (`student_medical:*`, `student_notes:read_sensitive`, guardian details).
-- [ ] Migration `AlignSystemRoles` for existing orgs: rename `parent` → `guardian`, move `staff` holders to `principal`, insert the missing roles, rewrite permissions of `is_system` roles; custom roles untouched.
-- [ ] `POST /roles/:id/clone`.
-- [ ] **Scope:**
-  - [ ] `roles.scope` (`school` | `assigned`, default `school`); seeded `teacher` and `class_teacher` use `assigned`.
-  - [ ] `PermissionResolverService` returns, per permission key, the widest scope among the user's roles that grant it.
-  - [ ] Request-scoped `AccessScope`: `can(key)`, `sectionIds(key)` (`null` = unrestricted, else sections with an active class- or subject-teacher assignment in the current session), `subjectAssignments(key)` (`(sectionId, classSubjectId)` pairs). Data from an exported `TeachingService` method, cached per request.
-  - [ ] Unit suite for permission evaluation with scopes (PRD 11.1).
-- [ ] Guardian and student roles hold only `portal:*` keys, so their tokens are refused on staff endpoints (portal endpoints in M7).
+- [x] **System roles** per PRD 6.3: `admin`, `principal`, `accountant`, `teacher`, `class_teacher`, `receptionist`, `librarian`, `committee_member`, `student`, `guardian`, with permission sets from the 4.4 matrix (updated as milestones add keys). `committee_member` gets read-only keys only (dashboards, reports, settings, academic setup, finance summaries), never the sensitive student keys (`student_medical:*`, `student_notes:read_sensitive`, guardian details).
+  - *Today's keys only: `committee_member` = `domains:read` + academic setup read; dashboards, reports, settings and finance keys join as their milestones add them. Users & roles stay admin-only (no other role has `users:*`/`roles:*`). Roles with student read access but no academic-setup column (accountant, receptionist, librarian) get `academic_years`/`classes`/`sections:read` as lookups. `system-roles.seed.spec.ts` checks the matrix rules.*
+- [x] Migration `1792330000004-AlignSystemRoles` for existing orgs: rename `parent` → `guardian`, move `staff` holders to `principal`, insert the missing roles, rewrite permissions (and scope) of `is_system` roles; custom roles untouched (one using a new system name is renamed `<name> (custom)`). *Holds a frozen copy of the role sets; `down` restores the previous ones. Not yet run against a database.*
+- [x] `POST /roles/:id/clone { name, description? }` (`roles:manage`): copies permissions and scope into a custom role. `scope` is also settable on create/PATCH.
+- [x] **Scope:**
+  - [x] `roles.scope` (`school` | `assigned`, default `school`); seeded `teacher` and `class_teacher` use `assigned`.
+  - [x] `PermissionResolverService.getPermissionScopes` returns, per permission key, the widest scope among the user's roles that grant it (roles read once per request).
+  - [x] Request-scoped `AccessScope` (`src/modules/access-scope/`, its own module because `TeachingModule` depends on `RbacModule`): `can(key)`, `sections(key)` (`null` = unrestricted, else class-sections with a class- or subject-teacher assignment in the current session), `subjectAssignments(key)`, plus `canAccessSection`/`canAccessSubject`. Data from the exported `TeachingService.activeAssignmentsForUser`, cached per request. *Sections are still a global name list shared by classes, so a section is a `{ classId, sectionId }` pair and a subject assignment `{ classId, sectionId, subjectId }`; M2 (per-session sections, `class_subject_id`, effective dates) reduces these to `sectionId` / `(sectionId, classSubjectId)`.*
+  - [x] Unit suite for permission evaluation with scopes (PRD 11.1): `access-scope.service.spec.ts`, `permission-resolver.service.spec.ts`, `teaching.service.spec.ts`.
+  - [ ] Existing student/enrollment/teaching list endpoints filter by `AccessScope`. *They predate it; each is retrofitted when its module is reworked (M2 for teaching and sections, M3 for SIS, covered by the M2 "scoped teacher sees only their own sections" e2e).*
+- [x] Guardian and student roles hold only `portal:*` keys (`portal:access`), so their tokens are refused on staff endpoints (portal endpoints in M7).
 
 ### 4.5 Audit log (PRD 6.3, 8.1)
 
-- [ ] Org-scoped `audit_logs (actor_user_id, actor_type user|platform|system, action, entity_type, entity_id, before jsonb, after jsonb, ip, user_agent, request_id, impersonator_id, created_at)`.
-- [ ] `platform_audit_logs` with the same shape, no RLS, for platform actions and pre-tenant auth events.
-- [ ] Immutable: the migration grants the app role only `SELECT, INSERT` on `audit_logs`.
-- [ ] `AuditService.record()` takes actor, IP and request id from the request context.
-- [ ] Auth events (login, failed login, lock, password change, session revoke) and role/permission changes recorded.
-- [ ] `GET /audit-logs` with filters (`audit:read`).
+- [x] Org-scoped `audit_logs (actor_user_id, actor_type user|platform|system, action, entity_type, entity_id, before jsonb, after jsonb, ip, user_agent, request_id, impersonator_id, created_at)` (`src/modules/audit/`, migration `1792330000005-AuditLogs`). *Actor and entity ids are plain columns (no FK), so rows outlive the user or record; they go with their school. Actions are text, listed in `audit-actions.ts`.*
+- [x] `platform_audit_logs` with the same shape plus a nullable `org_id` (no FK, so a school's deletion stays logged), no RLS, root connection only.
+- [x] Immutable: the migration grants the app role only `SELECT, INSERT` on `audit_logs` (and nothing on `platform_audit_logs`); dev bootstrap does the same (`APP_ROLE_APPEND_ONLY_TABLES` in `rls.ts`).
+- [x] `AuditService.record()` takes actor, IP, user agent and request id from the request context: `RequestContext` (`src/shared/request-context/`) over `nestjs-cls` (open point 15), whose middleware keeps the request; `TenantJobRunner` opens a CLS context per job with its synthetic request. It writes through the tenant connection, so it joins the caller's `ds.runInTransaction`. `PlatformAuditService.record(entry, manager?)` does the same on the root connection. Secret-looking keys are dropped from `before`/`after`.
+- [x] Auth events (login, failed login, lock, activation, password change and reset, logout, logout-all, session revoke) in both realms, and role/permission changes (role create/clone/update/delete with before and after, role assign/unassign, member add/update/remove, admin grant/revoke). Platform: organization create/update/delete and ownership transfer, membership create/update/remove.
+  - *A failed sign-in names the actor only if they're a member of that school; anyone else is logged anonymously (`unknown_account`), so a school's log never reveals accounts elsewhere. Credential and session changes live on the root connection, so their audit rows follow the change rather than sharing its transaction.*
+  - *Not audited yet: token refresh (too frequent) and refresh-token reuse; attempts on an already-locked account.*
+- [x] `GET /audit-logs` with filters (`action`, or a prefix like `role.`; `entityType`, `entityId`, `actorUserId`, `from`, `to`; paginated) behind `audit:read` (admin role; existing orgs' admin roles get it in the migration). Also `GET /platform/audit-logs` (`orgId` filter) for super-admins.
+- [x] Tests: `audit-entry`, `audit.service`, `platform-audit.service`, `request-context`, `auth-audit` (sign-in events), role and member audit cases (unit); `test/audit-log.e2e-spec.ts` (DB: rows written, isolation, app role can't UPDATE/DELETE). *The e2e spec hasn't run yet (no local database).*
 
 ### 4.6 Settings (PRD 6.24)
 
-- [ ] Extend `organizations`: `type` (school/college/madrasa/coaching/english_medium), `plan_id`, `trial_ends_at`, `onboarding_completed_at`, `listed_in_directory`, `eiin`, `logo_file_id`, `parent_org_id` (nullable, unused until Phase 3). Add `trial` and `past_due` to `OrganizationStatus`.
-- [ ] Org-scoped `org_settings` (one row per org) with typed jsonb sections, each validated by a DTO:
-  - [ ] `profile`: address, contact, principal signature file, letterhead options.
-  - [ ] `locale`: language, date format, numerals (bn/en), currency, time zone, week start, weekend days.
-  - [ ] `numbering`: patterns for student ID, roll, receipt, invoice, certificate.
-  - [ ] `portal`: classes whose students get accounts (default `level >= 6`).
-  - [ ] `results`: `verifyStep` on/off.
-  - [ ] `attendance`: mode (day/period), lock after N days, cutoff time.
-  - [ ] `fees`: billing day, grace days, block results on dues.
-  - [ ] `notifications`: channel preferences.
-- [ ] `GET /settings`, `PATCH /settings/:section` (`settings:read`, `settings:update`), audited.
-- [ ] `SettingsService.get(orgId)` cached per request and in memory, invalidated on write.
+- [x] Extend `organizations`: `type` (school/college/madrasa/coaching/english_medium), `plan_id`, `trial_ends_at`, `onboarding_completed_at`, `listed_in_directory`, `eiin`, `logo_file_id`, `parent_org_id` (nullable, unused until Phase 3). Add `trial` and `past_due` to `OrganizationStatus` (migration `1792330000006-OrgSettings`).
+  - *`plan_id` has no FK until `plans` exists (M1). `trial` and `past_due` schools resolve and work like active ones (`isOperationalOrganization`, used by `TenantMiddleware`, the public resolve endpoints and platform handoff).*
+- [x] Org-scoped `org_settings` (one row per org, `uq_org_settings_org`) with a jsonb column per section, each validated by a DTO (`src/modules/settings/`). Types in `settings.types.ts`, defaults in `settings.defaults.ts`; stored values merge over the defaults, so a new field needs no data migration. The row is created with the organization (`OrgSettingsSeeder`, back-filled by `1792330000008-OrgSettingsRows`); writes lock it and store only the fields a school changed.
+  - [x] `profile`: Bangla name, address, contact, website, founding year, principal name and signature file, brand colors, letterhead options. *The logo is `organizations.logo_file_id`.*
+  - [x] `locale`: language, date format, numerals (bn/en), currency (ISO 4217), time zone (IANA), week start, weekend days. *Defaults: English, `DD/MM/YYYY`, BDT, `Asia/Dhaka`, week from Saturday, Friday off.*
+  - [x] `numbering`: patterns for student ID, roll, receipt, invoice, certificate (each needs exactly one `{SEQ}`), plus `allowManualStudentId` (M3).
+  - [x] `portal`: `studentAccounts`, `studentMinLevel` (default 6), or an explicit `studentClassIds` list.
+  - [x] `results`: `verifyStep` on/off (default off).
+  - [x] `attendance`: mode (day/period), lock after N days (default 7), cutoff time.
+  - [x] `fees`: billing day (1–28), grace days, block results on dues.
+  - [x] `notifications`: in-app/email/SMS per event (absent, fee due, payment received, result published, notice published), SMS sender ID (1b).
+  - [x] `security` (added): `sessionIdleMinutes` for the idle timeout from 4.3.
+- [x] `GET /settings` (`settings:read`) and `PATCH /settings/<section>` (`settings:update`), one typed route per section so the global ValidationPipe checks each body; nested objects merge, arrays replace, `null` clears a nullable field. Every change is audited (`settings.updated`, entity id = section) with before and after.
+  - [x] `PATCH /settings/organization` for the school's own fields (name, type, EIIN, directory listing); `POST /settings/files/logo` and `/settings/files/signature` upload through `FileService` (the old file is removed). `GET` includes signed URLs for both.
+  - [x] `GET /settings/display` (any signed-in member): name, logo URL, colors, locale, for branding and formatting pages.
+  - [x] Seeds and migration: `admin` gets `settings:read`/`settings:update`; `principal` and `committee_member` get `settings:read`.
+- [x] `SettingsService.get()` memoized per request and cached in memory per school (60 s TTL, `settingsCache`), invalidated on write; `OrgSettingsReader.get(orgId)` for singletons, through a tenant-pool connection scoped to the school. *Other processes see a change within the TTL.*
+- [x] Tests: defaults and merge, DTO validation, `SettingsService`, `OrgSettingsReader`, session idle timeout (unit); `test/settings.e2e-spec.ts` (DB: defaults, merge, isolation, validation, organization fields, audit). *The e2e spec hasn't run yet (no local database).*
+
+### 4.6a Review fixes (2026-10-20)
+
+A review of 4.1–4.7 found these security gaps; all are fixed with unit tests (DB e2e still pending):
+
+- [x] **No role escalation:** outside school admins, `RoleService` refuses to create, edit, clone, assign or unassign a role with keys the caller doesn't hold (or school-wide when they only hold it `assigned`). This covers `POST /employees` `createUser.roleIds` and `POST /users`/invite `roleIds` (`findAssignable`). Only school admins change or remove a school admin. System roles: scope locked, `admin` permissions locked, guardian/student portal-only, no role mixes portal and staff keys.
+- [x] **Pre-registered accounts:** an invite or `POST /users` for a PENDING (registered, never verified) account resets its password instead of linking it; tenant sign-in refuses PENDING accounts (`ACCOUNT_PENDING`).
+- [x] **Activation:** never replaces a password the owner chose (`CredentialService.hasOwnPassword`: active, not temporary, and verified or active in some school); for such accounts it checks that password (with lockout) instead. Only PENDING memberships are activated; the token is consumed atomically; setting a password ends the account's other sessions. `GET /auth/activate` returns `hasPassword`. Platform-admin-created users get `must_change_password`.
+- [x] **Sessions end when access shrinks:** removing, suspending or revoking school admin (tenant and platform), demoting/removing an old owner on transfer, and suspending or un-admining a platform user revoke the affected sessions (`SessionService.revokeAllForUserInOrg` / `revokeAllForUser`). `SessionService` moved to `SessionModule`.
+- [x] **Client IP:** `req.ip` with Express `trust proxy` (`TRUST_PROXY`) in sessions, audit, request context and the throttler; the raw `X-Forwarded-For` header (forgeable, and longer than the 64-character column) is no longer read.
+- [x] **Lockout race:** each attempt claims a slot in `failed_login_count` before the password check, and a right password that finishes after a lock started is refused.
+- [x] **Idempotency keys per user** (`<userId>:<key>`, migration `1792330000007-IdempotencyKeyPerUser`).
+- [x] **Settings:** nested-object fields reject arrays (`@IsObject`, merge keeps objects); writes lock the row; the row is created with the org (migration `1792330000008-OrgSettingsRows` back-fills); only changed fields are stored; the 60 s cache can't be refilled with stale values (per-org generation) and cached values are frozen; replaced logo/signature files are removed after commit (new uploads removed on failure); an organization field change commits only after its audit row; public resolve endpoints no longer return `status`; `OmitOrValidate` removed.
+- [x] **Audit:** `clock_timestamp()` plus a `seq` identity tie-breaker; secret filter by exact keys and suffixes (`passMark` survives); platform email verification records `auth.account_activated`; platform actor type is `platform`/`user`/`system`; strict ISO dates in filters; no-op role updates aren't recorded; migration 0005 resolves the app role like `AppRoleGrants`; the isolation e2e now has rows in both schools; the `RequestContext` param decorator is renamed `ReqContext`; sensitive reads are audited (medical record, health notes).
+- [x] **Identity and infra:** BD phone normalization handles `+880 01…`; idempotency replay status verified with an HTTP test; session cache prunes expired entries; job errors shown to users are safe and a failed enqueue marks the job failed; `hashPassword` moved to `common/identity/password.ts`; dead code removed; `FIELD_ENCRYPTION_KEY` required in staging too.
+- [x] **RBAC and teaching:** `PATCH /subject-teachers/:id` and `PATCH /class-subject-groups/:id`; the medical upsert accepts `student_medical:create` or `:update`; unused `promotions:update` and `student_subjects:update` removed; migration 0004's `(custom)` rename can't collide and its `down()` is minimal (no broad grants); `TeachingService` returns fresh empty results; unused `AccessScope.can()` removed.
+- [x] **Tests and CI:** e2e specs for numbering concurrency, `TenantJobRunner` isolation and the queue/jobs flow (not run yet: no database); `test:release:e2e` runs in band; CI drops the unused Redis service and runs frontend lint (its four React Compiler errors fixed). The Bangla PDF check stays in `pdf.service.spec.ts` (real Chrome in the unit job).
+- [ ] **Still open:** storage smoke e2e (CI needs a MinIO container); paging reuse in `PlatformAuditService.findFiltered`; whether disciplinary notes count as sensitive (today only health notes); public home page settings and other signatures (PRD 6.24); TOTP (PRD 6.3, not scheduled); branch protection (repository setting).
 
 ### 4.7 CI
 
-- [ ] GitHub Actions: lint, `npm test`, `npm run test:e2e` with Postgres 17 and Redis service containers, `npm run build`; required on every PR.
-- [ ] Tenant-isolation, grading and fee suites named so the PRD 11.5 release criteria can point at them.
+- [x] GitHub Actions (`.github/workflows/ci.yml`, on every PR and push to `main`): backend `format:check`, `lint:check` (no `--fix`, no warnings), `typecheck`, `npm test`, `npm run build`; `npm run test:e2e --runInBand` with Postgres 17 and Redis 7 service containers (the run creates `school_erp_e2e` and the restricted app role itself); frontend `next build`.
+  - [ ] Required on every PR: mark the three jobs as required status checks in `main`'s branch protection (a repository setting, not code).
+  - [ ] Frontend lint in CI, after fixing its four React Compiler `set-state-in-effect` errors (theme toggles, carousel, `use-mobile`).
+- [x] Tenant-isolation, grading and fee suites named so the PRD 11.5 release criteria can point at them: tests carry `[tenant-isolation]`, `[gpa-regression]` or `[fee-regression]` in their names, and `npm run test:release` runs exactly those (unit and e2e). Tagged so far: the tenant-isolation e2e and repository-scoping suites plus single cross-school cases; the grading and fee tags arrive with M5 and M6. Listed in `backend/README.md` ("Release suites").
 
 ### Done when
 
 - [ ] Stakeholders are gone and the app boots with no reference to them.
 - [ ] Email-or-phone login, lockout, refresh/session revoke and invites work end to end (e2e).
-- [ ] Scope rules are covered by the unit suite.
-- [ ] Audit rows are written for auth and role changes, and the app role can't update or delete them.
+- [x] Scope rules are covered by the unit suite.
+- [ ] Audit rows are written for auth and role changes, and the app role can't update or delete them. *Implemented; checked by `test/audit-log.e2e-spec.ts` once it runs against a database.*
 - [ ] Queue, storage, PDF (with Bangla text) and numbering have passing smoke e2e tests.
-- [ ] CI is green on a PR.
+- [ ] CI is green on a PR. *Workflow in place; not yet run on GitHub.*
 
 ---
 
@@ -716,4 +747,4 @@ Tracked here so Phase 1a leaves room for it. Each becomes a full milestone when 
 - [ ] **Existing data:** is there production or pilot data yet? If not, the M2 section refactor, the M3 promotion replacement and the M0 identity change can skip their data back-fill steps.
 - [ ] **Certificates and ID cards** (7.6) are P0 in PRD 6.6 but not in the PRD 12.2 timeline. Kept in M3 with fixed layouts; could move to 1b if the pilot doesn't need them.
 - [ ] **Expenses and ledger** (10.5) may slip to the start of Phase 1b.
-- [ ] **Request context library:** `nestjs-cls` for actor/IP/request id in `AuditService`, unless the existing pino context already exposes them cleanly.
+- [x] **Request context library:** `nestjs-cls` (`RequestContext`), since `PlatformAuditService` and job handlers aren't request-scoped and pino's context isn't readable from app code.

@@ -7,6 +7,7 @@ import { Membership } from '~/modules/memberships/entities/membership.entity';
 import { UserModule } from '~/modules/users/user.module';
 import { AuthModule } from '~/modules/auth/auth.module';
 import { RbacModule } from '~/modules/rbac/rbac.module';
+import { SettingsModule } from '~/modules/settings/settings.module';
 import { OrganizationService } from './services/organization.service';
 import { OrganizationController } from './controllers/organization.controller';
 import { PublicOrganizationController } from './controllers/public-organization.controller';
@@ -21,6 +22,7 @@ import { DomainCheckScheduler } from './services/domain-check.scheduler';
     TypeOrmModule.forFeature([Organization, OrganizationDomain, Membership]),
     UserModule,
     RbacModule,
+    SettingsModule,
     AuthModule,
   ],
   controllers: [

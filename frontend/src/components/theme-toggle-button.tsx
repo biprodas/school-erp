@@ -2,16 +2,13 @@
 
 import * as React from "react"
 import { Button } from "~/components/ui/button"
-import { SunIcon, MoonIcon, MoonStarIcon } from "lucide-react"
+import { SunIcon, MoonStarIcon } from "lucide-react"
 import { useTheme } from "next-themes"
+import { useMounted } from "~/hooks/use-mounted"
 
 export const ThemeToggleButton = () => {
   const { resolvedTheme, setTheme } = useTheme()
-  const [mounted, setMounted] = React.useState(false)
-
-  React.useEffect(() => {
-    setMounted(true)
-  }, [])
+  const mounted = useMounted()
 
   if (!mounted) {
     return null

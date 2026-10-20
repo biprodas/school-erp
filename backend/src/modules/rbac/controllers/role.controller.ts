@@ -22,6 +22,7 @@ import { RoleService } from '../services/role.service';
 import { CreateRoleDto } from '../dto/create-role.dto';
 import { UpdateRoleDto } from '../dto/update-role.dto';
 import { SetPermissionsDto } from '../dto/set-permissions.dto';
+import { CloneRoleDto } from '../dto/clone-role.dto';
 
 @ApiTags('Tenant / Roles')
 @ApiBearerAuth('tenant-jwt')
@@ -51,6 +52,12 @@ export class RoleController {
   @RequirePermissions(PERMISSIONS.ROLES_MANAGE)
   create(@Body() dto: CreateRoleDto) {
     return this.roleService.create(dto);
+  }
+
+  @Post(':id/clone')
+  @RequirePermissions(PERMISSIONS.ROLES_MANAGE)
+  clone(@Param('id', ParseUUIDPipe) id: string, @Body() dto: CloneRoleDto) {
+    return this.roleService.clone(id, dto);
   }
 
   @Patch(':id')

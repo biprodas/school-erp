@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { HttpException, Injectable, Logger } from '@nestjs/common';
 import type { JobContext, JobPayload } from '~/shared/queue';
 import {
   TenantJobRunner,
@@ -35,6 +35,8 @@ export interface TrackedJobResult {
  */
 @Injectable()
 export class JobTracker {
+  private readonly logger = new Logger(JobTracker.name);
+
   constructor(private readonly runner: TenantJobRunner) {}
 
   run(
@@ -78,9 +80,14 @@ export class JobTracker {
           });
         } catch (err) {
           const last = context.attempt >= context.attempts;
+          this.logger.error(
+            `Job ${context.queue}:${context.name} (${trackingId ?? 'untracked'}) ` +
+              `failed on attempt ${context.attempt}/${context.attempts}`,
+            (err as Error)?.stack,
+          );
           await patch({
             status: last ? JobStatus.FAILED : JobStatus.QUEUED,
-            error: (err as Error).message,
+            error: publicError(err),
             finishedAt: last ? new Date() : null,
           });
           throw err;
@@ -89,4 +96,13 @@ export class JobTracker {
       actorUserId ? { userId: actorUserId, isAdmin: false } : undefined,
     );
   }
+}
+
+/**
+ * The error shown on the job (`GET /jobs/:id`): an HttpException's message
+ * was written for users; anything else (e.g. a driver error carrying SQL)
+ * stays in the server log.
+ */
+export function publicError(err: unknown): string {
+  return err instanceof HttpException ? err.message : 'The job failed';
 }

@@ -5,6 +5,8 @@ import {
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
+import { PlatformAuditService } from '~/modules/audit/services/platform-audit.service';
+import { SessionService } from '~/modules/auth/services/session.service';
 import { MembershipService } from './membership.service';
 import { Membership } from '../entities/membership.entity';
 import { MembershipRole } from '../enums/membership-role.enum';
@@ -78,8 +80,15 @@ describe('MembershipService', () => {
   let userService: Record<string, jest.Mock>;
   let ownerProvisioning: Record<string, jest.Mock>;
   let manager: Record<string, jest.Mock>;
+  let platformAudit: { record: jest.Mock };
+  const sessions = {
+    revokeAllForUser: jest.fn(),
+    revokeAllForUserInOrg: jest.fn(),
+  };
 
   beforeEach(async () => {
+    sessions.revokeAllForUser.mockClear();
+    sessions.revokeAllForUserInOrg.mockClear();
     membershipRepo = {
       findOne: jest.fn(),
       find: jest.fn(),
@@ -115,7 +124,13 @@ describe('MembershipService', () => {
         ),
       ),
       delete: jest.fn(),
+      // Writes inside a transaction land on the same repository mock.
+      create: jest.fn((_entity: unknown, data: object): unknown =>
+        membershipRepo.create(data),
+      ),
+      save: jest.fn((entity: object): unknown => membershipRepo.save(entity)),
     };
+    platformAudit = { record: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -132,6 +147,8 @@ describe('MembershipService', () => {
         { provide: OrganizationService, useValue: tenantService },
         { provide: UserService, useValue: userService },
         { provide: OwnerProvisioningService, useValue: ownerProvisioning },
+        { provide: PlatformAuditService, useValue: platformAudit },
+        { provide: SessionService, useValue: sessions },
       ],
     }).compile();
 
@@ -624,6 +641,24 @@ describe('MembershipService', () => {
         orgId: TENANT_ID,
         userId: 'user-id',
       });
+      expect(sessions.revokeAllForUserInOrg).toHaveBeenCalledWith(
+        'user-id',
+        TENANT_ID,
+      );
+    });
+
+    it('ends the sessions of a school admin demoted to member', async () => {
+      membershipRepo.findOne.mockResolvedValueOnce(
+        makeMembership({ role: MembershipRole.ADMIN, isAdmin: true }),
+      );
+
+      await service.updateRole(superAdminCtx(), 'mem-1', {
+        role: MembershipRole.MEMBER,
+      });
+      expect(sessions.revokeAllForUserInOrg).toHaveBeenCalledWith(
+        'user-id',
+        TENANT_ID,
+      );
     });
 
     it('Tenant OWNER can remove MEMBER from their tenant', async () => {

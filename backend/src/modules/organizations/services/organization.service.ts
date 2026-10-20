@@ -21,6 +21,8 @@ import {
 } from '~/tenancy/tenant-slug.cache';
 import { UserRole } from '~/modules/rbac/entities/user-role.entity';
 import { RbacSeederService } from '~/modules/rbac/services/rbac-seeder.service';
+import { OrgSettingsSeeder } from '~/modules/settings/services/org-settings.seeder';
+import { SessionService } from '~/modules/auth/services/session.service';
 import { OwnerProvisioningService } from '~/modules/auth/services/owner-provisioning.service';
 import { CreateOrganizationDto } from '../dto/create-organization.dto';
 import {
@@ -29,6 +31,13 @@ import {
 } from '../dto/transfer-ownership.dto';
 import { UpdateOrganizationDto } from '../dto/update-organization.dto';
 import { RequestContextDto } from '~/common/dto/request-context.dto';
+import { PlatformAuditService } from '~/modules/audit/services/platform-audit.service';
+import { AUDIT_ACTIONS } from '~/modules/audit/audit-actions';
+
+/** What the platform audit log keeps of an organization. */
+function organizationSnapshot(org: Organization) {
+  return { name: org.name, slug: org.slug, status: org.status, type: org.type };
+}
 
 /** One-time owner activation handed back when an owner is (re)provisioned. */
 export interface OwnerActivation {
@@ -55,8 +64,11 @@ export class OrganizationService {
     @InjectDataSource()
     private dataSource: DataSource,
     private rbacSeederService: RbacSeederService,
+    private orgSettingsSeeder: OrgSettingsSeeder,
     private userService: UserService,
     private ownerProvisioning: OwnerProvisioningService,
+    private platformAudit: PlatformAuditService,
+    private sessions: SessionService,
   ) {}
 
   /**
@@ -67,8 +79,8 @@ export class OrganizationService {
    * - Admin caller without `dto.ownerUserId`: the organization is created
    *   with no membership; assign an owner later via `transferOwnership`.
    *
-   * Everything (org row, system roles, owner membership + activation token)
-   * is written in one transaction, so a failure leaves nothing behind. The
+   * Everything (org row, system roles, settings row, owner membership +
+   * activation token) is written in one transaction, so a failure leaves nothing behind. The
    * activation email is sent after commit.
    */
   async createOrganization(
@@ -105,6 +117,8 @@ export class OrganizationService {
 
         // Seed the standard school roles for the new organization.
         await this.rbacSeederService.seedSystemRoles(manager, organization.id);
+        // Its settings row, so settings writes only ever update (and lock) it.
+        await this.orgSettingsSeeder.createRow(manager, organization.id);
 
         let token: string | undefined;
         if (owner) {
@@ -113,6 +127,19 @@ export class OrganizationService {
             userId: owner.id,
           }));
         }
+        await this.platformAudit.record(
+          {
+            action: AUDIT_ACTIONS.ORGANIZATION_CREATED,
+            orgId: organization.id,
+            entityType: 'organization',
+            entityId: organization.id,
+            after: {
+              ...organizationSnapshot(organization),
+              ownerUserId: owner?.id ?? null,
+            },
+          },
+          manager,
+        );
         return { organization, token };
       },
     );
@@ -159,8 +186,8 @@ export class OrganizationService {
       dto.newOwnerUserId,
     );
 
-    const { membership, token } = await this.dataSource.transaction(
-      async (manager) => {
+    const { membership, token, signedOutUserId } =
+      await this.dataSource.transaction(async (manager) => {
         const memberships = manager.getRepository(Membership);
 
         const existingOwners = await memberships.find({
@@ -173,6 +200,9 @@ export class OrganizationService {
           );
         }
         const currentOwner = existingOwners[0];
+        // Set when the old owner loses school-admin rights: `isAdmin` is in
+        // their access token, so their sessions in this school end.
+        let signedOutUserId: string | null = null;
 
         if (currentOwner && currentOwner.userId === dto.newOwnerUserId) {
           throw new BadRequestException('User is already the owner');
@@ -187,6 +217,9 @@ export class OrganizationService {
         // Demote / remove the previous owner.
         if (currentOwner) {
           const fate = dto.demoteOldOwnerTo ?? DemoteOldOwnerTo.ADMIN;
+          if (fate !== DemoteOldOwnerTo.ADMIN) {
+            signedOutUserId = currentOwner.userId;
+          }
           if (fate === DemoteOldOwnerTo.REMOVE) {
             await memberships.delete(currentOwner.id);
             await manager
@@ -214,10 +247,26 @@ export class OrganizationService {
         const membership = await memberships.findOneOrFail({
           where: { orgId, userId: dto.newOwnerUserId },
         });
-        return { membership, token };
-      },
-    );
+        await this.platformAudit.record(
+          {
+            action: AUDIT_ACTIONS.ORGANIZATION_OWNER_TRANSFERRED,
+            orgId,
+            entityType: 'organization',
+            entityId: orgId,
+            before: { ownerUserId: currentOwner?.userId ?? null },
+            after: {
+              ownerUserId: dto.newOwnerUserId,
+              previousOwner: dto.demoteOldOwnerTo ?? DemoteOldOwnerTo.ADMIN,
+            },
+          },
+          manager,
+        );
+        return { membership, token, signedOutUserId };
+      });
 
+    if (signedOutUserId) {
+      await this.sessions.revokeAllForUserInOrg(signedOutUserId, orgId);
+    }
     await this.ownerProvisioning.sendActivationEmail(
       newOwnerUser,
       organization.slug,
@@ -366,8 +415,23 @@ export class OrganizationService {
       await this.assertOwner(ctx, id, 'update this organization');
     }
 
+    const before = organizationSnapshot(organization);
     Object.assign(organization, dto);
-    const saved = await this.organizationRepository.save(organization);
+    const saved = await this.dataSource.transaction(async (manager) => {
+      const result = await manager.save(organization);
+      await this.platformAudit.record(
+        {
+          action: AUDIT_ACTIONS.ORGANIZATION_UPDATED,
+          orgId: id,
+          entityType: 'organization',
+          entityId: id,
+          before,
+          after: organizationSnapshot(result),
+        },
+        manager,
+      );
+      return result;
+    });
     tenantSlugCache.invalidate(organization.slug);
     await this.invalidateDomainCache(organization.id);
     return saved;
@@ -386,7 +450,20 @@ export class OrganizationService {
 
     // Read the hostnames first: the delete cascades to them.
     const hostnames = await this.domainHostnames(id);
-    await this.organizationRepository.delete(id);
+    await this.dataSource.transaction(async (manager) => {
+      await manager.delete(Organization, id);
+      // No FK from the platform log, so this row outlives the school.
+      await this.platformAudit.record(
+        {
+          action: AUDIT_ACTIONS.ORGANIZATION_DELETED,
+          orgId: id,
+          entityType: 'organization',
+          entityId: id,
+          before: organizationSnapshot(organization),
+        },
+        manager,
+      );
+    });
     tenantSlugCache.invalidate(organization.slug);
     hostnames.forEach((h) => tenantDomainCache.invalidate(h));
     this.logger.log(`Organization "${organization.slug}" deleted`);

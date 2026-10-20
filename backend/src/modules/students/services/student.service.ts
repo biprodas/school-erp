@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { FindOptionsWhere } from 'typeorm';
 import { RoleService } from '~/modules/rbac/services/role.service';
+import { STUDENT_ROLE_NAME } from '~/modules/rbac/system-roles.seed';
 import { OrgUserService } from '~/modules/users/services/org-user.service';
 import { CreateStudentDto } from '../dto/create-student.dto';
 import { FilterStudentDto } from '../dto/filter-student.dto';
@@ -17,8 +18,6 @@ import { StudentRepository } from '../repositories/student.repository';
 import { TENANT_DATASOURCE } from '~/tenancy/tenancy.constants';
 import { TenantDataSourceProxy } from '~/tenancy/tenant-datasource.proxy';
 import { Paginated } from '~/common/dto/paginated.dto';
-
-const STUDENT_ROLE_NAME = 'student';
 
 @Injectable()
 export class StudentService {

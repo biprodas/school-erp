@@ -101,7 +101,7 @@ describe('GuardianService', () => {
     });
 
     it('provisions a new user with the parent role when createUser is set', async () => {
-      roleService.findSystemRole.mockResolvedValue({ id: 'role-parent' });
+      roleService.findSystemRole.mockResolvedValue({ id: 'role-guardian' });
       userService.create.mockResolvedValue({ id: 'new-user' });
       guardianRepo.findByIdWithUser.mockResolvedValue(
         makeGuardian({ id: 'new-g', userId: 'new-user' }),
@@ -112,12 +112,12 @@ describe('GuardianService', () => {
         createUser: { email: 'jane@example.com', password: 'secret123' },
       });
 
-      expect(roleService.findSystemRole).toHaveBeenCalledWith('parent');
+      expect(roleService.findSystemRole).toHaveBeenCalledWith('guardian');
       expect(userService.create).toHaveBeenCalledWith({
         name: 'Jane Roe',
         email: 'jane@example.com',
         password: 'secret123',
-        roleIds: ['role-parent'],
+        roleIds: ['role-guardian'],
       });
       expect(result.userId).toBe('new-user');
     });

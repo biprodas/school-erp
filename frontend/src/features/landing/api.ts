@@ -3,7 +3,6 @@ import { apiConfig } from "~/config/api-config";
 export type PublicTenant = {
   slug: string;
   name: string;
-  status: string;
 };
 
 /**

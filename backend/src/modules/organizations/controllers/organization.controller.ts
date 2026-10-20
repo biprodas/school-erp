@@ -10,7 +10,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { RequestContext } from '~/common/decorators/request-context.decorator';
+import { ReqContext } from '~/common/decorators/request-context.decorator';
 import { RequestContextDto } from '~/common/dto/request-context.dto';
 import { PlatformJwtAuthGuard } from '~/common/guards/platform-jwt-auth.guard';
 import { PlatformAdminGuard } from '~/common/guards/platform-admin.guard';
@@ -29,14 +29,14 @@ export class OrganizationController {
 
   @Get()
   @ResponseMessage('List of organizations')
-  findAll(@RequestContext() ctx: RequestContextDto) {
+  findAll(@ReqContext() ctx: RequestContextDto) {
     return this.organizationService.getAllOrganizations(ctx);
   }
 
   @Get(':id')
   @ResponseMessage('Organization found')
   findOne(
-    @RequestContext() ctx: RequestContextDto,
+    @ReqContext() ctx: RequestContextDto,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
     return this.organizationService.findByIdForUser(ctx, id);
@@ -46,7 +46,7 @@ export class OrganizationController {
   @UseGuards(PlatformAdminGuard)
   @ResponseMessage('Organization created successfully')
   async create(
-    @RequestContext() ctx: RequestContextDto,
+    @ReqContext() ctx: RequestContextDto,
     @Body() createOrganizationDto: CreateOrganizationDto,
   ) {
     const { organization, ownerActivation } =
@@ -61,7 +61,7 @@ export class OrganizationController {
   @Patch(':id')
   @ResponseMessage('Organization updated successfully')
   update(
-    @RequestContext() ctx: RequestContextDto,
+    @ReqContext() ctx: RequestContextDto,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateOrganizationDto: UpdateOrganizationDto,
   ) {
@@ -76,7 +76,7 @@ export class OrganizationController {
   @UseGuards(PlatformAdminGuard)
   @ResponseMessage('Organization ownership transferred')
   async transferOwnership(
-    @RequestContext() ctx: RequestContextDto,
+    @ReqContext() ctx: RequestContextDto,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: TransferOwnershipDto,
   ) {
@@ -89,7 +89,7 @@ export class OrganizationController {
   @Post(':id/owner/activation-link')
   @ResponseMessage('Owner activation link issued')
   reissueOwnerActivation(
-    @RequestContext() ctx: RequestContextDto,
+    @ReqContext() ctx: RequestContextDto,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
     return this.organizationService.reissueOwnerActivation(ctx, id);
@@ -99,7 +99,7 @@ export class OrganizationController {
   @UseGuards(PlatformAdminGuard)
   @ResponseMessage('Organization deleted successfully')
   async remove(
-    @RequestContext() ctx: RequestContextDto,
+    @ReqContext() ctx: RequestContextDto,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
     await this.organizationService.deleteOrganization(ctx, id);

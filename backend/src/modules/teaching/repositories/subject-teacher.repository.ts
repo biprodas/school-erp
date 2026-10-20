@@ -37,6 +37,24 @@ export class SubjectTeacherRepository extends BaseTenantRepository<SubjectTeache
     });
   }
 
+  async updateLink(
+    id: string,
+    patch: Pick<
+      SubjectTeacher,
+      'classId' | 'sectionId' | 'subjectId' | 'employeeId' | 'academicYearId'
+    >,
+  ): Promise<void> {
+    await this.repo.update({ id }, patch);
+  }
+
+  /** An employee's subject-teacher rows in one academic year. */
+  findByEmployee(
+    employeeId: string,
+    academicYearId: string,
+  ): Promise<SubjectTeacher[]> {
+    return this.repo.find({ where: { employeeId, academicYearId } });
+  }
+
   findFiltered(
     where: FindOptionsWhere<SubjectTeacher>,
     page: PaginationQueryDto,

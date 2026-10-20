@@ -3,7 +3,12 @@ import type { ConfigService } from '@nestjs/config';
 import type { Repository } from 'typeorm';
 import { hashToken } from '~/common/tokens/secure-token.util';
 import type { UserSession } from '../entities/user-session.entity';
-import { SessionService } from './session.service';
+import {
+  SESSION_CACHE_MS,
+  SESSION_CACHE_SWEEP_AT,
+  SessionService,
+} from './session.service';
+import type { OrgSettingsReader } from '~/modules/settings/services/org-settings.reader';
 
 const DAY = 86_400_000;
 
@@ -16,6 +21,7 @@ describe('SessionService', () => {
     find: jest.Mock;
   };
   let service: SessionService;
+  let idleMinutes: number | null;
 
   const row = (overrides: Partial<UserSession> = {}) => ({
     id: 'row-1',
@@ -40,9 +46,14 @@ describe('SessionService', () => {
       exists: jest.fn().mockResolvedValue(true),
       find: jest.fn().mockResolvedValue([]),
     };
+    idleMinutes = null;
     service = new SessionService(
       repo as unknown as Repository<UserSession>,
       { get: () => ({ refreshTtlMs: 30 * DAY }) } as unknown as ConfigService,
+      {
+        get: () =>
+          Promise.resolve({ security: { sessionIdleMinutes: idleMinutes } }),
+      } as unknown as OrgSettingsReader,
     );
   });
 
@@ -142,6 +153,26 @@ describe('SessionService', () => {
     await expect(service.isActive('fam-1')).resolves.toBe(false);
   });
 
+  it('sweeps expired cache entries once the cache grows large', async () => {
+    const now = Date.now();
+    const clock = jest.spyOn(Date, 'now').mockReturnValue(now);
+    try {
+      for (let i = 0; i < SESSION_CACHE_SWEEP_AT; i++) {
+        await service.isActive(`old-${i}`);
+      }
+      const cache = (service as unknown as { activeCache: Map<string, number> })
+        .activeCache;
+      expect(cache.size).toBe(SESSION_CACHE_SWEEP_AT);
+
+      clock.mockReturnValue(now + SESSION_CACHE_MS + 1);
+      await service.isActive('fresh');
+
+      expect([...cache.keys()]).toEqual(['fresh']);
+    } finally {
+      clock.mockRestore();
+    }
+  });
+
   it('only revokes a session that belongs to the user on this host', async () => {
     repo.exists.mockResolvedValueOnce(false);
     await expect(service.revokeOwn('user-2', 'org-a', 'fam-1')).resolves.toBe(
@@ -158,5 +189,44 @@ describe('SessionService', () => {
     const [criteria] = repo.update.mock.calls[0] as [Record<string, unknown>];
     expect(criteria).toMatchObject({ userId: 'user-1' });
     expect(criteria.familyId).toBeDefined(); // Not('fam-1')
+  });
+
+  describe('idle timeout (school setting)', () => {
+    it('refuses and revokes a sign-in unused for longer than the limit', async () => {
+      idleMinutes = 30;
+      repo.findOne.mockResolvedValue(
+        row({ lastUsedAt: new Date(Date.now() - 31 * 60_000) }),
+      );
+
+      await expect(service.rotate('raw', 'org-a')).rejects.toMatchObject({
+        response: { code: 'SESSION_IDLE_TIMEOUT' },
+      });
+      expect(repo.update).toHaveBeenCalledWith(
+        expect.objectContaining({ familyId: 'fam-1' }),
+        expect.objectContaining({ revokedAt: expect.any(Date) as Date }),
+      );
+      expect(repo.insert).not.toHaveBeenCalled();
+    });
+
+    it('rotates a sign-in used within the limit', async () => {
+      idleMinutes = 30;
+      repo.findOne.mockResolvedValue(
+        row({ lastUsedAt: new Date(Date.now() - 5 * 60_000) }),
+      );
+
+      await expect(service.rotate('raw', 'org-a')).resolves.toMatchObject({
+        userId: 'user-1',
+      });
+    });
+
+    it('has no limit when the school sets none, or on the platform', async () => {
+      const old = new Date(Date.now() - 10 * DAY);
+      repo.findOne.mockResolvedValue(row({ lastUsedAt: old }));
+      await expect(service.rotate('raw', 'org-a')).resolves.toBeDefined();
+
+      idleMinutes = 30;
+      repo.findOne.mockResolvedValue(row({ orgId: null, lastUsedAt: old }));
+      await expect(service.rotate('raw', null)).resolves.toBeDefined();
+    });
   });
 });

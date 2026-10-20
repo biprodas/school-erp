@@ -1,0 +1,49 @@
+@base = http://localhost:3900/api
+@tenant = acme
+# A tenant access token (auth.http → login) and a role id from the list
+@token = paste-tenant-access-token
+@roleId = paste-role-id
+
+### List roles (system roles carry scope school|assigned)
+GET {{base}}/roles
+Authorization: Bearer {{token}}
+X-Tenant-ID: {{tenant}}
+
+### Permission catalog
+GET {{base}}/permissions
+Authorization: Bearer {{token}}
+X-Tenant-ID: {{tenant}}
+
+### Create a custom role limited to assigned sections
+POST {{base}}/roles
+Authorization: Bearer {{token}}
+X-Tenant-ID: {{tenant}}
+Content-Type: application/json
+
+{
+  "name": "exam_assistant",
+  "description": "Reads students of the sections they teach",
+  "permissions": ["students:read", "enrollments:read"],
+  "scope": "assigned"
+}
+
+### Clone a role (e.g. principal → vice principal); permissions and scope are copied
+POST {{base}}/roles/{{roleId}}/clone
+Authorization: Bearer {{token}}
+X-Tenant-ID: {{tenant}}
+Content-Type: application/json
+
+{
+  "name": "vice_principal",
+  "description": "Principal's deputy"
+}
+
+### Change a role's scope
+PATCH {{base}}/roles/{{roleId}}
+Authorization: Bearer {{token}}
+X-Tenant-ID: {{tenant}}
+Content-Type: application/json
+
+{
+  "scope": "school"
+}

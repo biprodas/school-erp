@@ -1,7 +1,10 @@
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import { NextFunction, Request, Response } from 'express';
 import { Key } from '~/common/enums/keys.enum';
-import { OrganizationStatus } from '~/modules/organizations/enums/organization-status.enum';
+import {
+  OrganizationStatus,
+  isOperationalOrganization,
+} from '~/modules/organizations/enums/organization-status.enum';
 import { OrganizationService } from '~/modules/organizations/services/organization.service';
 import {
   TenantContextMissingException,
@@ -39,7 +42,7 @@ export class TenantMiddleware implements NestMiddleware {
       throw new TenantContextMissingException();
     }
 
-    if (resolved.status !== OrganizationStatus.ACTIVE) {
+    if (!isOperationalOrganization(resolved.status)) {
       throw new TenantInactiveException(resolved.slug);
     }
 

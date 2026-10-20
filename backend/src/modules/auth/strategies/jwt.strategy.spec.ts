@@ -53,7 +53,7 @@ describe('JwtStrategy', () => {
     expect(sessions.isActive).not.toHaveBeenCalled();
   });
 
-  it('rejects a token issued by a different organization', async () => {
+  it('rejects a token issued by a different organization [tenant-isolation]', async () => {
     await expect(strategy.validate(reqFor('org-b'), payload)).rejects.toThrow(
       UnauthorizedException,
     );

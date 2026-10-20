@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { FindOptionsWhere } from 'typeorm';
 import { RoleService } from '~/modules/rbac/services/role.service';
+import { GUARDIAN_ROLE_NAME } from '~/modules/rbac/system-roles.seed';
 import { StudentService } from '~/modules/students/services/student.service';
 import { OrgUserService } from '~/modules/users/services/org-user.service';
 import { AttachGuardianDto } from '../dto/attach-guardian.dto';
@@ -22,8 +23,6 @@ import { StudentGuardianRepository } from '../repositories/student-guardian.repo
 import { TENANT_DATASOURCE } from '~/tenancy/tenancy.constants';
 import { TenantDataSourceProxy } from '~/tenancy/tenant-datasource.proxy';
 import { Paginated } from '~/common/dto/paginated.dto';
-
-const PARENT_ROLE_NAME = 'parent';
 
 @Injectable()
 export class GuardianService {
@@ -85,7 +84,7 @@ export class GuardianService {
       }
       userId = dto.userId;
     } else if (dto.createUser) {
-      const role = await this.roleService.findSystemRole(PARENT_ROLE_NAME);
+      const role = await this.roleService.findSystemRole(GUARDIAN_ROLE_NAME);
       const newUser = await this.userService.create({
         name: dto.name,
         email: dto.createUser.email,

@@ -10,6 +10,7 @@ import { Membership } from '~/modules/memberships/entities/membership.entity';
 import { Organization } from '~/modules/organizations/entities/organization.entity';
 import { UserModule } from '~/modules/users/user.module';
 import { RbacModule } from '~/modules/rbac/rbac.module';
+import { SettingsModule } from '~/modules/settings/settings.module';
 import { AuthToken } from './entities/auth-token.entity';
 import { UserSession } from './entities/user-session.entity';
 import { AuthController } from './controllers/auth.controller';
@@ -23,7 +24,7 @@ import { PlatformJwtStrategy } from './strategies/platform-jwt.strategy';
 import { AuthTokenRepository } from './repositories/auth-token.repository';
 import { OwnerProvisioningService } from './services/owner-provisioning.service';
 import { CredentialService } from './services/credential.service';
-import { SessionService } from './services/session.service';
+import { SessionModule } from './session.module';
 
 /**
  * Both auth realms, sharing one JWT signing config:
@@ -44,6 +45,8 @@ import { SessionService } from './services/session.service';
     PassportModule,
     UserModule,
     RbacModule,
+    SettingsModule,
+    SessionModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -69,9 +72,8 @@ import { SessionService } from './services/session.service';
     AuthTokenRepository,
     OwnerProvisioningService,
     CredentialService,
-    SessionService,
     InviteService,
   ],
-  exports: [PlatformAuthService, OwnerProvisioningService, SessionService],
+  exports: [PlatformAuthService, OwnerProvisioningService, SessionModule],
 })
 export class AuthModule {}

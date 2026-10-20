@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { SessionModule } from '~/modules/auth/session.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { RbacModule } from '~/modules/rbac/rbac.module';
 import { User } from './entities/user.entity';
@@ -22,7 +23,7 @@ import { MemberRepository } from './repositories/member.repository';
  * general service. Other modules use the services.
  */
 @Module({
-  imports: [TypeOrmModule.forFeature([User]), RbacModule],
+  imports: [TypeOrmModule.forFeature([User]), RbacModule, SessionModule],
   controllers: [PlatformUserController, OrgUserController, UserRoleController],
   providers: [UserService, OrgUserService, AccountRepository, MemberRepository],
   exports: [UserService, OrgUserService, AccountRepository, MemberRepository],

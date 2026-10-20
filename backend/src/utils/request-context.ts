@@ -9,8 +9,7 @@ import { UserDto } from '~/modules/users/dto/user.dto';
 export function createRequestContext(request: Request): RequestContextDto {
   const ctx = new RequestContextDto();
   ctx.requestId = request.header(Key.RequestIdTokenHeader) ?? '';
-  const forwarded = request.header(Key.ForwardedForTokenHeader);
-  ctx.ip = forwarded ?? request.ip ?? '';
+  ctx.ip = request.ip ?? '';
   // ctx.clientIp = request.clientIp;
 
   ctx.protocol = request.protocol;

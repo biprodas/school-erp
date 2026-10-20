@@ -11,7 +11,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { RequestContext } from '~/common/decorators/request-context.decorator';
+import { ReqContext } from '~/common/decorators/request-context.decorator';
 import { RequestContextDto } from '~/common/dto/request-context.dto';
 import { PlatformJwtAuthGuard } from '~/common/guards/platform-jwt-auth.guard';
 import { PlatformAdminGuard } from '~/common/guards/platform-admin.guard';
@@ -33,7 +33,7 @@ export class PlatformUserController {
   @UseGuards(PlatformAdminGuard)
   @ResponseMessage('List of users')
   findAll(
-    @RequestContext() ctx: RequestContextDto,
+    @ReqContext() ctx: RequestContextDto,
     @Query() filterUserDto: FilterUserDto,
   ) {
     return this.userService.findAll(ctx, filterUserDto);
@@ -43,7 +43,7 @@ export class PlatformUserController {
   @UseGuards(PlatformAdminGuard)
   @ResponseMessage('User created')
   create(
-    @RequestContext() ctx: RequestContextDto,
+    @ReqContext() ctx: RequestContextDto,
     @Body() createUserDto: CreateUserDto,
   ) {
     return this.userService.createPlatformUser(ctx, createUserDto);
@@ -52,7 +52,7 @@ export class PlatformUserController {
   @Get(':id')
   @ResponseMessage('User found')
   findOne(
-    @RequestContext() ctx: RequestContextDto,
+    @ReqContext() ctx: RequestContextDto,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
     if (!ctx.user?.isAdmin && ctx.user?.id !== id) {
@@ -64,7 +64,7 @@ export class PlatformUserController {
   @Patch(':id')
   @ResponseMessage('User updated')
   update(
-    @RequestContext() ctx: RequestContextDto,
+    @ReqContext() ctx: RequestContextDto,
     @Param('id', ParseUUIDPipe) targetId: string,
     @Body() updateUserDto: UpdateUserDto,
   ) {
@@ -75,7 +75,7 @@ export class PlatformUserController {
   @UseGuards(PlatformAdminGuard)
   @ResponseMessage('User deleted')
   async remove(
-    @RequestContext() ctx: RequestContextDto,
+    @ReqContext() ctx: RequestContextDto,
     @Param('id', ParseUUIDPipe) targetId: string,
   ) {
     await this.userService.remove(ctx, targetId);

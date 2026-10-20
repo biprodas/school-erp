@@ -53,6 +53,11 @@ export class EmployeeService {
     return employee;
   }
 
+  /** The employee record linked to a user account, if any. */
+  findByUserId(userId: string): Promise<Employee | null> {
+    return this.employeeRepo.findByUserId(userId);
+  }
+
   create(dto: CreateEmployeeDto): Promise<Employee> {
     return this.ds.runInTransaction(async () => {
       if (dto.userId && dto.createUser) {
@@ -89,7 +94,7 @@ export class EmployeeService {
       } else if (dto.createUser) {
         const roleIds = [...new Set(dto.createUser.roleIds)];
         for (const roleId of roleIds) {
-          await this.roleService.findById(roleId);
+          await this.roleService.findAssignable(roleId);
         }
         const newUser = await this.userService.create({
           name: [dto.firstName, dto.lastName].filter(Boolean).join(' '),

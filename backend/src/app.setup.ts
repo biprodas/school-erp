@@ -4,6 +4,8 @@ import {
   ValidationPipe,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
+import { parseTrustProxy } from './config/trust-proxy';
 import { GlobalExceptionFilter } from '~/common/filters/global-exception.filter';
 import { RequestIdMiddleware } from '~/common/middlewares/request-id.middleware';
 import { ResponseEnvelopeInterceptor } from '~/common/interceptors/response-envelope.interceptor';
@@ -15,6 +17,12 @@ import { ResponseEnvelopeInterceptor } from '~/common/interceptors/response-enve
  * in `main.ts`.
  */
 export function configureApp(app: INestApplication): void {
+  // `req.ip` honours X-Forwarded-For only from trusted proxies.
+  (app as NestExpressApplication).set(
+    'trust proxy',
+    parseTrustProxy(process.env.TRUST_PROXY),
+  );
+
   // Before every other middleware, so logs and errors can use the id.
   app.use(RequestIdMiddleware);
 

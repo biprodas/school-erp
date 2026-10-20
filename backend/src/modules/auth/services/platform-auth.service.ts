@@ -24,13 +24,21 @@ import { UserStatus } from '~/modules/users/enums/user-status.enum';
 import { Membership } from '~/modules/memberships/entities/membership.entity';
 import { MembershipStatus } from '~/modules/memberships/enums/membership-status.enum';
 import { Organization } from '~/modules/organizations/entities/organization.entity';
-import { OrganizationStatus } from '~/modules/organizations/enums/organization-status.enum';
+import { isOperationalOrganization } from '~/modules/organizations/enums/organization-status.enum';
 import { PlatformRegisterDto } from '../dto/platform-register.dto';
 import { PlatformLoginDto } from '../dto/platform-login.dto';
 import { loginIdentifier } from '../dto/login.dto';
 import { AuthToken } from '../entities/auth-token.entity';
 import type { PlatformJwtPayload } from '../strategies/platform-jwt.strategy';
-import { CredentialService, hashPassword } from './credential.service';
+import {
+  CredentialService,
+  hashPassword,
+  LOCK_MINUTES,
+  type FailedSignIn,
+} from './credential.service';
+import { PlatformAuditService } from '~/modules/audit/services/platform-audit.service';
+import { AUDIT_ACTIONS } from '~/modules/audit/audit-actions';
+import { signInRefusalReason } from './sign-in-audit';
 import { SessionService, type IssuedSession } from './session.service';
 
 /**
@@ -55,6 +63,7 @@ export class PlatformAuthService {
     private readonly sessions: SessionService,
     private readonly mail: MailService,
     private readonly jwtService: JwtService,
+    private readonly audit: PlatformAuditService,
   ) {}
 
   /**
@@ -85,12 +94,27 @@ export class PlatformAuthService {
   }
 
   async login(dto: PlatformLoginDto, client: ClientInfo) {
+    const identifier = loginIdentifier(dto);
     const user = await this.credentials.verify(
-      loginIdentifier(dto),
+      identifier,
       dto.password,
+      (failure) => this.recordFailedPassword(identifier, failure),
     );
-    this.assertCanSignIn(user);
-    return this.startSession(user, client);
+    try {
+      this.assertCanSignIn(user);
+    } catch (err) {
+      await this.audit.record({
+        action: AUDIT_ACTIONS.LOGIN_FAILED,
+        actorUserId: user.id,
+        after: {
+          method: 'password',
+          identifier,
+          reason: signInRefusalReason(err),
+        },
+      });
+      throw err;
+    }
+    return this.startSession(user, client, 'password');
   }
 
   async refresh(refreshToken: string, client: ClientInfo) {
@@ -108,8 +132,13 @@ export class PlatformAuthService {
     return this.tokenResponse(user, rotated);
   }
 
-  logout(sessionId: string): Promise<void> {
-    return this.sessions.revokeFamily(sessionId);
+  async logout(sessionId: string): Promise<void> {
+    await this.sessions.revokeFamily(sessionId);
+    await this.audit.record({
+      action: AUDIT_ACTIONS.LOGOUT,
+      entityType: 'session',
+      entityId: sessionId,
+    });
   }
 
   listSessions(userId: string, currentSessionId: string) {
@@ -120,11 +149,21 @@ export class PlatformAuthService {
     if (!(await this.sessions.revokeOwn(userId, null, sessionId))) {
       throw new NotFoundException('Session not found');
     }
+    await this.audit.record({
+      action: AUDIT_ACTIONS.SESSION_REVOKED,
+      entityType: 'session',
+      entityId: sessionId,
+    });
   }
 
   /** Signs the user out of the platform and every school. */
-  logoutEverywhere(userId: string): Promise<void> {
-    return this.sessions.revokeAllForUser(userId);
+  async logoutEverywhere(userId: string): Promise<void> {
+    await this.sessions.revokeAllForUser(userId);
+    await this.audit.record({
+      action: AUDIT_ACTIONS.LOGOUT_ALL,
+      entityType: 'user',
+      entityId: userId,
+    });
   }
 
   async getProfile(userId: string) {
@@ -155,7 +194,8 @@ export class PlatformAuthService {
     ]);
     if (
       user?.status !== UserStatus.ACTIVE ||
-      organization?.status !== OrganizationStatus.ACTIVE ||
+      !organization ||
+      !isOperationalOrganization(organization.status) ||
       membership?.status !== MembershipStatus.ACTIVE
     ) {
       throw new ForbiddenException('You cannot sign in to this school');
@@ -207,7 +247,8 @@ export class PlatformAuthService {
     const { user, record } = await this.resolveVerification(rawToken);
 
     user.emailVerifiedAt = new Date();
-    if (user.status === UserStatus.PENDING) {
+    const activates = user.status === UserStatus.PENDING;
+    if (activates) {
       user.status = UserStatus.ACTIVE;
     }
     await this.userRepository.save(user);
@@ -215,7 +256,16 @@ export class PlatformAuthService {
     record.usedAt = new Date();
     await this.tokenRepo.save(record);
 
-    return this.startSession(user, client);
+    if (activates) {
+      await this.audit.record({
+        action: AUDIT_ACTIONS.ACCOUNT_ACTIVATED,
+        entityType: 'user',
+        entityId: user.id,
+        actorUserId: user.id,
+        after: { method: 'email_verification' },
+      });
+    }
+    return this.startSession(user, client, 'email_verification');
   }
 
   /** Re-issue a verification email if the user exists and is not yet verified. */
@@ -263,6 +313,12 @@ export class PlatformAuthService {
     record.usedAt = new Date();
     await this.tokenRepo.save(record);
     await this.sessions.revokeAllForUser(user.id);
+    await this.audit.record({
+      action: AUDIT_ACTIONS.PASSWORD_RESET,
+      entityType: 'user',
+      entityId: user.id,
+      actorUserId: user.id,
+    });
   }
 
   /**
@@ -283,6 +339,11 @@ export class PlatformAuthService {
     }
     await this.credentials.setPassword(userId, newPassword);
     await this.sessions.revokeAllForUser(userId, sessionId);
+    await this.audit.record({
+      action: AUDIT_ACTIONS.PASSWORD_CHANGED,
+      entityType: 'user',
+      entityId: userId,
+    });
 
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) throw new UnauthorizedException('User not found');
@@ -303,13 +364,53 @@ export class PlatformAuthService {
       });
     }
     if (user.status !== UserStatus.ACTIVE) {
-      throw new UnauthorizedException(`Account is ${user.status}`);
+      throw new UnauthorizedException({
+        message: `Account is ${user.status}`,
+        code: `ACCOUNT_${user.status.toUpperCase()}`,
+      });
     }
   }
 
-  private async startSession(user: User, client: ClientInfo) {
+  private async startSession(
+    user: User,
+    client: ClientInfo,
+    method: 'password' | 'email_verification',
+  ) {
     const session = await this.sessions.start(user.id, null, client);
+    await this.audit.record({
+      action: AUDIT_ACTIONS.LOGIN,
+      entityType: 'session',
+      entityId: session.sessionId,
+      actorUserId: user.id,
+      after: { method },
+    });
     return this.tokenResponse(user, session);
+  }
+
+  /** A wrong password or unknown account on the platform host. */
+  private async recordFailedPassword(
+    identifier: string,
+    failure: FailedSignIn,
+  ): Promise<void> {
+    await this.audit.record({
+      action: AUDIT_ACTIONS.LOGIN_FAILED,
+      actorUserId: failure.userId,
+      after: {
+        method: 'password',
+        identifier: identifier.trim().slice(0, 128),
+        reason: failure.userId ? 'wrong_password' : 'unknown_account',
+        ...(failure.locked ? { locked: true } : {}),
+      },
+    });
+    if (failure.userId && failure.locked) {
+      await this.audit.record({
+        action: AUDIT_ACTIONS.ACCOUNT_LOCKED,
+        entityType: 'user',
+        entityId: failure.userId,
+        actorUserId: failure.userId,
+        after: { lockMinutes: LOCK_MINUTES },
+      });
+    }
   }
 
   private accessToken(user: User, sessionId: string): string {

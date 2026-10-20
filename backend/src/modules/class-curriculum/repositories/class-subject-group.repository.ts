@@ -33,6 +33,16 @@ export class ClassSubjectGroupRepository extends BaseTenantRepository<ClassSubje
     });
   }
 
+  async updateLink(
+    id: string,
+    patch: Pick<
+      ClassSubjectGroup,
+      'classId' | 'subjectGroupId' | 'academicYearId'
+    >,
+  ): Promise<void> {
+    await this.repo.update({ id }, patch);
+  }
+
   findFiltered(
     where: FindOptionsWhere<ClassSubjectGroup>,
     page: PaginationQueryDto,

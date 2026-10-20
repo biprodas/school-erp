@@ -5,7 +5,13 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Not, Repository, FindOptionsWhere } from 'typeorm';
+import {
+  DataSource,
+  EntityManager,
+  Not,
+  Repository,
+  FindOptionsWhere,
+} from 'typeorm';
 import { RequestContextDto } from '~/common/dto/request-context.dto';
 import {
   OwnerActivation,
@@ -13,12 +19,26 @@ import {
 } from '~/modules/organizations/services/organization.service';
 import { UserService } from '~/modules/users/services/user.service';
 import { OwnerProvisioningService } from '~/modules/auth/services/owner-provisioning.service';
+import { SessionService } from '~/modules/auth/services/session.service';
 import { UserRole } from '~/modules/rbac/entities/user-role.entity';
 import { CreateMembershipDto } from '../dto/create-membership.dto';
 import { UpdateMembershipRoleDto } from '../dto/update-membership-role.dto';
 import { Membership } from '../entities/membership.entity';
 import { MembershipRole } from '../enums/membership-role.enum';
 import { FilterMembershipDto } from '../dto/filter-membership.dto';
+
+import { PlatformAuditService } from '~/modules/audit/services/platform-audit.service';
+import { AUDIT_ACTIONS } from '~/modules/audit/audit-actions';
+
+/** What the platform audit log keeps of a membership. */
+function membershipSnapshot(m: Membership) {
+  return {
+    userId: m.userId,
+    role: m.role,
+    isAdmin: m.isAdmin,
+    status: m.status,
+  };
+}
 
 @Injectable()
 export class MembershipService {
@@ -30,6 +50,8 @@ export class MembershipService {
     private readonly organizationService: OrganizationService,
     private readonly userService: UserService,
     private readonly ownerProvisioning: OwnerProvisioningService,
+    private readonly platformAudit: PlatformAuditService,
+    private readonly sessions: SessionService,
   ) {}
 
   async create(
@@ -85,6 +107,12 @@ export class MembershipService {
           const membership = await manager.findOneOrFail(Membership, {
             where: { orgId: dto.orgId, userId: dto.userId },
           });
+          await this.recordMembership(
+            AUDIT_ACTIONS.MEMBERSHIP_CREATED,
+            membership,
+            null,
+            manager,
+          );
           return { membership, token };
         },
       );
@@ -100,14 +128,23 @@ export class MembershipService {
       return { membership, ownerActivation };
     }
 
-    const membership = await this.membershipRepository.save(
-      this.membershipRepository.create({
-        userId: dto.userId,
-        orgId: dto.orgId,
-        role: dto.role ?? MembershipRole.MEMBER,
-        isAdmin: dto.role === MembershipRole.ADMIN,
-      }),
-    );
+    const membership = await this.dataSource.transaction(async (manager) => {
+      const created = await manager.save(
+        manager.create(Membership, {
+          userId: dto.userId,
+          orgId: dto.orgId,
+          role: dto.role ?? MembershipRole.MEMBER,
+          isAdmin: dto.role === MembershipRole.ADMIN,
+        }),
+      );
+      await this.recordMembership(
+        AUDIT_ACTIONS.MEMBERSHIP_CREATED,
+        created,
+        null,
+        manager,
+      );
+      return created;
+    });
 
     return { membership };
   }
@@ -232,10 +269,25 @@ export class MembershipService {
       }
     }
 
+    const before = membershipSnapshot(membership);
     membership.role = dto.role;
     // Owners and admins administer the school; members don't.
     membership.isAdmin = dto.role !== MembershipRole.MEMBER;
-    return this.membershipRepository.save(membership);
+    const saved = await this.dataSource.transaction(async (manager) => {
+      const saved = await manager.save(membership);
+      await this.recordMembership(
+        AUDIT_ACTIONS.MEMBERSHIP_UPDATED,
+        saved,
+        before,
+        manager,
+      );
+      return saved;
+    });
+    // `isAdmin` is in the access token: a demoted admin signs in again.
+    if (before.isAdmin && !saved.isAdmin) {
+      await this.sessions.revokeAllForUserInOrg(saved.userId, saved.orgId);
+    }
+    return saved;
   }
 
   async remove(ctx: RequestContextDto, id: string): Promise<void> {
@@ -259,7 +311,42 @@ export class MembershipService {
         orgId: membership.orgId,
         userId: membership.userId,
       });
+      await this.platformAudit.record(
+        {
+          action: AUDIT_ACTIONS.MEMBERSHIP_REMOVED,
+          orgId: membership.orgId,
+          entityType: 'membership',
+          entityId: membership.id,
+          before: membershipSnapshot(membership),
+        },
+        manager,
+      );
     });
+    await this.sessions.revokeAllForUserInOrg(
+      membership.userId,
+      membership.orgId,
+    );
+  }
+
+  private recordMembership(
+    action:
+      | typeof AUDIT_ACTIONS.MEMBERSHIP_CREATED
+      | typeof AUDIT_ACTIONS.MEMBERSHIP_UPDATED,
+    membership: Membership,
+    before: ReturnType<typeof membershipSnapshot> | null,
+    manager: EntityManager,
+  ): Promise<void> {
+    return this.platformAudit.record(
+      {
+        action,
+        orgId: membership.orgId,
+        entityType: 'membership',
+        entityId: membership.id,
+        before,
+        after: membershipSnapshot(membership),
+      },
+      manager,
+    );
   }
 
   private async assertOwnerOrAdmin(

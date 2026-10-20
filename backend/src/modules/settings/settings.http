@@ -1,0 +1,85 @@
+@base = http://localhost:3900/api
+@tenant = acme
+# A school admin's access token (auth.http → login)
+@token = paste-tenant-access-token
+
+### Every section with defaults filled in (settings:read)
+GET {{base}}/settings
+X-Tenant-ID: {{tenant}}
+Authorization: Bearer {{token}}
+
+### Name, logo, colors and locale (any signed-in member)
+GET {{base}}/settings/display
+X-Tenant-ID: {{tenant}}
+Authorization: Bearer {{token}}
+
+### The school's own organization fields (settings:update)
+PATCH {{base}}/settings/organization
+X-Tenant-ID: {{tenant}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "type": "school",
+  "eiin": "108224",
+  "listedInDirectory": true
+}
+
+### Profile and letterhead (nested objects merge)
+PATCH {{base}}/settings/profile
+X-Tenant-ID: {{tenant}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "nameBn": "অ্যাকমি উচ্চ বিদ্যালয়",
+  "phone": "01712345678",
+  "address": { "line1": "12 Lake Road", "district": "Dhaka" },
+  "colors": { "primary": "#1d4ed8" },
+  "letterhead": { "tagline": "Knowledge is light" }
+}
+
+### Locale
+PATCH {{base}}/settings/locale
+X-Tenant-ID: {{tenant}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "language": "bn",
+  "numerals": "bn",
+  "weekendDays": ["friday", "saturday"]
+}
+
+### Numbering patterns (exactly one {SEQ})
+PATCH {{base}}/settings/numbering
+X-Tenant-ID: {{tenant}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "receipt": "R-{YYYY}-{SEQ:6}"
+}
+
+### Portal, results, attendance, fees, notifications, security
+PATCH {{base}}/settings/security
+X-Tenant-ID: {{tenant}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "sessionIdleMinutes": 120
+}
+
+### Logo upload (PNG, JPEG or WebP, up to 2 MB)
+POST {{base}}/settings/files/logo
+X-Tenant-ID: {{tenant}}
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data; boundary=boundary
+
+--boundary
+Content-Disposition: form-data; name="file"; filename="logo.png"
+Content-Type: image/png
+
+< ./logo.png
+--boundary--

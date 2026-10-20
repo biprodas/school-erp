@@ -6,16 +6,21 @@ import {
   AccountLockedException,
   CredentialService,
   LOCK_MINUTES,
+  MAX_FAILED_LOGINS,
 } from './credential.service';
 
 describe('CredentialService', () => {
   let users: {
     findOne: jest.Mock;
-    update: jest.Mock;
     manager: { query: jest.Mock };
   };
+  /** What the counter SQL answers: the claimed attempt, or null when refused. */
+  let claimed: number | null;
+  /** `locked_until` seen by the reset after a right password. */
+  let lockedAtReset: Date | null;
   let service: CredentialService;
   let hash: string;
+  const lockUntil = new Date(Date.now() + LOCK_MINUTES * 60_000);
 
   beforeAll(async () => {
     hash = await bcrypt.hash('right-password', 4);
@@ -31,14 +36,33 @@ describe('CredentialService', () => {
       ...overrides,
     }) as User;
 
+  /** Which counter step ran, in order: claim, lock or clear. */
+  const steps = () =>
+    users.manager.query.mock.calls.map(([sql]: [string]) =>
+      sql.includes('make_interval')
+        ? 'lock'
+        : sql.includes('"failed_login_count" < $2')
+          ? 'claim'
+          : 'clear',
+    );
+
   beforeEach(() => {
+    claimed = 1;
+    lockedAtReset = null;
     users = {
       findOne: jest.fn().mockResolvedValue(account()),
-      update: jest.fn(),
       manager: {
-        query: jest
-          .fn()
-          .mockResolvedValue([{ failed_login_count: 1, locked_until: null }]),
+        query: jest.fn((sql: string) => {
+          if (sql.includes('make_interval')) {
+            return Promise.resolve([{ locked_until: lockUntil }]);
+          }
+          if (sql.includes('"failed_login_count" < $2')) {
+            return Promise.resolve(
+              claimed === null ? [] : [{ failed_login_count: claimed }],
+            );
+          }
+          return Promise.resolve([{ locked_until: lockedAtReset }]);
+        }),
       },
     };
     service = new CredentialService(users as unknown as Repository<User>);
@@ -56,16 +80,15 @@ describe('CredentialService', () => {
     );
   });
 
-  it('returns the account for the right password and clears old failures', async () => {
-    users.findOne.mockResolvedValue(account({ failedLoginCount: 3 }));
-
+  it('claims an attempt, then clears the count for the right password', async () => {
     await expect(
       service.verify('rahim@school.test', 'right-password'),
     ).resolves.toMatchObject({ id: 'user-1' });
-    expect(users.update).toHaveBeenCalledWith('user-1', {
-      failedLoginCount: 0,
-      lockedUntil: null,
-    });
+    expect(steps()).toEqual(['claim', 'clear']);
+    const [[, params]] = users.manager.query.mock.calls as [
+      [string, unknown[]],
+    ];
+    expect(params).toEqual(['user-1', MAX_FAILED_LOGINS]);
   });
 
   it('counts a wrong password and gives the generic answer', async () => {
@@ -74,23 +97,18 @@ describe('CredentialService', () => {
     await expect(
       service.verify('rahim@school.test', 'wrong', onFailure),
     ).rejects.toThrow(UnauthorizedException);
-    expect(users.manager.query).toHaveBeenCalledWith(
-      expect.stringContaining('failed_login_count'),
-      ['user-1', 5, LOCK_MINUTES],
-    );
+    expect(steps()).toEqual(['claim']);
     expect(onFailure).toHaveBeenCalledWith({ userId: 'user-1', locked: false });
   });
 
   it('locks the account on the failure that reaches the limit', async () => {
-    const until = new Date(Date.now() + LOCK_MINUTES * 60_000);
-    users.manager.query.mockResolvedValue([
-      { failed_login_count: 0, locked_until: until },
-    ]);
+    claimed = MAX_FAILED_LOGINS;
     const onFailure = jest.fn();
 
     await expect(
       service.verify('rahim@school.test', 'wrong', onFailure),
     ).rejects.toBeInstanceOf(AccountLockedException);
+    expect(steps()).toEqual(['claim', 'lock']);
     expect(onFailure).toHaveBeenCalledWith({ userId: 'user-1', locked: true });
   });
 
@@ -102,7 +120,24 @@ describe('CredentialService', () => {
     await expect(
       service.verify('rahim@school.test', 'right-password'),
     ).rejects.toBeInstanceOf(AccountLockedException);
-    expect(users.update).not.toHaveBeenCalled();
+    expect(users.manager.query).not.toHaveBeenCalled();
+  });
+
+  it('refuses even the right password when attempts in flight used up the limit', async () => {
+    claimed = null;
+
+    await expect(
+      service.verify('rahim@school.test', 'right-password'),
+    ).rejects.toBeInstanceOf(AccountLockedException);
+    expect(steps()).toEqual(['claim', 'lock']);
+  });
+
+  it('refuses a right password when a parallel guess locked the account meanwhile', async () => {
+    lockedAtReset = lockUntil;
+
+    await expect(
+      service.verify('rahim@school.test', 'right-password'),
+    ).rejects.toBeInstanceOf(AccountLockedException);
   });
 
   it('accepts the right password once the lock has expired', async () => {
@@ -113,10 +148,7 @@ describe('CredentialService', () => {
     await expect(
       service.verify('rahim@school.test', 'right-password'),
     ).resolves.toBeDefined();
-    expect(users.update).toHaveBeenCalledWith('user-1', {
-      failedLoginCount: 0,
-      lockedUntil: null,
-    });
+    expect(steps()).toEqual(['claim', 'clear']);
   });
 
   it('gives the same answer for an unknown account or an unusable identifier', async () => {

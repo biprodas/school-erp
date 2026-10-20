@@ -1,12 +1,20 @@
 import {
   BadRequestException,
   ConflictException,
+  Controller,
+  INestApplication,
+  Post,
   UnprocessableEntityException,
 } from '@nestjs/common';
-import type { ModuleRef } from '@nestjs/core';
+import { APP_INTERCEPTOR, type ModuleRef } from '@nestjs/core';
+import { Test } from '@nestjs/testing';
 import { lastValueFrom, of, throwError } from 'rxjs';
+import request from 'supertest';
+import type { App } from 'supertest/types';
+import { ResponseEnvelopeInterceptor } from '~/common/interceptors/response-envelope.interceptor';
 import { IdempotencyInterceptor } from './idempotency.interceptor';
-import type { ClaimResult } from './idempotency.store';
+import { IdempotencyStore, type ClaimResult } from './idempotency.store';
+import { Idempotent } from './idempotent.decorator';
 
 describe('IdempotencyInterceptor', () => {
   let store: { claim: jest.Mock; complete: jest.Mock; release: jest.Mock };
@@ -112,5 +120,77 @@ describe('IdempotencyInterceptor', () => {
     ).rejects.toThrow('boom');
     expect(store.release).toHaveBeenCalledWith('k1');
     expect(store.complete).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * Through a real Nest app: the status set in the interceptor must survive
+ * Nest's reply (which doesn't reapply the route default), and the global
+ * envelope must wrap the replayed body exactly like the original.
+ */
+describe('IdempotencyInterceptor over HTTP', () => {
+  @Controller('payments')
+  class PaymentController {
+    @Post()
+    @Idempotent()
+    create() {
+      return { id: 'p1' };
+    }
+  }
+
+  let app: INestApplication<App>;
+  const store = {
+    claim: jest.fn(),
+    complete: jest.fn().mockResolvedValue(undefined),
+    release: jest.fn().mockResolvedValue(undefined),
+  };
+
+  beforeAll(async () => {
+    const moduleRef = await Test.createTestingModule({
+      controllers: [PaymentController],
+      providers: [
+        IdempotencyInterceptor,
+        { provide: IdempotencyStore, useValue: store },
+        { provide: APP_INTERCEPTOR, useClass: ResponseEnvelopeInterceptor },
+      ],
+    }).compile();
+    app = moduleRef.createNestApplication();
+    await app.init();
+  });
+
+  afterAll(() => app.close());
+
+  it('stores the status of the first response', async () => {
+    store.claim.mockResolvedValue({ state: 'claimed', id: 'k1' });
+
+    const res = await request(app.getHttpServer())
+      .post('/payments')
+      .set('Idempotency-Key', 'pay-0001-abcd')
+      .send({ amount: 500 });
+
+    expect(res.status).toBe(201);
+    expect(store.complete).toHaveBeenCalledWith('k1', 201, { id: 'p1' });
+  });
+
+  it('replays the stored status and the same envelope', async () => {
+    store.claim.mockResolvedValue({
+      state: 'completed',
+      statusCode: 202,
+      response: { id: 'p1' },
+    });
+
+    const res = await request(app.getHttpServer())
+      .post('/payments')
+      .set('Idempotency-Key', 'pay-0001-abcd')
+      .send({ amount: 500 });
+
+    expect(res.status).toBe(202);
+    expect(res.headers['idempotent-replayed']).toBe('true');
+    expect(res.body).toEqual({
+      success: true,
+      statusCode: 202,
+      message: 'OK',
+      data: { id: 'p1' },
+    });
   });
 });

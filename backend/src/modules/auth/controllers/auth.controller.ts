@@ -13,7 +13,7 @@ import {
 import { ApiBearerAuth, ApiHeader, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { AUTH_THROTTLE } from '~/common/throttling/throttle.constants';
-import { RequestContext } from '~/common/decorators/request-context.decorator';
+import { ReqContext } from '~/common/decorators/request-context.decorator';
 import { RequestContextDto } from '~/common/dto/request-context.dto';
 import { AuthService } from '../services/auth.service';
 import { LoginDto } from '../dto/login.dto';
@@ -80,7 +80,7 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @AllowPendingPasswordChange()
   @ResponseMessage('Logged out.')
-  async logout(@RequestContext() ctx: RequestContextDto) {
+  async logout(@ReqContext() ctx: RequestContextDto) {
     await this.authService.logout(ctx.sessionId!);
     return {};
   }
@@ -89,7 +89,7 @@ export class AuthController {
   @Get('sessions')
   @UseGuards(JwtAuthGuard)
   @ResponseMessage('Active sessions.')
-  listSessions(@RequestContext() ctx: RequestContextDto) {
+  listSessions(@ReqContext() ctx: RequestContextDto) {
     return this.authService.listSessions(ctx.userId!, ctx.sessionId!);
   }
 
@@ -97,7 +97,7 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @ResponseMessage('Session ended.')
   async revokeSession(
-    @RequestContext() ctx: RequestContextDto,
+    @ReqContext() ctx: RequestContextDto,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
     await this.authService.revokeSession(ctx.userId!, id);
@@ -110,7 +110,7 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @AllowPendingPasswordChange()
   @ResponseMessage('Logged out everywhere.')
-  async logoutEverywhere(@RequestContext() ctx: RequestContextDto) {
+  async logoutEverywhere(@ReqContext() ctx: RequestContextDto) {
     await this.authService.logoutEverywhere(ctx.userId!);
     return {};
   }
@@ -180,7 +180,7 @@ export class AuthController {
   @AllowPendingPasswordChange()
   @ResponseMessage('Password changed.')
   changePassword(
-    @RequestContext() ctx: RequestContextDto,
+    @ReqContext() ctx: RequestContextDto,
     @Body() dto: ChangePasswordDto,
   ) {
     return this.authService.changePassword(
@@ -195,7 +195,7 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @AllowPendingPasswordChange()
   @ResponseMessage('User found.')
-  getMe(@RequestContext() ctx: RequestContextDto) {
+  getMe(@ReqContext() ctx: RequestContextDto) {
     return this.authService.getMe(ctx.userId!);
   }
 }

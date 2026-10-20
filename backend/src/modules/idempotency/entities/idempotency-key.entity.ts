@@ -20,7 +20,8 @@ export class IdempotencyKey extends OrgScopedEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'varchar', length: 128 })
+  /** `<userId>:<client key>` (`-` when anonymous): keys are per user. */
+  @Column({ type: 'varchar', length: 200 })
   key: string;
 
   @Column({ name: 'user_id', type: 'uuid', nullable: true })

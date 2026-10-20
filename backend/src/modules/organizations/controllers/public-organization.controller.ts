@@ -6,7 +6,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { OrganizationStatus } from '../enums/organization-status.enum';
+import { isOperationalOrganization } from '../enums/organization-status.enum';
 import { OrganizationService } from '../services/organization.service';
 import { ResponseMessage } from '~/common/decorators/response.decorators';
 
@@ -15,8 +15,9 @@ import { ResponseMessage } from '~/common/decorators/response.decorators';
  *
  * Used to resolve a custom/vanity domain (e.g. `app.acmeschool.com`) to its
  * tenant slug BEFORE login, since such a host can't be parsed. Returns only
- * safe public fields and only for ACTIVE organizations. This route is excluded from
- * the tenant middleware (see `app.module.ts`).
+ * safe public fields (slug and name; never the billing status) and only for
+ * operational organizations. This route is excluded from the tenant
+ * middleware (see `app.module.ts`).
  */
 @ApiTags('Public / Organizations')
 @Controller('public/organizations')
@@ -31,15 +32,11 @@ export class PublicOrganizationController {
     }
 
     const organization = await this.organizationService.findByDomain(host);
-    if (!organization || organization.status !== OrganizationStatus.ACTIVE) {
+    if (!organization || !isOperationalOrganization(organization.status)) {
       throw new NotFoundException('No active organization for this host');
     }
 
-    return {
-      slug: organization.slug,
-      name: organization.name,
-      status: organization.status,
-    };
+    return { slug: organization.slug, name: organization.name };
   }
 
   /**
@@ -54,7 +51,7 @@ export class PublicOrganizationController {
       throw new BadRequestException('domain query parameter is required');
     }
     const organization = await this.organizationService.findByDomain(domain);
-    if (!organization || organization.status !== OrganizationStatus.ACTIVE) {
+    if (!organization || !isOperationalOrganization(organization.status)) {
       throw new NotFoundException('Unknown domain');
     }
     return { allowed: true };
@@ -68,14 +65,10 @@ export class PublicOrganizationController {
     }
 
     const organization = await this.organizationService.findBySlug(slug);
-    if (!organization || organization.status !== OrganizationStatus.ACTIVE) {
+    if (!organization || !isOperationalOrganization(organization.status)) {
       throw new NotFoundException('No active organization for this slug');
     }
 
-    return {
-      slug: organization.slug,
-      name: organization.name,
-      status: organization.status,
-    };
+    return { slug: organization.slug, name: organization.name };
   }
 }

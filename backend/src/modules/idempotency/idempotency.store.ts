@@ -22,14 +22,17 @@ export class IdempotencyStore {
   ) {}
 
   /**
-   * Claims `key` for this request, or reports what already holds it. An
-   * expired row is taken over.
+   * Claims `clientKey` for this request, or reports what already holds it.
+   * Keys are per user (stored as `<userId>:<key>`), so one user can never
+   * replay, or probe for, another user's request. An expired row is taken
+   * over.
    */
   async claim(
-    key: string,
+    clientKey: string,
     requestHash: string,
     userId: string | null,
   ): Promise<ClaimResult> {
+    const key = `${userId ?? '-'}:${clientKey}`;
     const q = this.ds.getManager();
     const claimed = await q.query<Array<{ id: string }>>(
       `INSERT INTO "idempotency_keys" ("org_id", "key", "user_id", "request_hash", "expires_at")
@@ -59,7 +62,7 @@ export class IdempotencyStore {
       [this.ds.orgId, key],
     );
     const row = rows[0];
-    if (!row) return this.claim(key, requestHash, userId); // removed meanwhile
+    if (!row) return this.claim(clientKey, requestHash, userId); // removed meanwhile
     if (row.request_hash !== requestHash) return { state: 'mismatch' };
     if (row.status_code === null) return { state: 'in_progress' };
     return {

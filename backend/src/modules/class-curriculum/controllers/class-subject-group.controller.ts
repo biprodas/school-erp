@@ -5,6 +5,7 @@ import {
   Get,
   Param,
   ParseUUIDPipe,
+  Patch,
   Post,
   Query,
   UseGuards,
@@ -16,6 +17,7 @@ import { PERMISSIONS } from '~/modules/rbac/permissions.catalog';
 import { RequirePermissions } from '~/modules/rbac/decorators/require-permissions.decorator';
 import { CreateClassSubjectGroupDto } from '../dto/create-class-subject-group.dto';
 import { FilterClassSubjectGroupDto } from '../dto/filter-class-subject-group.dto';
+import { UpdateClassSubjectGroupDto } from '../dto/update-class-subject-group.dto';
 import { ClassSubjectGroupService } from '../services/class-subject-group.service';
 import { ResponseMessage } from '~/common/decorators/response.decorators';
 
@@ -52,6 +54,16 @@ export class ClassSubjectGroupController {
   @ResponseMessage('Class subject group found')
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.classSubjectGroupService.findById(id);
+  }
+
+  @Patch(':id')
+  @RequirePermissions(PERMISSIONS.CLASS_SUBJECT_GROUPS_UPDATE)
+  @ResponseMessage('Class subject group updated')
+  update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateClassSubjectGroupDto,
+  ) {
+    return this.classSubjectGroupService.update(id, dto);
   }
 
   @Delete(':id')

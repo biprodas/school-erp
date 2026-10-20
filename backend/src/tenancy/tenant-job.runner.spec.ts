@@ -1,6 +1,7 @@
 import { Inject, Injectable, Scope } from '@nestjs/common';
 import { REQUEST } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
+import { ClsModule } from 'nestjs-cls';
 import { TENANT_DATASOURCE } from './tenancy.constants';
 import { TenantJobRunner } from './tenant-job.runner';
 import type { RequestWithOrg } from './tenant.middleware';
@@ -22,6 +23,7 @@ describe('TenantJobRunner', () => {
   beforeEach(async () => {
     proxies = [];
     const moduleRef = await Test.createTestingModule({
+      imports: [ClsModule.forRoot({ global: true })],
       providers: [
         TenantJobRunner,
         TenantService,
@@ -70,7 +72,7 @@ describe('TenantJobRunner', () => {
     expect(proxies[0].release).toHaveBeenCalledTimes(1);
   });
 
-  it('never shares a connection between concurrent runs for different orgs', async () => {
+  it('never shares a connection between concurrent runs for different orgs [tenant-isolation]', async () => {
     const [a, b] = await Promise.all([
       runner.run('org-a', (resolve) => resolve(TenantService)),
       runner.run('org-b', (resolve) => resolve(TenantService)),
