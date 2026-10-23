@@ -11,7 +11,8 @@ describe('EmployeeController', () => {
   beforeEach(() => {
     service = {
       findFiltered: jest.fn(),
-      findById: jest.fn(),
+      findOneView: jest.fn(),
+      invite: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
       remove: jest.fn(),
@@ -44,13 +45,28 @@ describe('EmployeeController', () => {
     expect(result).toEqual({ id: 'e-new' });
   });
 
-  it('delegates findOne to the service', async () => {
-    service.findById.mockResolvedValue({ id: 'e-1' });
+  it('delegates findOne to the service (with the photo URL)', async () => {
+    service.findOneView.mockResolvedValue({ id: 'e-1', photoUrl: null });
 
     const result = await controller.findOne('e-1');
 
-    expect(service.findById).toHaveBeenCalledWith('e-1');
-    expect(result).toEqual({ id: 'e-1' });
+    expect(service.findOneView).toHaveBeenCalledWith('e-1');
+    expect(result).toEqual({ id: 'e-1', photoUrl: null });
+  });
+
+  it('delegates invite to the service', async () => {
+    service.invite.mockResolvedValue({ userId: 'u-1', delivery: 'email' });
+
+    const result = await controller.invite('e-1', { roleIds: ['r-1'] });
+
+    expect(service.invite).toHaveBeenCalledWith('e-1', { roleIds: ['r-1'] });
+    expect(result).toEqual({ userId: 'u-1', delivery: 'email' });
+  });
+
+  it('requires a file for the photo upload', () => {
+    expect(() => controller.uploadPhoto('e-1', undefined)).toThrow(
+      'multipart field',
+    );
   });
 
   it('delegates update to the service', async () => {

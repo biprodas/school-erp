@@ -43,6 +43,7 @@ export const DEFAULT_SETTINGS: OrgSettingsValues = {
   },
   numbering: {
     studentId: '{YY}{CLASS}{SEQ:4}',
+    employeeId: 'EMP-{SEQ:4}',
     roll: '{SEQ}',
     receipt: 'RCP-{YYYY}-{SEQ:6}',
     invoice: 'INV-{YYYY}{MM}-{SEQ:5}',

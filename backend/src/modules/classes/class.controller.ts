@@ -15,10 +15,10 @@ import { JwtAuthGuard } from '~/modules/auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '~/modules/rbac/guards/permissions.guard';
 import { PERMISSIONS } from '~/modules/rbac/permissions.catalog';
 import { RequirePermissions } from '~/modules/rbac/decorators/require-permissions.decorator';
-import { CreateClassDto } from '../dto/create-class.dto';
-import { FilterClassDto } from '../dto/filter-class.dto';
-import { UpdateClassDto } from '../dto/update-class.dto';
-import { ClassService } from '../services/class.service';
+import { CreateClassDto } from './dto/create-class.dto';
+import { FilterClassDto } from './dto/filter-class.dto';
+import { UpdateClassDto } from './dto/update-class.dto';
+import { ClassService } from './class.service';
 import { ResponseMessage } from '~/common/decorators/response.decorators';
 
 @ApiTags('Tenant / Classes')

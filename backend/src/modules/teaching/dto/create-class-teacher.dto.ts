@@ -1,10 +1,7 @@
 import { IsBoolean, IsNotEmpty, IsOptional, IsUUID } from 'class-validator';
+import { IsDateOnly } from '~/common/decorators/is-date-only.decorator';
 
 export class CreateClassTeacherDto {
-  @IsUUID('4')
-  @IsNotEmpty()
-  classId: string;
-
   @IsUUID('4')
   @IsNotEmpty()
   sectionId: string;
@@ -13,11 +10,12 @@ export class CreateClassTeacherDto {
   @IsNotEmpty()
   employeeId: string;
 
-  @IsUUID('4')
-  @IsNotEmpty()
-  academicYearId: string;
-
   @IsOptional()
   @IsBoolean()
   isPrimary?: boolean;
+
+  /** Defaults to the session's first day; must be inside the session. */
+  @IsOptional()
+  @IsDateOnly()
+  effectiveFrom?: string;
 }

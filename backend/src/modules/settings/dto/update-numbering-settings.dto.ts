@@ -8,6 +8,7 @@ import { IsNumberingPattern } from './settings-validators';
  */
 export class UpdateNumberingSettingsDto {
   @IsNumberingPattern() studentId?: string;
+  @IsNumberingPattern() employeeId?: string;
   @IsNumberingPattern() roll?: string;
   @IsNumberingPattern() receipt?: string;
   @IsNumberingPattern() invoice?: string;

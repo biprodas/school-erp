@@ -1,5 +1,11 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { FindOptionsRelations, FindOptionsWhere } from 'typeorm';
+import {
+  FindOptionsRelations,
+  FindOptionsWhere,
+  IsNull,
+  LessThanOrEqual,
+  MoreThanOrEqual,
+} from 'typeorm';
 import { TENANT_DATASOURCE } from '~/tenancy/tenancy.constants';
 import { TenantDataSourceProxy } from '~/tenancy/tenant-datasource.proxy';
 import { BaseTenantRepository } from '~/tenancy/base-tenant.repository';
@@ -8,12 +14,23 @@ import { PaginationQueryDto } from '~/common/dto/pagination-query.dto';
 import { Paginated } from '~/common/dto/paginated.dto';
 
 const RELATIONS: FindOptionsRelations<SubjectTeacher> = {
-  schoolClass: true,
-  section: true,
-  subject: true,
+  section: { schoolClass: true, academicYear: true },
+  classSubject: { subject: true },
   employee: true,
-  academicYear: true,
 };
+
+/** Rows in effect on `date` (inclusive on both ends). */
+const onDate = (
+  date: string,
+  where: FindOptionsWhere<SubjectTeacher>,
+): FindOptionsWhere<SubjectTeacher>[] => [
+  { ...where, effectiveFrom: LessThanOrEqual(date), effectiveTo: IsNull() },
+  {
+    ...where,
+    effectiveFrom: LessThanOrEqual(date),
+    effectiveTo: MoreThanOrEqual(date),
+  },
+];
 
 @Injectable()
 export class SubjectTeacherRepository extends BaseTenantRepository<SubjectTeacher> {
@@ -25,45 +42,66 @@ export class SubjectTeacherRepository extends BaseTenantRepository<SubjectTeache
     return this.repo.findOne({ where: { id }, relations: RELATIONS });
   }
 
-  findLink(
-    academicYearId: string,
-    classId: string,
+  /** The current row of a teacher for a subject in a section, if any. */
+  findCurrent(
     sectionId: string,
-    subjectId: string,
+    classSubjectId: string,
     employeeId: string,
   ): Promise<SubjectTeacher | null> {
     return this.repo.findOne({
-      where: { academicYearId, classId, sectionId, subjectId, employeeId },
+      where: { sectionId, classSubjectId, employeeId, effectiveTo: IsNull() },
     });
   }
 
-  async updateLink(
+  findActiveForEmployee(
+    employeeId: string,
+    date: string,
+  ): Promise<SubjectTeacher[]> {
+    return this.repo.find({ where: onDate(date, { employeeId }) });
+  }
+
+  /** Who taught a subject in a section on a day. */
+  findActiveFor(
+    sectionId: string,
+    classSubjectId: string,
+    date: string,
+  ): Promise<SubjectTeacher[]> {
+    return this.repo.find({
+      where: onDate(date, { sectionId, classSubjectId }),
+      relations: { employee: true },
+      order: { effectiveFrom: 'ASC' },
+    });
+  }
+
+  findCurrentInYear(academicYearId: string): Promise<SubjectTeacher[]> {
+    return this.repo.find({
+      where: { effectiveTo: IsNull(), section: { academicYearId } },
+      relations: { employee: true },
+    });
+  }
+
+  countInYear(academicYearId: string): Promise<number> {
+    return this.repo.count({ where: { section: { academicYearId } } });
+  }
+
+  async updateFields(
     id: string,
-    patch: Pick<
-      SubjectTeacher,
-      'classId' | 'sectionId' | 'subjectId' | 'employeeId' | 'academicYearId'
+    patch: Partial<
+      Pick<SubjectTeacher, 'employeeId' | 'effectiveFrom' | 'effectiveTo'>
     >,
   ): Promise<void> {
     await this.repo.update({ id }, patch);
   }
 
-  /** An employee's subject-teacher rows in one academic year. */
-  findByEmployee(
-    employeeId: string,
-    academicYearId: string,
-  ): Promise<SubjectTeacher[]> {
-    return this.repo.find({ where: { employeeId, academicYearId } });
-  }
-
   findFiltered(
-    where: FindOptionsWhere<SubjectTeacher>,
+    where: FindOptionsWhere<SubjectTeacher>[],
     page: PaginationQueryDto,
   ): Promise<Paginated<SubjectTeacher>> {
     return this.findPage(
       {
         where,
         relations: RELATIONS,
-        order: { createdAt: 'DESC' },
+        order: { effectiveFrom: 'DESC', createdAt: 'DESC', id: 'ASC' },
       },
       page,
     );

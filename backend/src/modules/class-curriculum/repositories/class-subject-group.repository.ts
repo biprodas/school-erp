@@ -43,6 +43,10 @@ export class ClassSubjectGroupRepository extends BaseTenantRepository<ClassSubje
     await this.repo.update({ id }, patch);
   }
 
+  findInYear(academicYearId: string): Promise<ClassSubjectGroup[]> {
+    return this.repo.find({ where: { academicYearId } });
+  }
+
   findFiltered(
     where: FindOptionsWhere<ClassSubjectGroup>,
     page: PaginationQueryDto,
@@ -51,7 +55,7 @@ export class ClassSubjectGroupRepository extends BaseTenantRepository<ClassSubje
       {
         where,
         relations: RELATIONS,
-        order: { createdAt: 'DESC' },
+        order: { createdAt: 'DESC', id: 'ASC' },
       },
       page,
     );

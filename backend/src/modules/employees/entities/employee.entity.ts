@@ -16,9 +16,16 @@ import { OrgScopedEntity } from '~/tenancy/org-scoped.entity';
 import { User } from '~/modules/users/entities/user.entity';
 import { Department } from '~/modules/departments/entities/department.entity';
 import { Designation } from '~/modules/designations/entities/designation.entity';
+import { StoredFile } from '~/modules/files/entities/stored-file.entity';
+import { EncryptedColumn } from '~/shared/crypto/field-encryption';
 import { EmployeeGender } from '../enums/employee-gender.enum';
 import { EmployeeStatus } from '../enums/employee-status.enum';
+import { EmploymentType } from '../enums/employment-type.enum';
 
+/**
+ * A staff directory entry (PRD 6.4), linked to the person's school
+ * membership through `user_id` once they are invited.
+ */
 @Entity('employees')
 // Partial: a soft-deleted employee doesn't block reusing the number.
 @Index('uq_employees_org_employee_number', ['orgId', 'employeeNumber'], {
@@ -29,6 +36,7 @@ export class Employee extends OrgScopedEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  /** Generated from the `numbering.employeeId` pattern unless given. */
   @Column({
     name: 'employee_number',
     type: 'varchar',
@@ -44,6 +52,21 @@ export class Employee extends OrgScopedEntity {
 
   // virtual column
   fullName: string;
+
+  /** Full name in Bangla. */
+  @Column({ name: 'name_bn', type: 'varchar', length: 160, nullable: true })
+  nameBn: string | null;
+
+  /** National ID, encrypted at rest: never filter or sort on it. */
+  @Column({ type: 'text', nullable: true, transformer: EncryptedColumn })
+  nid: string | null;
+
+  @Column({ name: 'photo_file_id', type: 'uuid', nullable: true })
+  photoFileId: string | null;
+
+  @ManyToOne(() => StoredFile, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'photo_file_id' })
+  photoFile?: StoredFile | null;
 
   @Column({ type: 'varchar', nullable: true })
   email: string | null;
@@ -68,6 +91,14 @@ export class Employee extends OrgScopedEntity {
 
   @Column({ type: 'varchar', default: EmployeeStatus.ACTIVE })
   status: string;
+
+  @Column({
+    name: 'employment_type',
+    type: 'varchar',
+    length: 16,
+    nullable: true,
+  })
+  employmentType: EmploymentType | null;
 
   @Column({ name: 'department_id', type: 'uuid', nullable: true })
   departmentId: string | null;

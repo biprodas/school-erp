@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -8,9 +9,18 @@ import {
   Patch,
   Post,
   Query,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiHeader, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
+  ApiHeader,
+  ApiTags,
+} from '@nestjs/swagger';
+import { FileUpload } from '~/modules/files/file-upload.interceptor';
 import { JwtAuthGuard } from '~/modules/auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '~/modules/rbac/guards/permissions.guard';
 import { PERMISSIONS } from '~/modules/rbac/permissions.catalog';
@@ -18,6 +28,7 @@ import { RequirePermissions } from '~/modules/rbac/decorators/require-permission
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { FilterEmployeeDto } from './dto/filter-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
+import { InviteEmployeeDto } from './dto/invite-employee.dto';
 import { EmployeeService } from './employee.service';
 import { ResponseMessage } from '~/common/decorators/response.decorators';
 
@@ -51,7 +62,7 @@ export class EmployeeController {
   @RequirePermissions(PERMISSIONS.EMPLOYEES_READ)
   @ResponseMessage('Employee found')
   findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.employeeService.findById(id);
+    return this.employeeService.findOneView(id);
   }
 
   @Patch(':id')
@@ -62,6 +73,49 @@ export class EmployeeController {
     @Body() dto: UpdateEmployeeDto,
   ) {
     return this.employeeService.update(id, dto);
+  }
+
+  @Post(':id/photo')
+  @RequirePermissions(PERMISSIONS.EMPLOYEES_UPDATE)
+  @UseInterceptors(FileUpload('employee_photo'))
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: { file: { type: 'string', format: 'binary' } },
+      required: ['file'],
+    },
+  })
+  @ResponseMessage('Photo updated')
+  uploadPhoto(
+    @Param('id', ParseUUIDPipe) id: string,
+    @UploadedFile() file?: Express.Multer.File,
+  ) {
+    if (!file) {
+      throw new BadRequestException({
+        message: 'Attach the image as the multipart field "file"',
+        code: 'FILE_REQUIRED',
+      });
+    }
+    return this.employeeService.setPhoto(id, {
+      buffer: file.buffer,
+      originalName: file.originalname,
+    });
+  }
+
+  /**
+   * Gives the employee a login: activation link by email, or a one-time
+   * slip password for phone-only staff. The role defaults to the
+   * designation's.
+   */
+  @Post(':id/invite')
+  @RequirePermissions(PERMISSIONS.USERS_CREATE)
+  @ResponseMessage('Employee invited')
+  invite(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: InviteEmployeeDto,
+  ) {
+    return this.employeeService.invite(id, dto);
   }
 
   @Delete(':id')

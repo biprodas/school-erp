@@ -47,6 +47,14 @@ export class AcademicYearController {
     return this.academicYearService.create(dto);
   }
 
+  /** The session marked current (404 `NO_CURRENT_SESSION` if none). */
+  @Get('current')
+  @RequirePermissions(PERMISSIONS.ACADEMIC_YEARS_READ)
+  @ResponseMessage('Current academic year')
+  findCurrent() {
+    return this.academicYearService.getCurrent();
+  }
+
   @Get(':id')
   @RequirePermissions(PERMISSIONS.ACADEMIC_YEARS_READ)
   @ResponseMessage('Academic year found')

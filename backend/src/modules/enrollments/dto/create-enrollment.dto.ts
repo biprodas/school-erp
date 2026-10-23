@@ -21,9 +21,15 @@ export class CreateEnrollmentDto {
   @IsNotEmpty()
   classId: string;
 
+  /** A section of `classId` in `academicYearId`. */
   @IsUUID('4')
   @IsNotEmpty()
   sectionId: string;
+
+  /** A group the class offers in the session (Class 9–10 streams). */
+  @IsOptional()
+  @IsUUID('4')
+  subjectGroupId?: string | null;
 
   @IsOptional()
   @IsString()

@@ -14,6 +14,7 @@ import { AcademicYear } from '~/modules/academic-years/entities/academic-year.en
 import { Class } from '~/modules/classes/entities/class.entity';
 import { Section } from '~/modules/sections/entities/section.entity';
 import { Student } from '~/modules/students/entities/student.entity';
+import { SubjectGroup } from '~/modules/subject-groups/entities/subject-group.entity';
 import { StudentEnrollmentStatus } from '../enums/student-enrollment-status.enum';
 import { StudentSubject } from './student-subject.entity';
 
@@ -55,9 +56,18 @@ export class StudentEnrollment extends OrgScopedEntity {
   @Column({ name: 'section_id', type: 'uuid' })
   sectionId: string;
 
-  @ManyToOne(() => Section, { onDelete: 'CASCADE' })
+  /** A section of `classId` in `academicYearId`; can't be deleted while used. */
+  @ManyToOne(() => Section, { onDelete: 'RESTRICT' })
   @JoinColumn({ name: 'section_id' })
   section: Section;
+
+  /** The group (Science, …) the student takes, where the class has groups. */
+  @Column({ name: 'subject_group_id', type: 'uuid', nullable: true })
+  subjectGroupId: string | null;
+
+  @ManyToOne(() => SubjectGroup, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'subject_group_id' })
+  subjectGroup?: SubjectGroup | null;
 
   @Column({ name: 'roll_no', type: 'varchar', length: 40, nullable: true })
   rollNo: string | null;

@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { FindOptionsWhere } from 'typeorm';
 import { AcademicYearService } from '~/modules/academic-years/academic-year.service';
-import { ClassService } from '~/modules/classes/services/class.service';
+import { ClassService } from '~/modules/classes/class.service';
 import { SubjectGroupService } from '~/modules/subject-groups/services/subject-group.service';
 import { CreateClassSubjectGroupDto } from '../dto/create-class-subject-group.dto';
 import { FilterClassSubjectGroupDto } from '../dto/filter-class-subject-group.dto';
@@ -107,5 +107,56 @@ export class ClassSubjectGroupService {
   async remove(id: string): Promise<void> {
     await this.findById(id);
     await this.classSubjectGroupRepo.deleteById(id);
+  }
+
+  /** Whether the class offers the group in the session. */
+  async isOffered(
+    classId: string,
+    subjectGroupId: string,
+    academicYearId: string,
+  ): Promise<boolean> {
+    return !!(await this.classSubjectGroupRepo.findLink(
+      classId,
+      subjectGroupId,
+      academicYearId,
+    ));
+  }
+
+  /**
+   * Session rollover: offers every group of `fromYearId` in `toYearId`
+   * too. With `merge`, groups already offered are skipped; otherwise a
+   * clash is refused. Call inside the caller's transaction.
+   */
+  async copyToYear(
+    fromYearId: string,
+    toYearId: string,
+    merge: boolean,
+  ): Promise<{ created: number; skipped: number }> {
+    const key = (g: ClassSubjectGroup) => `${g.classId}:${g.subjectGroupId}`;
+    const existing = new Set(
+      (await this.classSubjectGroupRepo.findInYear(toYearId)).map(key),
+    );
+    const result = { created: 0, skipped: 0 };
+    for (const source of await this.classSubjectGroupRepo.findInYear(
+      fromYearId,
+    )) {
+      if (existing.has(key(source))) {
+        if (!merge) {
+          throw new ConflictException({
+            message: 'The target session already offers subject groups',
+            code: 'ROLLOVER_TARGET_NOT_EMPTY',
+          });
+        }
+        result.skipped++;
+        continue;
+      }
+      await this.classSubjectGroupRepo.saveNew({
+        classId: source.classId,
+        subjectGroupId: source.subjectGroupId,
+        academicYearId: toYearId,
+      });
+      result.created++;
+    }
+    return result;
   }
 }

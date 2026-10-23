@@ -13,6 +13,19 @@ const RELATIONS: FindOptionsRelations<Employee> = {
   user: true,
 };
 
+/** Writable columns (relations and the virtual name excluded). */
+export type EmployeePatch = Partial<
+  Omit<
+    Employee,
+    | 'department'
+    | 'designation'
+    | 'user'
+    | 'photoFile'
+    | 'fullName'
+    | 'syncFullName'
+  >
+>;
+
 @Injectable()
 export class EmployeeRepository extends BaseTenantRepository<Employee> {
   constructor(@Inject(TENANT_DATASOURCE) ds: TenantDataSourceProxy) {
@@ -29,6 +42,12 @@ export class EmployeeRepository extends BaseTenantRepository<Employee> {
 
   findByUserId(userId: string): Promise<Employee | null> {
     return this.repo.findOne({ where: { userId } });
+  }
+
+  /** Writes columns only (loaded relations would win over changed ids). */
+  async updateFields(id: string, patch: EmployeePatch): Promise<void> {
+    if (Object.values(patch).every((v) => v === undefined)) return;
+    await this.repo.update({ id }, patch);
   }
 
   findFiltered(

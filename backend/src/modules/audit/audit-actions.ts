@@ -43,6 +43,12 @@ export const AUDIT_ACTIONS = {
   ONBOARDING_SKIPPED: 'onboarding.skipped',
   TEMPLATE_APPLIED: 'onboarding.template_applied',
 
+  // Academic structure (PRD 6.4)
+  SESSION_ROLLED_OVER: 'academic_year.rolled_over',
+
+  // Staff directory
+  EMPLOYEE_INVITED: 'employee.invited',
+
   // Sensitive data access (PRD 6.3). Recorded without the data itself.
   STUDENT_MEDICAL_VIEWED: 'student_medical.viewed',
   STUDENT_NOTE_SENSITIVE_VIEWED: 'student_note.sensitive_viewed',

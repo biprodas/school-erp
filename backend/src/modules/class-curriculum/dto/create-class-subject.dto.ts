@@ -1,11 +1,16 @@
+import { Type } from 'class-transformer';
 import {
-  IsBoolean,
+  IsArray,
+  IsEnum,
   IsInt,
   IsNotEmpty,
   IsOptional,
   IsUUID,
   Min,
+  ValidateNested,
 } from 'class-validator';
+import { ClassSubjectType } from '../enums/class-subject-type.enum';
+import { CreateClassSubjectComponentDto } from './class-subject-component.dto';
 
 export class CreateClassSubjectDto {
   @IsUUID('4')
@@ -20,9 +25,15 @@ export class CreateClassSubjectDto {
   @IsNotEmpty()
   academicYearId: string;
 
+  /** Defaults to compulsory. */
   @IsOptional()
-  @IsBoolean()
-  isCompulsory?: boolean;
+  @IsEnum(ClassSubjectType)
+  subjectType?: ClassSubjectType;
+
+  /** The group (stream) the subject belongs to in this class. */
+  @IsOptional()
+  @IsUUID('4')
+  subjectGroupId?: string | null;
 
   @IsOptional()
   @IsInt()
@@ -38,4 +49,11 @@ export class CreateClassSubjectDto {
   @IsInt()
   @Min(0)
   fullMarks?: number;
+
+  /** Components created with the subject (one per kind). */
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateClassSubjectComponentDto)
+  components?: CreateClassSubjectComponentDto[];
 }

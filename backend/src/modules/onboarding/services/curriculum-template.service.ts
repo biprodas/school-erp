@@ -8,11 +8,13 @@ import {
   DEFAULT_FEE_HEADS,
   GRADING_TEMPLATES,
   type CurriculumTemplate,
+  type TemplateClass,
 } from '~/shared/templates';
 import { AuditService } from '~/modules/audit/services/audit.service';
 import { AUDIT_ACTIONS } from '~/modules/audit/audit-actions';
 import { AcademicYearService } from '~/modules/academic-years/academic-year.service';
-import { ClassService } from '~/modules/classes/services/class.service';
+import { ClassService } from '~/modules/classes/class.service';
+import { ClassSubjectType } from '~/modules/class-curriculum/enums/class-subject-type.enum';
 import { SubjectService } from '~/modules/subjects/subject.service';
 import { SubjectGroupService } from '~/modules/subject-groups/services/subject-group.service';
 import { ClassSubjectService } from '~/modules/class-curriculum/services/class-subject.service';
@@ -28,6 +30,8 @@ export interface ApplyResult {
     subjectGroups: number;
     groupSubjects: number;
     classSubjects: number;
+    /** CQ / MCQ / practical parts of the new class subjects. */
+    components: number;
     classSubjectGroups: number;
   };
 }
@@ -109,6 +113,7 @@ export class CurriculumTemplateService {
           subjectGroups: 0,
           groupSubjects: 0,
           classSubjects: 0,
+          components: 0,
           classSubjectGroups: 0,
         },
       };
@@ -237,23 +242,26 @@ export class CurriculumTemplateService {
       ).map((cg) => `${cg.classId}:${cg.subjectGroupId}`),
     );
 
+    const templateSubjects = new Map(t.subjects.map((s) => [s.name, s]));
     for (const c of t.classes) {
       const classId = ids.classIds.get(c.name)!;
-      const subjects = [
-        ...c.compulsory.map((name) => ({ name, compulsory: true })),
-        ...(c.optional ?? []).map((name) => ({ name, compulsory: false })),
-      ];
-      for (const s of subjects) {
+      for (const s of classSubjects(t, c)) {
         const subjectId = ids.subjectIds.get(s.name)!;
         if (offered.has(`${classId}:${subjectId}`)) continue;
+        const components = c.boardComponents
+          ? templateSubjects.get(s.name)?.components
+          : undefined;
         await this.classSubjects.create({
           classId,
           subjectId,
           academicYearId,
-          isCompulsory: s.compulsory,
+          subjectType: s.type,
+          subjectGroupId: s.group ? ids.groupIds.get(s.group)! : null,
+          components: components?.map((comp) => ({ ...comp })),
         });
         offered.add(`${classId}:${subjectId}`);
         result.created.classSubjects++;
+        result.created.components += components?.length ?? 0;
       }
       for (const group of c.groups ?? []) {
         const subjectGroupId = ids.groupIds.get(group)!;
@@ -267,4 +275,45 @@ export class CurriculumTemplateService {
       }
     }
   }
+}
+
+/**
+ * A template class's subjects with their type: the class lists first
+ * (compulsory, optional, 4th), then the subjects of its groups not listed
+ * yet. A group subject is compulsory when every group of the class that
+ * lists it says so, and is tagged with its group only when one group lists
+ * it (General Science is in two).
+ */
+export function classSubjects(
+  t: CurriculumTemplate,
+  c: TemplateClass,
+): { name: string; type: ClassSubjectType; group: string | null }[] {
+  const out = new Map<
+    string,
+    { name: string; type: ClassSubjectType; group: string | null }
+  >();
+  const add = (name: string, type: ClassSubjectType, group: string | null) => {
+    if (!out.has(name)) out.set(name, { name, type, group });
+  };
+  c.compulsory.forEach((n) => add(n, ClassSubjectType.COMPULSORY, null));
+  (c.optional ?? []).forEach((n) => add(n, ClassSubjectType.OPTIONAL, null));
+  (c.fourth ?? []).forEach((n) => add(n, ClassSubjectType.FOURTH, null));
+
+  const groups = t.groups.filter((g) => c.groups?.includes(g.name));
+  for (const g of groups) {
+    for (const { name } of g.subjects) {
+      const listing = groups.filter((x) =>
+        x.subjects.some((s) => s.name === name),
+      );
+      const compulsory = listing.every(
+        (x) => x.subjects.find((s) => s.name === name)!.compulsory,
+      );
+      add(
+        name,
+        compulsory ? ClassSubjectType.COMPULSORY : ClassSubjectType.OPTIONAL,
+        listing.length === 1 ? listing[0].name : null,
+      );
+    }
+  }
+  return [...out.values()];
 }

@@ -270,7 +270,12 @@ describe('Tenant isolation (e2e) [tenant-isolation]', () => {
     it('keeps exactly one current academic year under concurrent requests', async () => {
       const responses = await Promise.all(
         ['2041', '2042', '2043'].map((name) =>
-          as(orgA).post('/api/academic-years', { name, isCurrent: true }),
+          as(orgA).post('/api/academic-years', {
+            name,
+            startDate: `${name}-01-01`,
+            endDate: `${name}-12-31`,
+            isCurrent: true,
+          }),
         ),
       );
 
@@ -285,14 +290,20 @@ describe('Tenant isolation (e2e) [tenant-isolation]', () => {
     });
 
     it("soft-deletes and lets a deleted record's name be reused", async () => {
+      const year2050 = {
+        name: '2050',
+        startDate: '2050-01-01',
+        endDate: '2050-12-31',
+      };
       const first = await as(orgA)
-        .post('/api/academic-years', { name: '2050' })
+        .post('/api/academic-years', year2050)
         .expect(201);
       const firstId = (first.body as { data: { id: string } }).data.id;
 
       await as(orgA).delete(`/api/academic-years/${firstId}`).expect(200);
       await as(orgA).get(`/api/academic-years/${firstId}`).expect(404);
-      await as(orgA).post('/api/academic-years', { name: '2050' }).expect(201);
+      // Neither the name nor the dates of a deleted session block a new one.
+      await as(orgA).post('/api/academic-years', year2050).expect(201);
 
       const [row] = await rootDs.query<{ deleted_at: Date | null }[]>(
         'SELECT deleted_at FROM academic_years WHERE id = $1',

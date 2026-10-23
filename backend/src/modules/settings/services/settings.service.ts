@@ -24,6 +24,7 @@ import {
 } from '../settings.defaults';
 import type { OrgSettingsValues, SettingsSection } from '../settings.types';
 import { UpdateOrganizationSettingsDto } from '../dto/update-organization-settings.dto';
+import { localDate } from '~/shared/dates/local-date';
 
 /** The school's own fields on `organizations`, as settings show them. */
 export interface OrganizationSettingsView {
@@ -114,6 +115,11 @@ export class SettingsService {
     section: K,
   ): Promise<OrgSettingsValues[K]> {
     return (await this.get())[section];
+  }
+
+  /** Today's date (`YYYY-MM-DD`) in the school's time zone. */
+  async today(): Promise<string> {
+    return localDate((await this.getSection('locale')).timeZone);
   }
 
   /** `GET /settings`: the sections plus the organization fields and files. */

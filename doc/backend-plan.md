@@ -15,7 +15,7 @@
 - This is a starting plan, not a fixed spec. When implementation shows a better way, change the code and update this doc to match.
 - Items marked **(1b)** are listed only so Phase 1a leaves room for them; they are tracked in section 14.
 
-**Current state:** M0 in progress (4.1–4.7 done; DB-backed checks wait for the local database or the first CI run). M1 implemented (2026-10-23) except the sample-data mode and the grading, holiday and fee-head template "apply" steps, which wait for M5, M4 and M6; its e2e specs pass against Postgres 18. Section 1 lists what already exists and can be reused.
+**Current state:** M0 in progress (4.1–4.7 done; DB-backed checks wait for the local database or the first CI run). M1 implemented (2026-10-23) except the sample-data mode and the grading, holiday and fee-head template "apply" steps, which wait for M5, M4 and M6; its e2e specs pass against Postgres 18. M2 implemented (2026-10-24) except the staff Excel import, which waits for the M3 import framework. Section 1 lists what already exists and can be reused.
 
 ---
 
@@ -191,7 +191,7 @@ M4, M5 and M6 don't depend on one another, so they can be reordered (fees first 
   - [x] `PermissionResolverService.getPermissionScopes` returns, per permission key, the widest scope among the user's roles that grant it (roles read once per request).
   - [x] Request-scoped `AccessScope` (`src/modules/access-scope/`, its own module because `TeachingModule` depends on `RbacModule`): `can(key)`, `sections(key)` (`null` = unrestricted, else class-sections with a class- or subject-teacher assignment in the current session), `subjectAssignments(key)`, plus `canAccessSection`/`canAccessSubject`. Data from the exported `TeachingService.activeAssignmentsForUser`, cached per request. *Sections are still a global name list shared by classes, so a section is a `{ classId, sectionId }` pair and a subject assignment `{ classId, sectionId, subjectId }`; M2 (per-session sections, `class_subject_id`, effective dates) reduces these to `sectionId` / `(sectionId, classSubjectId)`.*
   - [x] Unit suite for permission evaluation with scopes (PRD 11.1): `access-scope.service.spec.ts`, `permission-resolver.service.spec.ts`, `teaching.service.spec.ts`.
-  - [ ] Existing student/enrollment/teaching list endpoints filter by `AccessScope`. *They predate it; each is retrofitted when its module is reworked (M2 for teaching and sections, M3 for SIS, covered by the M2 "scoped teacher sees only their own sections" e2e).*
+  - [ ] Existing student/enrollment/teaching list endpoints filter by `AccessScope`. *They predate it; each is retrofitted when its module is reworked. Sections and class/subject teachers done in M2 (with the "scoped teacher sees only their own sections" e2e); students and enrollments in M3.*
 - [x] Guardian and student roles hold only `portal:*` keys (`portal:access`), so their tokens are refused on staff endpoints (portal endpoints in M7).
 
 ### 4.5 Audit log (PRD 6.3, 8.1)
@@ -344,62 +344,65 @@ Migration `1792340000000-PlatformAndOnboarding` holds every schema change below 
 
 **Scope:** PRD 6.4 (without batch mode) and the staff directory (decision 4 of PRD v1.3).
 
+*Implemented 2026-10-24. Migrations `1792350000000-AcademicSetup` and `1792350000001-PerSessionSections` ran (up, down, up) on a copy of the migrated schema seeded with legacy sections, links, enrollments, teachers and promotions, and `db:generate` finds no drift afterwards. Unit suites and the e2e suite (`test/academic-structure.e2e-spec.ts`) pass against Postgres 18. Open: the staff Excel import (waits for the M3 import framework).*
+
 ### 6.1 Sessions, terms, shifts, rooms
 
-- [ ] Academic years: validate `start < end` and no overlap; `GET /academic-years/current`. Keep the `academic_years` table name; the UI calls them sessions.
-- [ ] `terms (academic_year_id, name, start_date, end_date, sort_order)` with CRUD.
-- [ ] `shifts (name, start_time, end_time, sort_order)` with CRUD.
-- [ ] `rooms (name, building, capacity, type)` with CRUD (used by exams and timetable later).
-- [ ] Catalog keys and seed updates for the three new resources.
+- [x] Academic years: validate `start < end` and no overlap; `GET /academic-years/current`. Keep the `academic_years` table name; the UI calls them sessions. *Dates are now required on create (`@IsDateOnly`), checked again on update; soft-deleted sessions don't count. `SESSION_OVERLAP` (409), `INVALID_DATE_RANGE` (400), `NO_CURRENT_SESSION` (404).*
+- [x] `terms (academic_year_id, name, start_date, end_date, sort_order)` with CRUD. *Inside the session's dates; unique name per session.*
+- [x] `shifts (name, start_time, end_time, sort_order)` with CRUD. *Deleting one leaves its sections without a shift.*
+- [x] `rooms (name, building, capacity, type)` with CRUD (used by exams and timetable later). *Unique name per school; `type` classroom/lab/hall/library/office/other.*
+- [x] Catalog keys and seed updates for the three new resources. *`terms:*`, `shifts:*`, `rooms:*`, plus `academic_years:rollover` (principal and admin). Readers of academic setup (teacher, class teacher, committee member) get the read keys; the migration adds them to existing orgs.*
 
 ### 6.2 Per-session sections
 
-- [ ] New `sections (academic_year_id, class_id, shift_id nullable, name, capacity, room_id nullable, is_active)`, unique `(org_id, academic_year_id, class_id, name)`, with RLS and grants.
-- [ ] Migration `PerSessionSections`:
-  - [ ] For each `class_sections` row, create a section in every year that has enrollments, teacher assignments or timetable rows for that class + section; otherwise in the current year.
-  - [ ] Repoint `student_enrollments`, `class_teachers`, `subject_teachers` and `class_timetables` `section_id` to the new rows (match on class + old section + year).
-  - [ ] Drop `class_sections` and the old `sections`.
-- [ ] Remove the global section-name CRUD and `classes/:classId/sections` routes.
-- [ ] New routes: `GET/POST /sections?academicYearId=&classId=`, `PATCH/DELETE /sections/:id`.
+- [x] New `sections (academic_year_id, class_id, shift_id nullable, name, capacity, room_id nullable, is_active)`, unique `(org_id, academic_year_id, class_id, name)`, with RLS and grants. *Rebuilt in place, so the table keeps its policy and grants.*
+- [x] Migration `PerSessionSections`:
+  - [x] For each `class_sections` row, create a section in every year that has enrollments, teacher assignments or timetable rows for that class + section; otherwise in the current year. *Promotions count as use too. A link nothing used, in a school with no current session, is dropped.*
+  - [x] Repoint `student_enrollments`, `class_teachers`, `subject_teachers` and `class_timetables` `section_id` to the new rows (match on class + old section + year). *And `student_promotions` from/to. The migration stops if any row still points at a global section.*
+  - [x] Drop `class_sections` and the old `sections`.
+- [x] Remove the global section-name CRUD and `classes/:classId/sections` routes. *`ClassModule` is flat now (one controller, service, repository).*
+- [x] New routes: `GET/POST /sections?academicYearId=&classId=`, `PATCH/DELETE /sections/:id`. *Reads follow `AccessScope`. Enrollments must use a section of their class and session (`SECTION_NOT_IN_CLASS`) and block deleting it (FK `RESTRICT` → 409).*
 
 ### 6.3 Curriculum and subject components
 
-- [ ] `subjects`: keep `(org, code)` unique; drop `is_optional`.
-- [ ] `class_subjects`: add `subject_type` (compulsory/optional/fourth/elective) and `subject_group_id` nullable; drop `is_compulsory`.
-- [ ] `class_subject_components (class_subject_id, component cq|mcq|practical|written|oral, full_marks, pass_marks, sort_order)` with CRUD under the class subject.
-- [ ] Enrollments gain `subject_group_id`.
-- [ ] `student_subjects` gains `is_fourth_subject`; at most one per enrollment, and only for a `fourth`/`optional` class subject.
-- [ ] Add the missing PATCH on `class-subject-groups`.
+- [x] `subjects`: keep `(org, code)` unique; drop `is_optional`.
+- [x] `class_subjects`: add `subject_type` (compulsory/optional/fourth/elective) and `subject_group_id` nullable; drop `is_compulsory`. *Back-filled: compulsory → `compulsory`, else `optional`.*
+- [x] `class_subject_components (class_subject_id, component cq|mcq|practical|written|oral, full_marks, pass_marks, sort_order)` with CRUD under the class subject. *`/class-subjects/:id/components` (class subject read/update keys); one per kind; pass ≤ full. `POST /class-subjects` also takes `components` and totals `full_marks` from them.*
+- [x] Enrollments gain `subject_group_id`. *Must be a group the class offers in the session (`GROUP_NOT_OFFERED`).*
+- [x] `student_subjects` gains `is_fourth_subject`; at most one per enrollment, and only for a `fourth`/`optional` class subject. *Partial unique index plus service check (`FOURTH_SUBJECT_TAKEN`, `NOT_A_FOURTH_SUBJECT`).*
+- [x] Add the missing PATCH on `class-subject-groups`. *It already existed.*
+- [x] *Templates: class lists are typed (compulsory / optional / `fourth`), group subjects become class subjects (tagged with their group when only one group lists them), and NCTB Class 9–10 subjects get the SSC split (CQ/MCQ, or CQ/MCQ/practical; pass 33%).*
 
 ### 6.4 Effective-dated teacher assignments
 
-- [ ] `class_teachers` and `subject_teachers`: add `effective_from` (default session start) and `effective_to` (nullable); current-assignment unique keys become partial (`WHERE effective_to IS NULL`).
-- [ ] `subject_teachers` references `class_subject_id` instead of `class_id + subject_id`.
-- [ ] Changing a teacher closes the old row and opens a new one in one transaction.
-- [ ] Delete only for a row created in error (no dependent data); otherwise end-date it.
-- [ ] Add the missing PATCH on `subject-teachers`.
-- [ ] `TeachingService.activeAssignments(employeeId, date)` (feeds `AccessScope`) and `assignmentOn(sectionId, classSubjectId, date)` (history).
+- [x] `class_teachers` and `subject_teachers`: add `effective_from` (default session start) and `effective_to` (nullable); current-assignment unique keys become partial (`WHERE effective_to IS NULL`). *Both drop `class_id` / `academic_year_id` (the section implies them). Days are inclusive. Existing rows start on their session's first day.*
+- [x] `subject_teachers` references `class_subject_id` instead of `class_id + subject_id`. *The migration creates a missing class subject rather than lose an assignment.*
+- [x] Changing a teacher closes the old row and opens a new one in one transaction. *`PATCH { employeeId, effectiveFrom? }` (default today in the school's zone): the old row ends the day before. On the row's own first day it re-points instead. Only active or on-leave staff can be assigned.*
+- [x] Delete only for a row created in error (no dependent data); otherwise end-date it. *`POST …/:id/end { effectiveTo? }`. Ended rows are history: no edit (`ASSIGNMENT_ENDED`), no delete (`ASSIGNMENT_HISTORY`). M4/M5 add their dependent-data checks to delete.*
+- [x] Add the missing PATCH on `subject-teachers`.
+- [x] `TeachingService.activeAssignments(employeeId, date)` (feeds `AccessScope`) and `assignmentOn(sectionId, classSubjectId, date)` (history). *Lists take `?on=YYYY-MM-DD` and `?current=true|false`. `AccessScope` now answers in section ids and `(sectionId, classSubjectId)`, for assignments in effect today.*
 
 ### 6.5 Session rollover
 
-- [ ] `POST /academic-years/:targetId/rollover { fromYearId, include: { sections, curriculum, teachers }, mode? }` as a job, in one transaction.
-- [ ] Copies sections, class subjects with components and groups, and current teacher assignments, with new ids.
-- [ ] Refuses when the target already has rows of an included kind, unless `mode: 'merge'` (skips existing names).
-- [ ] Never touches enrollments.
+- [x] `POST /academic-years/:targetId/rollover { fromYearId, include: { sections, curriculum, teachers }, mode? }` as a job, in one transaction. *202 with the job (`GET /jobs/:id`), `academic` queue, `academic_years:rollover`. The request is checked before queuing and again in the job's transaction; audited as `academic_year.rolled_over`.*
+- [x] Copies sections, class subjects with components and groups, and current teacher assignments, with new ids. *Teachers start on the target's first day; skipped when their section or subject has no copy, or they're no longer active. A primary class teacher stays primary unless the target section already has one. Teachers only: matched onto existing target sections and subjects.*
+- [x] Refuses when the target already has rows of an included kind, unless `mode: 'merge'` (skips existing names). *409 `ROLLOVER_TARGET_NOT_EMPTY` with `taken: [...]`.*
+- [x] Never touches enrollments.
 
 ### 6.6 Staff directory
 
-- [ ] `employees`: generated `employee_number` via `NumberingService` (overridable), Bangla name, NID (encrypted), photo file, employment type.
-- [ ] `POST /employees/:id/invite` uses the M0 invite flow with the employee's email or phone and a default role by designation.
+- [x] `employees`: generated `employee_number` via `NumberingService` (overridable), Bangla name, NID (encrypted), photo file, employment type. *Pattern setting `numbering.employeeId` (default `EMP-{SEQ:4}`); numbers typed in by hand are skipped. `POST /employees/:id/photo` (`employee_photo` purpose); `GET /employees/:id` adds a signed `photoUrl`. Employment type permanent/contract/part_time.*
+- [x] `POST /employees/:id/invite` uses the M0 invite flow with the employee's email or phone and a default role by designation. *`designations.default_role_id` (a staff role the user may assign); `roleIds` overrides. Email → activation link, phone only → slip. Needs `users:create`; links `employees.user_id`; audited as `employee.invited`. The old `createUser` option (admin-chosen password) is gone.*
 - [ ] Staff Excel import through the import framework (M3) with type `staff`.
 
 ### Done when
 
-- [ ] A session with shifts, terms, per-session sections and curriculum with components can be built from the NCTB template (e2e).
-- [ ] The section migration runs cleanly on a copy of the dev database with existing data.
-- [ ] Teacher changes keep history, and `assignmentOn` answers who taught a subject on a past date.
-- [ ] Rollover copies a session and refuses to overwrite.
-- [ ] A scoped teacher sees only their own sections (e2e).
+- [x] A session with shifts, terms, per-session sections and curriculum with components can be built from the NCTB template (e2e).
+- [x] The section migration runs cleanly on a copy of the dev database with existing data. *Run on a seeded copy of the migrated schema (see the note above); repeat on the real dev database before deploying.*
+- [x] Teacher changes keep history, and `assignmentOn` answers who taught a subject on a past date.
+- [x] Rollover copies a session and refuses to overwrite.
+- [x] A scoped teacher sees only their own sections (e2e).
 
 ---
 

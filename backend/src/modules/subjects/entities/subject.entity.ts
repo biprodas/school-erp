@@ -22,11 +22,12 @@ export class Subject extends OrgScopedEntity {
   @Column({ type: 'varchar', length: 40, nullable: true })
   code: string | null;
 
+  /**
+   * Kind of teaching. Whether a class takes it as compulsory, optional,
+   * 4th or elective is per class and session (`class_subjects.subject_type`).
+   */
   @Column({ type: 'varchar', length: 16, default: SubjectType.THEORY })
   type: string;
-
-  @Column({ name: 'is_optional', type: 'boolean', default: false })
-  isOptional: boolean;
 
   @Column({ type: 'int', nullable: true })
   credit: number | null;

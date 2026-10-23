@@ -6,6 +6,8 @@ export const QUEUES = {
   imports: 'imports',
   billing: 'billing',
   exports: 'exports',
+  /** Academic setup bulk work (session rollover). */
+  academic: 'academic',
 } as const;
 
 export type QueueName = (typeof QUEUES)[keyof typeof QUEUES];

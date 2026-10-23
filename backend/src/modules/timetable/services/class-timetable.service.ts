@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   Logger,
@@ -6,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { FindOptionsWhere } from 'typeorm';
 import { AcademicYearService } from '~/modules/academic-years/academic-year.service';
-import { ClassService } from '~/modules/classes/services/class.service';
+import { ClassService } from '~/modules/classes/class.service';
 import { EmployeeService } from '~/modules/employees/employee.service';
 import { SectionService } from '~/modules/sections/section.service';
 import { SubjectService } from '~/modules/subjects/subject.service';
@@ -54,7 +55,17 @@ export class ClassTimetableService {
   async create(dto: CreateTimetableDto): Promise<ClassTimetable> {
     await this.academicYearService.findById(dto.academicYearId);
     await this.classService.findById(dto.classId);
-    await this.sectionService.findById(dto.sectionId);
+    const section = await this.sectionService.findById(dto.sectionId);
+    if (
+      section.classId !== dto.classId ||
+      section.academicYearId !== dto.academicYearId
+    ) {
+      throw new BadRequestException({
+        message:
+          "The section is not one of the class's sections in the session",
+        code: 'SECTION_NOT_IN_CLASS',
+      });
+    }
     await this.periodRepo.findByIdOrFail(dto.periodId);
     await this.subjectService.findById(dto.subjectId);
     await this.employeeService.findById(dto.employeeId);

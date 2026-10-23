@@ -65,14 +65,34 @@ export const PERMISSIONS = {
   ACADEMIC_YEARS_CREATE: 'academic_years:create',
   ACADEMIC_YEARS_UPDATE: 'academic_years:update',
   ACADEMIC_YEARS_DELETE: 'academic_years:delete',
+  /** Copy a session's structure into another (PRD 6.4 rollover). */
+  ACADEMIC_YEARS_ROLLOVER: 'academic_years:rollover',
 
-  // Classes (incl. class-section assignments)
+  // Terms inside a session
+  TERMS_READ: 'terms:read',
+  TERMS_CREATE: 'terms:create',
+  TERMS_UPDATE: 'terms:update',
+  TERMS_DELETE: 'terms:delete',
+
+  // Shifts (morning/day)
+  SHIFTS_READ: 'shifts:read',
+  SHIFTS_CREATE: 'shifts:create',
+  SHIFTS_UPDATE: 'shifts:update',
+  SHIFTS_DELETE: 'shifts:delete',
+
+  // Rooms and buildings
+  ROOMS_READ: 'rooms:read',
+  ROOMS_CREATE: 'rooms:create',
+  ROOMS_UPDATE: 'rooms:update',
+  ROOMS_DELETE: 'rooms:delete',
+
+  // Classes (permanent)
   CLASSES_READ: 'classes:read',
   CLASSES_CREATE: 'classes:create',
   CLASSES_UPDATE: 'classes:update',
   CLASSES_DELETE: 'classes:delete',
 
-  // Sections
+  // Sections (per class and session)
   SECTIONS_READ: 'sections:read',
   SECTIONS_CREATE: 'sections:create',
   SECTIONS_UPDATE: 'sections:update',
@@ -90,7 +110,7 @@ export const PERMISSIONS = {
   SUBJECT_GROUPS_UPDATE: 'subject_groups:update',
   SUBJECT_GROUPS_DELETE: 'subject_groups:delete',
 
-  // Class subjects (per-class+year subject offerings)
+  // Class subjects (per-class+year subject offerings, with their components)
   CLASS_SUBJECTS_READ: 'class_subjects:read',
   CLASS_SUBJECTS_CREATE: 'class_subjects:create',
   CLASS_SUBJECTS_UPDATE: 'class_subjects:update',

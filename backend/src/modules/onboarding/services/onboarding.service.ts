@@ -6,7 +6,7 @@ import { AuditService } from '~/modules/audit/services/audit.service';
 import { AUDIT_ACTIONS } from '~/modules/audit/audit-actions';
 import { SettingsService } from '~/modules/settings/services/settings.service';
 import { AcademicYearService } from '~/modules/academic-years/academic-year.service';
-import { ClassService } from '~/modules/classes/services/class.service';
+import { ClassService } from '~/modules/classes/class.service';
 import { SectionService } from '~/modules/sections/section.service';
 import { ClassSubjectService } from '~/modules/class-curriculum/services/class-subject.service';
 import { EmployeeService } from '~/modules/employees/employee.service';
@@ -212,10 +212,11 @@ export class OnboardingService {
     const current = await this.academicYears.findCurrent();
     if (current) done.add('session');
 
-    const [classCount, sectionCount] = await Promise.all([
-      total(this.classes.findFiltered(ONE)),
-      total(this.sections.findFiltered(ONE)),
-    ]);
+    // Sections belong to a session: count the current one's.
+    const classCount = await total(this.classes.findFiltered(ONE));
+    const sectionCount = current
+      ? await this.sections.countInYear(current.id)
+      : 0;
     if (classCount > 0 && sectionCount > 0) done.add('classes');
 
     if (

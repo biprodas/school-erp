@@ -2,14 +2,13 @@ import {
   Column,
   CreateDateColumn,
   Entity,
-  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
   Index,
 } from 'typeorm';
 import { OrgScopedEntity } from '~/tenancy/org-scoped.entity';
-import { ClassSection } from './class-section.entity';
 
+/** A permanent class (grade); its sections are per session. */
 @Entity('classes')
 @Index('uq_classes_org_name', ['orgId', 'name'], { unique: true })
 export class Class extends OrgScopedEntity {
@@ -31,9 +30,6 @@ export class Class extends OrgScopedEntity {
 
   @Column({ name: 'is_active', type: 'boolean', default: true })
   isActive: boolean;
-
-  @OneToMany(() => ClassSection, (link) => link.schoolClass)
-  classSections: ClassSection[];
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

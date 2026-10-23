@@ -1,7 +1,7 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { FindOptionsWhere } from 'typeorm';
 import { AcademicYearService } from '~/modules/academic-years/academic-year.service';
-import { ClassService } from '~/modules/classes/services/class.service';
+import { ClassService } from '~/modules/classes/class.service';
 import { SectionService } from '~/modules/sections/section.service';
 import { StudentService } from '~/modules/students/services/student.service';
 import { CreatePromotionDto } from './dto/create-promotion.dto';

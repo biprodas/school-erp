@@ -81,6 +81,7 @@ import { SessionModule } from './session.module';
   exports: [
     PlatformAuthService,
     OwnerProvisioningService,
+    InviteService,
     IdentityService,
     SessionModule,
   ],

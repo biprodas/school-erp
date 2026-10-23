@@ -1,11 +1,11 @@
 import {
   IsBoolean,
-  IsDateString,
   IsNotEmpty,
   IsOptional,
   IsString,
   MaxLength,
 } from 'class-validator';
+import { IsDateOnly } from '~/common/decorators/is-date-only.decorator';
 
 export class CreateAcademicYearDto {
   @IsString()
@@ -18,13 +18,13 @@ export class CreateAcademicYearDto {
   @MaxLength(40)
   code?: string;
 
-  @IsOptional()
-  @IsDateString()
-  startDate?: string;
+  /** First day of the session; sessions may span calendar years. */
+  @IsDateOnly()
+  startDate: string;
 
-  @IsOptional()
-  @IsDateString()
-  endDate?: string;
+  /** Last day; after `startDate`, and no overlap with another session. */
+  @IsDateOnly()
+  endDate: string;
 
   @IsOptional()
   @IsBoolean()

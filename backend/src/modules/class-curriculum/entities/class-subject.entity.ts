@@ -5,6 +5,7 @@ import {
   Index,
   JoinColumn,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
@@ -12,6 +13,9 @@ import { OrgScopedEntity } from '~/tenancy/org-scoped.entity';
 import { AcademicYear } from '~/modules/academic-years/entities/academic-year.entity';
 import { Class } from '~/modules/classes/entities/class.entity';
 import { Subject } from '~/modules/subjects/entities/subject.entity';
+import { SubjectGroup } from '~/modules/subject-groups/entities/subject-group.entity';
+import { ClassSubjectType } from '../enums/class-subject-type.enum';
+import { ClassSubjectComponent } from './class-subject-component.entity';
 
 /** A subject offered to a class in a given academic year. */
 @Entity('class_subjects')
@@ -47,8 +51,21 @@ export class ClassSubject extends OrgScopedEntity {
   @JoinColumn({ name: 'academic_year_id' })
   academicYear: AcademicYear;
 
-  @Column({ name: 'is_compulsory', type: 'boolean', default: true })
-  isCompulsory: boolean;
+  @Column({
+    name: 'subject_type',
+    type: 'varchar',
+    length: 16,
+    default: ClassSubjectType.COMPULSORY,
+  })
+  subjectType: ClassSubjectType;
+
+  /** The group (Science, …) the subject belongs to in this class, if any. */
+  @Column({ name: 'subject_group_id', type: 'uuid', nullable: true })
+  subjectGroupId: string | null;
+
+  @ManyToOne(() => SubjectGroup, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'subject_group_id' })
+  subjectGroup?: SubjectGroup | null;
 
   @Column({ name: 'weekly_classes', type: 'int', nullable: true })
   weeklyClasses: number | null;
@@ -58,6 +75,9 @@ export class ClassSubject extends OrgScopedEntity {
 
   @Column({ name: 'full_marks', type: 'int', nullable: true })
   fullMarks: number | null;
+
+  @OneToMany(() => ClassSubjectComponent, (c) => c.classSubject)
+  components?: ClassSubjectComponent[];
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

@@ -1,6 +1,6 @@
 import { ConflictException } from '@nestjs/common';
 import { AcademicYearService } from '~/modules/academic-years/academic-year.service';
-import { ClassService } from '~/modules/classes/services/class.service';
+import { ClassService } from '~/modules/classes/class.service';
 import { EmployeeService } from '~/modules/employees/employee.service';
 import { SectionService } from '~/modules/sections/section.service';
 import { SubjectService } from '~/modules/subjects/subject.service';
@@ -41,7 +41,14 @@ describe('ClassTimetableService', () => {
       save: jest.fn((e) => Promise.resolve(e)),
       deleteById: jest.fn(),
     };
-    deps = { findByIdOrFail: jest.fn(), findById: jest.fn() };
+    // Every lookup succeeds; a section answers with its class and year.
+    deps = {
+      findByIdOrFail: jest.fn(),
+      findById: jest.fn().mockResolvedValue({
+        classId: 'cls-1',
+        academicYearId: 'ay-1',
+      }),
+    };
 
     service = new ClassTimetableService(
       repo as unknown as ClassTimetableRepository,

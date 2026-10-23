@@ -14,6 +14,18 @@ export class FilterSectionDto extends PaginationQueryDto {
   id?: string;
 
   @IsOptional()
+  @IsUUID('4')
+  academicYearId?: string;
+
+  @IsOptional()
+  @IsUUID('4')
+  classId?: string;
+
+  @IsOptional()
+  @IsUUID('4')
+  shiftId?: string;
+
+  @IsOptional()
   @IsString()
   @MaxLength(60)
   name?: string;

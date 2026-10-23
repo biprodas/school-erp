@@ -10,13 +10,16 @@ import {
 
 const P = PERMISSIONS;
 
-/** Class 6 section A as class teacher; Math in 7A and 7B. */
+/**
+ * Class teacher of 6A; Math in 7A and 7B (class subject `math7`) and in
+ * 6A (`math6`). Sections are per class and session, so ids are distinct.
+ */
 const ASSIGNMENTS: TeachingAssignments = {
-  classSections: [{ classId: 'c6', sectionId: 'sA' }],
+  sections: ['s6A'],
   subjects: [
-    { classId: 'c7', sectionId: 'sA', subjectId: 'math' },
-    { classId: 'c7', sectionId: 'sB', subjectId: 'math' },
-    { classId: 'c6', sectionId: 'sA', subjectId: 'math' },
+    { sectionId: 's7A', classSubjectId: 'math7' },
+    { sectionId: 's7B', classSubjectId: 'math7' },
+    { sectionId: 's6A', classSubjectId: 'math6' },
   ],
 };
 
@@ -67,10 +70,7 @@ describe('AccessScope', () => {
 
       await expect(scope.sections(P.STUDENTS_READ)).resolves.toBeNull();
       await expect(
-        scope.canAccessSection(P.STUDENTS_READ, {
-          classId: 'c9',
-          sectionId: 'sZ',
-        }),
+        scope.canAccessSection(P.STUDENTS_READ, 's9Z'),
       ).resolves.toBe(true);
       expect(teaching.activeAssignmentsForUser).not.toHaveBeenCalled();
     });
@@ -83,31 +83,18 @@ describe('AccessScope', () => {
       const sections = await scope.sections(P.STUDENTS_READ);
 
       expect(sections).toHaveLength(3);
-      expect(sections).toEqual(
-        expect.arrayContaining([
-          { classId: 'c6', sectionId: 'sA' },
-          { classId: 'c7', sectionId: 'sA' },
-          { classId: 'c7', sectionId: 'sB' },
-        ]),
-      );
+      expect(sections).toEqual(expect.arrayContaining(['s6A', 's7A', 's7B']));
       expect(teaching.activeAssignmentsForUser).toHaveBeenCalledWith('u1');
     });
 
-    it('matches a section by class and section, not by section alone', async () => {
+    it('checks one section by id', async () => {
       const scope = build({ [P.STUDENTS_READ]: RoleScope.ASSIGNED });
 
       await expect(
-        scope.canAccessSection(P.STUDENTS_READ, {
-          classId: 'c6',
-          sectionId: 'sA',
-        }),
+        scope.canAccessSection(P.STUDENTS_READ, 's6A'),
       ).resolves.toBe(true);
-      // Section A of Class 8 is a different class-section.
       await expect(
-        scope.canAccessSection(P.STUDENTS_READ, {
-          classId: 'c8',
-          sectionId: 'sA',
-        }),
+        scope.canAccessSection(P.STUDENTS_READ, 's8A'),
       ).resolves.toBe(false);
     });
 
@@ -119,23 +106,28 @@ describe('AccessScope', () => {
       ).resolves.toEqual(ASSIGNMENTS.subjects);
       await expect(
         scope.canAccessSubject(P.ENROLLMENTS_READ, {
-          classId: 'c7',
-          sectionId: 'sB',
-          subjectId: 'math',
+          sectionId: 's7B',
+          classSubjectId: 'math7',
         }),
       ).resolves.toBe(true);
       await expect(
         scope.canAccessSubject(P.ENROLLMENTS_READ, {
-          classId: 'c7',
-          sectionId: 'sB',
-          subjectId: 'english',
+          sectionId: 's7B',
+          classSubjectId: 'english7',
+        }),
+      ).resolves.toBe(false);
+      // The subject taught elsewhere doesn't open this section's.
+      await expect(
+        scope.canAccessSubject(P.ENROLLMENTS_READ, {
+          sectionId: 's7B',
+          classSubjectId: 'math6',
         }),
       ).resolves.toBe(false);
     });
 
     it('reaches nothing for a teacher with no assignments', async () => {
       teaching.activeAssignmentsForUser.mockResolvedValue({
-        classSections: [],
+        sections: [],
         subjects: [],
       });
       const scope = build({ [P.STUDENTS_READ]: RoleScope.ASSIGNED });
@@ -179,10 +171,7 @@ describe('AccessScope', () => {
         scope.subjectAssignments(P.STUDENTS_DELETE),
       ).resolves.toEqual([]);
       await expect(
-        scope.canAccessSection(P.STUDENTS_DELETE, {
-          classId: 'c6',
-          sectionId: 'sA',
-        }),
+        scope.canAccessSection(P.STUDENTS_DELETE, 's6A'),
       ).resolves.toBe(false);
       expect(teaching.activeAssignmentsForUser).not.toHaveBeenCalled();
     });

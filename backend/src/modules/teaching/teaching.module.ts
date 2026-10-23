@@ -1,10 +1,11 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { RbacModule } from '~/modules/rbac/rbac.module';
 import { AcademicYearModule } from '~/modules/academic-years/academic-year.module';
-import { ClassModule } from '~/modules/classes/class.module';
+import { AccessScopeModule } from '~/modules/access-scope/access-scope.module';
+import { ClassCurriculumModule } from '~/modules/class-curriculum/class-curriculum.module';
 import { EmployeeModule } from '~/modules/employees/employee.module';
 import { SectionModule } from '~/modules/sections/section.module';
-import { SubjectModule } from '~/modules/subjects/subject.module';
+import { SettingsModule } from '~/modules/settings/settings.module';
 import { ClassTeacherController } from './controllers/class-teacher.controller';
 import { SubjectTeacherController } from './controllers/subject-teacher.controller';
 import { ClassTeacherRepository } from './repositories/class-teacher.repository';
@@ -13,14 +14,20 @@ import { ClassTeacherService } from './services/class-teacher.service';
 import { SubjectTeacherService } from './services/subject-teacher.service';
 import { TeachingService } from './services/teaching.service';
 
+/**
+ * `forwardRef`s: `AccessScopeModule` reads `TeachingService`, and the
+ * controllers here and in `SectionModule` filter by `AccessScope`. Only the
+ * modules form a cycle; the providers don't.
+ */
 @Module({
   imports: [
     RbacModule,
     AcademicYearModule,
-    ClassModule,
-    SectionModule,
-    SubjectModule,
+    forwardRef(() => SectionModule),
+    ClassCurriculumModule,
     EmployeeModule,
+    SettingsModule,
+    forwardRef(() => AccessScopeModule),
   ],
   controllers: [ClassTeacherController, SubjectTeacherController],
   providers: [

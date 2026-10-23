@@ -12,6 +12,7 @@ const RELATIONS: FindOptionsRelations<StudentEnrollment> = {
   academicYear: true,
   schoolClass: true,
   section: true,
+  subjectGroup: true,
   subjects: { subject: true },
 };
 
@@ -30,6 +31,20 @@ export class EnrollmentRepository extends BaseTenantRepository<StudentEnrollment
     academicYearId: string,
   ): Promise<StudentEnrollment | null> {
     return this.repo.findOne({ where: { studentId, academicYearId } });
+  }
+
+  /** Writes columns only (loaded relations would win over changed ids). */
+  async updateFields(
+    id: string,
+    patch: Partial<
+      Pick<
+        StudentEnrollment,
+        'classId' | 'sectionId' | 'subjectGroupId' | 'rollNo' | 'status'
+      >
+    >,
+  ): Promise<void> {
+    if (Object.values(patch).every((v) => v === undefined)) return;
+    await this.repo.update({ id }, patch);
   }
 
   findFiltered(

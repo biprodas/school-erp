@@ -25,6 +25,14 @@ export class StudentSubjectRepository extends BaseTenantRepository<StudentSubjec
     return this.repo.findOne({ where: { studentEnrollmentId, subjectId } });
   }
 
+  findFourthSubject(
+    studentEnrollmentId: string,
+  ): Promise<StudentSubject | null> {
+    return this.repo.findOne({
+      where: { studentEnrollmentId, isFourthSubject: true },
+    });
+  }
+
   findByIdWithSubject(id: string): Promise<StudentSubject | null> {
     return this.repo.findOne({ where: { id }, relations: { subject: true } });
   }

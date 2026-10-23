@@ -1,45 +1,26 @@
-import { Type } from 'class-transformer';
 import {
-  ArrayNotEmpty,
-  IsArray,
   IsDateString,
-  IsDefined,
   IsEmail,
   IsEnum,
   IsNotEmpty,
   IsOptional,
   IsString,
   IsUUID,
+  Matches,
   MaxLength,
-  MinLength,
-  ValidateNested,
 } from 'class-validator';
+import { IsPhone } from '~/common/identity/is-phone.decorator';
 import { EmployeeGender } from '../enums/employee-gender.enum';
 import { EmployeeStatus } from '../enums/employee-status.enum';
-
-export class CreateEmployeeUserDto {
-  @IsEmail()
-  @IsNotEmpty()
-  @IsDefined()
-  email: string;
-
-  @IsString()
-  @MinLength(6)
-  @IsDefined()
-  password: string;
-
-  /** RBAC roles to assign to the provisioned login (e.g. the teacher role). */
-  @IsArray()
-  @ArrayNotEmpty()
-  @IsUUID('4', { each: true })
-  roleIds: string[];
-}
+import { EmploymentType } from '../enums/employment-type.enum';
 
 export class CreateEmployeeDto {
+  /** Generated from the school's `numbering.employeeId` pattern if left out. */
+  @IsOptional()
   @IsString()
   @IsNotEmpty()
   @MaxLength(60)
-  employeeNumber: string;
+  employeeNumber?: string;
 
   @IsString()
   @IsNotEmpty()
@@ -50,13 +31,26 @@ export class CreateEmployeeDto {
   lastName: string;
 
   @IsOptional()
+  @IsString()
+  @MaxLength(160)
+  nameBn?: string;
+
+  /** Used by `POST /employees/:id/invite`. */
+  @IsOptional()
   @IsEmail()
   email?: string;
 
+  /** Used by `POST /employees/:id/invite` when there is no email. */
   @IsOptional()
-  @IsString()
-  @MaxLength(40)
+  @IsPhone()
   phone?: string;
+
+  /** Bangladesh NID: 10, 13 or 17 digits. Stored encrypted. */
+  @IsOptional()
+  @Matches(/^(\d{10}|\d{13}|\d{17})$/, {
+    message: 'nid must be 10, 13 or 17 digits',
+  })
+  nid?: string;
 
   @IsOptional()
   @IsEnum(EmployeeGender)
@@ -84,6 +78,10 @@ export class CreateEmployeeDto {
   status?: EmployeeStatus;
 
   @IsOptional()
+  @IsEnum(EmploymentType)
+  employmentType?: EmploymentType;
+
+  @IsOptional()
   @IsUUID('4')
   departmentId?: string;
 
@@ -91,14 +89,11 @@ export class CreateEmployeeDto {
   @IsUUID('4')
   designationId?: string;
 
-  /** Attach an existing tenant user as the employee's login account. */
+  /**
+   * Link an existing member of the school as the employee's login. New
+   * logins come from `POST /employees/:id/invite`.
+   */
   @IsOptional()
   @IsUUID('4')
   userId?: string;
-
-  /** Provision a new tenant user (with the given roles) and link it. */
-  @IsOptional()
-  @ValidateNested()
-  @Type(() => CreateEmployeeUserDto)
-  createUser?: CreateEmployeeUserDto;
 }

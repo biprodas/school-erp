@@ -43,7 +43,6 @@ export class SubjectService {
       name: dto.name,
       code: dto.code ?? null,
       type: dto.type ?? SubjectType.THEORY,
-      isOptional: dto.isOptional ?? false,
       credit: dto.credit ?? null,
       description: dto.description ?? null,
       isActive: dto.isActive ?? true,

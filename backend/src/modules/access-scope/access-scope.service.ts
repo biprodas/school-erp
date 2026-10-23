@@ -5,7 +5,6 @@ import { PermissionKey } from '~/modules/rbac/permissions.catalog';
 import { RoleScope } from '~/modules/rbac/enums/role-scope.enum';
 import { PermissionResolverService } from '~/modules/rbac/services/permission-resolver.service';
 import {
-  ClassSectionRef,
   SubjectAssignmentRef,
   TeachingAssignments,
   TeachingService,
@@ -18,8 +17,8 @@ import {
  *
  * - `null`: unrestricted (school admin, or a role with `school` scope grants
  *   the key).
- * - a list: only these class-sections / subjects; empty when the key is not
- *   held at all or the holder teaches nothing in the current session.
+ * - a list: only these sections / subjects; empty when the key is not held
+ *   at all or the holder has no assignment in effect today.
  *
  * Request-scoped; roles and assignments are read once per request.
  */
@@ -35,23 +34,21 @@ export class AccessScope {
   ) {}
 
   /**
-   * Class-sections reachable with `key`: those the user is class teacher of
+   * Section ids reachable with `key`: those the user is class teacher of
    * plus those they teach a subject in.
    */
-  async sections(key: PermissionKey): Promise<ClassSectionRef[] | null> {
+  async sections(key: PermissionKey): Promise<string[] | null> {
     const assigned = await this.assignedFor(key);
     if (assigned === null) return null;
-    const unique = new Map<string, ClassSectionRef>();
-    for (const ref of [...assigned.classSections, ...assigned.subjects]) {
-      unique.set(`${ref.classId}:${ref.sectionId}`, {
-        classId: ref.classId,
-        sectionId: ref.sectionId,
-      });
-    }
-    return [...unique.values()];
+    return [
+      ...new Set([
+        ...assigned.sections,
+        ...assigned.subjects.map((s) => s.sectionId),
+      ]),
+    ];
   }
 
-  /** Subjects (per class-section) reachable with `key`. */
+  /** Subjects (per section) reachable with `key`. */
   async subjectAssignments(
     key: PermissionKey,
   ): Promise<SubjectAssignmentRef[] | null> {
@@ -59,21 +56,16 @@ export class AccessScope {
     return assigned === null ? null : assigned.subjects;
   }
 
-  /** Whether `key` reaches one class-section. */
+  /** Whether `key` reaches one section. */
   async canAccessSection(
     key: PermissionKey,
-    ref: ClassSectionRef,
+    sectionId: string,
   ): Promise<boolean> {
     const sections = await this.sections(key);
-    return (
-      sections === null ||
-      sections.some(
-        (s) => s.classId === ref.classId && s.sectionId === ref.sectionId,
-      )
-    );
+    return sections === null || sections.includes(sectionId);
   }
 
-  /** Whether `key` reaches one subject of a class-section. */
+  /** Whether `key` reaches one subject of a section. */
   async canAccessSubject(
     key: PermissionKey,
     ref: SubjectAssignmentRef,
@@ -83,9 +75,8 @@ export class AccessScope {
       subjects === null ||
       subjects.some(
         (s) =>
-          s.classId === ref.classId &&
           s.sectionId === ref.sectionId &&
-          s.subjectId === ref.subjectId,
+          s.classSubjectId === ref.classSubjectId,
       )
     );
   }
@@ -97,7 +88,7 @@ export class AccessScope {
     if (this.isAdmin) return null;
     const scope = await this.scopeOf(key);
     if (scope === RoleScope.SCHOOL) return null;
-    if (scope === undefined) return { classSections: [], subjects: [] };
+    if (scope === undefined) return { sections: [], subjects: [] };
     this.assignments ??= this.teachingService.activeAssignmentsForUser(
       this.userId,
     );

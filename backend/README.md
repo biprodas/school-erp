@@ -104,7 +104,7 @@ Platform and public routes (`organizations`, `memberships`, `platform/auth`, `pl
 
 - **Platform realm** (`platform-jwt`): super-admin and tenant management. `PlatformAdminGuard` requires `users.is_admin = true`.
 - **Tenant realm** (`JwtAuthGuard`): everything inside a school. Handlers use `@RequirePermissions(PERMISSIONS.X)` with `PermissionsGuard`.
-- **Permissions** are defined in code in `src/modules/rbac/permissions.catalog.ts`, as `resource:action` keys. Roles are stored per tenant, and system roles are seeded from `system-roles.seed.ts`. Tenant users with `isAdmin` bypass permission checks. Roles have a scope (`school` or `assigned`); `AccessScope` (`src/modules/access-scope/`) tells section- and subject-level endpoints which class-sections and subjects a scoped teacher may reach.
+- **Permissions** are defined in code in `src/modules/rbac/permissions.catalog.ts`, as `resource:action` keys. Roles are stored per tenant, and system roles are seeded from `system-roles.seed.ts`. Tenant users with `isAdmin` bypass permission checks. Roles have a scope (`school` or `assigned`); `AccessScope` (`src/modules/access-scope/`) tells section- and subject-level endpoints which sections and class subjects a scoped teacher may reach (assignments in effect today).
 - **Settings:** `GET /settings` and `PATCH /settings/<section>` (profile, locale, numbering, portal, results, attendance, fees, notifications, security, organization), stored per school in `org_settings` and read through `SettingsService` with defaults filled in.
 - **Plans and entitlements:** `plans` (Free/Basic/Standard/Premium) decide a school's modules and limits (`EntitlementService`, `@RequireModule`). Super-admins change plans, limits and trials under `/organizations/:id/…`; a trial grants Standard.
 - **Signup, onboarding and Google sign-in:** `POST /public/signup` (+ `/verify`) creates a school after email verification; `/onboarding/*` holds the checklist and setup templates; `POST /public/find-school` mails sign-in links; `GET /oauth/google/start` signs in with Google on any school host (needs `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`).
@@ -127,7 +127,7 @@ For the full folder map, see [doc/backend-structure.md](../doc/backend-structure
 | Platform | `auth`, `users`, `organizations`, `memberships`, `plans`, `signup`, `oauth` |
 | Tenant core | `auth`, `users`, `rbac`, `settings`, `onboarding`, `audit` |
 | People | `students`, `guardians`, `employees`, `departments`, `designations` |
-| Academics | `academic-years`, `classes`, `sections`, `subjects`, `subject-groups`, `class-curriculum`, `enrollments`, `teaching`, `timetable`, `promotions` |
+| Academics | `academic-years`, `terms`, `shifts`, `rooms`, `classes`, `sections` (per class and session), `subjects`, `subject-groups`, `class-curriculum` (with subject components), `enrollments`, `teaching` (effective-dated), `rollover`, `timetable`, `promotions` |
 | Shared | `health`, `mail` (Handlebars templates + dev-only `dev/mail` trigger endpoints) |
 | Samples | `cats`, `tasks`, `products` |
 

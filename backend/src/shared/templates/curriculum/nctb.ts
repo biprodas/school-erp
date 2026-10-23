@@ -1,5 +1,23 @@
 import { OrganizationType } from '~/modules/organizations/enums/organization-type.enum';
-import type { CurriculumTemplate } from './curriculum-template';
+import { SubjectComponent } from '~/modules/class-curriculum/enums/subject-component.enum';
+import {
+  boardComponent,
+  type CurriculumTemplate,
+  type TemplateComponent,
+} from './curriculum-template';
+
+const { CQ, MCQ, PRACTICAL, WRITTEN } = SubjectComponent;
+
+/** SSC splits: creative + MCQ, or with a practical for science subjects. */
+const CQ_MCQ: TemplateComponent[] = [
+  boardComponent(CQ, 70),
+  boardComponent(MCQ, 30),
+];
+const WITH_PRACTICAL: TemplateComponent[] = [
+  boardComponent(CQ, 50),
+  boardComponent(MCQ, 25),
+  boardComponent(PRACTICAL, 25),
+];
 
 const RELIGIONS = [
   'Islam and Moral Education',
@@ -49,7 +67,8 @@ const range = (from: number, to: number) =>
 
 /**
  * NCTB national curriculum, Class 1–10 (subject codes from the SSC
- * syllabus). Groups for Class 9–10: Science, Business Studies, Humanities.
+ * syllabus). Groups for Class 9–10: Science, Business Studies, Humanities;
+ * there the subjects carry the SSC mark split (CQ / MCQ / practical).
  */
 export const NCTB_TEMPLATE: CurriculumTemplate = {
   code: 'nctb',
@@ -60,38 +79,90 @@ export const NCTB_TEMPLATE: CurriculumTemplate = {
   subjects: [
     { name: 'Bangla' },
     { name: 'English' },
-    { name: 'Mathematics', code: '109' },
-    { name: 'Bangladesh and Global Studies', code: '150' },
+    { name: 'Mathematics', code: '109', components: CQ_MCQ },
+    {
+      name: 'Bangladesh and Global Studies',
+      code: '150',
+      components: CQ_MCQ,
+    },
     { name: 'Elementary Science' },
-    { name: 'Islam and Moral Education', code: '111' },
-    { name: 'Hindu Religion and Moral Education', code: '112' },
-    { name: 'Buddhist Religion and Moral Education', code: '113' },
-    { name: 'Christian Religion and Moral Education', code: '114' },
-    { name: 'Bangla 1st Paper', code: '101' },
-    { name: 'Bangla 2nd Paper', code: '102' },
-    { name: 'English 1st Paper', code: '107' },
-    { name: 'English 2nd Paper', code: '108' },
+    { name: 'Islam and Moral Education', code: '111', components: CQ_MCQ },
+    {
+      name: 'Hindu Religion and Moral Education',
+      code: '112',
+      components: CQ_MCQ,
+    },
+    {
+      name: 'Buddhist Religion and Moral Education',
+      code: '113',
+      components: CQ_MCQ,
+    },
+    {
+      name: 'Christian Religion and Moral Education',
+      code: '114',
+      components: CQ_MCQ,
+    },
+    { name: 'Bangla 1st Paper', code: '101', components: CQ_MCQ },
+    {
+      name: 'Bangla 2nd Paper',
+      code: '102',
+      components: [boardComponent(WRITTEN, 70), boardComponent(MCQ, 30)],
+    },
+    {
+      name: 'English 1st Paper',
+      code: '107',
+      components: [boardComponent(WRITTEN, 100)],
+    },
+    {
+      name: 'English 2nd Paper',
+      code: '108',
+      components: [boardComponent(WRITTEN, 100)],
+    },
     { name: 'Science' },
-    { name: 'Information and Communication Technology', code: '154' },
+    {
+      name: 'Information and Communication Technology',
+      code: '154',
+      components: [boardComponent(MCQ, 25), boardComponent(PRACTICAL, 25)],
+    },
     { name: 'Physical Education and Health' },
     { name: 'Work and Life Oriented Education' },
     { name: 'Arts and Crafts' },
     { name: 'Physical Education, Health and Sports', code: '147' },
     { name: 'Career Education', code: '156' },
-    { name: 'Physics', code: '136' },
-    { name: 'Chemistry', code: '137' },
-    { name: 'Biology', code: '138' },
-    { name: 'Higher Mathematics', code: '126' },
-    { name: 'Accounting', code: '146' },
-    { name: 'Finance and Banking', code: '152' },
-    { name: 'Business Entrepreneurship', code: '143' },
-    { name: 'General Science', code: '127' },
-    { name: 'History of Bangladesh and World Civilization', code: '153' },
-    { name: 'Geography and Environment', code: '110' },
-    { name: 'Civics and Citizenship', code: '140' },
-    { name: 'Economics', code: '141' },
-    { name: 'Agriculture Studies', code: '134' },
-    { name: 'Home Science', code: '151' },
+    { name: 'Physics', code: '136', components: WITH_PRACTICAL },
+    { name: 'Chemistry', code: '137', components: WITH_PRACTICAL },
+    { name: 'Biology', code: '138', components: WITH_PRACTICAL },
+    {
+      name: 'Higher Mathematics',
+      code: '126',
+      components: WITH_PRACTICAL,
+    },
+    { name: 'Accounting', code: '146', components: CQ_MCQ },
+    { name: 'Finance and Banking', code: '152', components: CQ_MCQ },
+    {
+      name: 'Business Entrepreneurship',
+      code: '143',
+      components: CQ_MCQ,
+    },
+    { name: 'General Science', code: '127', components: CQ_MCQ },
+    {
+      name: 'History of Bangladesh and World Civilization',
+      code: '153',
+      components: CQ_MCQ,
+    },
+    {
+      name: 'Geography and Environment',
+      code: '110',
+      components: CQ_MCQ,
+    },
+    { name: 'Civics and Citizenship', code: '140', components: CQ_MCQ },
+    { name: 'Economics', code: '141', components: CQ_MCQ },
+    {
+      name: 'Agriculture Studies',
+      code: '134',
+      components: WITH_PRACTICAL,
+    },
+    { name: 'Home Science', code: '151', components: WITH_PRACTICAL },
   ],
   groups: [
     {
@@ -149,8 +220,10 @@ export const NCTB_TEMPLATE: CurriculumTemplate = {
       name: `Class ${n}`,
       level: n,
       compulsory: SECONDARY,
-      optional: [...RELIGIONS, ...FOURTH_SUBJECTS],
+      optional: RELIGIONS,
+      fourth: FOURTH_SUBJECTS,
       groups: ['Science', 'Business Studies', 'Humanities'],
+      boardComponents: true,
     })),
   ],
 };

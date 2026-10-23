@@ -75,6 +75,8 @@ export interface LocaleSettings {
 
 export interface NumberingSettings {
   studentId: string;
+  /** Staff directory numbers, when not typed in (M2). */
+  employeeId: string;
   roll: string;
   receipt: string;
   invoice: string;

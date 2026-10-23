@@ -1,4 +1,5 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
+import { RoleService } from '~/modules/rbac/services/role.service';
 import { DesignationRepository } from './designation.repository';
 import { DesignationService } from './designation.service';
 import { Designation } from './entities/designation.entity';
@@ -10,6 +11,7 @@ const makeDesignation = (
   orgId: 'org-1',
   title: 'Head Teacher',
   description: null,
+  defaultRoleId: null,
   isActive: true,
   createdAt: new Date(),
   updatedAt: new Date(),
@@ -19,6 +21,7 @@ const makeDesignation = (
 describe('DesignationService', () => {
   let service: DesignationService;
   let designationRepo: Record<string, jest.Mock>;
+  let roleService: { findAssignable: jest.Mock };
 
   beforeEach(() => {
     designationRepo = {
@@ -32,9 +35,42 @@ describe('DesignationService', () => {
       deleteById: jest.fn(),
     };
 
+    roleService = {
+      findAssignable: jest.fn().mockResolvedValue({
+        id: 'role-teacher',
+        permissions: ['students:read'],
+      }),
+    };
+
     service = new DesignationService(
       designationRepo as unknown as DesignationRepository,
+      roleService as unknown as RoleService,
     );
+  });
+
+  describe('default role', () => {
+    it('accepts a staff role the user may assign', async () => {
+      designationRepo.findByTitle.mockResolvedValue(null);
+
+      await service.create({ title: 'Teacher', defaultRoleId: 'role-teacher' });
+
+      expect(roleService.findAssignable).toHaveBeenCalledWith('role-teacher');
+      expect(designationRepo.saveNew).toHaveBeenCalledWith(
+        expect.objectContaining({ defaultRoleId: 'role-teacher' }),
+      );
+    });
+
+    it('rejects a portal role', async () => {
+      designationRepo.findByTitle.mockResolvedValue(null);
+      roleService.findAssignable.mockResolvedValue({
+        id: 'role-guardian',
+        permissions: ['portal:access'],
+      });
+
+      await expect(
+        service.create({ title: 'Parent', defaultRoleId: 'role-guardian' }),
+      ).rejects.toMatchObject({ response: { code: 'NOT_A_STAFF_ROLE' } });
+    });
   });
 
   describe('create', () => {

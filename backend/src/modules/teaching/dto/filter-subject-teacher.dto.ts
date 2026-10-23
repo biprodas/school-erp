@@ -1,28 +1,13 @@
 import { IsOptional, IsUUID } from 'class-validator';
-import { PaginationQueryDto } from '~/common/dto/pagination-query.dto';
+import { FilterClassTeacherDto } from './filter-class-teacher.dto';
 
-export class FilterSubjectTeacherDto extends PaginationQueryDto {
+export class FilterSubjectTeacherDto extends FilterClassTeacherDto {
   @IsOptional()
   @IsUUID('4')
-  id?: string;
+  classSubjectId?: string;
 
-  @IsOptional()
-  @IsUUID('4')
-  classId?: string;
-
-  @IsOptional()
-  @IsUUID('4')
-  sectionId?: string;
-
+  /** Rows for this subject (any class subject of it). */
   @IsOptional()
   @IsUUID('4')
   subjectId?: string;
-
-  @IsOptional()
-  @IsUUID('4')
-  employeeId?: string;
-
-  @IsOptional()
-  @IsUUID('4')
-  academicYearId?: string;
 }

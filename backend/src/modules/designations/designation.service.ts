@@ -1,4 +1,10 @@
-import { ConflictException, Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  Logger,
+} from '@nestjs/common';
+import { RoleService } from '~/modules/rbac/services/role.service';
 import { FindOptionsWhere } from 'typeorm';
 import { CreateDesignationDto } from './dto/create-designation.dto';
 import { FilterDesignationDto } from './dto/filter-designation.dto';
@@ -11,7 +17,10 @@ import { Paginated } from '~/common/dto/paginated.dto';
 export class DesignationService {
   private readonly logger = new Logger(DesignationService.name);
 
-  constructor(private readonly designationRepo: DesignationRepository) {}
+  constructor(
+    private readonly designationRepo: DesignationRepository,
+    private readonly roleService: RoleService,
+  ) {}
 
   findFiltered(filter: FilterDesignationDto): Promise<Paginated<Designation>> {
     const where: FindOptionsWhere<Designation> = {};
@@ -31,9 +40,12 @@ export class DesignationService {
       throw new ConflictException('Designation title already in use');
     }
 
+    if (dto.defaultRoleId) await this.assertStaffRole(dto.defaultRoleId);
+
     return this.designationRepo.saveNew({
       title: dto.title,
       description: dto.description ?? null,
+      defaultRoleId: dto.defaultRoleId ?? null,
       isActive: dto.isActive ?? true,
     });
   }
@@ -48,6 +60,8 @@ export class DesignationService {
       }
     }
 
+    if (dto.defaultRoleId) await this.assertStaffRole(dto.defaultRoleId);
+
     Object.assign(designation, dto);
     return this.designationRepo.save(designation);
   }
@@ -55,5 +69,16 @@ export class DesignationService {
   async remove(id: string): Promise<void> {
     await this.findById(id);
     await this.designationRepo.deleteById(id);
+  }
+
+  /** One the current user may assign, and not a portal (guardian) role. */
+  private async assertStaffRole(roleId: string): Promise<void> {
+    const role = await this.roleService.findAssignable(roleId);
+    if (role.permissions.some((p) => p.startsWith('portal:'))) {
+      throw new BadRequestException({
+        message: 'A designation can only default to a staff role',
+        code: 'NOT_A_STAFF_ROLE',
+      });
+    }
   }
 }

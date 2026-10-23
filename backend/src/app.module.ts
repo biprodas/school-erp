@@ -19,6 +19,10 @@ import { GuardianModule } from '~/modules/guardians/guardian.module';
 import { AcademicYearModule } from '~/modules/academic-years/academic-year.module';
 import { ClassModule } from '~/modules/classes/class.module';
 import { SectionModule } from '~/modules/sections/section.module';
+import { ShiftModule } from '~/modules/shifts/shift.module';
+import { RoomModule } from '~/modules/rooms/room.module';
+import { TermModule } from '~/modules/terms/term.module';
+import { RolloverModule } from '~/modules/rollover/rollover.module';
 import { SubjectModule } from '~/modules/subjects/subject.module';
 import { SubjectGroupModule } from '~/modules/subject-groups/subject-group.module';
 import { ClassCurriculumModule } from '~/modules/class-curriculum/class-curriculum.module';
@@ -102,6 +106,10 @@ const envFilePath = ['.env', `.env.${nodeEnv}`];
     GuardianModule,
     AcademicYearModule,
     SectionModule,
+    ShiftModule,
+    RoomModule,
+    TermModule,
+    RolloverModule,
     SubjectModule,
     ClassModule,
     SubjectGroupModule,

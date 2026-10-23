@@ -9,64 +9,53 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { OrgScopedEntity } from '~/tenancy/org-scoped.entity';
-import { AcademicYear } from '~/modules/academic-years/entities/academic-year.entity';
-import { Class } from '~/modules/classes/entities/class.entity';
+import { ClassSubject } from '~/modules/class-curriculum/entities/class-subject.entity';
 import { Employee } from '~/modules/employees/entities/employee.entity';
 import { Section } from '~/modules/sections/entities/section.entity';
-import { Subject } from '~/modules/subjects/entities/subject.entity';
 
-/** Assigns an employee to teach a subject to a class-section for a year. */
+/**
+ * An employee teaching a class subject in a section, effective-dated like
+ * {@link ClassTeacher}. The class subject is in the section's class and
+ * session.
+ */
 @Entity('subject_teachers')
+// One current row per teacher, section and subject.
 @Index(
-  'uq_subject_teacher',
-  [
-    'orgId',
-    'academicYearId',
-    'classId',
-    'sectionId',
-    'subjectId',
-    'employeeId',
-  ],
-  { unique: true },
+  'uq_subject_teachers_current',
+  ['orgId', 'sectionId', 'classSubjectId', 'employeeId'],
+  { unique: true, where: '"effective_to" IS NULL' },
 )
+@Index('idx_subject_teachers_employee', ['orgId', 'employeeId'])
 export class SubjectTeacher extends OrgScopedEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
-
-  @Column({ name: 'class_id', type: 'uuid' })
-  classId: string;
-
-  @ManyToOne(() => Class, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'class_id' })
-  schoolClass: Class;
 
   @Column({ name: 'section_id', type: 'uuid' })
   sectionId: string;
 
   @ManyToOne(() => Section, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'section_id' })
-  section: Section;
+  section?: Section;
 
-  @Column({ name: 'subject_id', type: 'uuid' })
-  subjectId: string;
+  @Column({ name: 'class_subject_id', type: 'uuid' })
+  classSubjectId: string;
 
-  @ManyToOne(() => Subject, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'subject_id' })
-  subject: Subject;
+  @ManyToOne(() => ClassSubject, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'class_subject_id' })
+  classSubject?: ClassSubject;
 
   @Column({ name: 'employee_id', type: 'uuid' })
   employeeId: string;
 
   @ManyToOne(() => Employee, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'employee_id' })
-  employee: Employee;
+  employee?: Employee;
 
-  @Column({ name: 'academic_year_id', type: 'uuid' })
-  academicYearId: string;
+  @Column({ name: 'effective_from', type: 'date' })
+  effectiveFrom: string;
 
-  @ManyToOne(() => AcademicYear, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'academic_year_id' })
-  academicYear: AcademicYear;
+  @Column({ name: 'effective_to', type: 'date', nullable: true })
+  effectiveTo: string | null;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

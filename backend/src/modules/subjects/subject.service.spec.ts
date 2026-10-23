@@ -10,7 +10,6 @@ const makeSubject = (overrides: Partial<Subject> = {}): Subject => ({
   name: 'Mathematics',
   code: null,
   type: SubjectType.THEORY,
-  isOptional: false,
   credit: null,
   description: null,
   isActive: true,

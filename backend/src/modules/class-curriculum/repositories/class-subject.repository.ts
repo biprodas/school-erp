@@ -11,6 +11,8 @@ const RELATIONS: FindOptionsRelations<ClassSubject> = {
   schoolClass: true,
   subject: true,
   academicYear: true,
+  subjectGroup: true,
+  components: true,
 };
 
 @Injectable()
@@ -20,7 +22,11 @@ export class ClassSubjectRepository extends BaseTenantRepository<ClassSubject> {
   }
 
   findByIdWithRelations(id: string): Promise<ClassSubject | null> {
-    return this.repo.findOne({ where: { id }, relations: RELATIONS });
+    return this.repo.findOne({
+      where: { id },
+      relations: RELATIONS,
+      order: { components: { sortOrder: 'ASC' } },
+    });
   }
 
   findLink(
@@ -45,17 +51,54 @@ export class ClassSubjectRepository extends BaseTenantRepository<ClassSubject> {
     return rows.map((r) => r.subjectId);
   }
 
-  findFiltered(
+  /** Every class subject of a session, with its components. */
+  findInYear(academicYearId: string): Promise<ClassSubject[]> {
+    return this.repo.find({
+      where: { academicYearId },
+      relations: { components: true },
+    });
+  }
+
+  countInYear(academicYearId: string): Promise<number> {
+    return this.repo.count({ where: { academicYearId } });
+  }
+
+  /** Writes columns only (loaded relations would win over changed ids). */
+  async updateFields(
+    id: string,
+    patch: Partial<
+      Pick<
+        ClassSubject,
+        | 'subjectType'
+        | 'subjectGroupId'
+        | 'weeklyClasses'
+        | 'passMarks'
+        | 'fullMarks'
+      >
+    >,
+  ): Promise<void> {
+    if (Object.values(patch).every((v) => v === undefined)) return;
+    await this.repo.update({ id }, patch);
+  }
+
+  async findFiltered(
     where: FindOptionsWhere<ClassSubject>,
     page: PaginationQueryDto,
   ): Promise<Paginated<ClassSubject>> {
-    return this.findPage(
+    const result = await this.findPage(
       {
         where,
         relations: RELATIONS,
-        order: { createdAt: 'DESC' },
+        // `id` breaks ties: rows made in one transaction share created_at,
+        // and paging needs a total order. Ordering by a to-many relation
+        // here would break TypeORM's paging, so components sort below.
+        order: { createdAt: 'DESC', id: 'ASC' },
       },
       page,
     );
+    for (const cs of result.items) {
+      cs.components?.sort((a, b) => a.sortOrder - b.sortOrder);
+    }
+    return result;
   }
 }

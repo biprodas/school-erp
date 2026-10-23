@@ -26,10 +26,6 @@ export class CreateSubjectDto {
   type?: SubjectType;
 
   @IsOptional()
-  @IsBoolean()
-  isOptional?: boolean;
-
-  @IsOptional()
   @IsInt()
   @Min(0)
   credit?: number;

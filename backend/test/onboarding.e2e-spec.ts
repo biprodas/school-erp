@@ -31,6 +31,8 @@ describe('Onboarding (e2e)', () => {
   let owner: User;
   let org: Organization;
   let token: string;
+  let yearId: string;
+  let class6Id: string;
 
   const school = () => ({
     get: (url: string) =>
@@ -128,18 +130,22 @@ describe('Onboarding (e2e)', () => {
         phone: '01712345678',
       })
       .expect(200);
-    await school()
-      .post('/api/academic-years', {
-        name: `2027 ${runId}`,
-        startDate: '2027-01-01',
-        endDate: '2027-12-31',
-        isCurrent: true,
-      })
-      .expect(201);
+    yearId = data<{ id: string }>(
+      await school()
+        .post('/api/academic-years', {
+          name: `2027 ${runId}`,
+          startDate: '2027-01-01',
+          endDate: '2027-12-31',
+          isCurrent: true,
+        })
+        .expect(201),
+    ).id;
     // An existing class keeps its row (matched by name).
-    await school()
-      .post('/api/classes', { name: 'Class 6', level: 6 })
-      .expect(201);
+    class6Id = data<{ id: string }>(
+      await school()
+        .post('/api/classes', { name: 'Class 6', level: 6 })
+        .expect(201),
+    ).id;
 
     const first = data<{ created: Record<string, number> }>(
       await school()
@@ -153,7 +159,10 @@ describe('Onboarding (e2e)', () => {
       groupSubjects: 14,
       classSubjectGroups: 6,
     });
-    expect(first.created.classSubjects).toBe(116);
+    // Class 9–10 also get their group subjects (Physics, …) as class
+    // subjects, with the SSC components.
+    expect(first.created.classSubjects).toBe(138);
+    expect(first.created.components).toBeGreaterThan(0);
 
     const again = data<{ created: Record<string, number> }>(
       await school()
@@ -168,10 +177,16 @@ describe('Onboarding (e2e)', () => {
   });
 
   it('computes progress from the data and completes once the required steps are done', async () => {
-    // Classes need a section too.
+    // Classes need a section in the current session too.
     let list = await checklist();
     expect(done(list)).toEqual(['profile', 'session', 'curriculum']);
-    await school().post('/api/sections', { name: 'A' }).expect(201);
+    await school()
+      .post('/api/sections', {
+        academicYearId: yearId,
+        classId: class6Id,
+        name: 'A',
+      })
+      .expect(201);
 
     list = await checklist();
     expect(done(list)).toEqual(['profile', 'session', 'classes', 'curriculum']);

@@ -1,14 +1,14 @@
-import {
-  BadRequestException,
-  ConflictException,
-  NotFoundException,
-} from '@nestjs/common';
-import { RoleService } from '~/modules/rbac/services/role.service';
+import { ConflictException, NotFoundException } from '@nestjs/common';
+import { AuditService } from '~/modules/audit/services/audit.service';
+import { InviteService } from '~/modules/auth/services/invite.service';
+import { FileService } from '~/modules/files/file.service';
+import { NumberingService } from '~/modules/numbering/numbering.service';
+import { SettingsService } from '~/modules/settings/services/settings.service';
 import { OrgUserService } from '~/modules/users/services/org-user.service';
 import { DepartmentService } from '~/modules/departments/department.service';
 import { DesignationService } from '~/modules/designations/designation.service';
 import { EmployeeRepository } from './employee.repository';
-import { EmployeeService } from './employee.service';
+import { EMPLOYEE_NUMBER_KEY, EmployeeService } from './employee.service';
 import { Employee } from './entities/employee.entity';
 import { EmployeeStatus } from './enums/employee-status.enum';
 import { fakeTenantDataSource } from '~/tenancy/tenant-datasource.testing';
@@ -20,6 +20,9 @@ const makeEmployee = (overrides: Partial<Employee> = {}): Employee => ({
   firstName: 'Ada',
   lastName: 'Lovelace',
   fullName: 'Ada Lovelace',
+  nameBn: null,
+  nid: null,
+  photoFileId: null,
   email: null,
   phone: null,
   gender: null,
@@ -28,6 +31,7 @@ const makeEmployee = (overrides: Partial<Employee> = {}): Employee => ({
   joiningDate: null,
   qualification: null,
   status: EmployeeStatus.ACTIVE,
+  employmentType: null,
   departmentId: null,
   designationId: null,
   userId: null,
@@ -41,42 +45,51 @@ describe('EmployeeService', () => {
   let service: EmployeeService;
   let employeeRepo: Record<string, jest.Mock>;
   let userService: Record<string, jest.Mock>;
-  let roleRepo: Record<string, jest.Mock>;
   let departmentRepo: Record<string, jest.Mock>;
   let designationRepo: Record<string, jest.Mock>;
+  let numbering: Record<string, jest.Mock>;
+  let settings: Record<string, jest.Mock>;
+  let files: Record<string, jest.Mock>;
+  let invites: Record<string, jest.Mock>;
+  let audit: Record<string, jest.Mock>;
 
   beforeEach(() => {
     employeeRepo = {
       findByIdWithRelations: jest.fn(),
-      findByEmployeeNumber: jest.fn(),
-      findByUserId: jest.fn(),
+      findByEmployeeNumber: jest.fn().mockResolvedValue(null),
+      findByUserId: jest.fn().mockResolvedValue(null),
       findFiltered: jest.fn(),
       saveNew: jest.fn((data: Partial<Employee>) =>
         Promise.resolve(makeEmployee({ id: 'new-emp', ...data })),
       ),
-      save: jest.fn((entity) => Promise.resolve(entity)),
+      updateFields: jest.fn(),
       deleteById: jest.fn(),
     };
-    userService = {
-      findById: jest.fn(),
-      create: jest.fn(),
+    userService = { findById: jest.fn() };
+    departmentRepo = { findById: jest.fn() };
+    designationRepo = { findById: jest.fn() };
+    numbering = { nextFormatted: jest.fn().mockResolvedValue('EMP-0001') };
+    settings = {
+      getSection: jest.fn().mockResolvedValue({ employeeId: 'EMP-{SEQ:4}' }),
     };
-    roleRepo = {
-      findAssignable: jest.fn(),
+    files = {
+      upload: jest.fn().mockResolvedValue({ id: 'file-new' }),
+      getDownloadUrl: jest.fn().mockResolvedValue('https://signed'),
+      remove: jest.fn().mockResolvedValue(undefined),
     };
-    departmentRepo = {
-      findById: jest.fn(),
-    };
-    designationRepo = {
-      findById: jest.fn(),
-    };
+    invites = { invite: jest.fn() };
+    audit = { record: jest.fn() };
 
     service = new EmployeeService(
       employeeRepo as unknown as EmployeeRepository,
       userService as unknown as OrgUserService,
-      roleRepo as unknown as RoleService,
       departmentRepo as unknown as DepartmentService,
       designationRepo as unknown as DesignationService,
+      numbering as unknown as NumberingService,
+      settings as unknown as SettingsService,
+      files as unknown as FileService,
+      invites as unknown as InviteService,
+      audit as unknown as AuditService,
       fakeTenantDataSource(),
     );
   });
@@ -102,7 +115,7 @@ describe('EmployeeService', () => {
           status: EmployeeStatus.ACTIVE,
         }),
       );
-      expect(userService.create).not.toHaveBeenCalled();
+      expect(numbering.nextFormatted).not.toHaveBeenCalled();
     });
 
     it('validates department and designation when provided', async () => {
@@ -129,51 +142,34 @@ describe('EmployeeService', () => {
       expect(designationRepo.findById).toHaveBeenCalledWith('desig-1');
     });
 
-    it('provisions a new user with the given roles when createUser is set', async () => {
-      employeeRepo.findByEmployeeNumber.mockResolvedValue(null);
-      roleRepo.findAssignable.mockResolvedValue({ id: 'role-teacher' });
-      userService.create.mockResolvedValue({ id: 'new-user' });
-      employeeRepo.findByIdWithRelations.mockResolvedValue(
-        makeEmployee({ id: 'new-emp', userId: 'new-user' }),
+    it('generates the number from the school pattern when none is given', async () => {
+      employeeRepo.findByIdWithRelations.mockResolvedValue(makeEmployee());
+
+      await service.create({ firstName: 'Linus', lastName: 'Torvalds' });
+
+      expect(numbering.nextFormatted).toHaveBeenCalledWith(
+        EMPLOYEE_NUMBER_KEY,
+        'EMP-{SEQ:4}',
       );
-
-      const result = await service.create({
-        employeeNumber: 'EMP-003',
-        firstName: 'Linus',
-        lastName: 'Torvalds',
-        createUser: {
-          email: 'linus@example.com',
-          password: 'secret123',
-          roleIds: ['role-teacher'],
-        },
-      });
-
-      expect(roleRepo.findAssignable).toHaveBeenCalledWith('role-teacher');
-      expect(userService.create).toHaveBeenCalledWith({
-        name: 'Linus Torvalds',
-        email: 'linus@example.com',
-        password: 'secret123',
-        roleIds: ['role-teacher'],
-      });
-      expect(result.userId).toBe('new-user');
+      expect(employeeRepo.saveNew).toHaveBeenCalledWith(
+        expect.objectContaining({ employeeNumber: 'EMP-0001' }),
+      );
     });
 
-    it('rejects when both userId and createUser are provided', async () => {
-      await expect(
-        service.create({
-          employeeNumber: 'EMP-004',
-          firstName: 'A',
-          lastName: 'B',
-          userId: 'user-1',
-          createUser: {
-            email: 'a@b.com',
-            password: 'secret123',
-            roleIds: ['role-1'],
-          },
-        }),
-      ).rejects.toThrow(BadRequestException);
+    it('skips generated numbers someone typed in by hand', async () => {
+      numbering.nextFormatted
+        .mockResolvedValueOnce('EMP-0001')
+        .mockResolvedValueOnce('EMP-0002');
+      employeeRepo.findByEmployeeNumber.mockImplementation((n: string) =>
+        Promise.resolve(n === 'EMP-0001' ? makeEmployee() : null),
+      );
+      employeeRepo.findByIdWithRelations.mockResolvedValue(makeEmployee());
 
-      expect(employeeRepo.saveNew).not.toHaveBeenCalled();
+      await service.create({ firstName: 'A', lastName: 'B' });
+
+      expect(employeeRepo.saveNew).toHaveBeenCalledWith(
+        expect.objectContaining({ employeeNumber: 'EMP-0002' }),
+      );
     });
 
     it('rejects a duplicate employee number', async () => {
@@ -235,15 +231,112 @@ describe('EmployeeService', () => {
       ).rejects.toThrow(ConflictException);
     });
 
-    it('updates allowed fields', async () => {
+    it('writes the changed columns', async () => {
       employeeRepo.findByIdWithRelations
         .mockResolvedValueOnce(makeEmployee())
-        .mockResolvedValueOnce(makeEmployee({ phone: '0123' }));
+        .mockResolvedValueOnce(makeEmployee({ phone: '01712345678' }));
 
-      const result = await service.update('emp-1', { phone: '0123' });
+      const result = await service.update('emp-1', { phone: '01712345678' });
 
-      expect(employeeRepo.save).toHaveBeenCalled();
-      expect(result.phone).toBe('0123');
+      expect(employeeRepo.updateFields).toHaveBeenCalledWith('emp-1', {
+        phone: '01712345678',
+      });
+      expect(result.phone).toBe('01712345678');
+    });
+  });
+
+  describe('invite', () => {
+    const teacher = { defaultRoleId: 'role-teacher' };
+
+    it("invites by email with the designation's default role and links the login", async () => {
+      employeeRepo.findByIdWithRelations.mockResolvedValue(
+        makeEmployee({
+          email: 'ada@school.test',
+          phone: '01712345678',
+          designation: teacher as Employee['designation'],
+        }),
+      );
+      invites.invite.mockResolvedValue({ userId: 'user-9', delivery: 'email' });
+
+      const result = await service.invite('emp-1', {});
+
+      expect(invites.invite).toHaveBeenCalledWith({
+        name: 'Ada Lovelace',
+        email: 'ada@school.test',
+        phone: undefined,
+        roleIds: ['role-teacher'],
+      });
+      expect(employeeRepo.updateFields).toHaveBeenCalledWith('emp-1', {
+        userId: 'user-9',
+      });
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'employee.invited' }),
+      );
+      expect(result.delivery).toBe('email');
+    });
+
+    it('falls back to the phone (slip) and takes explicit roles', async () => {
+      employeeRepo.findByIdWithRelations.mockResolvedValue(
+        makeEmployee({ phone: '01712345678' }),
+      );
+      invites.invite.mockResolvedValue({ userId: 'user-9', delivery: 'slip' });
+
+      await service.invite('emp-1', { roleIds: ['role-x'] });
+
+      expect(invites.invite).toHaveBeenCalledWith(
+        expect.objectContaining({
+          email: undefined,
+          phone: '01712345678',
+          roleIds: ['role-x'],
+        }),
+      );
+    });
+
+    it('refuses without a role, contact, or when already linked', async () => {
+      employeeRepo.findByIdWithRelations.mockResolvedValue(
+        makeEmployee({ email: 'ada@school.test' }),
+      );
+      await expect(service.invite('emp-1', {})).rejects.toMatchObject({
+        response: { code: 'ROLE_REQUIRED' },
+      });
+
+      employeeRepo.findByIdWithRelations.mockResolvedValue(makeEmployee());
+      await expect(
+        service.invite('emp-1', { roleIds: ['r'] }),
+      ).rejects.toMatchObject({ response: { code: 'IDENTIFIER_REQUIRED' } });
+
+      employeeRepo.findByIdWithRelations.mockResolvedValue(
+        makeEmployee({ userId: 'user-1' }),
+      );
+      await expect(
+        service.invite('emp-1', { roleIds: ['r'] }),
+      ).rejects.toMatchObject({
+        response: { code: 'EMPLOYEE_ALREADY_LINKED' },
+      });
+      expect(invites.invite).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('setPhoto', () => {
+    it('stores the new photo and removes the previous one', async () => {
+      employeeRepo.findByIdWithRelations.mockResolvedValue(
+        makeEmployee({ photoFileId: 'file-old' }),
+      );
+
+      const result = await service.setPhoto('emp-1', {
+        buffer: Buffer.from('x'),
+        originalName: 'me.png',
+      });
+
+      expect(files.upload).toHaveBeenCalledWith(
+        expect.anything(),
+        'employee_photo',
+      );
+      expect(employeeRepo.updateFields).toHaveBeenCalledWith('emp-1', {
+        photoFileId: 'file-new',
+      });
+      expect(files.remove).toHaveBeenCalledWith('file-old');
+      expect(result).toEqual({ fileId: 'file-new', url: 'https://signed' });
     });
   });
 
