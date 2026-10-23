@@ -82,6 +82,14 @@ export class User {
   @Column({ name: 'must_change_password', type: 'boolean', default: false })
   mustChangePassword: boolean;
 
+  /**
+   * False for accounts created through Google (their stored password is a
+   * random one nobody knows) until the user sets one; unlinking Google
+   * needs it, so nobody locks themselves out.
+   */
+  @Column({ name: 'password_set', type: 'boolean', default: true })
+  passwordSet: boolean;
+
   /** Consecutive failed sign-ins; reset on success or when a lock starts. */
   @Exclude({ toPlainOnly: true })
   @Column({ name: 'failed_login_count', type: 'int', default: 0 })

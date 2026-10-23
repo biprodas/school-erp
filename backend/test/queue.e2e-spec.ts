@@ -219,7 +219,8 @@ describe('Queue and jobs (e2e)', () => {
     expect(job).toMatchObject({
       status: JobStatus.FAILED,
       attempts: 2,
-      error: 'boom on attempt 2',
+      // Users see a safe message; the raw error stays in the queue's record.
+      error: 'The job failed',
       result: null,
     });
     expect(job.finishedAt).toBeInstanceOf(Date);

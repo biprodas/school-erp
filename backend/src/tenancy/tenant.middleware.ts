@@ -9,6 +9,7 @@ import { OrganizationService } from '~/modules/organizations/services/organizati
 import {
   TenantContextMissingException,
   TenantInactiveException,
+  TenantMovedException,
   TenantNotFoundException,
 } from './exceptions/tenant.exceptions';
 import {
@@ -57,6 +58,8 @@ export class TenantMiddleware implements NestMiddleware {
    *     miss is a hard error.
    *  2. Subdomain label (managed `acme.mydomain.com`) → lookup by slug.
    *  3. Full host (custom/vanity domain `app.acmeschool.com`) → lookup by domain.
+   * A school's old slug (renamed within 12 months) answers 410
+   * `TENANT_MOVED` with the current slug, so the client can move hosts.
    */
   private async resolve(req: Request): Promise<ResolvedOrg | null> {
     const headerSlug = (
@@ -64,8 +67,9 @@ export class TenantMiddleware implements NestMiddleware {
     )?.trim();
     if (headerSlug) {
       const bySlug = await this.bySlug(headerSlug);
-      if (!bySlug) throw new TenantNotFoundException(headerSlug);
-      return bySlug;
+      if (bySlug) return bySlug;
+      await this.assertNotMoved(headerSlug);
+      throw new TenantNotFoundException(headerSlug);
     }
 
     const host = (req.hostname || req.headers.host || '')
@@ -79,7 +83,15 @@ export class TenantMiddleware implements NestMiddleware {
       if (bySlug) return bySlug;
     }
 
-    return this.byDomain(host);
+    const byDomain = await this.byDomain(host);
+    if (!byDomain && subdomain) await this.assertNotMoved(subdomain);
+    return byDomain;
+  }
+
+  private async assertNotMoved(slug: string): Promise<void> {
+    if (!SLUG_PATTERN.test(slug)) return;
+    const moved = await this.organizationService.findSlugRedirect(slug);
+    if (moved) throw new TenantMovedException(slug, moved.slug);
   }
 
   /** Slug lookup with cache. Returns null on invalid pattern / not found. */

@@ -14,6 +14,7 @@ import { StorageService } from '~/shared/storage/storage.service';
 import { TENANT_DATASOURCE } from '~/tenancy/tenancy.constants';
 import { TenantDataSourceProxy } from '~/tenancy/tenant-datasource.proxy';
 import { StoredFile } from './entities/stored-file.entity';
+import { EntitlementService } from '~/modules/plans/services/entitlement.service';
 import { FileRepository } from './file.repository';
 import {
   FILE_PURPOSES,
@@ -43,6 +44,7 @@ export class FileService {
     private readonly storage: StorageService,
     @Inject(TENANT_DATASOURCE) private readonly ds: TenantDataSourceProxy,
     @Inject(REQUEST) private readonly req: Request,
+    private readonly entitlements: EntitlementService,
     config: ConfigService,
   ) {
     this.maxBytes = config.get<StorageConfig>('storage')!.uploadMaxBytes;
@@ -103,7 +105,11 @@ export class FileService {
         code: 'FILE_TYPE_NOT_ALLOWED',
       });
     }
-    // TODO(M1): check the plan's storage quota (EntitlementService).
+    await this.entitlements.assertLimit(
+      this.ds.orgId,
+      'storageMb',
+      file.buffer.length,
+    );
 
     const id = randomUUID();
     const key = StorageService.orgKey(this.ds.orgId, purpose.folder, id);

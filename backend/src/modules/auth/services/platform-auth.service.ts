@@ -40,6 +40,7 @@ import { PlatformAuditService } from '~/modules/audit/services/platform-audit.se
 import { AUDIT_ACTIONS } from '~/modules/audit/audit-actions';
 import { signInRefusalReason } from './sign-in-audit';
 import { SessionService, type IssuedSession } from './session.service';
+import { IdentityService } from './identity.service';
 
 /**
  * Authentication + self-service account operations for platform users:
@@ -64,6 +65,7 @@ export class PlatformAuthService {
     private readonly mail: MailService,
     private readonly jwtService: JwtService,
     private readonly audit: PlatformAuditService,
+    private readonly identities: IdentityService,
   ) {}
 
   /**
@@ -174,7 +176,9 @@ export class PlatformAuthService {
     if (!user) {
       throw new UnauthorizedException('User not found');
     }
-    return user;
+    return Object.assign(user, {
+      identities: await this.identities.list(userId),
+    });
   }
 
   // --- Cross-host handoff --------------------------------------------------
@@ -215,6 +219,63 @@ export class PlatformAuthService {
     );
 
     return { code: rawCode, orgSlug: organization.slug, expiresAt };
+  }
+
+  /**
+   * Code that signs the user in on the platform admin host (Google sign-in
+   * returns there through `/auth/handoff`, like a school host). Same
+   * single-use, 60-second rules as school codes; `orgId` null.
+   */
+  async issuePlatformHandoff(userId: string) {
+    const rawCode = generateToken();
+    const expiresAt = new Date(Date.now() + HANDOFF_TTL_MS);
+    await this.tokenRepo.save(
+      this.tokenRepo.create({
+        userId,
+        orgId: null,
+        tokenHash: hashToken(rawCode),
+        type: AuthTokenType.HANDOFF,
+        expiresAt,
+        usedAt: null,
+      }),
+    );
+    return { code: rawCode, expiresAt };
+  }
+
+  /** `POST /platform/auth/handoff/exchange`: a platform code → session. */
+  async exchangePlatformHandoff(rawCode: string, client: ClientInfo) {
+    const record = await this.tokenRepo.findOne({
+      where: {
+        tokenHash: hashToken(rawCode),
+        type: AuthTokenType.HANDOFF,
+        orgId: IsNull(),
+      },
+    });
+    const invalid = () =>
+      new BadRequestException('Invalid or expired sign-in link');
+    if (!record || record.expiresAt.getTime() < Date.now()) throw invalid();
+    // Atomic: two concurrent redemptions can't both succeed.
+    const consumed = await this.tokenRepo.update(
+      { id: record.id, usedAt: IsNull() },
+      { usedAt: new Date() },
+    );
+    if ((consumed.affected ?? 0) !== 1) throw invalid();
+
+    const user = await this.userRepository.findOne({
+      where: { id: record.userId },
+    });
+    if (!user) throw invalid();
+    try {
+      this.assertCanSignIn(user);
+    } catch (err) {
+      await this.audit.record({
+        action: AUDIT_ACTIONS.LOGIN_FAILED,
+        actorUserId: user.id,
+        after: { method: 'handoff', reason: signInRefusalReason(err) },
+      });
+      throw err;
+    }
+    return this.startSession(user, client, 'handoff');
   }
 
   // --- Email verification -------------------------------------------------
@@ -374,7 +435,7 @@ export class PlatformAuthService {
   private async startSession(
     user: User,
     client: ClientInfo,
-    method: 'password' | 'email_verification',
+    method: 'password' | 'email_verification' | 'handoff',
   ) {
     const session = await this.sessions.start(user.id, null, client);
     await this.audit.record({

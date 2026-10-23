@@ -1,3 +1,5 @@
+import { RequireModule } from '~/modules/plans/decorators/require-module.decorator';
+import { PLAN_MODULES } from '~/modules/plans/plans.catalog';
 import {
   Body,
   Controller,
@@ -50,12 +52,14 @@ export class RoleController {
 
   @Post()
   @RequirePermissions(PERMISSIONS.ROLES_MANAGE)
+  @RequireModule(PLAN_MODULES.CUSTOM_ROLES)
   create(@Body() dto: CreateRoleDto) {
     return this.roleService.create(dto);
   }
 
   @Post(':id/clone')
   @RequirePermissions(PERMISSIONS.ROLES_MANAGE)
+  @RequireModule(PLAN_MODULES.CUSTOM_ROLES)
   clone(@Param('id', ParseUUIDPipe) id: string, @Body() dto: CloneRoleDto) {
     return this.roleService.clone(id, dto);
   }

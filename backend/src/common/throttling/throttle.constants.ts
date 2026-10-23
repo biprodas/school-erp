@@ -11,3 +11,11 @@ import { seconds } from '@nestjs/throttler';
 export const AUTH_THROTTLE = {
   default: { limit: 5, ttl: seconds(60) },
 };
+
+/**
+ * Public lookups that must not become an enumeration tool (slug checks,
+ * "Find your school", signup): 10 requests / minute per client.
+ */
+export const PUBLIC_LOOKUP_THROTTLE = {
+  default: { limit: 10, ttl: seconds(60) },
+};

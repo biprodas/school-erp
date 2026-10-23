@@ -1,3 +1,9 @@
+import { Plan } from '~/modules/plans/entities/plan.entity';
+import { PlanCode } from '~/modules/plans/plans.catalog';
+import { EntitlementService } from '~/modules/plans/services/entitlement.service';
+import { allowAllEntitlements } from '~/modules/plans/entitlement.testing';
+import { Paginated } from '~/common/dto/paginated.dto';
+import { SlugService } from './slug.service';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken, getDataSourceToken } from '@nestjs/typeorm';
 import {
@@ -107,6 +113,8 @@ describe('OrganizationService', () => {
   let txUserRoleRepo: Record<string, jest.Mock>;
   let manager: Record<string, jest.Mock>;
   let platformAudit: { record: jest.Mock };
+  let planRepo: Record<string, jest.Mock>;
+  let slugService: Record<string, jest.Mock>;
   const sessions = {
     revokeAllForUser: jest.fn(),
     revokeAllForUserInOrg: jest.fn(),
@@ -176,6 +184,13 @@ describe('OrganizationService', () => {
       ),
     };
     platformAudit = { record: jest.fn() };
+    planRepo = {
+      findOne: jest.fn().mockResolvedValue({ id: 'plan-free', code: 'free' }),
+    };
+    slugService = {
+      assertAvailable: jest.fn(),
+      releaseForClaim: jest.fn(),
+    };
 
     const mockDataSource = {
       transaction: jest.fn((cb: (m: typeof manager) => unknown) =>
@@ -199,6 +214,9 @@ describe('OrganizationService', () => {
         { provide: UserService, useValue: userService },
         { provide: PlatformAuditService, useValue: platformAudit },
         { provide: SessionService, useValue: sessions },
+        { provide: getRepositoryToken(Plan), useValue: planRepo },
+        { provide: SlugService, useValue: slugService },
+        { provide: EntitlementService, useValue: allowAllEntitlements() },
       ],
     }).compile();
 
@@ -208,11 +226,17 @@ describe('OrganizationService', () => {
   // ===================== getAllOrganizations =====================
 
   describe('getAllOrganizations', () => {
-    it('ADMIN sees all organizations', async () => {
-      orgRepo.find.mockResolvedValue([makeOrg(), makeOrg({ id: 'org-2' })]);
+    it('ADMIN gets the school directory', async () => {
+      const page = new Paginated([], 0, { page: 1, limit: 20 });
+      const directory = jest
+        .spyOn(service, 'findDirectory')
+        .mockResolvedValue(page);
 
-      const result = await service.getAllOrganizations(superAdminCtx());
-      expect(result).toHaveLength(2);
+      const result = await service.getAllOrganizations(superAdminCtx(), {
+        plan: PlanCode.FREE,
+      });
+      expect(result).toBe(page);
+      expect(directory).toHaveBeenCalledWith({ plan: PlanCode.FREE });
     });
 
     it('Regular USER sees only organizations with membership', async () => {
@@ -350,7 +374,7 @@ describe('OrganizationService', () => {
   // ===================== createOrganization =====================
 
   describe('createOrganization', () => {
-    const dto = { name: 'New Organization', slug: 'new_org' };
+    const dto = { name: 'New Organization', slug: 'new-org' };
 
     it('ADMIN creates an organization (with seeded roles) and no owner', async () => {
       const result = await service.createOrganization(superAdminCtx(), dto);
@@ -368,13 +392,39 @@ describe('OrganizationService', () => {
       expect(ownerProvisioning.provisionOwner).not.toHaveBeenCalled();
     });
 
-    it('rejects a duplicate slug inside the transaction', async () => {
-      manager.findOne.mockResolvedValue(makeOrg({ slug: 'new_org' }));
+    it('rejects an unavailable slug inside the transaction', async () => {
+      slugService.assertAvailable.mockRejectedValue(
+        new ConflictException({ code: 'SLUG_TAKEN' }),
+      );
 
       await expect(
         service.createOrganization(superAdminCtx(), dto),
       ).rejects.toThrow(ConflictException);
+      expect(slugService.assertAvailable).toHaveBeenCalledWith(
+        'new-org',
+        manager,
+      );
       expect(manager.save).not.toHaveBeenCalled();
+    });
+
+    it('puts the school on Free by default, or on a trial when asked', async () => {
+      await service.createOrganization(superAdminCtx(), dto);
+      expect(manager.create).toHaveBeenLastCalledWith(Organization, {
+        ...dto,
+        planId: 'plan-free',
+      });
+
+      await service.createOrganization(superAdminCtx(), {
+        ...dto,
+        trialDays: 15,
+      });
+      expect(manager.create).toHaveBeenLastCalledWith(
+        Organization,
+        expect.objectContaining({
+          status: OrganizationStatus.TRIAL,
+          trialEndsAt: expect.any(Date) as Date,
+        }),
+      );
     });
 
     it('Regular USER becomes the OWNER in the same transaction', async () => {
@@ -386,12 +436,12 @@ describe('OrganizationService', () => {
       });
       expect(ownerProvisioning.sendActivationEmail).toHaveBeenCalledWith(
         expect.objectContaining({ id: 'user-id' }),
-        'new_org',
+        'new-org',
         'activation-token',
       );
       expect(result.ownerActivation).toEqual({
         token: 'activation-token',
-        orgSlug: 'new_org',
+        orgSlug: 'new-org',
       });
     });
 
@@ -406,7 +456,10 @@ describe('OrganizationService', () => {
         userId: 'target-owner',
       });
       // ownerUserId is not an organization column
-      expect(manager.create).toHaveBeenCalledWith(Organization, dto);
+      expect(manager.create).toHaveBeenCalledWith(Organization, {
+        ...dto,
+        planId: 'plan-free',
+      });
     });
 
     it('ADMIN with non-existent ownerUserId fails before any write', async () => {

@@ -7,10 +7,29 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
-import { Repository, DataSource, In } from 'typeorm';
+import { Repository, DataSource, EntityManager, In } from 'typeorm';
 import { Organization } from '../entities/organization.entity';
 import { OrganizationDomain } from '../entities/organization-domain.entity';
+import { OrganizationSlugHistory } from '../entities/organization-slug-history.entity';
 import { RESOLVABLE_DOMAIN_STATUSES } from '../enums/domain-status.enum';
+import { OrganizationStatus } from '../enums/organization-status.enum';
+import { OrganizationType } from '../enums/organization-type.enum';
+import {
+  SLUG_HISTORY_TTL_MS,
+  SLUG_RENAME_INTERVAL_MS,
+  SlugService,
+} from './slug.service';
+import { Plan } from '~/modules/plans/entities/plan.entity';
+import {
+  PLAN_LIMIT_KEYS,
+  PlanCode,
+  type PlanLimits,
+  TRIAL_DAYS,
+} from '~/modules/plans/plans.catalog';
+import { EntitlementService } from '~/modules/plans/services/entitlement.service';
+import { OrgSettings } from '~/modules/settings/entities/org-settings.entity';
+import { Paginated } from '~/common/dto/paginated.dto';
+import { DEFAULT_PAGE_SIZE } from '~/common/dto/pagination-query.dto';
 import { Membership } from '~/modules/memberships/entities/membership.entity';
 import { MembershipRole } from '~/modules/memberships/enums/membership-role.enum';
 import { User } from '~/modules/users/entities/user.entity';
@@ -30,9 +49,15 @@ import {
   TransferOwnershipDto,
 } from '../dto/transfer-ownership.dto';
 import { UpdateOrganizationDto } from '../dto/update-organization.dto';
+import {
+  ChangePlanDto,
+  ExtendTrialDto,
+  FilterOrganizationDto,
+  SetLimitsDto,
+} from '../dto/platform-organization.dto';
 import { RequestContextDto } from '~/common/dto/request-context.dto';
 import { PlatformAuditService } from '~/modules/audit/services/platform-audit.service';
-import { AUDIT_ACTIONS } from '~/modules/audit/audit-actions';
+import { AUDIT_ACTIONS, type AuditAction } from '~/modules/audit/audit-actions';
 
 /** What the platform audit log keeps of an organization. */
 function organizationSnapshot(org: Organization) {
@@ -50,6 +75,33 @@ export interface CreateOrganizationResult {
   ownerActivation?: OwnerActivation;
 }
 
+/** A school created by self-serve signup (`SignupService`). */
+export interface SignupOrganizationInput {
+  name: string;
+  slug: string;
+  type: OrganizationType;
+  ownerUserId: string;
+}
+
+/** A row of the school directory (`GET /organizations`, super-admin). */
+export interface DirectoryEntry {
+  id: string;
+  name: string;
+  slug: string;
+  status: OrganizationStatus;
+  type: OrganizationType;
+  plan: { code: string; name: string } | null;
+  addOnModules: string[];
+  limitOverrides: Partial<PlanLimits> | null;
+  trialEndsAt: Date | null;
+  onboardingCompletedAt: Date | null;
+  district: string | null;
+  activeStudentCount: number;
+  createdAt: Date;
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 @Injectable()
 export class OrganizationService {
   private readonly logger = new Logger(OrganizationService.name);
@@ -61,8 +113,12 @@ export class OrganizationService {
     private membershipRepository: Repository<Membership>,
     @InjectRepository(OrganizationDomain)
     private domainRepository: Repository<OrganizationDomain>,
+    @InjectRepository(Plan)
+    private planRepository: Repository<Plan>,
     @InjectDataSource()
     private dataSource: DataSource,
+    private slugService: SlugService,
+    private entitlements: EntitlementService,
     private rbacSeederService: RbacSeederService,
     private orgSettingsSeeder: OrgSettingsSeeder,
     private userService: UserService,
@@ -100,25 +156,26 @@ export class OrganizationService {
       owner = await this.userService.findById(ctx, user?.id ?? '');
     }
 
-    const { ownerUserId: _ownerUserId, ...fields } = dto;
+    const {
+      ownerUserId: _ownerUserId,
+      planCode = PlanCode.FREE,
+      trialDays,
+      ...fields
+    } = dto;
+    const plan = await this.findPlanOrFail(planCode);
 
     const { organization, token } = await this.dataSource.transaction(
       async (manager) => {
-        const existing = await manager.findOne(Organization, {
-          where: { slug: dto.slug },
+        const organization = await this.insertOrganization(manager, {
+          ...fields,
+          planId: plan.id,
+          ...(trialDays
+            ? {
+                status: OrganizationStatus.TRIAL,
+                trialEndsAt: new Date(Date.now() + trialDays * DAY_MS),
+              }
+            : {}),
         });
-        if (existing) {
-          throw new ConflictException('Organization slug already exists');
-        }
-
-        const organization = await manager.save(
-          manager.create(Organization, fields),
-        );
-
-        // Seed the standard school roles for the new organization.
-        await this.rbacSeederService.seedSystemRoles(manager, organization.id);
-        // Its settings row, so settings writes only ever update (and lock) it.
-        await this.orgSettingsSeeder.createRow(manager, organization.id);
 
         let token: string | undefined;
         if (owner) {
@@ -135,6 +192,7 @@ export class OrganizationService {
             entityId: organization.id,
             after: {
               ...organizationSnapshot(organization),
+              planCode: plan.code,
               ownerUserId: owner?.id ?? null,
             },
           },
@@ -155,6 +213,71 @@ export class OrganizationService {
     }
 
     return { organization, ownerActivation };
+  }
+
+  /**
+   * Creates a school for a verified self-serve signup inside the caller's
+   * transaction: a 30-day trial of the trial plan (on Free afterwards until
+   * a plan is assigned), system roles, settings row and the owner's ACTIVE
+   * membership. The caller has created or linked the owner's account.
+   */
+  async createForSignup(
+    manager: EntityManager,
+    input: SignupOrganizationInput,
+  ): Promise<Organization> {
+    const free = await manager
+      .getRepository(Plan)
+      .findOne({ where: { code: PlanCode.FREE } });
+    const organization = await this.insertOrganization(manager, {
+      name: input.name,
+      slug: input.slug,
+      type: input.type,
+      status: OrganizationStatus.TRIAL,
+      trialEndsAt: new Date(Date.now() + TRIAL_DAYS * DAY_MS),
+      planId: free?.id ?? null,
+    });
+    await this.ownerProvisioning.provisionActiveOwner(manager, {
+      orgId: organization.id,
+      userId: input.ownerUserId,
+    });
+    await this.platformAudit.record(
+      {
+        action: AUDIT_ACTIONS.ORGANIZATION_CREATED,
+        orgId: organization.id,
+        entityType: 'organization',
+        entityId: organization.id,
+        actorUserId: input.ownerUserId,
+        after: {
+          ...organizationSnapshot(organization),
+          ownerUserId: input.ownerUserId,
+          via: 'signup',
+        },
+      },
+      manager,
+    );
+    return organization;
+  }
+
+  /**
+   * Inserts the organization with its system roles and settings row. The
+   * slug must be free (not used, reserved or in another school's history).
+   */
+  private async insertOrganization(
+    manager: EntityManager,
+    fields: Partial<Organization>,
+  ): Promise<Organization> {
+    const slug = fields.slug!;
+    await this.slugService.assertAvailable(slug, manager);
+    await this.slugService.releaseForClaim(manager, slug);
+
+    const organization = await manager.save(
+      manager.create(Organization, fields),
+    );
+    // Seed the standard school roles for the new organization.
+    await this.rbacSeederService.seedSystemRoles(manager, organization.id);
+    // Its settings row, so settings writes only ever update (and lock) it.
+    await this.orgSettingsSeeder.createRow(manager, organization.id);
+    return organization;
   }
 
   /**
@@ -324,12 +447,304 @@ export class OrganizationService {
     return { token, orgSlug: organization.slug };
   }
 
-  async getAllOrganizations(ctx: RequestContextDto): Promise<Organization[]> {
+  /**
+   * Super-admins get the school directory (filtered, paginated); anyone
+   * else the schools they belong to.
+   */
+  async getAllOrganizations(
+    ctx: RequestContextDto,
+    filter: FilterOrganizationDto = {},
+  ): Promise<Organization[] | Paginated<DirectoryEntry>> {
     if (!ctx.user?.isAdmin) {
       return this.getOrganizationsByUser(ctx, ctx.user?.id ?? '');
     }
+    return this.findDirectory(filter);
+  }
 
-    return this.organizationRepository.find();
+  /** School directory with plan, district and active student count. */
+  async findDirectory(
+    filter: FilterOrganizationDto,
+  ): Promise<Paginated<DirectoryEntry>> {
+    const page = filter.page ?? 1;
+    const limit = filter.limit ?? DEFAULT_PAGE_SIZE;
+    const qb = this.organizationRepository
+      .createQueryBuilder('o')
+      .leftJoinAndSelect('o.plan', 'plan')
+      .leftJoin(OrgSettings, 'settings', 'settings.orgId = o.id')
+      .addSelect(`settings.profile -> 'address' ->> 'district'`, 'district')
+      // Root connection: no RLS, so the subquery filters on org_id itself.
+      .addSelect(
+        `(SELECT count(*) FROM "students" s
+          WHERE s."org_id" = o."id" AND s."status" = 'active'
+            AND s."deleted_at" IS NULL)`,
+        'active_students',
+      );
+    if (filter.q) {
+      qb.andWhere('(o.name ILIKE :q OR o.slug ILIKE :q)', {
+        q: `%${escapeLike(filter.q)}%`,
+      });
+    }
+    if (filter.plan) {
+      // Schools without a plan are on Free.
+      qb.andWhere(
+        filter.plan === PlanCode.FREE
+          ? '(plan.code = :plan OR o.planId IS NULL)'
+          : 'plan.code = :plan',
+        { plan: filter.plan },
+      );
+    }
+    if (filter.status) {
+      qb.andWhere('o.status = :status', { status: filter.status });
+    }
+    if (filter.type) qb.andWhere('o.type = :type', { type: filter.type });
+    if (filter.district) {
+      qb.andWhere(
+        `settings.profile -> 'address' ->> 'district' ILIKE :district`,
+        { district: escapeLike(filter.district) },
+      );
+    }
+    if (filter.createdFrom) {
+      qb.andWhere('o.createdAt >= :from', { from: filter.createdFrom });
+    }
+    if (filter.createdTo) {
+      qb.andWhere('o.createdAt <= :to', { to: filter.createdTo });
+    }
+
+    const total = await qb.getCount();
+    const { entities, raw } = await qb
+      .orderBy('o.createdAt', 'DESC')
+      .addOrderBy('o.id', 'ASC')
+      .offset((page - 1) * limit)
+      .limit(limit)
+      .getRawAndEntities<{
+        district: string | null;
+        active_students: string;
+      }>();
+
+    const items = entities.map((org, i): DirectoryEntry => {
+      const row = raw[i];
+      return {
+        id: org.id,
+        name: org.name,
+        slug: org.slug,
+        status: org.status,
+        type: org.type,
+        plan: org.plan ? { code: org.plan.code, name: org.plan.name } : null,
+        addOnModules: org.addOnModules,
+        limitOverrides: org.limitOverrides,
+        trialEndsAt: org.trialEndsAt,
+        onboardingCompletedAt: org.onboardingCompletedAt,
+        district: row?.district ?? null,
+        activeStudentCount: Number(row?.active_students ?? 0),
+        createdAt: org.createdAt,
+      };
+    });
+    return new Paginated(items, total, { page, limit });
+  }
+
+  /** `PATCH /organizations/:id/plan` (super-admin). */
+  async changePlan(id: string, dto: ChangePlanDto): Promise<Organization> {
+    const plan = await this.findPlanOrFail(dto.planCode);
+    return this.changeAudited(
+      id,
+      AUDIT_ACTIONS.ORGANIZATION_PLAN_CHANGED,
+      (org) => {
+        org.planId = plan.id;
+        org.plan = plan;
+        if (dto.addOnModules) org.addOnModules = dto.addOnModules;
+      },
+      (org) => ({
+        planCode: org.plan?.code ?? PlanCode.FREE,
+        addOnModules: org.addOnModules,
+      }),
+    );
+  }
+
+  /**
+   * `POST /organizations/:id/trial/extend` (super-admin): adds `days` to the
+   * trial end, counted from now if it has already passed.
+   */
+  async extendTrial(id: string, dto: ExtendTrialDto): Promise<Organization> {
+    return this.changeAudited(
+      id,
+      AUDIT_ACTIONS.ORGANIZATION_TRIAL_EXTENDED,
+      (org) => {
+        if (org.status !== OrganizationStatus.TRIAL) {
+          throw new ConflictException({
+            message: 'This school is not on a trial',
+            code: 'NOT_ON_TRIAL',
+          });
+        }
+        const from = Math.max(Date.now(), org.trialEndsAt?.getTime() ?? 0);
+        org.trialEndsAt = new Date(from + dto.days * DAY_MS);
+      },
+      (org) => ({ trialEndsAt: org.trialEndsAt }),
+    );
+  }
+
+  /** `PUT /organizations/:id/limits` (super-admin): replaces the overrides. */
+  async setLimits(id: string, dto: SetLimitsDto): Promise<Organization> {
+    const overrides: Partial<PlanLimits> = {};
+    for (const key of PLAN_LIMIT_KEYS) {
+      if (dto[key] !== undefined) overrides[key] = dto[key];
+    }
+    return this.changeAudited(
+      id,
+      AUDIT_ACTIONS.ORGANIZATION_LIMITS_CHANGED,
+      (org) => {
+        org.limitOverrides = Object.keys(overrides).length ? overrides : null;
+      },
+      (org) => ({ limitOverrides: org.limitOverrides }),
+    );
+  }
+
+  /**
+   * Applies a platform change to one school with a platform audit row in
+   * the same transaction, then drops its cached entitlements.
+   */
+  private async changeAudited(
+    id: string,
+    action: AuditAction,
+    change: (org: Organization) => void,
+    snapshot: (org: Organization) => Record<string, unknown>,
+  ): Promise<Organization> {
+    const saved = await this.dataSource.transaction(async (manager) => {
+      // Lock first (FOR UPDATE can't apply to the outer-joined plan).
+      await manager.findOne(Organization, {
+        where: { id },
+        lock: { mode: 'pessimistic_write' },
+      });
+      const org = await manager.findOne(Organization, {
+        where: { id },
+        relations: { plan: true },
+      });
+      if (!org) throw new NotFoundException('Organization not found');
+      const before = snapshot(org);
+      change(org);
+      const result = await manager.save(org);
+      await this.platformAudit.record(
+        {
+          action,
+          orgId: id,
+          entityType: 'organization',
+          entityId: id,
+          before,
+          after: snapshot(result),
+        },
+        manager,
+      );
+      return result;
+    });
+    this.entitlements.invalidate(id);
+    return saved;
+  }
+
+  /**
+   * `PATCH /settings/slug` (school admin): at most once per 30 days. The
+   * old slug goes to the history, where it redirects for 12 months and no
+   * other school can take it; the school may later reclaim it.
+   */
+  async renameSlug(
+    orgId: string,
+    slug: string,
+  ): Promise<{ slug: string; previousSlug: string }> {
+    const previousSlug = await this.dataSource.transaction(async (manager) => {
+      const org = await manager.findOne(Organization, {
+        where: { id: orgId },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!org) throw new NotFoundException('Organization not found');
+      if (org.slug === slug) {
+        throw new BadRequestException({
+          message: 'This is already the school address',
+          code: 'SLUG_UNCHANGED',
+        });
+      }
+      const history = manager.getRepository(OrganizationSlugHistory);
+      const last = await history.findOne({
+        where: { orgId },
+        order: { createdAt: 'DESC' },
+      });
+      if (
+        last &&
+        last.createdAt.getTime() > Date.now() - SLUG_RENAME_INTERVAL_MS
+      ) {
+        throw new ConflictException({
+          message: 'The school address can be changed once every 30 days',
+          code: 'SLUG_CHANGE_TOO_SOON',
+          retryAfter: new Date(
+            last.createdAt.getTime() + SLUG_RENAME_INTERVAL_MS,
+          ),
+        });
+      }
+      await this.slugService.assertAvailable(slug, manager, orgId);
+      await this.slugService.releaseForClaim(manager, slug, orgId);
+
+      const old = org.slug;
+      await history.save(
+        history.create({
+          orgId,
+          slug: old,
+          expiresAt: new Date(Date.now() + SLUG_HISTORY_TTL_MS),
+        }),
+      );
+      org.slug = slug;
+      await manager.save(org);
+      await this.platformAudit.record(
+        {
+          action: AUDIT_ACTIONS.ORGANIZATION_SLUG_CHANGED,
+          orgId,
+          entityType: 'organization',
+          entityId: orgId,
+          before: { slug: old },
+          after: { slug },
+        },
+        manager,
+      );
+      return old;
+    });
+    tenantSlugCache.invalidate(previousSlug);
+    tenantSlugCache.invalidate(slug);
+    await this.invalidateDomainCache(orgId);
+    return { slug, previousSlug };
+  }
+
+  /** The school an old slug now points to (`TenantMiddleware`, resolve). */
+  findSlugRedirect(slug: string): Promise<Organization | null> {
+    return this.slugService.findRedirect(slug);
+  }
+
+  async getOnboardingCompletedAt(orgId: string): Promise<Date | null> {
+    const org = await this.organizationRepository.findOne({
+      where: { id: orgId },
+      select: { id: true, onboardingCompletedAt: true },
+    });
+    return org?.onboardingCompletedAt ?? null;
+  }
+
+  /**
+   * Sets or clears `onboarding_completed_at` (`OnboardingService`, which
+   * audits it in the school's log).
+   */
+  async setOnboardingCompleted(
+    orgId: string,
+    completedAt: Date | null,
+  ): Promise<void> {
+    await this.organizationRepository.update(
+      { id: orgId },
+      { onboardingCompletedAt: completedAt },
+    );
+  }
+
+  private async findPlanOrFail(code: string): Promise<Plan> {
+    const plan = await this.planRepository.findOne({ where: { code } });
+    if (!plan) {
+      throw new NotFoundException({
+        message: 'Plan not found',
+        code: 'PLAN_NOT_FOUND',
+      });
+    }
+    return plan;
   }
 
   /** Returns only organizations where the user has any membership. */
@@ -434,6 +849,7 @@ export class OrganizationService {
     });
     tenantSlugCache.invalidate(organization.slug);
     await this.invalidateDomainCache(organization.id);
+    this.entitlements.invalidate(organization.id);
     return saved;
   }
 
@@ -466,6 +882,7 @@ export class OrganizationService {
     });
     tenantSlugCache.invalidate(organization.slug);
     hostnames.forEach((h) => tenantDomainCache.invalidate(h));
+    this.entitlements.invalidate(id);
     this.logger.log(`Organization "${organization.slug}" deleted`);
   }
 
@@ -507,4 +924,9 @@ export class OrganizationService {
 /** `ERP.Acme-Scl.com.:443` → `erp.acme-scl.com`. */
 export function normalizeHostname(host: string): string {
   return host.trim().split(':')[0].toLowerCase().replace(/\.$/, '');
+}
+
+/** Escapes `%`, `_` and `\\` for a LIKE pattern. */
+function escapeLike(value: string): string {
+  return value.replace(/[\\%_]/g, (c) => `\\${c}`);
 }

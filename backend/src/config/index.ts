@@ -10,6 +10,7 @@ import domainsConfig from './domains.config';
 import queueConfig from './queue.config';
 import storageConfig from './storage.config';
 import pdfConfig from './pdf.config';
+import googleConfig from './google.config';
 
 /**
  * Single place to register config namespaces. Add new `*.config.ts` files and append here.
@@ -26,6 +27,7 @@ export const configLoaders: ConfigFactory[] = [
   queueConfig,
   storageConfig,
   pdfConfig,
+  googleConfig,
 ];
 
 export type {
@@ -41,6 +43,7 @@ export type {
   QueueConfig,
   StorageConfig,
   PdfConfig,
+  GoogleConfig,
 } from './config.types';
 export { validateEnv, envValidationSchema } from './env.validation';
 export { setupSwagger } from './swagger.setup';

@@ -1,3 +1,4 @@
+import { allowAllEntitlements } from '~/modules/plans/entitlement.testing';
 import { BadRequestException, PayloadTooLargeException } from '@nestjs/common';
 import type { ConfigService } from '@nestjs/config';
 import type { StorageService } from '~/shared/storage/storage.service';
@@ -37,6 +38,7 @@ describe('FileService', () => {
       storage as unknown as StorageService,
       { orgId: 'org-a' } as TenantDataSourceProxy,
       { user: { userId: 'user-1' } } as never,
+      allowAllEntitlements(),
       config,
     );
   });

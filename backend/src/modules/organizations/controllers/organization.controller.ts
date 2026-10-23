@@ -7,6 +7,8 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Put,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
@@ -17,6 +19,12 @@ import { PlatformAdminGuard } from '~/common/guards/platform-admin.guard';
 import { CreateOrganizationDto } from '../dto/create-organization.dto';
 import { TransferOwnershipDto } from '../dto/transfer-ownership.dto';
 import { UpdateOrganizationDto } from '../dto/update-organization.dto';
+import {
+  ChangePlanDto,
+  ExtendTrialDto,
+  FilterOrganizationDto,
+  SetLimitsDto,
+} from '../dto/platform-organization.dto';
 import { OrganizationService } from '../services/organization.service';
 import { ResponseMessage } from '~/common/decorators/response.decorators';
 
@@ -27,10 +35,17 @@ import { ResponseMessage } from '~/common/decorators/response.decorators';
 export class OrganizationController {
   constructor(private organizationService: OrganizationService) {}
 
+  /**
+   * Super-admins: the school directory (filters, paginated, with plan,
+   * district and active students). Others: the schools they belong to.
+   */
   @Get()
   @ResponseMessage('List of organizations')
-  findAll(@ReqContext() ctx: RequestContextDto) {
-    return this.organizationService.getAllOrganizations(ctx);
+  findAll(
+    @ReqContext() ctx: RequestContextDto,
+    @Query() filter: FilterOrganizationDto,
+  ) {
+    return this.organizationService.getAllOrganizations(ctx, filter);
   }
 
   @Get(':id')
@@ -70,6 +85,34 @@ export class OrganizationController {
       id,
       updateOrganizationDto,
     );
+  }
+
+  @Patch(':id/plan')
+  @UseGuards(PlatformAdminGuard)
+  @ResponseMessage('Plan changed')
+  changePlan(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ChangePlanDto,
+  ) {
+    return this.organizationService.changePlan(id, dto);
+  }
+
+  @Post(':id/trial/extend')
+  @UseGuards(PlatformAdminGuard)
+  @ResponseMessage('Trial extended')
+  extendTrial(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ExtendTrialDto,
+  ) {
+    return this.organizationService.extendTrial(id, dto);
+  }
+
+  /** Replaces the school's limit overrides (omitted keys follow the plan). */
+  @Put(':id/limits')
+  @UseGuards(PlatformAdminGuard)
+  @ResponseMessage('Limits updated')
+  setLimits(@Param('id', ParseUUIDPipe) id: string, @Body() dto: SetLimitsDto) {
+    return this.organizationService.setLimits(id, dto);
   }
 
   @Post(':id/transfer-ownership')

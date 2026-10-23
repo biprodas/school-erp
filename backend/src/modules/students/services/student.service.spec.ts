@@ -1,3 +1,4 @@
+import { allowAllEntitlements } from '~/modules/plans/entitlement.testing';
 import {
   BadRequestException,
   ConflictException,
@@ -62,6 +63,7 @@ describe('StudentService', () => {
       studentRepo as unknown as StudentRepository,
       userService as unknown as OrgUserService,
       roleService as unknown as RoleService,
+      allowAllEntitlements(),
       fakeTenantDataSource(),
     );
   });

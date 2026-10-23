@@ -8,6 +8,9 @@ import {
 } from '@nestjs/common';
 import { REQUEST } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Organization } from '~/modules/organizations/entities/organization.entity';
 import type { ClientInfo } from '~/common/decorators/client.decorator';
 import { normalizeEmail } from '~/common/identity/identifier';
 import {
@@ -40,6 +43,7 @@ import { AuditService } from '~/modules/audit/services/audit.service';
 import { AUDIT_ACTIONS } from '~/modules/audit/audit-actions';
 import { signInRefusalReason } from './sign-in-audit';
 import { SessionService, type IssuedSession } from './session.service';
+import { IdentityService } from './identity.service';
 
 /** Global account states that may never sign in, in any organization. */
 const BLOCKED_ACCOUNT_STATUSES = new Set<string>([
@@ -66,6 +70,9 @@ export class AuthService {
     private readonly sessions: SessionService,
     private readonly mail: MailService,
     private readonly audit: AuditService,
+    private readonly identities: IdentityService,
+    @InjectRepository(Organization)
+    private readonly organizations: Repository<Organization>,
     @Inject(REQUEST) private readonly request: RequestWithOrg,
     private readonly jwtService: JwtService,
   ) {}
@@ -136,6 +143,7 @@ export class AuthService {
     if (!keepsPassword) {
       user.password = await hashPassword(dto.password);
       user.mustChangePassword = false;
+      user.passwordSet = true;
       if (user.email) user.emailVerifiedAt ??= new Date();
       if (user.status === UserStatus.PENDING) {
         user.status = UserStatus.ACTIVE;
@@ -376,13 +384,33 @@ export class AuthService {
     }
 
     const { password: _password, ...account } = membership.user;
-    const roles = await this.getRoleNames(userId);
+    const [roles, identities, org] = await Promise.all([
+      this.getRoleNames(userId),
+      this.identities.list(userId),
+      this.organizations.findOne({
+        where: { id: membership.orgId },
+        select: {
+          id: true,
+          slug: true,
+          name: true,
+          onboardingCompletedAt: true,
+        },
+      }),
+    ]);
     return {
       ...account,
       status: membership.status,
       isAdmin: membership.isAdmin,
       membershipId: membership.id,
       roles,
+      identities,
+      // The frontend's onboarding gate (doc/domains-and-routing.md 4.5).
+      organization: {
+        id: membership.orgId,
+        slug: org?.slug ?? this.request.orgSlug,
+        name: org?.name ?? null,
+        onboardingCompletedAt: org?.onboardingCompletedAt ?? null,
+      },
     };
   }
 

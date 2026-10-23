@@ -1,3 +1,4 @@
+import { IdentityService } from './identity.service';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { REQUEST } from '@nestjs/core';
@@ -85,6 +86,10 @@ describe('PlatformAuthService.issueHandoff', () => {
         { provide: SessionService, useValue: {} },
         { provide: MailService, useValue: {} },
         { provide: JwtService, useValue: {} },
+        {
+          provide: IdentityService,
+          useValue: { list: () => Promise.resolve([]) },
+        },
         { provide: PlatformAuditService, useValue: { record: jest.fn() } },
       ],
     }).compile();
@@ -194,6 +199,14 @@ describe('AuthService.exchangeHandoff', () => {
         { provide: SessionService, useValue: sessions },
         { provide: MailService, useValue: {} },
         { provide: JwtService, useValue: jwtService },
+        {
+          provide: IdentityService,
+          useValue: { list: () => Promise.resolve([]) },
+        },
+        {
+          provide: getRepositoryToken(Organization),
+          useValue: { findOne: () => Promise.resolve(null) },
+        },
         { provide: AuditService, useValue: { record: jest.fn() } },
         { provide: REQUEST, useValue: { orgId: ORG_ID, orgSlug: 'acme' } },
       ],

@@ -57,6 +57,35 @@ export class MailService {
     });
   }
 
+  /** Self-serve signup: the link that creates the school (PRD 6.2). */
+  async sendSignupVerificationEmail(
+    to: string,
+    context: {
+      name: string;
+      schoolName: string;
+      schoolHost: string;
+      link: string;
+    },
+  ): Promise<void> {
+    await this.send(
+      to,
+      `Confirm your signup for ${context.schoolName}`,
+      'signup-verification',
+      context,
+    );
+  }
+
+  /** "Find your school": sign-in links to every school of the account. */
+  async sendFindSchoolEmail(
+    to: string,
+    context: {
+      name: string;
+      schools: { name: string; host: string; link: string }[];
+    },
+  ): Promise<void> {
+    await this.send(to, 'Your schools on School ERP', 'find-school', context);
+  }
+
   /**
    * Absolute frontend URL for `path` (a path-with-query like
    * `/reset-password?token=…`). When a root domain is configured, the link is

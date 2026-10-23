@@ -1,3 +1,4 @@
+import { allowAllEntitlements } from '~/modules/plans/entitlement.testing';
 import {
   BadRequestException,
   ConflictException,
@@ -57,6 +58,7 @@ describe('OrgUserService', () => {
       audit as unknown as AuditService,
       context as unknown as RequestContext,
       sessions as unknown as SessionService,
+      allowAllEntitlements(),
       fakeTenantDataSource('org-1'),
     );
   });

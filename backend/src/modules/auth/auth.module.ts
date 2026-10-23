@@ -13,6 +13,8 @@ import { RbacModule } from '~/modules/rbac/rbac.module';
 import { SettingsModule } from '~/modules/settings/settings.module';
 import { AuthToken } from './entities/auth-token.entity';
 import { UserSession } from './entities/user-session.entity';
+import { UserIdentity } from './entities/user-identity.entity';
+import { IdentityService } from './services/identity.service';
 import { AuthController } from './controllers/auth.controller';
 import { PlatformAuthController } from './controllers/platform-auth.controller';
 import { InviteController } from './controllers/invite.controller';
@@ -39,6 +41,7 @@ import { SessionModule } from './session.module';
       User,
       AuthToken,
       UserSession,
+      UserIdentity,
       Membership,
       Organization,
     ]),
@@ -73,7 +76,13 @@ import { SessionModule } from './session.module';
     OwnerProvisioningService,
     CredentialService,
     InviteService,
+    IdentityService,
   ],
-  exports: [PlatformAuthService, OwnerProvisioningService, SessionModule],
+  exports: [
+    PlatformAuthService,
+    OwnerProvisioningService,
+    IdentityService,
+    SessionModule,
+  ],
 })
 export class AuthModule {}

@@ -2,12 +2,16 @@ import {
   IsString,
   IsNotEmpty,
   Length,
-  Matches,
   IsOptional,
   IsDefined,
   IsUUID,
   IsEnum,
+  IsInt,
+  Min,
+  Max,
 } from 'class-validator';
+import { IsSlug } from '~/shared/slug/reserved-slugs';
+import { PlanCode } from '~/modules/plans/plans.catalog';
 import { OrganizationType } from '../enums/organization-type.enum';
 
 export class CreateOrganizationDto {
@@ -19,12 +23,7 @@ export class CreateOrganizationDto {
 
   @IsDefined()
   @IsString()
-  @IsNotEmpty()
-  @Length(3, 63)
-  @Matches(/^[a-z0-9_]+$/, {
-    message:
-      'Slug must contain only lowercase letters, numbers, and underscores',
-  })
+  @IsSlug()
   slug: string;
 
   /**
@@ -39,4 +38,19 @@ export class CreateOrganizationDto {
   @IsOptional()
   @IsEnum(OrganizationType)
   type?: OrganizationType;
+
+  /** Defaults to `free`. */
+  @IsOptional()
+  @IsEnum(PlanCode)
+  planCode?: PlanCode;
+
+  /**
+   * Starts the school on a trial of this many days (status `trial`, the
+   * trial plan's features); without it the school is `active` on its plan.
+   */
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(90)
+  trialDays?: number;
 }

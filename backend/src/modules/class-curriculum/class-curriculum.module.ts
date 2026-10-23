@@ -26,6 +26,6 @@ import { ClassSubjectGroupService } from './services/class-subject-group.service
     ClassSubjectService,
     ClassSubjectGroupService,
   ],
-  exports: [ClassSubjectService],
+  exports: [ClassSubjectService, ClassSubjectGroupService],
 })
 export class ClassCurriculumModule {}

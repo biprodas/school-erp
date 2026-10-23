@@ -52,16 +52,20 @@ describe('CredentialService', () => {
     users = {
       findOne: jest.fn().mockResolvedValue(account()),
       manager: {
+        // Shaped like TypeORM's Postgres driver answers an UPDATE … RETURNING:
+        // `[rows, rowCount]`, not the rows alone.
         query: jest.fn((sql: string) => {
+          const updated = (rows: object[]) =>
+            Promise.resolve([rows, rows.length]);
           if (sql.includes('make_interval')) {
-            return Promise.resolve([{ locked_until: lockUntil }]);
+            return updated([{ locked_until: lockUntil }]);
           }
           if (sql.includes('"failed_login_count" < $2')) {
-            return Promise.resolve(
+            return updated(
               claimed === null ? [] : [{ failed_login_count: claimed }],
             );
           }
-          return Promise.resolve([{ locked_until: lockedAtReset }]);
+          return updated([{ locked_until: lockedAtReset }]);
         }),
       },
     };

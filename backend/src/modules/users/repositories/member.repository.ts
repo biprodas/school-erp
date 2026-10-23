@@ -19,6 +19,10 @@ export class MemberRepository extends BaseTenantRepository<Membership> {
     super(ds, Membership, 'Member');
   }
 
+  count(): Promise<number> {
+    return this.repo.count();
+  }
+
   findByUserId(userId: string): Promise<Membership | null> {
     return this.repo.findOne({ where: { userId }, relations: { user: true } });
   }

@@ -7,6 +7,7 @@ import { getDataSourceToken } from '@nestjs/typeorm';
 import request from 'supertest';
 import type { App } from 'supertest/types';
 import { DataSource } from 'typeorm';
+import { planId } from './support/plans';
 import { AppModule } from 'src/app.module';
 import { configureApp } from 'src/app.setup';
 import { Organization } from '~/modules/organizations/entities/organization.entity';
@@ -108,6 +109,7 @@ describe('Domain settings (e2e)', () => {
 
     rootDs = app.get<DataSource>(getDataSourceToken());
     jwt = new JwtService({ secret: process.env.JWT_SECRET });
+    const standardPlanId = await planId(rootDs);
     const orgs = rootDs.getRepository(Organization);
     [orgA, orgB] = await orgs.save(
       ['a', 'b'].map((x) =>
@@ -115,6 +117,7 @@ describe('Domain settings (e2e)', () => {
           name: `E2E Domain Settings ${x.toUpperCase()} ${runId}`,
           slug: `e2e-dset-${x}-${runId}`,
           status: OrganizationStatus.ACTIVE,
+          planId: standardPlanId,
         }),
       ),
     );

@@ -1,3 +1,4 @@
+import { EntitlementService } from '~/modules/plans/services/entitlement.service';
 import {
   BadRequestException,
   ConflictException,
@@ -84,6 +85,7 @@ export class OrgUserService {
     private readonly audit: AuditService,
     private readonly context: RequestContext,
     private readonly sessions: SessionService,
+    private readonly entitlements: EntitlementService,
     @Inject(TENANT_DATASOURCE) private readonly ds: TenantDataSourceProxy,
   ) {}
 
@@ -128,6 +130,11 @@ export class OrgUserService {
       email,
     });
     return this.serialize(members);
+  }
+
+  /** Members of this school, any status. */
+  countMembers(): Promise<number> {
+    return this.memberRepo.count();
   }
 
   async findById(id: string): Promise<SerializedUser> {
@@ -192,6 +199,8 @@ export class OrgUserService {
         code: 'INVALID_PHONE',
       });
     }
+
+    await this.entitlements.assertLimit(this.ds.orgId, 'users');
 
     // Validate the requested roles up front so we never create a member
     // and then fail half-way through assigning roles.
@@ -369,6 +378,7 @@ export class OrgUserService {
   }
 
   private async setAdmin(id: string, value: boolean): Promise<SerializedUser> {
+    if (value) await this.entitlements.assertLimit(this.ds.orgId, 'admins');
     let revoked = false;
     const updated = await this.ds.runInTransaction(async () => {
       const member = await this.getMemberOrFail(id);

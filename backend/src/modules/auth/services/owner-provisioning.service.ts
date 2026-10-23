@@ -44,17 +44,67 @@ export class OwnerProvisioningService {
     manager: EntityManager,
     { orgId, userId }: ProvisionOwnerInput,
   ): Promise<{ token: string }> {
+    await this.upsertOwnerMembership(
+      manager,
+      orgId,
+      userId,
+      MembershipStatus.PENDING,
+    );
+
+    // Single-use, expiring activation token (only its hash is stored).
+    const rawToken = generateToken();
+    await manager.getRepository(AuthToken).save(
+      manager.getRepository(AuthToken).create({
+        userId,
+        orgId,
+        tokenHash: hashToken(rawToken),
+        type: AuthTokenType.ACTIVATION,
+        expiresAt: new Date(Date.now() + ACTIVATION_TTL_MS),
+        usedAt: null,
+      }),
+    );
+
+    this.logger.log(`Provisioned owner ${userId} in organization ${orgId}`);
+    return { token: rawToken };
+  }
+
+  /**
+   * Makes an already verified account (self-serve signup) the owner with an
+   * ACTIVE membership: no activation link, they are signed in right away.
+   */
+  async provisionActiveOwner(
+    manager: EntityManager,
+    { orgId, userId }: ProvisionOwnerInput,
+  ): Promise<void> {
+    await this.upsertOwnerMembership(
+      manager,
+      orgId,
+      userId,
+      MembershipStatus.ACTIVE,
+    );
+    this.logger.log(`Provisioned owner ${userId} in organization ${orgId}`);
+  }
+
+  /** OWNER membership with school admin and the seeded `admin` role. */
+  private async upsertOwnerMembership(
+    manager: EntityManager,
+    orgId: string,
+    userId: string,
+    newStatus: MembershipStatus,
+  ): Promise<void> {
     const memberships = manager.getRepository(Membership);
     const roles = manager.getRepository(Role);
     const userRoles = manager.getRepository(UserRole);
-    const tokens = manager.getRepository(AuthToken);
 
-    // Owner membership: school admin; must activate unless already active.
+    // Owner membership: school admin; a new one starts in `newStatus`.
     const membership =
       (await memberships.findOne({ where: { orgId, userId } })) ??
-      memberships.create({ orgId, userId, status: MembershipStatus.PENDING });
+      memberships.create({ orgId, userId, status: newStatus });
     membership.role = MembershipRole.OWNER;
     membership.isAdmin = true;
+    if (newStatus === MembershipStatus.ACTIVE) {
+      membership.status = MembershipStatus.ACTIVE;
+    }
     await memberships.save(membership);
 
     // Grant the seeded `admin` role (best-effort; isAdmin already bootstraps
@@ -72,22 +122,6 @@ export class OwnerProvisioningService {
         );
       }
     }
-
-    // Single-use, expiring activation token (only its hash is stored).
-    const rawToken = generateToken();
-    await tokens.save(
-      tokens.create({
-        userId,
-        orgId,
-        tokenHash: hashToken(rawToken),
-        type: AuthTokenType.ACTIVATION,
-        expiresAt: new Date(Date.now() + ACTIVATION_TTL_MS),
-        usedAt: null,
-      }),
-    );
-
-    this.logger.log(`Provisioned owner ${userId} in organization ${orgId}`);
-    return { token: rawToken };
   }
 
   /**

@@ -10,6 +10,7 @@ import { PlatformAuditService } from '~/modules/audit/services/platform-audit.se
 import { AuthToken } from '../entities/auth-token.entity';
 import { CredentialService } from './credential.service';
 import { SessionService } from './session.service';
+import { IdentityService } from './identity.service';
 import { PlatformAuthService } from './platform-auth.service';
 
 describe('PlatformAuthService.verifyEmail auditing', () => {
@@ -53,6 +54,7 @@ describe('PlatformAuthService.verifyEmail auditing', () => {
       {} as MailService,
       { sign: () => 'jwt' } as unknown as JwtService,
       audit as unknown as PlatformAuditService,
+      {} as IdentityService,
     );
   });
 

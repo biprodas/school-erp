@@ -1,3 +1,5 @@
+import { RequireModule } from '~/modules/plans/decorators/require-module.decorator';
+import { PLAN_MODULES } from '~/modules/plans/plans.catalog';
 import {
   Body,
   Controller,
@@ -41,6 +43,7 @@ export class OrganizationDomainController {
 
   @Post()
   @RequirePermissions(PERMISSIONS.DOMAINS_MANAGE)
+  @RequireModule(PLAN_MODULES.CUSTOM_DOMAIN)
   @ResponseMessage('Domain added. Create the DNS records, then verify.')
   add(@Body() dto: AddDomainDto) {
     return this.domainService.add(dto);
@@ -51,6 +54,7 @@ export class OrganizationDomainController {
   @HttpCode(200)
   @Throttle({ default: { limit: 10, ttl: seconds(60) } })
   @RequirePermissions(PERMISSIONS.DOMAINS_MANAGE)
+  @RequireModule(PLAN_MODULES.CUSTOM_DOMAIN)
   @ResponseMessage('Domain checked')
   verify(@Param('id', ParseUUIDPipe) id: string) {
     return this.domainService.verify(id);
@@ -59,6 +63,7 @@ export class OrganizationDomainController {
   @Post(':id/primary')
   @HttpCode(200)
   @RequirePermissions(PERMISSIONS.DOMAINS_MANAGE)
+  @RequireModule(PLAN_MODULES.CUSTOM_DOMAIN)
   @ResponseMessage('Primary domain set')
   setPrimary(@Param('id', ParseUUIDPipe) id: string) {
     return this.domainService.setPrimary(id);

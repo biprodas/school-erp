@@ -98,7 +98,7 @@ A new test that checks one school can't see or change another school's data gets
 - **Isolation:** `BaseTenantRepository` pins every find/save/update/delete to the org; Postgres RLS policies on `org_id` back it up (query builders must add the `orgId` condition themselves).
 - **Provisioning:** creating an organization inserts it, seeds the system roles and provisions the owner in one transaction. Deleting it cascades to all its data.
 
-Platform and public routes (`organizations`, `memberships`, `platform/auth`, `platform/users`, `public`, `health`, `dev/mail`) are excluded from `TenantMiddleware` in `src/app.module.ts`. If you add a new route of this kind, add it to that list too.
+Platform and public routes (`organizations`, `memberships`, `platform/auth`, `platform/users`, `platform/audit-logs`, `platform/plans`, `oauth`, `public`, `health`, `dev/mail`) are excluded from `TenantMiddleware` in `src/app.module.ts`. If you add a new route of this kind, add it to that list too.
 
 ### Auth and RBAC
 
@@ -106,6 +106,8 @@ Platform and public routes (`organizations`, `memberships`, `platform/auth`, `pl
 - **Tenant realm** (`JwtAuthGuard`): everything inside a school. Handlers use `@RequirePermissions(PERMISSIONS.X)` with `PermissionsGuard`.
 - **Permissions** are defined in code in `src/modules/rbac/permissions.catalog.ts`, as `resource:action` keys. Roles are stored per tenant, and system roles are seeded from `system-roles.seed.ts`. Tenant users with `isAdmin` bypass permission checks. Roles have a scope (`school` or `assigned`); `AccessScope` (`src/modules/access-scope/`) tells section- and subject-level endpoints which class-sections and subjects a scoped teacher may reach.
 - **Settings:** `GET /settings` and `PATCH /settings/<section>` (profile, locale, numbering, portal, results, attendance, fees, notifications, security, organization), stored per school in `org_settings` and read through `SettingsService` with defaults filled in.
+- **Plans and entitlements:** `plans` (Free/Basic/Standard/Premium) decide a school's modules and limits (`EntitlementService`, `@RequireModule`). Super-admins change plans, limits and trials under `/organizations/:id/…`; a trial grants Standard.
+- **Signup, onboarding and Google sign-in:** `POST /public/signup` (+ `/verify`) creates a school after email verification; `/onboarding/*` holds the checklist and setup templates; `POST /public/find-school` mails sign-in links; `GET /oauth/google/start` signs in with Google on any school host (needs `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`).
 - **Audit log:** sign-ins, role and member changes go to the school's append-only `audit_logs` (`AuditService`, `GET /audit-logs` with `audit:read`); platform actions go to `platform_audit_logs` (`PlatformAuditService`, `GET /platform/audit-logs`).
 
 ### Conventions
@@ -122,8 +124,8 @@ For the full folder map, see [doc/backend-structure.md](../doc/backend-structure
 
 | Area | Modules |
 |------|---------|
-| Platform | `auth`, `users`, `tenants`, `memberships` |
-| Tenant core | `auth`, `users`, `rbac` |
+| Platform | `auth`, `users`, `organizations`, `memberships`, `plans`, `signup`, `oauth` |
+| Tenant core | `auth`, `users`, `rbac`, `settings`, `onboarding`, `audit` |
 | People | `students`, `guardians`, `employees`, `departments`, `designations` |
 | Academics | `academic-years`, `classes`, `sections`, `subjects`, `subject-groups`, `class-curriculum`, `enrollments`, `teaching`, `timetable`, `promotions` |
 | Shared | `health`, `mail` (Handlebars templates + dev-only `dev/mail` trigger endpoints) |

@@ -13,9 +13,16 @@ const quoteIdent = (name: string) => `"${name.replace(/"/g, '""')}"`;
 const quoteLiteral = (value: string) => `'${value.replace(/'/g, "''")}'`;
 
 /**
+ * Platform tables that point at a school with a NOT NULL `org_id` but are
+ * read before any tenant is known, through the root connection only: no
+ * RLS policy and no app-role grant.
+ */
+export const PLATFORM_TABLES_WITH_ORG_ID = ['organization_slug_history'];
+
+/**
  * Tables that carry a NOT NULL `org_id` column, i.e. org-owned data. Tables
  * with a nullable `org_id` (e.g. `auth_tokens`) are global and stay
- * unrestricted.
+ * unrestricted, as do `PLATFORM_TABLES_WITH_ORG_ID`.
  */
 export function orgScopedTables(ds: DataSource): string[] {
   const tables = ds.entityMetadatas
@@ -24,7 +31,8 @@ export function orgScopedTables(ds: DataSource): string[] {
         (col) => col.databaseName === 'org_id' && !col.isNullable,
       ),
     )
-    .map((meta) => meta.tableName);
+    .map((meta) => meta.tableName)
+    .filter((table) => !PLATFORM_TABLES_WITH_ORG_ID.includes(table));
   return [...new Set(tables)].sort();
 }
 

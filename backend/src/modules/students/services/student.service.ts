@@ -18,6 +18,7 @@ import { StudentRepository } from '../repositories/student.repository';
 import { TENANT_DATASOURCE } from '~/tenancy/tenancy.constants';
 import { TenantDataSourceProxy } from '~/tenancy/tenant-datasource.proxy';
 import { Paginated } from '~/common/dto/paginated.dto';
+import { EntitlementService } from '~/modules/plans/services/entitlement.service';
 
 @Injectable()
 export class StudentService {
@@ -27,6 +28,7 @@ export class StudentService {
     private readonly studentRepo: StudentRepository,
     private readonly userService: OrgUserService,
     private readonly roleService: RoleService,
+    private readonly entitlements: EntitlementService,
     @Inject(TENANT_DATASOURCE) private readonly ds: TenantDataSourceProxy,
   ) {}
 
@@ -45,7 +47,12 @@ export class StudentService {
     return this.studentRepo.findByIdOrFail(id);
   }
 
-  create(dto: CreateStudentDto): Promise<Student> {
+  async create(dto: CreateStudentDto): Promise<Student> {
+    // The plan's active-student limit (PRD 3.3); a soft limit, checked on
+    // committed rows.
+    if ((dto.status ?? StudentStatus.ACTIVE) === StudentStatus.ACTIVE) {
+      await this.entitlements.assertLimit(this.ds.orgId, 'students');
+    }
     return this.ds.runInTransaction(async () => {
       if (dto.userId && dto.createUser) {
         throw new BadRequestException(

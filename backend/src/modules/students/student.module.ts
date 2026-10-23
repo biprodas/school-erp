@@ -1,3 +1,4 @@
+import { PlanModule } from '~/modules/plans/plan.module';
 import { Module } from '@nestjs/common';
 import { RbacModule } from '~/modules/rbac/rbac.module';
 import { UserModule } from '~/modules/users/user.module';
@@ -21,7 +22,7 @@ import { StudentNoteRepository } from './repositories/student-note.repository';
 import { StudentRepository } from './repositories/student.repository';
 
 @Module({
-  imports: [RbacModule, UserModule],
+  imports: [RbacModule, UserModule, PlanModule],
   controllers: [
     StudentController,
     StudentAddressController,

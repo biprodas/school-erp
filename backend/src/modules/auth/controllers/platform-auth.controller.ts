@@ -23,7 +23,7 @@ import { ResetPasswordDto } from '../dto/reset-password.dto';
 import { VerifyEmailDto } from '../dto/verify-email.dto';
 import { ResendVerificationDto } from '../dto/resend-verification.dto';
 import { ChangePasswordDto } from '../dto/change-password.dto';
-import { IssueHandoffDto } from '../dto/handoff.dto';
+import { ExchangeHandoffDto, IssueHandoffDto } from '../dto/handoff.dto';
 import { PlatformAuthService } from '../services/platform-auth.service';
 import { ResponseMessage } from '~/common/decorators/response.decorators';
 import { AllowPendingPasswordChange } from '~/common/auth/password-change';
@@ -179,6 +179,21 @@ export class PlatformAuthController {
     @Body() dto: IssueHandoffDto,
   ) {
     return this.platformAuthService.issueHandoff(ctx.userId!, dto.orgId);
+  }
+
+  /**
+   * Exchange a platform handoff code (Google sign-in on the admin host)
+   * for a platform session.
+   */
+  @Post('handoff/exchange')
+  @HttpCode(200)
+  @Throttle(AUTH_THROTTLE)
+  @ResponseMessage('User logged in.')
+  exchangeHandoff(
+    @Body() dto: ExchangeHandoffDto,
+    @Client() client: ClientInfo,
+  ) {
+    return this.platformAuthService.exchangePlatformHandoff(dto.code, client);
   }
 
   @Get('me')

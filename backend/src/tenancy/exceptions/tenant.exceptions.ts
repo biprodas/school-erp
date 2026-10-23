@@ -36,3 +36,21 @@ export class TenantInactiveException extends HttpException {
     );
   }
 }
+
+/**
+ * The slug is a school's old address (renamed within the last 12 months).
+ * `slug` is the current one; clients move to that host.
+ */
+export class TenantMovedException extends HttpException {
+  constructor(oldSlug: string, slug: string) {
+    super(
+      {
+        message: `Tenant "${oldSlug}" has moved to "${slug}"`,
+        error: 'Tenant Moved',
+        code: 'TENANT_MOVED',
+        slug,
+      },
+      HttpStatus.GONE,
+    );
+  }
+}

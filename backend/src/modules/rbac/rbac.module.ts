@@ -1,3 +1,4 @@
+import { PlanModule } from '~/modules/plans/plan.module';
 import { Module } from '@nestjs/common';
 import { RoleController } from './controllers/role.controller';
 import { PermissionController } from './controllers/permission.controller';
@@ -17,6 +18,7 @@ import { RbacSeederService } from './services/rbac-seeder.service';
  * in UserModule.
  */
 @Module({
+  imports: [PlanModule],
   controllers: [RoleController, PermissionController],
   providers: [
     RoleService,

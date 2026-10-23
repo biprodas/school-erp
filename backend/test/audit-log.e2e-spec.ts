@@ -7,6 +7,7 @@ import { getDataSourceToken } from '@nestjs/typeorm';
 import request from 'supertest';
 import type { App } from 'supertest/types';
 import { DataSource, QueryRunner } from 'typeorm';
+import { planId } from './support/plans';
 import { AppModule } from 'src/app.module';
 import { configureApp } from 'src/app.setup';
 import { Organization } from '~/modules/organizations/entities/organization.entity';
@@ -93,6 +94,8 @@ describe('Audit log (e2e)', () => {
     tenantPool = app.get<DataSource>(TENANT_POOL_DATASOURCE);
     jwt = new JwtService({ secret: process.env.JWT_SECRET });
 
+    const standardPlanId = await planId(rootDs);
+
     const orgs = rootDs.getRepository(Organization);
     [orgA, orgB] = await orgs.save(
       ['a', 'b'].map((x) =>
@@ -100,6 +103,7 @@ describe('Audit log (e2e)', () => {
           name: `E2E Audit ${x.toUpperCase()} ${runId}`,
           slug: `e2e-audit-${x}-${runId}`,
           status: OrganizationStatus.ACTIVE,
+          planId: standardPlanId,
         }),
       ),
     );

@@ -1,3 +1,6 @@
+import { Organization } from '~/modules/organizations/entities/organization.entity';
+import { getRepositoryToken } from '@nestjs/typeorm';
+import { IdentityService } from './identity.service';
 import {
   BadRequestException,
   ForbiddenException,
@@ -83,6 +86,14 @@ describe('AuthService activation', () => {
         { provide: SessionService, useValue: sessions },
         { provide: MailService, useValue: {} },
         { provide: JwtService, useValue: { sign: () => 'jwt' } },
+        {
+          provide: IdentityService,
+          useValue: { list: () => Promise.resolve([]) },
+        },
+        {
+          provide: getRepositoryToken(Organization),
+          useValue: { findOne: () => Promise.resolve(null) },
+        },
         { provide: AuditService, useValue: { record: jest.fn() } },
         { provide: REQUEST, useValue: { orgId: 'org-1', orgSlug: 'acme' } },
       ],

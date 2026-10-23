@@ -158,6 +158,9 @@ export const PERMISSIONS = {
   SETTINGS_READ: 'settings:read',
   SETTINGS_UPDATE: 'settings:update',
 
+  // Onboarding checklist and setup templates (PRD 6.2)
+  ONBOARDING_MANAGE: 'onboarding:manage',
+
   // Guardian/student portal (the /portal endpoints, M7)
   PORTAL_ACCESS: 'portal:access',
 } as const;

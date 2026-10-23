@@ -157,6 +157,17 @@ export const envValidationSchema = Joi.object({
       then: Joi.required(),
       otherwise: Joi.optional(),
     }),
+  // Google sign-in (optional; off until both are set). The callback is
+  // `${APP_URL}/api/oauth/google/callback` unless GOOGLE_REDIRECT_URI is set.
+  GOOGLE_CLIENT_ID: Joi.string().allow('').optional(),
+  GOOGLE_CLIENT_SECRET: Joi.string()
+    .allow('')
+    .optional()
+    .when('GOOGLE_CLIENT_ID', {
+      is: Joi.string().min(1).required(),
+      then: Joi.string().min(1).required(),
+    }),
+  GOOGLE_REDIRECT_URI: Joi.string().uri().optional(),
   FIELD_ENCRYPTION_OLD_KEYS: Joi.string()
     .pattern(new RegExp(`^${FIELD_KEY_SOURCE}(,${FIELD_KEY_SOURCE})*$`))
     .optional(),

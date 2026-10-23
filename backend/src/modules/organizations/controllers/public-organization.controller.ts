@@ -57,6 +57,11 @@ export class PublicOrganizationController {
     return { allowed: true };
   }
 
+  /**
+   * Resolves a slug. For a school's old slug (renamed within 12 months) the
+   * answer carries the current `slug` and `movedFrom`, so the frontend
+   * redirects to the new host.
+   */
   @Get('by-slug')
   @ResponseMessage('Organization resolved')
   async bySlug(@Query('slug') slug?: string) {
@@ -64,11 +69,17 @@ export class PublicOrganizationController {
       throw new BadRequestException('slug query parameter is required');
     }
 
-    const organization = await this.organizationService.findBySlug(slug);
+    const organization =
+      (await this.organizationService.findBySlug(slug)) ??
+      (await this.organizationService.findSlugRedirect(slug));
     if (!organization || !isOperationalOrganization(organization.status)) {
       throw new NotFoundException('No active organization for this slug');
     }
 
-    return { slug: organization.slug, name: organization.name };
+    return {
+      slug: organization.slug,
+      name: organization.name,
+      ...(organization.slug !== slug ? { movedFrom: slug } : {}),
+    };
   }
 }

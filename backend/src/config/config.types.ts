@@ -9,6 +9,7 @@ import type { DomainsConfig } from './domains.config';
 import type { QueueConfig } from './queue.config';
 import type { StorageConfig } from './storage.config';
 import type { PdfConfig } from './pdf.config';
+import type { GoogleConfig } from './google.config';
 
 /** Combined shape of all registered namespaces (matches `configLoaders`). */
 export interface RootConfig {
@@ -23,6 +24,7 @@ export interface RootConfig {
   queue: QueueConfig;
   storage: StorageConfig;
   pdf: PdfConfig;
+  google: GoogleConfig;
 }
 
 export type {
@@ -37,4 +39,5 @@ export type {
   QueueConfig,
   StorageConfig,
   PdfConfig,
+  GoogleConfig,
 };

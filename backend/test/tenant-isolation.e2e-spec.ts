@@ -180,10 +180,18 @@ describe('Tenant isolation (e2e) [tenant-isolation]', () => {
         null,
         (runner) =>
           runner.query(
+            // `migrations` only exists in a migrated database (this one is
+            // built by DB_SYNC), so look it up with to_regclass.
             `SELECT has_table_privilege('public.departments', 'DELETE') AS departments,
                     has_table_privilege('public.users', 'UPDATE') AS users,
                     has_table_privilege('public.organizations', 'SELECT') AS organizations,
-                    has_table_privilege('public.migrations', 'SELECT') AS migrations`,
+                    has_table_privilege('public.plans', 'SELECT') AS plans,
+                    has_table_privilege('public.organization_slug_history', 'SELECT') AS slug_history,
+                    has_table_privilege('public.signup_requests', 'SELECT') AS signup_requests,
+                    has_table_privilege('public.user_identities', 'SELECT') AS user_identities,
+                    has_table_privilege('public.oauth_states', 'SELECT') AS oauth_states,
+                    has_table_privilege('public.platform_audit_logs', 'SELECT') AS platform_audit_logs,
+                    coalesce(has_table_privilege(to_regclass('public.migrations'), 'SELECT'), false) AS migrations`,
           ) as Promise<Record<string, boolean>[]>,
       );
 
@@ -191,6 +199,12 @@ describe('Tenant isolation (e2e) [tenant-isolation]', () => {
         departments: true,
         users: true,
         organizations: false,
+        plans: false,
+        slug_history: false,
+        signup_requests: false,
+        user_identities: false,
+        oauth_states: false,
+        platform_audit_logs: false,
         migrations: false,
       });
     });

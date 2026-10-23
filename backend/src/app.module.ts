@@ -45,6 +45,11 @@ import { TenancyModule } from '~/tenancy/tenancy.module';
 import { RequestContextModule } from '~/shared/request-context/request-context.module';
 import { AuditModule } from '~/modules/audit/audit.module';
 import { SettingsModule } from '~/modules/settings/settings.module';
+import { PlanModule } from '~/modules/plans/plan.module';
+import { SignupModule } from '~/modules/signup/signup.module';
+import { OnboardingModule } from '~/modules/onboarding/onboarding.module';
+import { OAuthModule } from '~/modules/oauth/oauth.module';
+import { HostsModule } from '~/shared/hosts/app-hosts';
 
 const nodeEnv = process.env.NODE_ENV ?? 'development';
 const envFilePath = ['.env', `.env.${nodeEnv}`];
@@ -80,6 +85,7 @@ const envFilePath = ['.env', `.env.${nodeEnv}`];
     DatabaseModule,
     HealthModule,
     MailModule,
+    HostsModule,
     QueueModule,
     StorageModule,
     PdfModule,
@@ -111,6 +117,10 @@ const envFilePath = ['.env', `.env.${nodeEnv}`];
     IdempotencyModule,
     AuditModule,
     SettingsModule,
+    PlanModule,
+    SignupModule,
+    OnboardingModule,
+    OAuthModule,
   ],
   controllers: [AppController],
   providers: [
@@ -144,6 +154,10 @@ export class AppModule {
         { path: 'platform/users/*path', method: RequestMethod.ALL },
         { path: 'platform/audit-logs', method: RequestMethod.ALL },
         { path: 'platform/audit-logs/*path', method: RequestMethod.ALL },
+        { path: 'platform/plans', method: RequestMethod.ALL },
+        { path: 'platform/plans/*path', method: RequestMethod.ALL },
+        { path: 'oauth', method: RequestMethod.ALL },
+        { path: 'oauth/*path', method: RequestMethod.ALL },
         { path: 'public', method: RequestMethod.ALL },
         { path: 'public/*path', method: RequestMethod.ALL },
         { path: 'dev/mail', method: RequestMethod.ALL },

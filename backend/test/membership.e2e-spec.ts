@@ -1,407 +1,402 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { ACTIVE_SESSIONS, TEST_SESSION_ID } from './support/sessions';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
-import request from 'supertest';
-import { App } from 'supertest/types';
-import { JwtModule, JwtService } from '@nestjs/jwt';
-import { PassportModule } from '@nestjs/passport';
-import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
-import { MembershipController } from '~/modules/memberships/controllers/membership.controller';
-import { MembershipService } from '~/modules/memberships/services/membership.service';
+import { randomUUID } from 'crypto';
+import { Like } from 'typeorm';
+import { Organization } from '~/modules/organizations/entities/organization.entity';
+import { OrganizationStatus } from '~/modules/organizations/enums/organization-status.enum';
 import { Membership } from '~/modules/memberships/entities/membership.entity';
 import { MembershipRole } from '~/modules/memberships/enums/membership-role.enum';
-import { OrganizationService } from '~/modules/organizations/services/organization.service';
-import { UserService } from '~/modules/users/services/user.service';
-import { PlatformJwtStrategy } from '~/modules/auth/strategies/platform-jwt.strategy';
+import { MembershipStatus } from '~/modules/memberships/enums/membership-status.enum';
+import { User } from '~/modules/users/entities/user.entity';
 import { UserStatus } from '~/modules/users/enums/user-status.enum';
-import { ConfigService } from '@nestjs/config';
-import { OwnerProvisioningService } from '~/modules/auth/services/owner-provisioning.service';
-import { Reflector } from '@nestjs/core';
-import { ResponseEnvelopeInterceptor } from '~/common/interceptors/response-envelope.interceptor';
+import { PlatformRole } from '~/modules/users/enums/platform-role.enum';
+import { PlatformAuditLog } from '~/modules/audit/entities/platform-audit-log.entity';
+import { SessionService } from '~/modules/auth/services/session.service';
+import { bootApp, data, type E2eApp } from './support/app';
 
-const JWT_SECRET = 'test-secret-key-for-e2e-testing-32chars!';
+interface MembershipBody {
+  id: string;
+  userId: string;
+  orgId: string;
+  role: MembershipRole;
+  isAdmin: boolean;
+  status: MembershipStatus;
+  activation?: { token: string; orgSlug: string } | null;
+}
 
-// Valid v4 UUIDs for testing
-const ADMIN_ID = 'f8507227-7441-42b4-ba59-9b5d08e8b393';
-const USER_ID = '32097309-2d93-492a-888d-ffb47743b86d';
-const OWNER_ID = '9b54cc23-ace4-4184-a6f5-781d34eea07a';
-const TARGET_USER_ID = '61cc357b-0e97-4091-91d3-f70b2f2578cd';
-const TENANT_ID = '357c9a54-0107-40e6-b7c3-39885caa2b93';
-const MEMBERSHIP_ID = '227adcb7-da65-47a0-8593-5fcd2399d569';
+/**
+ * Platform membership management (`/memberships`, platform realm): a
+ * super-admin manages any school's members; a school's OWNER manages its
+ * own, but never the owner role; anyone else sees only their own
+ * memberships. Every change is in the platform audit log.
+ */
+describe('Memberships (e2e)', () => {
+  let e: E2eApp;
+  const runId = randomUUID().slice(0, 8);
+  let org: Organization;
+  let admin: User;
+  let owner: User;
+  let member: User;
+  let target: User;
+  let ownerMembership: Membership;
+  let memberMembership: Membership;
+  const tokens: Record<'admin' | 'owner' | 'member', string> = {
+    admin: '',
+    owner: '',
+    member: '',
+  };
 
-const makeMembership = (overrides: Partial<Membership> = {}): Membership =>
-  ({
-    id: MEMBERSHIP_ID,
-    userId: USER_ID,
-    orgId: TENANT_ID,
-    role: MembershipRole.MEMBER,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    ...overrides,
-  }) as Membership;
+  const as = (who: keyof typeof tokens) => {
+    const auth = (r: ReturnType<ReturnType<E2eApp['http']>['get']>) =>
+      r.set('Authorization', `Bearer ${tokens[who]}`);
+    return {
+      get: (url: string) => auth(e.http().get(url)),
+      post: (url: string, body: object) => auth(e.http().post(url)).send(body),
+      patch: (url: string, body: object) =>
+        auth(e.http().patch(url)).send(body),
+      delete: (url: string) => auth(e.http().delete(url)),
+    };
+  };
 
-describe('Membership E2E', () => {
-  let app: INestApplication<App>;
-  let jwtService: JwtService;
-  let membershipRepo: Record<string, jest.Mock>;
-  let tenantServiceMock: Record<string, jest.Mock>;
-  let userServiceMock: Record<string, jest.Mock>;
-
-  const adminToken = () =>
-    jwtService.sign({
-      sub: ADMIN_ID,
-      status: UserStatus.ACTIVE,
-      isAdmin: true,
-      sid: TEST_SESSION_ID,
+  /** A plain member of the school, for tests that change or remove one. */
+  const addMember = async (
+    role = MembershipRole.MEMBER,
+  ): Promise<Membership> => {
+    const users = e.rootDs.getRepository(User);
+    const user = await users.save(
+      users.create({
+        email: `mem-extra-${randomUUID().slice(0, 8)}-${runId}@e2e.test`,
+        name: 'Extra',
+        password: 'not-used',
+        status: UserStatus.ACTIVE,
+      }),
+    );
+    return e.rootDs.getRepository(Membership).save({
+      orgId: org.id,
+      userId: user.id,
+      role,
+      isAdmin: role !== MembershipRole.MEMBER,
+      status: MembershipStatus.ACTIVE,
     });
+  };
 
-  const userToken = (id = USER_ID) =>
-    jwtService.sign({
-      sub: id,
-      status: UserStatus.ACTIVE,
-      isAdmin: false,
-      sid: TEST_SESSION_ID,
+  const auditActions = async (entityId: string) =>
+    (
+      await e.rootDs.getRepository(PlatformAuditLog).find({
+        where: { entityId },
+        order: { createdAt: 'ASC' },
+      })
+    ).map((r) => r.action);
+
+  beforeAll(async () => {
+    e = await bootApp();
+    org = await e.rootDs.getRepository(Organization).save({
+      name: `E2E Memberships ${runId}`,
+      slug: `e2e-mem-${runId}`,
+      status: OrganizationStatus.ACTIVE,
     });
-
-  beforeEach(async () => {
-    membershipRepo = {
-      findOne: jest.fn(),
-      find: jest.fn(),
-      create: jest.fn((data: object) => ({ id: MEMBERSHIP_ID, ...data })),
-      save: jest.fn((entity) => Promise.resolve(entity)),
-      delete: jest.fn(),
-    };
-
-    tenantServiceMock = {
-      findById: jest.fn().mockResolvedValue({ id: TENANT_ID }),
-    };
-
-    userServiceMock = {
-      findById: jest.fn().mockResolvedValue({ id: TARGET_USER_ID }),
-    };
-
-    const module: TestingModule = await Test.createTestingModule({
-      imports: [
-        PassportModule,
-        JwtModule.register({
-          secret: JWT_SECRET,
-          signOptions: { expiresIn: '1h' },
+    const users = e.rootDs.getRepository(User);
+    [admin, owner, member, target] = await users.save(
+      ['admin', 'owner', 'member', 'target'].map((x) =>
+        users.create({
+          email: `mem-${x}-${runId}@e2e.test`,
+          name: x,
+          password: 'not-used',
+          status: UserStatus.ACTIVE,
+          isAdmin: x === 'admin',
+          platformRole:
+            x === 'admin' ? PlatformRole.SUPER_ADMIN : PlatformRole.USER,
         }),
-      ],
-      controllers: [MembershipController],
-      providers: [
-        MembershipService,
-        PlatformJwtStrategy,
-        ACTIVE_SESSIONS,
-        { provide: getRepositoryToken(Membership), useValue: membershipRepo },
-        { provide: OrganizationService, useValue: tenantServiceMock },
-        { provide: UserService, useValue: userServiceMock },
-        {
-          provide: getDataSourceToken(),
-          useValue: {
-            transaction: jest.fn((cb: (m: object) => unknown) =>
-              Promise.resolve(
-                cb({ delete: jest.fn(), findOneOrFail: jest.fn() }),
-              ),
-            ),
-          },
-        },
-        {
-          provide: OwnerProvisioningService,
-          useValue: {
-            provisionOwner: jest.fn().mockResolvedValue({ token: 'tok' }),
-            sendActivationEmail: jest.fn(),
-          },
-        },
-        {
-          provide: ConfigService,
-          useValue: {
-            get: (key: string) => (key === 'jwt.secret' ? JWT_SECRET : null),
-          },
-        },
-      ],
-    }).compile();
-
-    app = module.createNestApplication();
-    app.useGlobalPipes(
-      new ValidationPipe({ whitelist: true, transform: true }),
+      ),
     );
-    app.useGlobalInterceptors(
-      new ResponseEnvelopeInterceptor(app.get(Reflector)),
-    );
-    await app.init();
-
-    jwtService = module.get<JwtService>(JwtService);
+    const memberships = e.rootDs.getRepository(Membership);
+    [ownerMembership, memberMembership] = await memberships.save([
+      {
+        orgId: org.id,
+        userId: owner.id,
+        role: MembershipRole.OWNER,
+        isAdmin: true,
+        status: MembershipStatus.ACTIVE,
+      },
+      {
+        orgId: org.id,
+        userId: member.id,
+        role: MembershipRole.MEMBER,
+        isAdmin: false,
+        status: MembershipStatus.ACTIVE,
+      },
+    ]);
+    tokens.admin = await e.platformToken(admin.id, true);
+    tokens.owner = await e.platformToken(owner.id);
+    tokens.member = await e.platformToken(member.id);
   });
 
-  afterEach(async () => {
-    await app.close();
+  afterAll(async () => {
+    if (e?.rootDs.isInitialized) {
+      if (org?.id) await e.rootDs.getRepository(Organization).delete(org.id);
+      await e.rootDs
+        .getRepository(User)
+        .delete({ email: Like(`mem-%-${runId}@e2e.test`) });
+    }
+    await e?.close();
   });
 
-  // ===================== Authentication =====================
-
-  describe('Authentication', () => {
-    it('returns 401 without token', () => {
-      return request(app.getHttpServer()).get('/memberships').expect(401);
+  describe('authentication', () => {
+    it('returns 401 without a token', async () => {
+      await e.http().get('/api/memberships').expect(401);
     });
 
-    it('returns 401 with invalid token', () => {
-      return request(app.getHttpServer())
-        .get('/memberships')
+    it('returns 401 with an invalid token', async () => {
+      await e
+        .http()
+        .get('/api/memberships')
         .set('Authorization', 'Bearer invalid-token')
+        .expect(401);
+    });
+
+    it('refuses a school token on the platform route', async () => {
+      const { sessionId } = await e.app
+        .get(SessionService)
+        .start(owner.id, org.id);
+      const schoolToken = e.jwt.sign({
+        sub: owner.id,
+        orgId: org.id,
+        isAdmin: true,
+        sid: sessionId,
+      });
+      await e
+        .http()
+        .get('/api/memberships')
+        .set('Authorization', `Bearer ${schoolToken}`)
         .expect(401);
     });
   });
 
-  // ===================== GET /memberships =====================
-
   describe('GET /memberships', () => {
-    it('ADMIN sees all memberships', async () => {
-      membershipRepo.find.mockResolvedValue([makeMembership()]);
-
-      const res = await request(app.getHttpServer())
-        .get('/memberships')
-        .set('Authorization', `Bearer ${adminToken()}`)
-        .expect(200);
-
-      expect((res.body as { data: unknown[] }).data).toHaveLength(1);
+    it('lets a super-admin filter any school', async () => {
+      const rows = data<MembershipBody[]>(
+        await as('admin').get(`/api/memberships?orgId=${org.id}`).expect(200),
+      );
+      expect(rows.map((m) => m.userId)).toEqual(
+        expect.arrayContaining([owner.id, member.id]),
+      );
     });
 
-    it('Regular USER sees only own memberships', async () => {
-      membershipRepo.find.mockResolvedValue([
-        makeMembership({ userId: USER_ID }),
-      ]);
-
-      const res = await request(app.getHttpServer())
-        .get('/memberships')
-        .set('Authorization', `Bearer ${userToken()}`)
-        .expect(200);
-
-      expect((res.body as { data: unknown[] }).data).toHaveLength(1);
+    it('shows anyone else only their own memberships', async () => {
+      const rows = data<MembershipBody[]>(
+        await as('member').get(`/api/memberships?orgId=${org.id}`).expect(200),
+      );
+      expect(rows.map((m) => m.id)).toEqual([memberMembership.id]);
     });
 
-    it('Regular USER querying another userId gets 403', () => {
-      return request(app.getHttpServer())
-        .get(`/memberships?userId=${TARGET_USER_ID}`)
-        .set('Authorization', `Bearer ${userToken()}`)
+    it("refuses another user's memberships", async () => {
+      await as('member')
+        .get(`/api/memberships?userId=${target.id}`)
         .expect(403);
     });
   });
-
-  // ===================== GET /memberships/organization/:orgId =====================
 
   describe('GET /memberships/organization/:orgId', () => {
-    it('ADMIN can list tenant memberships', async () => {
-      membershipRepo.find.mockResolvedValue([makeMembership()]);
-
-      await request(app.getHttpServer())
-        .get(`/memberships/organization/${TENANT_ID}`)
-        .set('Authorization', `Bearer ${adminToken()}`)
-        .expect(200);
+    it('lists a school for a super-admin and for its owner', async () => {
+      for (const who of ['admin', 'owner'] as const) {
+        const rows = data<MembershipBody[]>(
+          await as(who)
+            .get(`/api/memberships/organization/${org.id}`)
+            .expect(200),
+        );
+        expect(rows.length).toBeGreaterThanOrEqual(2);
+      }
     });
 
-    it('Tenant OWNER can list their tenant memberships', async () => {
-      membershipRepo.findOne.mockResolvedValue(
-        makeMembership({ userId: OWNER_ID, role: MembershipRole.OWNER }),
+    it('refuses a plain member', async () => {
+      await as('member')
+        .get(`/api/memberships/organization/${org.id}`)
+        .expect(403);
+    });
+
+    it('answers 404 for an unknown school', async () => {
+      await as('admin')
+        .get(`/api/memberships/organization/${randomUUID()}`)
+        .expect(404);
+    });
+  });
+
+  describe('GET /memberships/user/:userId and /me', () => {
+    it('lets a user read their own', async () => {
+      const own = data<MembershipBody[]>(
+        await as('member')
+          .get(`/api/memberships/user/${member.id}`)
+          .expect(200),
       );
-      membershipRepo.find.mockResolvedValue([makeMembership()]);
-
-      await request(app.getHttpServer())
-        .get(`/memberships/organization/${TENANT_ID}`)
-        .set('Authorization', `Bearer ${userToken(OWNER_ID)}`)
-        .expect(200);
+      expect(own.map((m) => m.id)).toEqual([memberMembership.id]);
+      const me = data<MembershipBody[]>(
+        await as('member').get('/api/memberships/me').expect(200),
+      );
+      expect(me.map((m) => m.id)).toEqual([memberMembership.id]);
     });
 
-    it('Regular USER gets 403', async () => {
-      membershipRepo.findOne.mockResolvedValue(null);
-
-      await request(app.getHttpServer())
-        .get(`/memberships/organization/${TENANT_ID}`)
-        .set('Authorization', `Bearer ${userToken()}`)
-        .expect(403);
-    });
-  });
-
-  // ===================== GET /memberships/user/:userId =====================
-
-  describe('GET /memberships/user/:userId', () => {
-    it('User can query self', async () => {
-      membershipRepo.find.mockResolvedValue([
-        makeMembership({ userId: USER_ID }),
-      ]);
-
-      await request(app.getHttpServer())
-        .get(`/memberships/user/${USER_ID}`)
-        .set('Authorization', `Bearer ${userToken()}`)
-        .expect(200);
-    });
-
-    it('User cannot query another user', () => {
-      return request(app.getHttpServer())
-        .get(`/memberships/user/${TARGET_USER_ID}`)
-        .set('Authorization', `Bearer ${userToken()}`)
-        .expect(403);
-    });
-
-    it('ADMIN can query any user', async () => {
-      userServiceMock.findById.mockResolvedValue({ id: TARGET_USER_ID });
-      membershipRepo.find.mockResolvedValue([]);
-
-      await request(app.getHttpServer())
-        .get(`/memberships/user/${TARGET_USER_ID}`)
-        .set('Authorization', `Bearer ${adminToken()}`)
-        .expect(200);
+    it("refuses another user's, except to a super-admin", async () => {
+      await as('member').get(`/api/memberships/user/${target.id}`).expect(403);
+      expect(
+        data<unknown[]>(
+          await as('admin')
+            .get(`/api/memberships/user/${target.id}`)
+            .expect(200),
+        ),
+      ).toEqual([]);
     });
   });
-
-  // ===================== POST /memberships =====================
 
   describe('POST /memberships', () => {
-    const dto = {
-      userId: TARGET_USER_ID,
-      orgId: TENANT_ID,
-      role: MembershipRole.MEMBER,
-    };
-
-    it('ADMIN can create membership', async () => {
-      membershipRepo.findOne.mockResolvedValue(null);
-
-      await request(app.getHttpServer())
-        .post('/memberships')
-        .set('Authorization', `Bearer ${adminToken()}`)
-        .send(dto)
+    it('lets the owner add a member, but not twice', async () => {
+      const res = await as('owner')
+        .post('/api/memberships', {
+          userId: target.id,
+          orgId: org.id,
+          role: MembershipRole.MEMBER,
+        })
         .expect(201);
+      const created = data<MembershipBody>(res);
+      expect(created).toMatchObject({
+        userId: target.id,
+        role: MembershipRole.MEMBER,
+        isAdmin: false,
+        activation: null,
+      });
+      expect(await auditActions(created.id)).toEqual(['membership.created']);
+
+      await as('admin')
+        .post('/api/memberships', { userId: target.id, orgId: org.id })
+        .expect(409);
     });
 
-    it('Tenant OWNER can create membership for their tenant', async () => {
-      membershipRepo.findOne
-        .mockResolvedValueOnce(
-          makeMembership({ userId: OWNER_ID, role: MembershipRole.OWNER }),
-        )
-        .mockResolvedValueOnce(null);
-
-      await request(app.getHttpServer())
-        .post('/memberships')
-        .set('Authorization', `Bearer ${userToken(OWNER_ID)}`)
-        .send(dto)
-        .expect(201);
-    });
-
-    it('Regular USER gets 403', async () => {
-      membershipRepo.findOne.mockResolvedValue(null);
-
-      await request(app.getHttpServer())
-        .post('/memberships')
-        .set('Authorization', `Bearer ${userToken()}`)
-        .send(dto)
+    it('refuses a plain member, and an owner creating an owner', async () => {
+      const body = {
+        userId: admin.id,
+        orgId: org.id,
+        role: MembershipRole.MEMBER,
+      };
+      await as('member').post('/api/memberships', body).expect(403);
+      await as('owner')
+        .post('/api/memberships', { ...body, role: MembershipRole.OWNER })
         .expect(403);
     });
 
-    it('Tenant OWNER cannot create OWNER membership', async () => {
-      membershipRepo.findOne.mockResolvedValue(
-        makeMembership({ userId: OWNER_ID, role: MembershipRole.OWNER }),
+    it('lets a super-admin add an admin; a second owner is refused', async () => {
+      const users = e.rootDs.getRepository(User);
+      const newcomer = await users.save(
+        users.create({
+          email: `mem-newcomer-${runId}@e2e.test`,
+          name: 'Newcomer',
+          password: 'not-used',
+          status: UserStatus.ACTIVE,
+        }),
       );
+      const created = data<MembershipBody>(
+        await as('admin')
+          .post('/api/memberships', {
+            userId: newcomer.id,
+            orgId: org.id,
+            role: MembershipRole.ADMIN,
+          })
+          .expect(201),
+      );
+      expect(created).toMatchObject({
+        role: MembershipRole.ADMIN,
+        isAdmin: true,
+      });
 
-      await request(app.getHttpServer())
-        .post('/memberships')
-        .set('Authorization', `Bearer ${userToken(OWNER_ID)}`)
-        .send({ ...dto, role: MembershipRole.OWNER })
-        .expect(403);
+      // The school already has an owner: ownership moves by transfer only.
+      await e.rootDs.getRepository(Membership).delete(created.id);
+      await as('admin')
+        .post('/api/memberships', {
+          userId: newcomer.id,
+          orgId: org.id,
+          role: MembershipRole.OWNER,
+        })
+        .expect(409);
+    });
+
+    it('answers 404 for an unknown school or user', async () => {
+      await as('admin')
+        .post('/api/memberships', { userId: target.id, orgId: randomUUID() })
+        .expect(404);
+      await as('admin')
+        .post('/api/memberships', { userId: randomUUID(), orgId: org.id })
+        .expect(404);
     });
   });
-
-  // ===================== PATCH /memberships/:id =====================
 
   describe('PATCH /memberships/:id', () => {
-    it('ADMIN can update role to OWNER', async () => {
-      membershipRepo.findOne
-        .mockResolvedValueOnce(makeMembership({ role: MembershipRole.MEMBER }))
-        // no other OWNER in the organization
-        .mockResolvedValueOnce(null);
-      membershipRepo.save.mockImplementation((entity) =>
-        Promise.resolve(entity),
+    it('lets the owner make a member an admin, audited', async () => {
+      const m = await addMember();
+      const updated = data<MembershipBody>(
+        await as('owner')
+          .patch(`/api/memberships/${m.id}`, { role: MembershipRole.ADMIN })
+          .expect(200),
       );
+      expect(updated).toMatchObject({
+        role: MembershipRole.ADMIN,
+        isAdmin: true,
+      });
+      expect(await auditActions(m.id)).toEqual(['membership.updated']);
+    });
 
-      await request(app.getHttpServer())
-        .patch(`/memberships/${MEMBERSHIP_ID}`)
-        .set('Authorization', `Bearer ${adminToken()}`)
-        .send({ role: MembershipRole.OWNER })
+    it('signs a demoted admin out of the school', async () => {
+      const m = await addMember(MembershipRole.ADMIN);
+      const sessions = e.app.get(SessionService);
+      const { sessionId } = await sessions.start(m.userId, org.id);
+
+      await as('owner')
+        .patch(`/api/memberships/${m.id}`, { role: MembershipRole.MEMBER })
         .expect(200);
+      expect(await sessions.isActive(sessionId)).toBe(false);
     });
 
-    it('Tenant OWNER cannot promote to OWNER', async () => {
-      membershipRepo.findOne
-        .mockResolvedValueOnce(
-          makeMembership({ role: MembershipRole.MEMBER, orgId: TENANT_ID }),
-        )
-        .mockResolvedValueOnce(
-          makeMembership({
-            userId: OWNER_ID,
-            role: MembershipRole.OWNER,
-            orgId: TENANT_ID,
-          }),
-        );
-
-      await request(app.getHttpServer())
-        .patch(`/memberships/${MEMBERSHIP_ID}`)
-        .set('Authorization', `Bearer ${userToken(OWNER_ID)}`)
-        .send({ role: MembershipRole.OWNER })
+    it('keeps the owner role away from owners and plain members', async () => {
+      const m = await addMember();
+      await as('owner')
+        .patch(`/api/memberships/${m.id}`, { role: MembershipRole.OWNER })
+        .expect(403);
+      await as('owner')
+        .patch(`/api/memberships/${ownerMembership.id}`, {
+          role: MembershipRole.ADMIN,
+        })
+        .expect(403);
+      await as('member')
+        .patch(`/api/memberships/${m.id}`, { role: MembershipRole.ADMIN })
         .expect(403);
     });
 
-    it('Non-owner gets 403', async () => {
-      membershipRepo.findOne
-        .mockResolvedValueOnce(makeMembership({ orgId: TENANT_ID }))
-        .mockResolvedValueOnce(null);
-
-      await request(app.getHttpServer())
-        .patch(`/memberships/${MEMBERSHIP_ID}`)
-        .set('Authorization', `Bearer ${userToken()}`)
-        .send({ role: MembershipRole.ADMIN })
-        .expect(403);
+    it('refuses a second owner even for a super-admin', async () => {
+      const m = await addMember();
+      await as('admin')
+        .patch(`/api/memberships/${m.id}`, { role: MembershipRole.OWNER })
+        .expect(409);
     });
   });
 
-  // ===================== DELETE /memberships/:id =====================
-
   describe('DELETE /memberships/:id', () => {
-    it('ADMIN can delete any membership', async () => {
-      membershipRepo.findOne.mockResolvedValue(makeMembership());
+    it('lets the owner remove a member and ends their school sessions', async () => {
+      const m = await addMember();
+      const sessions = e.app.get(SessionService);
+      const { sessionId } = await sessions.start(m.userId, org.id);
 
-      await request(app.getHttpServer())
-        .delete(`/memberships/${MEMBERSHIP_ID}`)
-        .set('Authorization', `Bearer ${adminToken()}`)
-        .expect(200);
+      await as('owner').delete(`/api/memberships/${m.id}`).expect(200);
+      expect(
+        await e.rootDs
+          .getRepository(Membership)
+          .exists({ where: { id: m.id } }),
+      ).toBe(false);
+      expect(await sessions.isActive(sessionId)).toBe(false);
+      expect(await auditActions(m.id)).toEqual(['membership.removed']);
     });
 
-    it('Tenant OWNER cannot delete OWNER membership', async () => {
-      membershipRepo.findOne
-        .mockResolvedValueOnce(
-          makeMembership({ role: MembershipRole.OWNER, orgId: TENANT_ID }),
-        )
-        .mockResolvedValueOnce(
-          makeMembership({
-            userId: OWNER_ID,
-            role: MembershipRole.OWNER,
-            orgId: TENANT_ID,
-          }),
-        );
-
-      await request(app.getHttpServer())
-        .delete(`/memberships/${MEMBERSHIP_ID}`)
-        .set('Authorization', `Bearer ${userToken(OWNER_ID)}`)
+    it("refuses removing the owner (except a super-admin) and anyone's by a plain member", async () => {
+      await as('owner')
+        .delete(`/api/memberships/${ownerMembership.id}`)
         .expect(403);
-    });
-
-    it('Non-owner gets 403', async () => {
-      membershipRepo.findOne
-        .mockResolvedValueOnce(makeMembership({ orgId: TENANT_ID }))
-        .mockResolvedValueOnce(null);
-
-      await request(app.getHttpServer())
-        .delete(`/memberships/${MEMBERSHIP_ID}`)
-        .set('Authorization', `Bearer ${userToken()}`)
-        .expect(403);
+      const m = await addMember();
+      await as('member').delete(`/api/memberships/${m.id}`).expect(403);
+      await as('admin').delete(`/api/memberships/${m.id}`).expect(200);
     });
   });
 });

@@ -1,332 +1,313 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { ACTIVE_SESSIONS, TEST_SESSION_ID } from './support/sessions';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
-import request from 'supertest';
-import { App } from 'supertest/types';
-import { JwtModule, JwtService } from '@nestjs/jwt';
-import { PassportModule } from '@nestjs/passport';
-import { getRepositoryToken, getDataSourceToken } from '@nestjs/typeorm';
-import { OrganizationController } from '~/modules/organizations/controllers/organization.controller';
-import { OrganizationService } from '~/modules/organizations/services/organization.service';
+import { randomUUID } from 'crypto';
+import { In } from 'typeorm';
 import { Organization } from '~/modules/organizations/entities/organization.entity';
-import { OrganizationDomain } from '~/modules/organizations/entities/organization-domain.entity';
+import { OrganizationStatus } from '~/modules/organizations/enums/organization-status.enum';
 import { Membership } from '~/modules/memberships/entities/membership.entity';
 import { MembershipRole } from '~/modules/memberships/enums/membership-role.enum';
-import { PlatformJwtStrategy } from '~/modules/auth/strategies/platform-jwt.strategy';
+import { MembershipStatus } from '~/modules/memberships/enums/membership-status.enum';
+import { User } from '~/modules/users/entities/user.entity';
 import { UserStatus } from '~/modules/users/enums/user-status.enum';
-import { UserService } from '~/modules/users/services/user.service';
-import { RbacSeederService } from '~/modules/rbac/services/rbac-seeder.service';
-import { OwnerProvisioningService } from '~/modules/auth/services/owner-provisioning.service';
-import { ConfigService } from '@nestjs/config';
-import { Reflector } from '@nestjs/core';
-import { ResponseEnvelopeInterceptor } from '~/common/interceptors/response-envelope.interceptor';
+import { PlatformRole } from '~/modules/users/enums/platform-role.enum';
+import { PlatformAuditLog } from '~/modules/audit/entities/platform-audit-log.entity';
+import { SessionService } from '~/modules/auth/services/session.service';
+import { bootApp, data, error, type E2eApp } from './support/app';
 
-const JWT_SECRET = 'test-secret-key-for-e2e-testing-32chars!';
+interface OrgBody {
+  id: string;
+  slug: string;
+  status: OrganizationStatus;
+  trialEndsAt: string | null;
+  plan?: { code: string } | null;
+  limitOverrides?: Record<string, number | null> | null;
+}
 
-const ADMIN_ID = 'f8507227-7441-42b4-ba59-9b5d08e8b393';
-const USER_ID = '32097309-2d93-492a-888d-ffb47743b86d';
-const OWNER_ID = '9b54cc23-ace4-4184-a6f5-781d34eea07a';
-const TENANT_ID = '357c9a54-0107-40e6-b7c3-39885caa2b93';
-const NONEXISTENT_ID = '227adcb7-da65-47a0-8593-5fcd2399d569';
+/**
+ * Platform administration (PRD 6.1 Phase 1a, backend plan 5.1): only a
+ * super-admin creates schools, changes plans, limits and trials, and each
+ * change is in the platform audit log. Plan entitlements gate school
+ * features right away.
+ */
+describe('Platform administration (e2e)', () => {
+  let e: E2eApp;
+  const runId = randomUUID().slice(0, 8);
+  let admin: User;
+  let regular: User;
+  let schoolAdmin: User;
+  let adminToken: string;
+  let userToken: string;
+  const createdOrgIds: string[] = [];
 
-const makeTenant = (overrides: Partial<Organization> = {}): Organization =>
-  ({
-    id: TENANT_ID,
-    name: 'Test Organization',
-    slug: 'test_org',
-    status: 'active',
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    ...overrides,
-  }) as Organization;
+  const asAdmin = () => ({
+    get: (url: string) =>
+      e.http().get(url).set('Authorization', `Bearer ${adminToken}`),
+    post: (url: string, body: object = {}) =>
+      e
+        .http()
+        .post(url)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send(body),
+    patch: (url: string, body: object) =>
+      e
+        .http()
+        .patch(url)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send(body),
+    put: (url: string, body: object) =>
+      e.http().put(url).set('Authorization', `Bearer ${adminToken}`).send(body),
+  });
 
-describe('Organization E2E', () => {
-  let app: INestApplication<App>;
-  let jwtService: JwtService;
-  let tenantRepo: Record<string, jest.Mock>;
-  let membershipRepo: Record<string, jest.Mock>;
+  const createSchool = async (body: object) => {
+    const res = await asAdmin().post('/api/organizations', body).expect(201);
+    const org = data<OrgBody>(res);
+    createdOrgIds.push(org.id);
+    return org;
+  };
 
-  const adminToken = () =>
-    jwtService.sign({
-      sub: ADMIN_ID,
-      status: UserStatus.ACTIVE,
+  /** A tenant token for `schoolAdmin` in `org` (a school admin there). */
+  const tenantToken = async (orgId: string) => {
+    await e.rootDs.getRepository(Membership).save({
+      orgId,
+      userId: schoolAdmin.id,
+      role: MembershipRole.ADMIN,
       isAdmin: true,
-      sid: TEST_SESSION_ID,
+      status: MembershipStatus.ACTIVE,
     });
-
-  const userToken = (id = USER_ID) =>
-    jwtService.sign({
-      sub: id,
-      status: UserStatus.ACTIVE,
-      isAdmin: false,
-      sid: TEST_SESSION_ID,
+    const { sessionId } = await e.app
+      .get(SessionService)
+      .start(schoolAdmin.id, orgId);
+    return e.jwt.sign({
+      sub: schoolAdmin.id,
+      orgId,
+      isAdmin: true,
+      sid: sessionId,
     });
+  };
 
-  beforeEach(async () => {
-    tenantRepo = {
-      findOne: jest.fn(),
-      find: jest.fn(),
-      save: jest.fn((entity) => Promise.resolve(entity)),
-      delete: jest.fn(),
-    };
-
-    membershipRepo = {
-      findOne: jest.fn(),
-      find: jest.fn(),
-      create: jest.fn((data: object) => ({ ...data })),
-      save: jest.fn((entity) => Promise.resolve(entity)),
-    };
-
-    const manager = {
-      findOne: jest.fn().mockResolvedValue(null),
-      create: jest.fn((_: unknown, data: object) => ({
-        id: TENANT_ID,
-        ...data,
-      })),
-      save: jest.fn((entity) => Promise.resolve(entity)),
-    };
-
-    const module: TestingModule = await Test.createTestingModule({
-      imports: [
-        PassportModule,
-        JwtModule.register({
-          secret: JWT_SECRET,
-          signOptions: { expiresIn: '1h' },
+  beforeAll(async () => {
+    e = await bootApp();
+    const users = e.rootDs.getRepository(User);
+    [admin, regular, schoolAdmin] = await users.save(
+      ['admin', 'regular', 'school'].map((x) =>
+        users.create({
+          email: `orgs-${x}-${runId}@e2e.test`,
+          name: x,
+          password: 'not-used',
+          status: UserStatus.ACTIVE,
+          isAdmin: x === 'admin',
+          platformRole:
+            x === 'admin' ? PlatformRole.SUPER_ADMIN : PlatformRole.USER,
         }),
-      ],
-      controllers: [OrganizationController],
-      providers: [
-        OrganizationService,
-        PlatformJwtStrategy,
-        ACTIVE_SESSIONS,
-        { provide: getRepositoryToken(Organization), useValue: tenantRepo },
-        { provide: getRepositoryToken(Membership), useValue: membershipRepo },
-        {
-          provide: getRepositoryToken(OrganizationDomain),
-          useValue: {
-            findOne: jest.fn(),
-            find: jest.fn().mockResolvedValue([]),
-          },
-        },
-        {
-          provide: getDataSourceToken(),
-          useValue: {
-            transaction: jest.fn((cb: (m: typeof manager) => unknown) =>
-              Promise.resolve(cb(manager)),
-            ),
-          },
-        },
-        {
-          provide: RbacSeederService,
-          useValue: { seedSystemRoles: jest.fn() },
-        },
-        {
-          provide: OwnerProvisioningService,
-          useValue: {
-            provisionOwner: jest.fn().mockResolvedValue({ token: 'tok' }),
-            sendActivationEmail: jest.fn(),
-          },
-        },
-        {
-          provide: UserService,
-          useValue: {
-            findById: jest.fn((_ctx, id: string) =>
-              Promise.resolve({ id, email: 'owner@test.com', name: 'Owner' }),
-            ),
-          },
-        },
-        {
-          provide: ConfigService,
-          useValue: {
-            get: (key: string) => {
-              if (key === 'jwt.secret') return JWT_SECRET;
-              if (key === 'NODE_ENV') return 'development';
-              return null;
-            },
-          },
-        },
-      ],
-    }).compile();
-
-    app = module.createNestApplication();
-    app.useGlobalPipes(
-      new ValidationPipe({ whitelist: true, transform: true }),
+      ),
     );
-    app.useGlobalInterceptors(
-      new ResponseEnvelopeInterceptor(app.get(Reflector)),
+    adminToken = await e.platformToken(admin.id, true);
+    userToken = await e.platformToken(regular.id);
+  });
+
+  afterAll(async () => {
+    if (e?.rootDs.isInitialized) {
+      if (createdOrgIds.length) {
+        await e.rootDs.getRepository(Organization).delete(createdOrgIds);
+      }
+      await e.rootDs
+        .getRepository(User)
+        .delete([admin?.id, regular?.id, schoolAdmin?.id].filter(Boolean));
+    }
+    await e?.close();
+  });
+
+  it('lets only a super-admin create a school, with a valid free slug', async () => {
+    await e
+      .http()
+      .post('/api/organizations')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ name: 'Nope', slug: `e2e-nope-${runId}` })
+      .expect(403);
+
+    const org = await createSchool({
+      name: `E2E Org ${runId}`,
+      slug: `e2e-org-${runId}`,
+      planCode: 'basic',
+      trialDays: 15,
+    });
+    expect(org.status).toBe(OrganizationStatus.TRIAL);
+    const trialDays =
+      (new Date(org.trialEndsAt!).getTime() - Date.now()) / 86_400_000;
+    expect(Math.round(trialDays)).toBe(15);
+
+    // Reserved and malformed slugs fail validation; a taken one is 409
+    // with suggestions.
+    await asAdmin()
+      .post('/api/organizations', { name: 'Reserved', slug: 'admin' })
+      .expect(400);
+    await asAdmin()
+      .post('/api/organizations', { name: 'Underscore', slug: 'acme_school' })
+      .expect(400);
+    const taken = await asAdmin()
+      .post('/api/organizations', { name: 'Taken', slug: org.slug })
+      .expect(409);
+    expect(error(taken)).toMatchObject({ code: 'SLUG_TAKEN' });
+    expect((error(taken).suggestions as string[]).length).toBeGreaterThan(0);
+  });
+
+  it('lists the school directory with filters for a super-admin only', async () => {
+    const org = await createSchool({
+      name: `E2E Directory ${runId}`,
+      slug: `e2e-dir-${runId}`,
+      planCode: 'premium',
+    });
+
+    const res = await asAdmin()
+      .get(`/api/organizations?q=${runId}&plan=premium`)
+      .expect(200);
+    const rows =
+      data<Array<OrgBody & { activeStudentCount: number; district: null }>>(
+        res,
+      );
+    expect(rows.map((r) => r.id)).toEqual([org.id]);
+    expect(rows[0]).toMatchObject({
+      plan: { code: 'premium' },
+      activeStudentCount: 0,
+    });
+    expect((res.body as { meta: { total: number } }).meta.total).toBe(1);
+
+    // Anyone else sees only their own schools (none here).
+    const mine = await e
+      .http()
+      .get('/api/organizations')
+      .set('Authorization', `Bearer ${userToken}`)
+      .expect(200);
+    expect(data<unknown[]>(mine)).toEqual([]);
+  });
+
+  it('changes plans, trials and limits (super-admin only), and the plan gates features at once', async () => {
+    const org = await createSchool({
+      name: `E2E Plans ${runId}`,
+      slug: `e2e-plans-${runId}`,
+      planCode: 'standard',
+    });
+    const token = await tenantToken(org.id);
+    const school = (method: 'get' | 'post', url: string, body?: object) =>
+      e
+        .http()
+        [method](url)
+        .set('Authorization', `Bearer ${token}`)
+        .set('x-tenant-id', org.slug)
+        .send(body);
+
+    // Not a super-admin: refused.
+    for (const [method, url, body] of [
+      ['patch', `/api/organizations/${org.id}/plan`, { planCode: 'free' }],
+      ['post', `/api/organizations/${org.id}/trial/extend`, { days: 5 }],
+      ['put', `/api/organizations/${org.id}/limits`, { students: 1 }],
+    ] as const) {
+      await e
+        .http()
+        [method](url)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send(body)
+        .expect(403);
+    }
+
+    // On Standard, custom roles work.
+    await school('post', '/api/roles', {
+      name: `Vice principal ${runId}`,
+      permissions: ['students:read'],
+    }).expect(201);
+
+    // On Free they don't, and neither do custom domains.
+    const changed = await asAdmin()
+      .patch(`/api/organizations/${org.id}/plan`, {
+        planCode: 'free',
+        addOnModules: ['transport'],
+      })
+      .expect(200);
+    expect(data<OrgBody>(changed).plan).toMatchObject({ code: 'free' });
+    for (const [url, body] of [
+      ['/api/roles', { name: `Blocked ${runId}`, permissions: [] }],
+      ['/api/domains', { hostname: `erp-${runId}.e2e-school.test` }],
+    ] as const) {
+      const res = await school('post', url, body).expect(403);
+      expect(error(res)).toMatchObject({ code: 'MODULE_NOT_IN_PLAN' });
+    }
+    await asAdmin()
+      .patch(`/api/organizations/${org.id}/plan`, {
+        planCode: 'free',
+        addOnModules: ['fees'],
+      })
+      .expect(400);
+
+    // Not on a trial: nothing to extend.
+    const notOnTrial = await asAdmin()
+      .post(`/api/organizations/${org.id}/trial/extend`, { days: 5 })
+      .expect(409);
+    expect(error(notOnTrial)).toMatchObject({ code: 'NOT_ON_TRIAL' });
+
+    // A limit of 0 students blocks the next admission.
+    const limited = await asAdmin()
+      .put(`/api/organizations/${org.id}/limits`, {
+        students: 0,
+        admins: null,
+      })
+      .expect(200);
+    expect(data<OrgBody>(limited).limitOverrides).toEqual({
+      students: 0,
+      admins: null,
+    });
+    const blocked = await school('post', '/api/students', {
+      admissionNumber: `A-${runId}`,
+      firstName: 'Rahim',
+      lastName: 'Uddin',
+    }).expect(403);
+    expect(error(blocked)).toMatchObject({
+      code: 'PLAN_LIMIT_REACHED',
+      limit: 'students',
+    });
+
+    // Each change is in the platform audit log.
+    const actions = (
+      await e.rootDs.getRepository(PlatformAuditLog).find({
+        where: { orgId: org.id },
+        order: { createdAt: 'ASC' },
+      })
+    ).map((r) => r.action);
+    expect(actions).toEqual(
+      expect.arrayContaining([
+        'organization.created',
+        'organization.plan_changed',
+        'organization.limits_changed',
+      ]),
     );
-    await app.init();
-
-    jwtService = module.get<JwtService>(JwtService);
   });
 
-  afterEach(async () => {
-    await app.close();
-  });
-
-  // ===================== Authentication =====================
-
-  describe('Authentication', () => {
-    it('returns 401 without token', () => {
-      return request(app.getHttpServer()).get('/organizations').expect(401);
+  it('extends a trial from its end date, and the trial grants Standard', async () => {
+    const org = await createSchool({
+      name: `E2E Trial ${runId}`,
+      slug: `e2e-trial-${runId}`,
+      trialDays: 10,
     });
-  });
+    const before = new Date(org.trialEndsAt!).getTime();
+    const res = await asAdmin()
+      .post(`/api/organizations/${org.id}/trial/extend`, { days: 15 })
+      .expect(201);
+    const after = new Date(data<OrgBody>(res).trialEndsAt!).getTime();
+    expect(Math.round((after - before) / 86_400_000)).toBe(15);
 
-  // ===================== GET /organizations =====================
+    // On Free, but the running trial unlocks Standard's custom roles.
+    const token = await tenantToken(org.id);
+    await e
+      .http()
+      .post('/api/roles')
+      .set('Authorization', `Bearer ${token}`)
+      .set('x-tenant-id', org.slug)
+      .send({ name: `Trial role ${runId}`, permissions: [] })
+      .expect(201);
 
-  describe('GET /organizations', () => {
-    it('ADMIN sees all tenants', async () => {
-      tenantRepo.find.mockResolvedValue([
-        makeTenant(),
-        makeTenant({ id: '00000000-0000-0000-0000-000000000011' }),
-      ]);
-
-      const res = await request(app.getHttpServer())
-        .get('/organizations')
-        .set('Authorization', `Bearer ${adminToken()}`)
-        .expect(200);
-
-      expect((res.body as { data: unknown[] }).data).toHaveLength(2);
+    const audit = await e.rootDs.getRepository(PlatformAuditLog).findOneOrFail({
+      where: {
+        orgId: org.id,
+        action: In(['organization.trial_extended']),
+      },
     });
-
-    it('Regular USER sees only tenants with membership', async () => {
-      membershipRepo.find.mockResolvedValue([{ orgId: TENANT_ID }]);
-      tenantRepo.find.mockResolvedValue([makeTenant()]);
-
-      const res = await request(app.getHttpServer())
-        .get('/organizations')
-        .set('Authorization', `Bearer ${userToken()}`)
-        .expect(200);
-
-      expect((res.body as { data: unknown[] }).data).toHaveLength(1);
-    });
-  });
-
-  // ===================== GET /organizations/:id =====================
-
-  describe('GET /organizations/:id', () => {
-    it('ADMIN can view any tenant', async () => {
-      tenantRepo.findOne.mockResolvedValue(makeTenant());
-
-      await request(app.getHttpServer())
-        .get(`/organizations/${TENANT_ID}`)
-        .set('Authorization', `Bearer ${adminToken()}`)
-        .expect(200);
-    });
-
-    it('User with membership can view tenant', async () => {
-      tenantRepo.findOne.mockResolvedValue(makeTenant());
-      membershipRepo.findOne.mockResolvedValue({
-        orgId: TENANT_ID,
-        userId: USER_ID,
-      });
-
-      await request(app.getHttpServer())
-        .get(`/organizations/${TENANT_ID}`)
-        .set('Authorization', `Bearer ${userToken()}`)
-        .expect(200);
-    });
-
-    it('User without membership gets 403', async () => {
-      tenantRepo.findOne.mockResolvedValue(makeTenant());
-      membershipRepo.findOne.mockResolvedValue(null);
-
-      await request(app.getHttpServer())
-        .get(`/organizations/${TENANT_ID}`)
-        .set('Authorization', `Bearer ${userToken()}`)
-        .expect(403);
-    });
-
-    it('Non-existent tenant returns 404', async () => {
-      tenantRepo.findOne.mockResolvedValue(null);
-
-      await request(app.getHttpServer())
-        .get(`/organizations/${NONEXISTENT_ID}`)
-        .set('Authorization', `Bearer ${adminToken()}`)
-        .expect(404);
-    });
-  });
-
-  // ===================== POST /organizations =====================
-
-  describe('POST /organizations', () => {
-    it('ADMIN can create a tenant', async () => {
-      const res = await request(app.getHttpServer())
-        .post('/organizations')
-        .set('Authorization', `Bearer ${adminToken()}`)
-        .send({ name: 'New School', slug: 'new_school' })
-        .expect(201);
-
-      expect((res.body as { success: boolean }).success).toBe(true);
-    });
-
-    it('Non-admin USER gets 403 (self-serve signup replaces this route)', async () => {
-      await request(app.getHttpServer())
-        .post('/organizations')
-        .set('Authorization', `Bearer ${userToken()}`)
-        .send({ name: 'Other School', slug: 'other_school' })
-        .expect(403);
-    });
-  });
-
-  // ===================== PATCH /organizations/:id =====================
-
-  describe('PATCH /organizations/:id', () => {
-    it('ADMIN can update any tenant', async () => {
-      tenantRepo.findOne.mockResolvedValue(makeTenant());
-      tenantRepo.save.mockImplementation((entity) => Promise.resolve(entity));
-
-      await request(app.getHttpServer())
-        .patch(`/organizations/${TENANT_ID}`)
-        .set('Authorization', `Bearer ${adminToken()}`)
-        .send({ name: 'Updated' })
-        .expect(200);
-    });
-
-    it('Tenant OWNER can update their tenant', async () => {
-      tenantRepo.findOne.mockResolvedValue(makeTenant());
-      membershipRepo.findOne.mockResolvedValue({
-        userId: OWNER_ID,
-        role: MembershipRole.OWNER,
-      });
-      tenantRepo.save.mockImplementation((entity) => Promise.resolve(entity));
-
-      await request(app.getHttpServer())
-        .patch(`/organizations/${TENANT_ID}`)
-        .set('Authorization', `Bearer ${userToken(OWNER_ID)}`)
-        .send({ name: 'Updated' })
-        .expect(200);
-    });
-
-    it('Non-owner USER gets 403', async () => {
-      tenantRepo.findOne.mockResolvedValue(makeTenant());
-      membershipRepo.findOne.mockResolvedValue(null);
-
-      await request(app.getHttpServer())
-        .patch(`/organizations/${TENANT_ID}`)
-        .set('Authorization', `Bearer ${userToken()}`)
-        .send({ name: 'Hacked' })
-        .expect(403);
-    });
-  });
-
-  // ===================== DELETE /organizations/:id =====================
-
-  describe('DELETE /organizations/:id', () => {
-    it('ADMIN can delete tenant', async () => {
-      tenantRepo.findOne.mockResolvedValue(makeTenant());
-
-      await request(app.getHttpServer())
-        .delete(`/organizations/${TENANT_ID}`)
-        .set('Authorization', `Bearer ${adminToken()}`)
-        .expect(200);
-    });
-
-    it('Regular USER gets 403', () => {
-      return request(app.getHttpServer())
-        .delete(`/organizations/${TENANT_ID}`)
-        .set('Authorization', `Bearer ${userToken()}`)
-        .expect(403);
-    });
+    expect(audit.actorUserId).toBe(admin.id);
   });
 });

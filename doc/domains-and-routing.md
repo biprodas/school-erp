@@ -196,7 +196,7 @@ model OrganizationSlugHistory {
 
 **`organization_domains` (implemented, migration `OrganizationDomains`)** extends `OrgScopedEntity`, so it is under RLS and the app role has DML on it. That lets the school's own Settings → Domain screen use the normal tenant repositories. Resolving a host happens before any tenant is known, so `OrganizationService.findByDomain` reads it through the root connection, which bypasses RLS. Unlike other tenanted keys, `hostname` is unique across all schools. The migration moved each existing `organizations.domain` value in as primary, verified and active (lower-cased, trailing dot removed; on a clash the oldest school keeps the hostname), then dropped the column.
 
-**`organization_slug_history`** is a platform table, read before a tenant is known, so it is not `OrgScopedEntity` and not under RLS. It is read through the root connection, like `organizations`. Not implemented yet.
+**`organization_slug_history`** is a platform table, read before a tenant is known, so it is not `OrgScopedEntity` and not under RLS. It is read through the root connection, like `organizations` (implemented in migration `PlatformAndOnboarding`; `rls.ts` leaves it out of RLS through `PLATFORM_TABLES_WITH_ORG_ID`).
 
 ---
 
@@ -205,19 +205,19 @@ model OrganizationSlugHistory {
 Backend:
 
 - [x] Migration: `organization_domains` (with RLS and app-role grant), existing `organizations.domain` values moved in, column dropped.
-- [ ] Migration: `organization_slug_history`, `organizations.onboarding_completed_at`, `organizations.listed_in_directory`.
-- [ ] Shared reserved-slug list and slug validation on signup and rename.
+- [x] Migration: `organization_slug_history`, `organizations.onboarding_completed_at`, `organizations.listed_in_directory` (`OrgSettings` and `PlatformAndOnboarding`).
+- [x] Shared reserved-slug list and slug validation on signup and rename (`src/shared/slug/reserved-slugs.ts`, `GET /public/slugs/reserved`).
 - [x] `TenantMiddleware` and `/public/organizations/resolve` read `organization_domains` (only `verified`/`active` domains resolve).
-- [ ] Slug-history lookups return a redirect target.
+- [x] Slug-history lookups return a redirect target (410 `TENANT_MOVED` with `slug`; `by-slug` returns `movedFrom`).
 - [x] Handoff codes: issue (`POST /platform/auth/handoff`, `auth_tokens` type `handoff`) and exchange (`POST /auth/handoff`) endpoints.
-- [ ] Google sign-in (section 5a): start/callback on the product domain, state + PKCE + nonce, return-host allow-list, account match by identity or verified email, school and platform handoff, link/unlink.
-- [ ] "Find your school" endpoint (email → message with sign-in links; phone/SMS in Phase 1b), rate-limited, uniform response.
+- [x] Google sign-in (section 5a): start/callback on the product domain, state + PKCE + nonce, return-host allow-list, account match by identity or verified email, school and platform handoff, link/unlink (`src/modules/oauth/`).
+- [x] "Find your school" endpoint (`POST /public/find-school`; email → message with sign-in links; phone/SMS in Phase 1b), rate-limited, uniform response.
 - [x] Domain settings endpoints at `/domains` (list, add, `:id/verify`, `:id/primary`, delete), permissions `domains:read` / `domains:manage`.
 - [x] DNS check job (`DomainCheckScheduler`, every 5 minutes): pending domains for 72 hours, verified/active ones hourly; 7 days of failures → `inactive` (`dns_failing_since`).
-- [ ] Gate custom domains by plan (Standard+) once plans and entitlements exist.
+- [x] Gate custom domains by plan (Standard+): adding, verifying and making primary need the `custom_domain` module.
 - [ ] Mark a domain `active` (`tls_status = issued`) from the TLS provider's signal; today a verified domain already resolves and gets a certificate.
 - [x] TLS "ask" endpoint: `GET /public/organizations/tls-check?domain=` (200 only for a verified/active domain of an active school).
-- [ ] Exclude the new public routes from `TenantMiddleware` in `app.module.ts`.
+- [x] Exclude the new public routes from `TenantMiddleware` in `app.module.ts` (`public/*` already was; `oauth/*` and `platform/plans` added).
 
 Frontend:
 
@@ -233,8 +233,8 @@ Frontend:
 Tests (PRD 11):
 
 - [x] Custom-domain resolution: active vs pending, case/port normalization, hostname unique across schools, one primary per school, cascade on school delete (`test/organization-domain.e2e-spec.ts`).
-- [ ] Tenant resolution for old slug and reserved slug.
+- [x] Tenant resolution for an old slug (`test/slugs.e2e-spec.ts`). *Reserved slugs can't be created, so none resolves.*
 - [x] Handoff code: single use, expiry, concurrent redemption, wrong org (`handoff.spec.ts`, `test/handoff.e2e-spec.ts`).
 - [x] A session from one school host is not accepted on another (`JwtStrategy` org binding, `tenant-isolation.e2e-spec.ts`).
 - [x] A domain cannot be claimed without the TXT record, and an unverified host gets no certificate (`test/domain-settings.e2e-spec.ts`).
-- [ ] "Find your school" response does not reveal whether an account exists.
+- [x] "Find your school" response does not reveal whether an account exists (`test/onboarding.e2e-spec.ts`).

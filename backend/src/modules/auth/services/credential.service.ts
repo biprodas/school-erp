@@ -115,7 +115,8 @@ export class CredentialService {
 
   /**
    * Whether the account signs in with a password its owner chose: active,
-   * not on a temporary password, and verified or active in some school.
+   * not on a temporary password, not Google-only (`password_set`), and
+   * verified or active in some school.
    * Activation links must never replace such a password, or whoever holds
    * the link (an owner-transfer response, a forwarded email) would take
    * the account over. Reads memberships across schools (root connection).
@@ -128,9 +129,15 @@ export class CredentialService {
         status: true,
         emailVerifiedAt: true,
         mustChangePassword: true,
+        passwordSet: true,
       },
     });
-    if (!user || user.status !== UserStatus.ACTIVE || user.mustChangePassword) {
+    if (
+      !user ||
+      user.status !== UserStatus.ACTIVE ||
+      user.mustChangePassword ||
+      !user.passwordSet
+    ) {
       return false;
     }
     if (user.emailVerifiedAt) return true;
@@ -144,6 +151,7 @@ export class CredentialService {
     await this.users.update(userId, {
       password: await hashPassword(password),
       mustChangePassword: false,
+      passwordSet: true,
       failedLoginCount: 0,
       lockedUntil: null,
     });
@@ -155,31 +163,33 @@ export class CredentialService {
    * or null when the attempt may not go ahead.
    */
   private async claimAttempt(userId: string): Promise<number | null> {
-    const [row] = await this.users.manager.query<
-      Array<{ failed_login_count: number }>
-    >(
-      `UPDATE "users" SET
+    const [row] = updatedRows<{ failed_login_count: number }>(
+      await this.users.manager.query(
+        `UPDATE "users" SET
          "failed_login_count" = CASE WHEN "locked_until" IS NULL THEN "failed_login_count" + 1 ELSE 1 END,
          "locked_until" = NULL
        WHERE "id" = $1
          AND ("locked_until" IS NULL OR "locked_until" <= now())
          AND ("failed_login_count" < $2 OR "locked_until" IS NOT NULL)
        RETURNING "failed_login_count"`,
-      [userId, MAX_FAILED_LOGINS],
+        [userId, MAX_FAILED_LOGINS],
+      ),
     );
     return row ? row.failed_login_count : null;
   }
 
   /** Starts the lock (keeping one already running) and resets the count. */
   private async lock(userId: string): Promise<Date> {
-    const [row] = await this.users.manager.query<Array<{ locked_until: Date }>>(
-      `UPDATE "users" SET
+    const [row] = updatedRows<{ locked_until: Date }>(
+      await this.users.manager.query(
+        `UPDATE "users" SET
          "failed_login_count" = 0,
          "locked_until" = CASE WHEN "locked_until" > now() THEN "locked_until"
                                ELSE now() + make_interval(mins => $2) END
        WHERE "id" = $1
        RETURNING "locked_until"`,
-      [userId, LOCK_MINUTES],
+        [userId, LOCK_MINUTES],
+      ),
     );
     return new Date(row.locked_until);
   }
@@ -189,17 +199,28 @@ export class CredentialService {
    * it was being checked; then returns that lock's end.
    */
   private async clearFailures(userId: string): Promise<Date | null> {
-    const [row] = await this.users.manager.query<
-      Array<{ locked_until: Date | null }>
-    >(
-      `UPDATE "users" SET "failed_login_count" = 0
-       WHERE "id" = $1
-       RETURNING "locked_until"`,
-      [userId],
+    const [row] = updatedRows<{ locked_until: Date | null }>(
+      await this.users.manager.query(
+        `UPDATE "users" SET "failed_login_count" = 0
+         WHERE "id" = $1
+         RETURNING "locked_until"`,
+        [userId],
+      ),
     );
     const until = row?.locked_until ? new Date(row.locked_until) : null;
     return until && until.getTime() > Date.now() ? until : null;
   }
+}
+
+/**
+ * Rows of an `UPDATE … RETURNING` run through `manager.query`: TypeORM's
+ * Postgres driver returns `[rows, rowCount]` for UPDATE (plain rows for
+ * SELECT and INSERT).
+ */
+export function updatedRows<T>(result: unknown): T[] {
+  return Array.isArray(result) && Array.isArray(result[0])
+    ? (result[0] as T[])
+    : (result as T[]);
 }
 
 function invalidCredentials() {

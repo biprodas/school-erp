@@ -1,3 +1,6 @@
+import { Organization } from '~/modules/organizations/entities/organization.entity';
+import { getRepositoryToken } from '@nestjs/typeorm';
+import { IdentityService } from './identity.service';
 import { UnauthorizedException } from '@nestjs/common';
 import { REQUEST } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
@@ -79,6 +82,14 @@ describe('AuthService sign-in auditing', () => {
         { provide: SessionService, useValue: sessions },
         { provide: MailService, useValue: {} },
         { provide: JwtService, useValue: { sign: () => 'jwt' } },
+        {
+          provide: IdentityService,
+          useValue: { list: () => Promise.resolve([]) },
+        },
+        {
+          provide: getRepositoryToken(Organization),
+          useValue: { findOne: () => Promise.resolve(null) },
+        },
         { provide: AuditService, useValue: audit },
         { provide: REQUEST, useValue: { orgId: 'org-1', orgSlug: 'acme' } },
       ],
