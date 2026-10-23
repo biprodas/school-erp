@@ -254,6 +254,27 @@ export class RoleService {
     });
   }
 
+  /**
+   * Gives a member the guardian or student system role. Unlike
+   * `assignRole` it skips the "no more than you hold" check: these roles
+   * hold only `portal:*` keys, which reach nothing on staff endpoints, so
+   * a receptionist adding a guardian may hand one out. Idempotent.
+   */
+  assignPortalRole(
+    userId: string,
+    name: typeof GUARDIAN_ROLE_NAME | typeof STUDENT_ROLE_NAME,
+  ): Promise<void> {
+    return this.ds.runInTransaction(async () => {
+      const role = await this.findSystemRole(name);
+      if (!role.permissions.every((key) => key.startsWith('portal:'))) {
+        throw new ForbiddenException(`The ${name} role is not portal-only`);
+      }
+      if (await this.userRoleRepo.findAssignment(userId, role.id)) return;
+      await this.userRoleRepo.assign(userId, role.id);
+      await this.recordAssignment(AUDIT_ACTIONS.ROLE_ASSIGNED, userId, role);
+    });
+  }
+
   unassignRole(userId: string, roleId: string): Promise<void> {
     return this.ds.runInTransaction(() => this.applyUnassign(userId, roleId));
   }

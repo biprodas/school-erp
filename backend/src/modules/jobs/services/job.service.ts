@@ -2,6 +2,7 @@ import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { REQUEST } from '@nestjs/core';
 import type { Request } from 'express';
 import { JobQueue, type EnqueueOptions, type QueueName } from '~/shared/queue';
+import { FileService } from '~/modules/files/file.service';
 import { TENANT_DATASOURCE } from '~/tenancy/tenancy.constants';
 import { TenantDataSourceProxy } from '~/tenancy/tenant-datasource.proxy';
 import { Job } from '../entities/job.entity';
@@ -24,6 +25,7 @@ export class JobService {
   constructor(
     private readonly jobRepo: JobRepository,
     private readonly queue: JobQueue,
+    private readonly files: FileService,
     @Inject(TENANT_DATASOURCE) private readonly ds: TenantDataSourceProxy,
     @Inject(REQUEST) private readonly req: Request,
   ) {}
@@ -62,6 +64,17 @@ export class JobService {
       throw err;
     }
     return job;
+  }
+
+  /** `GET /jobs/:id`: the job plus a signed URL for its file, if any. */
+  async viewForCurrentUser(
+    id: string,
+  ): Promise<Job & { downloadUrl: string | null }> {
+    const job = await this.findForCurrentUser(id);
+    const downloadUrl = job.fileId
+      ? await this.files.getDownloadUrl(job.fileId)
+      : null;
+    return Object.assign(job, { downloadUrl });
   }
 
   /** The job, if the caller started it or is a school admin. */

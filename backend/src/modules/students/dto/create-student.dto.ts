@@ -1,38 +1,38 @@
-import { Type } from 'class-transformer';
 import {
-  IsDateString,
-  IsDefined,
   IsEmail,
   IsEnum,
   IsNotEmpty,
   IsOptional,
   IsString,
   IsUUID,
+  Matches,
   MaxLength,
-  MinLength,
-  ValidateNested,
 } from 'class-validator';
+import { IsDateOnly } from '~/common/decorators/is-date-only.decorator';
+import { IsPhone } from '~/common/identity/is-phone.decorator';
 import { AdmissionType } from '../enums/admission-type.enum';
+import { BloodGroup } from '../enums/blood-group.enum';
 import { StudentGender } from '../enums/student-gender.enum';
-import { StudentStatus } from '../enums/student-status.enum';
 
-export class CreateStudentUserDto {
-  @IsEmail()
-  @IsNotEmpty()
-  @IsDefined()
-  email: string;
-
-  @IsString()
-  @MinLength(6)
-  @IsDefined()
-  password: string;
-}
-
+/**
+ * A new student starts `active` (admissions, with `applicant`, come in
+ * PRD 6.5); the status then changes through `POST /students/:id/status`.
+ */
 export class CreateStudentDto {
+  /**
+   * The student ID. Generated from `numbering.studentId` when left out;
+   * typing one is allowed only with `numbering.allowManualStudentId`.
+   */
+  @IsOptional()
   @IsString()
   @IsNotEmpty()
   @MaxLength(60)
-  admissionNumber: string;
+  admissionNumber?: string;
+
+  /** Class of admission; needed when the ID pattern uses `{CLASS}`. */
+  @IsOptional()
+  @IsUUID('4')
+  classId?: string;
 
   @IsString()
   @IsNotEmpty()
@@ -47,7 +47,12 @@ export class CreateStudentDto {
   lastName: string;
 
   @IsOptional()
-  @IsDateString()
+  @IsString()
+  @MaxLength(160)
+  nameBn?: string;
+
+  @IsOptional()
+  @IsDateOnly()
   dob?: string;
 
   @IsOptional()
@@ -64,25 +69,35 @@ export class CreateStudentDto {
   @MaxLength(60)
   nationality?: string;
 
+  /** 17-digit birth registration number. */
+  @IsOptional()
+  @Matches(/^\d{17}$/, { message: 'birthRegNo must be 17 digits' })
+  birthRegNo?: string;
+
+  @IsOptional()
+  @IsEnum(BloodGroup)
+  bloodGroup?: BloodGroup;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  previousSchool?: string;
+
+  /** The student's own; used for a portal account when the class qualifies. */
   @IsOptional()
   @IsEmail()
   email?: string;
 
   @IsOptional()
-  @IsString()
-  @MaxLength(40)
+  @IsPhone()
   phone?: string;
-
-  @IsOptional()
-  @IsString()
-  photoUrl?: string;
 
   @IsOptional()
   @IsString()
   address?: string;
 
   @IsOptional()
-  @IsDateString()
+  @IsDateOnly()
   admissionDate?: string;
 
   @IsOptional()
@@ -90,17 +105,7 @@ export class CreateStudentDto {
   admissionType?: AdmissionType;
 
   @IsOptional()
-  @IsEnum(StudentStatus)
-  status?: StudentStatus;
-
-  /** Attach an existing tenant user as the student's login account. */
-  @IsOptional()
-  @IsUUID('4')
-  userId?: string;
-
-  /** Provision a new tenant user (with the 'student' role) and link it. */
-  @IsOptional()
-  @ValidateNested()
-  @Type(() => CreateStudentUserDto)
-  createUser?: CreateStudentUserDto;
+  @IsString()
+  @MaxLength(40)
+  rfidCardNo?: string;
 }

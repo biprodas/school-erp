@@ -12,6 +12,7 @@ import { ApiBearerAuth, ApiHeader, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '~/modules/auth/guards/jwt-auth.guard';
 import { PERMISSIONS } from '~/modules/rbac/permissions.catalog';
 import { PermissionsGuard } from '~/modules/rbac/guards/permissions.guard';
+import { StudentScope } from '../services/student-scope.service';
 import { RequirePermissions } from '~/modules/rbac/decorators/require-permissions.decorator';
 import { UpsertStudentMedicalRecordDto } from '../dto/upsert-student-medical-record.dto';
 import { StudentMedicalRecordService } from '../services/student-medical-record.service';
@@ -27,12 +28,16 @@ import { ResponseMessage } from '~/common/decorators/response.decorators';
 @Controller('students/:studentId/medical-record')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 export class StudentMedicalRecordController {
-  constructor(private readonly medicalService: StudentMedicalRecordService) {}
+  constructor(
+    private readonly medicalService: StudentMedicalRecordService,
+    private readonly scope: StudentScope,
+  ) {}
 
   @Get()
   @RequirePermissions(PERMISSIONS.STUDENT_MEDICAL_READ)
   @ResponseMessage('Medical record')
-  get(@Param('studentId', ParseUUIDPipe) studentId: string) {
+  async get(@Param('studentId', ParseUUIDPipe) studentId: string) {
+    await this.scope.assert(PERMISSIONS.STUDENT_MEDICAL_READ, studentId);
     return this.medicalService.getForStudent(studentId);
   }
 
@@ -43,10 +48,14 @@ export class StudentMedicalRecordController {
     PERMISSIONS.STUDENT_MEDICAL_UPDATE,
   )
   @ResponseMessage('Medical record saved')
-  upsert(
+  async upsert(
     @Param('studentId', ParseUUIDPipe) studentId: string,
     @Body() dto: UpsertStudentMedicalRecordDto,
   ) {
+    await this.scope.assertAny(
+      [PERMISSIONS.STUDENT_MEDICAL_CREATE, PERMISSIONS.STUDENT_MEDICAL_UPDATE],
+      studentId,
+    );
     return this.medicalService.upsert(studentId, dto);
   }
 
@@ -54,6 +63,7 @@ export class StudentMedicalRecordController {
   @RequirePermissions(PERMISSIONS.STUDENT_MEDICAL_DELETE)
   @ResponseMessage('Medical record removed')
   async remove(@Param('studentId', ParseUUIDPipe) studentId: string) {
+    await this.scope.assert(PERMISSIONS.STUDENT_MEDICAL_DELETE, studentId);
     await this.medicalService.remove(studentId);
   }
 }

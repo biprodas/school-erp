@@ -20,13 +20,12 @@ export interface RowError {
   /** 1-based row number as the user sees it in Excel. */
   row: number;
   column: string;
-  code:
-    | 'REQUIRED'
-    | 'INVALID_NUMBER'
-    | 'INVALID_DATE'
-    | 'INVALID_BOOLEAN'
-    | 'INVALID_OPTION'
-    | 'MISSING_COLUMN';
+  /**
+   * `REQUIRED`, `INVALID_NUMBER`, `INVALID_DATE`, `INVALID_BOOLEAN`,
+   * `INVALID_OPTION` or `MISSING_COLUMN` from parsing; importers add their
+   * own (`UNKNOWN_CLASS`, `DUPLICATE_IN_FILE`, …).
+   */
+  code: string;
   message: string;
 }
 

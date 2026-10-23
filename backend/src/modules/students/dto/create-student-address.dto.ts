@@ -1,5 +1,6 @@
 import {
   IsEnum,
+  IsInt,
   IsNotEmpty,
   IsOptional,
   IsString,
@@ -35,6 +36,19 @@ export class CreateStudentAddressDto {
   @IsString()
   @MaxLength(120)
   state?: string;
+
+  /** Geo ids from `GET /public/geo/...`; a lower unit implies its parents. */
+  @IsOptional()
+  @IsInt()
+  divisionId?: number | null;
+
+  @IsOptional()
+  @IsInt()
+  districtId?: number | null;
+
+  @IsOptional()
+  @IsInt()
+  upazilaId?: number | null;
 
   @IsOptional()
   @IsString()

@@ -3,6 +3,7 @@ import { In } from 'typeorm';
 import { TENANT_DATASOURCE } from '~/tenancy/tenancy.constants';
 import { TenantDataSourceProxy } from '~/tenancy/tenant-datasource.proxy';
 import { BaseTenantRepository } from '~/tenancy/base-tenant.repository';
+import { normalizeEmail, normalizePhone } from '~/common/identity/identifier';
 import { User } from '../entities/user.entity';
 
 /**
@@ -25,6 +26,29 @@ export class AccountRepository extends BaseTenantRepository<User> {
 
   findByPhone(phone: string): Promise<User | null> {
     return this.repo.findOne({ where: { phone } });
+  }
+
+  /** By email or phone as typed (normalized here); null if neither fits. */
+  async findByIdentifier(raw: string): Promise<User | null> {
+    if (raw.includes('@')) return this.findByEmail(normalizeEmail(raw));
+    const phone = normalizePhone(raw);
+    return phone ? this.findByPhone(phone) : null;
+  }
+
+  /**
+   * A password someone else handed over (slip): it must be changed at
+   * the next sign-in. Clears any lockout.
+   */
+  async setTemporaryPassword(userId: string, hash: string): Promise<void> {
+    await this.repo.update(
+      { id: userId },
+      {
+        password: hash,
+        mustChangePassword: true,
+        failedLoginCount: 0,
+        lockedUntil: null,
+      },
+    );
   }
 
   findByIds(ids: string[]): Promise<User[]> {

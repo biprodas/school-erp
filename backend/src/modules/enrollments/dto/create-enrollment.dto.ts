@@ -1,12 +1,11 @@
 import {
-  IsEnum,
+  IsBoolean,
   IsNotEmpty,
   IsOptional,
   IsString,
   IsUUID,
   MaxLength,
 } from 'class-validator';
-import { StudentEnrollmentStatus } from '../enums/student-enrollment-status.enum';
 
 export class CreateEnrollmentDto {
   @IsUUID('4')
@@ -36,7 +35,8 @@ export class CreateEnrollmentDto {
   @MaxLength(40)
   rollNo?: string;
 
+  /** Into a full section; needs `enrollments:override_capacity`. */
   @IsOptional()
-  @IsEnum(StudentEnrollmentStatus)
-  status?: StudentEnrollmentStatus;
+  @IsBoolean()
+  overrideCapacity?: boolean;
 }

@@ -9,8 +9,14 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { OrgScopedEntity } from '~/tenancy/org-scoped.entity';
+import { EncryptedColumn } from '~/shared/crypto/field-encryption';
 import { Student } from './student.entity';
 
+/**
+ * A student's health profile (PRD 6.6). The text fields are encrypted at
+ * rest (`EncryptedColumn`); reading them needs `student_medical:read` and
+ * is audited.
+ */
 @Entity('student_medical_records')
 @Index('uq_student_medical_record', ['orgId', 'studentId'], { unique: true })
 export class StudentMedicalRecord extends OrgScopedEntity {
@@ -25,9 +31,6 @@ export class StudentMedicalRecord extends OrgScopedEntity {
   })
   @JoinColumn({ name: 'student_id' })
   student: Student;
-
-  @Column({ name: 'blood_group', type: 'varchar', length: 8, nullable: true })
-  bloodGroup: string | null;
 
   @Column({
     name: 'height_cm',
@@ -47,22 +50,68 @@ export class StudentMedicalRecord extends OrgScopedEntity {
   })
   weightKg: number | null;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({
+    name: 'allergies',
+    type: 'text',
+    nullable: true,
+    transformer: EncryptedColumn,
+  })
   allergies: string | null;
 
-  @Column({ name: 'medical_conditions', type: 'text', nullable: true })
+  @Column({
+    name: 'medical_conditions',
+    type: 'text',
+    nullable: true,
+    transformer: EncryptedColumn,
+  })
   medicalConditions: string | null;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({
+    name: 'medications',
+    type: 'text',
+    nullable: true,
+    transformer: EncryptedColumn,
+  })
+  medications: string | null;
+
+  @Column({
+    name: 'vaccinations',
+    type: 'text',
+    nullable: true,
+    transformer: EncryptedColumn,
+  })
+  vaccinations: string | null;
+
+  @Column({
+    name: 'disabilities',
+    type: 'text',
+    nullable: true,
+    transformer: EncryptedColumn,
+  })
   disabilities: string | null;
 
-  @Column({ name: 'doctor_name', type: 'varchar', length: 160, nullable: true })
+  @Column({
+    name: 'doctor_name',
+    type: 'text',
+    nullable: true,
+    transformer: EncryptedColumn,
+  })
   doctorName: string | null;
 
-  @Column({ name: 'doctor_phone', type: 'varchar', length: 40, nullable: true })
+  @Column({
+    name: 'doctor_phone',
+    type: 'text',
+    nullable: true,
+    transformer: EncryptedColumn,
+  })
   doctorPhone: string | null;
 
-  @Column({ name: 'insurance_info', type: 'text', nullable: true })
+  @Column({
+    name: 'insurance_info',
+    type: 'text',
+    nullable: true,
+    transformer: EncryptedColumn,
+  })
   insuranceInfo: string | null;
 
   @CreateDateColumn({ name: 'created_at' })

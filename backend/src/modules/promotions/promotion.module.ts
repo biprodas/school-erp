@@ -2,22 +2,33 @@ import { Module } from '@nestjs/common';
 import { RbacModule } from '~/modules/rbac/rbac.module';
 import { AcademicYearModule } from '~/modules/academic-years/academic-year.module';
 import { ClassModule } from '~/modules/classes/class.module';
+import { EnrollmentModule } from '~/modules/enrollments/enrollment.module';
+import { JobModule } from '~/modules/jobs/job.module';
 import { SectionModule } from '~/modules/sections/section.module';
 import { StudentModule } from '~/modules/students/student.module';
-import { PromotionController } from './promotion.controller';
-import { PromotionRepository } from './promotion.repository';
-import { PromotionService } from './promotion.service';
+import { PromotionController } from './controllers/promotion.controller';
+import { PromotionCommitJob } from './promotion-commit.job';
+import { PromotionBatchItemRepository } from './repositories/promotion-batch-item.repository';
+import { PromotionBatchRepository } from './repositories/promotion-batch.repository';
+import { PromotionService } from './services/promotion.service';
 
 @Module({
   imports: [
     RbacModule,
     StudentModule,
+    EnrollmentModule,
     AcademicYearModule,
     ClassModule,
     SectionModule,
+    JobModule,
   ],
   controllers: [PromotionController],
-  providers: [PromotionRepository, PromotionService],
+  providers: [
+    PromotionBatchRepository,
+    PromotionBatchItemRepository,
+    PromotionService,
+    PromotionCommitJob,
+  ],
   exports: [PromotionService],
 })
 export class PromotionModule {}

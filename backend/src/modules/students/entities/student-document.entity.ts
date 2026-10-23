@@ -10,6 +10,8 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { OrgScopedEntity } from '~/tenancy/org-scoped.entity';
+import { StoredFile } from '~/modules/files/entities/stored-file.entity';
+import { DocumentVerification } from '../enums/document-verification.enum';
 import { DocumentType } from '../enums/document-type.enum';
 import { Student } from './student.entity';
 
@@ -34,8 +36,13 @@ export class StudentDocument extends OrgScopedEntity {
   @Column({ type: 'varchar', length: 160, nullable: true })
   title: string | null;
 
-  @Column({ name: 'file_url', type: 'text' })
-  fileUrl: string;
+  /** The uploaded file (null only on rows from before uploads). */
+  @Column({ name: 'file_id', type: 'uuid', nullable: true })
+  fileId: string | null;
+
+  @ManyToOne(() => StoredFile, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'file_id' })
+  file?: StoredFile | null;
 
   @Column({ name: 'issue_date', type: 'date', nullable: true })
   issueDate: string | null;
@@ -43,8 +50,23 @@ export class StudentDocument extends OrgScopedEntity {
   @Column({ name: 'expiry_date', type: 'date', nullable: true })
   expiryDate: string | null;
 
-  @Column({ type: 'boolean', default: false })
-  verified: boolean;
+  @Column({
+    name: 'verification_status',
+    type: 'varchar',
+    length: 16,
+    default: DocumentVerification.PENDING,
+  })
+  verificationStatus: DocumentVerification;
+
+  @Column({ name: 'verified_by', type: 'uuid', nullable: true })
+  verifiedBy: string | null;
+
+  @Column({ name: 'verified_at', type: 'timestamptz', nullable: true })
+  verifiedAt: Date | null;
+
+  /** Why it was rejected, or a note on the check. */
+  @Column({ name: 'verification_note', type: 'text', nullable: true })
+  verificationNote: string | null;
 
   @Column({ name: 'created_by', type: 'uuid', nullable: true })
   createdBy: string | null;

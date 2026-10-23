@@ -1,0 +1,18 @@
+<div style="display:flex;flex-wrap:wrap;gap:6mm">
+  {{#each cards}}
+    <div style="width:54mm;height:85.6mm;border:1px solid #999;border-radius:3mm;padding:3mm;box-sizing:border-box;text-align:center;page-break-inside:avoid">
+      <div style="font-size:8pt;font-weight:bold">{{../schoolName}}</div>
+      {{#if ../schoolNameBn}}<div class="serif" style="font-size:7pt">{{../schoolNameBn}}</div>{{/if}}
+      <div style="margin:2mm auto;width:24mm;height:28mm;border:1px solid #ccc;overflow:hidden">
+        {{#if this.photo}}<img src="{{this.photo}}" style="width:100%;height:100%;object-fit:cover">{{/if}}
+      </div>
+      <div style="font-size:9pt;font-weight:bold">{{this.name}}</div>
+      {{#if this.nameBn}}<div class="serif" style="font-size:8pt">{{this.nameBn}}</div>{{/if}}
+      <div style="font-size:7.5pt;margin-top:1mm">ID: {{this.admissionNumber}}</div>
+      <div style="font-size:7.5pt">{{../className}} · {{../sectionName}}{{#if this.rollNo}} · Roll {{this.rollNo}}{{/if}}</div>
+      {{#if this.bloodGroup}}<div style="font-size:7.5pt">Blood: {{this.bloodGroup}}</div>{{/if}}
+      <div style="width:16mm;margin:1.5mm auto 0">{{{this.qr}}}</div>
+      <div style="font-size:6.5pt">Session {{../sessionName}}</div>
+    </div>
+  {{/each}}
+</div>

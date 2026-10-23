@@ -1,39 +1,37 @@
-import { Type } from 'class-transformer';
 import {
-  IsDefined,
   IsEmail,
+  IsInt,
   IsNotEmpty,
   IsOptional,
   IsString,
-  IsUUID,
+  Matches,
   MaxLength,
-  MinLength,
-  ValidateNested,
+  Min,
+  ValidateIf,
 } from 'class-validator';
+import { IsPhone } from '~/common/identity/is-phone.decorator';
 
-export class CreateGuardianUserDto {
-  @IsEmail()
-  @IsNotEmpty()
-  @IsDefined()
-  email: string;
-
-  @IsString()
-  @MinLength(6)
-  @IsDefined()
-  password: string;
-}
-
+/**
+ * A guardian needs an email or a phone: it becomes their portal login. A
+ * phone already used by a guardian of this school is refused (409); link
+ * that guardian instead.
+ */
 export class CreateGuardianDto {
   @IsString()
   @IsNotEmpty()
+  @MaxLength(160)
   name: string;
 
   @IsOptional()
   @IsString()
-  @MaxLength(40)
+  @MaxLength(160)
+  nameBn?: string;
+
+  @ValidateIf((o: CreateGuardianDto) => o.email === undefined)
+  @IsPhone()
   phone?: string;
 
-  @IsOptional()
+  @ValidateIf((o: CreateGuardianDto) => o.phone === undefined)
   @IsEmail()
   email?: string;
 
@@ -41,14 +39,21 @@ export class CreateGuardianDto {
   @IsString()
   address?: string;
 
-  /** Attach an existing tenant user as the guardian's login account. */
   @IsOptional()
-  @IsUUID('4')
-  userId?: string;
+  @IsString()
+  @MaxLength(120)
+  occupation?: string;
 
-  /** Provision a new tenant user (with the 'guardian' role) and link it. */
+  /** Monthly income in minor units (poisha). */
   @IsOptional()
-  @ValidateNested()
-  @Type(() => CreateGuardianUserDto)
-  createUser?: CreateGuardianUserDto;
+  @IsInt()
+  @Min(0)
+  income?: number;
+
+  /** Bangladesh NID: 10, 13 or 17 digits. Stored encrypted. */
+  @IsOptional()
+  @Matches(/^(\d{10}|\d{13}|\d{17})$/, {
+    message: 'nid must be 10, 13 or 17 digits',
+  })
+  nid?: string;
 }

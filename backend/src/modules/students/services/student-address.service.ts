@@ -9,11 +9,14 @@ import { StudentAddress } from '../entities/student-address.entity';
 import { StudentAddressRepository } from '../repositories/student-address.repository';
 import { StudentService } from './student.service';
 
+import { GeoService } from '~/modules/geo/geo.service';
+
 @Injectable()
 export class StudentAddressService {
   constructor(
     private readonly addressRepo: StudentAddressRepository,
     private readonly studentService: StudentService,
+    private readonly geo: GeoService,
   ) {}
 
   async listForStudent(studentId: string): Promise<StudentAddress[]> {
@@ -47,6 +50,7 @@ export class StudentAddressService {
       state: dto.state ?? null,
       postalCode: dto.postalCode ?? null,
       country: dto.country ?? null,
+      ...this.geo.resolve(dto),
     });
   }
 
@@ -69,7 +73,15 @@ export class StudentAddressService {
       }
     }
 
+    const geoChanged =
+      dto.divisionId !== undefined ||
+      dto.districtId !== undefined ||
+      dto.upazilaId !== undefined;
     Object.assign(address, dto);
+    if (geoChanged) Object.assign(address, this.geo.resolve(address));
+    delete address.division;
+    delete address.geoDistrict;
+    delete address.upazila;
     return this.addressRepo.save(address);
   }
 

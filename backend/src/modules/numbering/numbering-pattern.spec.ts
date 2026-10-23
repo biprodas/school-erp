@@ -1,4 +1,8 @@
-import { assertValidPattern, formatNumber } from './numbering-pattern';
+import {
+  patternScope,
+  assertValidPattern,
+  formatNumber,
+} from './numbering-pattern';
 
 const date = new Date(2026, 0, 15);
 
@@ -37,5 +41,15 @@ describe('assertValidPattern', () => {
     expect(() => assertValidPattern('{YY}{CLASS}')).toThrow();
     expect(() => assertValidPattern('{SEQ}{SEQ:2}')).toThrow();
     expect(() => assertValidPattern('{YY}-{SEQ:4}')).not.toThrow();
+  });
+});
+
+describe('patternScope', () => {
+  it('renders everything but the sequence', () => {
+    const date = new Date('2026-03-01T00:00:00Z');
+    expect(patternScope('{YY}{CLASS}{SEQ:4}', { date, classCode: '06' })).toBe(
+      '2606',
+    );
+    expect(patternScope('EMP-{SEQ:4}')).toBe('EMP-');
   });
 });

@@ -1,0 +1,40 @@
+<div
+  style='border:3px double #333;padding:14mm;min-height:250mm;position:relative'
+>
+  {{#if revoked}}
+    <div
+      style='position:absolute;top:110mm;left:0;right:0;text-align:center;font-size:48pt;color:rgba(200,0,0,.35);transform:rotate(-20deg)'
+    >REVOKED</div>
+  {{/if}}
+  <div style='text-align:center'>
+    <div style='font-size:18pt;font-weight:bold'>{{d.schoolName}}</div>
+    {{#if d.schoolNameBn}}<div
+        class='serif'
+        style='font-size:14pt'
+      >{{d.schoolNameBn}}</div>{{/if}}
+    <div
+      style='margin-top:8mm;font-size:16pt;font-weight:bold;text-decoration:underline'
+    >Character Certificate</div>
+    <div class='serif' style='font-size:13pt'>চারিত্রিক সনদপত্র</div>
+  </div>
+  <table style='margin-top:8mm;width:auto'><tr>
+      <td style='padding-right:12mm'>Serial: <b>{{serial}}</b></td>
+      <td>Date: <b>{{issuedOn}}</b></td>
+    </tr></table>
+  <p
+    style='margin-top:10mm;font-size:12pt;line-height:1.9;text-align:justify'
+  >This is to certify that
+    <b>{{d.studentName}}</b>{{#if d.fatherName}}, son/daughter of
+      {{d.fatherName}}{{/if}}, Student ID
+    {{d.admissionNumber}}, is known to us.
+    {{#if d.conduct}}Their character and conduct are
+      <b>{{d.conduct}}</b>.
+    {{/if}}We wish them every success.</p>
+  {{#if d.remarks}}<p style='font-size:11pt'>Remarks: {{d.remarks}}</p>{{/if}}
+  <div style='position:absolute;bottom:14mm;left:14mm;width:32mm'>{{{qr}}}<div
+      style='font-size:7pt;margin-top:1mm;word-break:break-all'
+    >{{d.verifyUrl}}</div></div>
+  <div
+    style='position:absolute;bottom:20mm;right:14mm;text-align:center;border-top:1px solid #333;padding-top:2mm;width:60mm'
+  >Head of the institution</div>
+</div>

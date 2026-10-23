@@ -405,7 +405,7 @@ describe('Academic structure and staff (e2e)', () => {
     const student = data<Row>(
       await admin()
         .post('/api/students', {
-          admissionNumber: `S-${runId}`,
+          classId: ids.class9,
           firstName: 'Ana',
           lastName: 'Roy',
         })

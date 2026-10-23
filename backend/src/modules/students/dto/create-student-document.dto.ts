@@ -1,14 +1,8 @@
-import {
-  IsBoolean,
-  IsDateString,
-  IsEnum,
-  IsNotEmpty,
-  IsOptional,
-  IsString,
-  MaxLength,
-} from 'class-validator';
+import { IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsDateOnly } from '~/common/decorators/is-date-only.decorator';
 import { DocumentType } from '../enums/document-type.enum';
 
+/** Form fields sent with the multipart `file`. */
 export class CreateStudentDocumentDto {
   @IsEnum(DocumentType)
   documentType: DocumentType;
@@ -18,19 +12,11 @@ export class CreateStudentDocumentDto {
   @MaxLength(160)
   title?: string;
 
-  @IsString()
-  @IsNotEmpty()
-  fileUrl: string;
-
   @IsOptional()
-  @IsDateString()
+  @IsDateOnly()
   issueDate?: string;
 
   @IsOptional()
-  @IsDateString()
+  @IsDateOnly()
   expiryDate?: string;
-
-  @IsOptional()
-  @IsBoolean()
-  verified?: boolean;
 }

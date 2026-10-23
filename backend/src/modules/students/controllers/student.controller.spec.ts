@@ -7,6 +7,7 @@ import { StudentStatus } from '../enums/student-status.enum';
 describe('StudentController', () => {
   let controller: StudentController;
   let service: Record<string, jest.Mock>;
+  let scope: Record<string, jest.Mock>;
 
   beforeEach(() => {
     service = {
@@ -15,25 +16,35 @@ describe('StudentController', () => {
       create: jest.fn(),
       update: jest.fn(),
       remove: jest.fn(),
+      photoUrl: jest.fn().mockResolvedValue(null),
     };
-    controller = new StudentController(service as unknown as StudentService);
+    scope = {
+      sections: jest.fn().mockResolvedValue(null),
+      assert: jest.fn().mockResolvedValue(undefined),
+    };
+    controller = new StudentController(
+      service as unknown as StudentService,
+      scope as never,
+      { start: jest.fn() } as never,
+    );
   });
 
-  it('passes the filter to the service on findAll', async () => {
+  it('passes the filter and the caller scope to the service on findAll', async () => {
     service.findFiltered.mockResolvedValue([{ id: 's-1' }]);
+    scope.sections.mockResolvedValue(['sec-1']);
 
     const result = await controller.findAll({ status: StudentStatus.ACTIVE });
 
-    expect(service.findFiltered).toHaveBeenCalledWith({
-      status: StudentStatus.ACTIVE,
-    });
+    expect(service.findFiltered).toHaveBeenCalledWith(
+      { status: StudentStatus.ACTIVE },
+      ['sec-1'],
+    );
     expect(result).toEqual([{ id: 's-1' }]);
   });
 
   it('returns the created entity', async () => {
     service.create.mockResolvedValue({ id: 's-new' });
     const dto = {
-      admissionNumber: 'ADM-100',
       firstName: 'A',
       lastName: 'B',
     };
@@ -44,13 +55,13 @@ describe('StudentController', () => {
     expect(result).toEqual({ id: 's-new' });
   });
 
-  it('delegates findOne to the service', async () => {
+  it('checks scope, then returns the student with a photo URL', async () => {
     service.findById.mockResolvedValue({ id: 's-1' });
 
     const result = await controller.findOne('s-1');
 
-    expect(service.findById).toHaveBeenCalledWith('s-1');
-    expect(result).toEqual({ id: 's-1' });
+    expect(scope.assert).toHaveBeenCalledWith('students:read', 's-1');
+    expect(result).toEqual({ id: 's-1', photoUrl: null });
   });
 
   it('delegates update to the service', async () => {

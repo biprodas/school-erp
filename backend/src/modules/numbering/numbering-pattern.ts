@@ -47,3 +47,18 @@ export function assertValidPattern(pattern: string): void {
     throw new Error('A numbering pattern needs exactly one {SEQ} token');
   }
 }
+
+/**
+ * The pattern with `{SEQ}` taken out and the rest rendered, e.g.
+ * `{YY}{CLASS}{SEQ:4}` → `2606`. Used as the counter scope, so each prefix
+ * (year and class) counts from 1 and numbers never repeat.
+ */
+export function patternScope(
+  pattern: string,
+  ctx: NumberingContext = {},
+): string {
+  return formatNumber(pattern.replace(/\{SEQ(?::\d{1,2})?\}/g, ''), 0, ctx);
+}
+
+/** Whether the pattern needs a class code (`{CLASS}`). */
+export const usesClassCode = (pattern: string) => pattern.includes('{CLASS}');

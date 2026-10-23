@@ -16,6 +16,7 @@ export class FilterGuardianDto extends PaginationQueryDto {
   @IsString()
   name?: string;
 
+  /** Any format; matched normalized. */
   @IsOptional()
   @IsString()
   @MaxLength(40)

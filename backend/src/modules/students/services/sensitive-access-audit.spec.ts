@@ -58,11 +58,13 @@ describe('sensitive data access auditing', () => {
         } as unknown as StudentNoteRepository,
         students,
         audit as unknown as AuditService,
+        { current: () => ({ userId: 'u-1' }) } as never,
       );
 
     it('records a list that includes health notes', async () => {
       await serviceWith([NoteType.GENERAL, NoteType.HEALTH]).listForStudent(
         'stu-1',
+        true,
       );
 
       expect(audit.record).toHaveBeenCalledWith({
@@ -75,8 +77,38 @@ describe('sensitive data access auditing', () => {
     it('records nothing for ordinary notes', async () => {
       await serviceWith([NoteType.GENERAL, NoteType.ACADEMIC]).listForStudent(
         'stu-1',
+        true,
       );
       expect(audit.record).not.toHaveBeenCalled();
+    });
+
+    it('asks the repository to leave sensitive notes out without the key', async () => {
+      const repo = { findByStudent: jest.fn().mockResolvedValue([]) };
+      const service = new StudentNoteService(
+        repo as unknown as StudentNoteRepository,
+        students,
+        audit as unknown as AuditService,
+        { current: () => ({ userId: 'u-1' }) } as never,
+      );
+
+      await service.listForStudent('stu-1', false);
+
+      expect(repo.findByStudent).toHaveBeenCalledWith('stu-1', false);
+    });
+
+    it('refuses to write a sensitive note without the key', async () => {
+      const service = serviceWith([]);
+      for (const noteType of [
+        NoteType.HEALTH,
+        NoteType.DISCIPLINARY,
+        NoteType.COUNSELLING,
+      ]) {
+        await expect(
+          service.create('stu-1', { noteType, note: 'x' }, false),
+        ).rejects.toMatchObject({
+          response: { code: 'SENSITIVE_NOTE_FORBIDDEN' },
+        });
+      }
     });
   });
 });

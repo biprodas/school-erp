@@ -1,31 +1,25 @@
 import { allowAllEntitlements } from '~/modules/plans/entitlement.testing';
-import {
-  BadRequestException,
-  ConflictException,
-  NotFoundException,
-} from '@nestjs/common';
-import { RoleService } from '~/modules/rbac/services/role.service';
-import { OrgUserService } from '~/modules/users/services/org-user.service';
+import { BadRequestException, ConflictException } from '@nestjs/common';
+import { fakeTenantDataSource } from '~/tenancy/tenant-datasource.testing';
 import { StudentRepository } from '../repositories/student.repository';
-import { StudentService } from './student.service';
+import { StudentStatusHistoryRepository } from '../repositories/student-status-history.repository';
+import { classCode, STUDENT_ID_KEY, StudentService } from './student.service';
 import { Student } from '../entities/student.entity';
 import { StudentStatus } from '../enums/student-status.enum';
-import { fakeTenantDataSource } from '~/tenancy/tenant-datasource.testing';
 
 const makeStudent = (overrides: Partial<Student> = {}): Student =>
   ({
     id: 'student-1',
     orgId: 'org-1',
-    admissionNumber: 'ADM-001',
+    admissionNumber: '26060001',
     firstName: 'Ada',
     lastName: 'Lovelace',
     fullName: 'Ada Lovelace',
-    dob: null,
-    gender: null,
-    address: null,
+    email: null,
+    phone: null,
     status: StudentStatus.ACTIVE,
     userId: null,
-    guardians: [],
+    photoFileId: null,
     createdAt: new Date(),
     updatedAt: new Date(),
     syncFullName: () => {},
@@ -35,230 +29,241 @@ const makeStudent = (overrides: Partial<Student> = {}): Student =>
 describe('StudentService', () => {
   let service: StudentService;
   let studentRepo: Record<string, jest.Mock>;
-  let userService: Record<string, jest.Mock>;
-  let roleService: Record<string, jest.Mock>;
+  let historyRepo: Record<string, jest.Mock>;
+  let classes: { findById: jest.Mock };
+  let numbering: { nextFormatted: jest.Mock };
+  let numberingSettings: { studentId: string; allowManualStudentId: boolean };
+  let portal: {
+    studentAccounts: boolean;
+    studentMinLevel: number;
+    studentClassIds: string[];
+  };
+  let invites: { provision: jest.Mock };
+  let audit: { record: jest.Mock };
 
   beforeEach(() => {
     studentRepo = {
-      findAll: jest.fn(),
-      findByIdOrFail: jest.fn(),
-      findByAdmissionNumber: jest.fn(),
-      findByUserId: jest.fn(),
-      findFiltered: jest.fn(),
+      findByIdOrFail: jest.fn((id: string) =>
+        Promise.resolve(makeStudent({ id })),
+      ),
+      findByAdmissionNumber: jest.fn().mockResolvedValue(null),
+      findByRfid: jest.fn().mockResolvedValue(null),
       saveNew: jest.fn((data: Partial<Student>) =>
         Promise.resolve(makeStudent({ id: 'new-student', ...data })),
       ),
-      save: jest.fn((entity) => Promise.resolve(entity)),
+      updateFields: jest.fn(),
       deleteById: jest.fn(),
     };
-    userService = {
-      findById: jest.fn(),
-      create: jest.fn(),
+    historyRepo = { saveNew: jest.fn(), findByStudent: jest.fn() };
+    classes = {
+      findById: jest.fn().mockResolvedValue({ id: 'c6', code: null, level: 6 }),
     };
-    roleService = {
-      findSystemRole: jest.fn(),
+    numbering = { nextFormatted: jest.fn().mockResolvedValue('26060001') };
+    numberingSettings = {
+      studentId: '{YY}{CLASS}{SEQ:4}',
+      allowManualStudentId: false,
+    };
+    portal = { studentAccounts: true, studentMinLevel: 6, studentClassIds: [] };
+    invites = { provision: jest.fn() };
+    audit = { record: jest.fn() };
+    const settings = {
+      getSection: jest.fn((section: string) =>
+        Promise.resolve(section === 'portal' ? portal : numberingSettings),
+      ),
+      today: jest.fn().mockResolvedValue('2026-03-01'),
     };
 
     service = new StudentService(
       studentRepo as unknown as StudentRepository,
-      userService as unknown as OrgUserService,
-      roleService as unknown as RoleService,
+      historyRepo as unknown as StudentStatusHistoryRepository,
+      classes as never,
+      { findCurrent: jest.fn() } as never,
+      numbering as never,
+      settings as never,
+      {
+        upload: jest.fn(),
+        getDownloadUrl: jest.fn(),
+        remove: jest.fn(),
+      } as never,
+      invites as never,
       allowAllEntitlements(),
+      audit as never,
+      { current: () => ({ userId: 'u-1' }) } as never,
       fakeTenantDataSource(),
     );
   });
 
   describe('create', () => {
-    it('creates a student with no user link', async () => {
-      studentRepo.findByAdmissionNumber.mockResolvedValue(null);
-      studentRepo.findByIdOrFail.mockResolvedValue(
-        makeStudent({ id: 'new-student' }),
+    it('generates the ID from the pattern, counted per year and class', async () => {
+      const result = await service.create(
+        { firstName: 'Ada', lastName: 'Lovelace', phone: '01712345678' },
+        { classId: 'c6', date: '2026-01-10' },
       );
 
-      const result = await service.create({
-        admissionNumber: 'ADM-001',
-        firstName: 'Ada',
-        lastName: 'Lovelace',
-      });
-
-      expect(result.id).toBe('new-student');
+      expect(numbering.nextFormatted).toHaveBeenCalledWith(
+        STUDENT_ID_KEY,
+        '{YY}{CLASS}{SEQ:4}',
+        '2606',
+        expect.objectContaining({ classCode: '06' }),
+      );
       expect(studentRepo.saveNew).toHaveBeenCalledWith(
         expect.objectContaining({
-          admissionNumber: 'ADM-001',
-          firstName: 'Ada',
-          lastName: 'Lovelace',
-          userId: null,
+          admissionNumber: '26060001',
           status: StudentStatus.ACTIVE,
+          phone: '+8801712345678',
         }),
       );
-      expect(userService.create).not.toHaveBeenCalled();
+      expect(result.id).toBe('new-student');
     });
 
-    it('links an existing tenant user', async () => {
-      studentRepo.findByAdmissionNumber.mockResolvedValue(null);
-      userService.findById.mockResolvedValue({ id: 'user-7' });
-      studentRepo.findByUserId.mockResolvedValue(null);
-      studentRepo.findByIdOrFail.mockResolvedValue(
-        makeStudent({ id: 'new-student', userId: 'user-7' }),
+    it('skips a generated ID someone typed in by hand', async () => {
+      numbering.nextFormatted
+        .mockResolvedValueOnce('26060001')
+        .mockResolvedValueOnce('26060002');
+      studentRepo.findByAdmissionNumber.mockImplementation((n: string) =>
+        Promise.resolve(n === '26060001' ? makeStudent() : null),
       );
 
-      const result = await service.create({
-        admissionNumber: 'ADM-002',
-        firstName: 'Grace',
-        lastName: 'Hopper',
-        userId: 'user-7',
-      });
+      await service.create(
+        { firstName: 'A', lastName: 'B' },
+        { classId: 'c6', date: '2026-01-10' },
+      );
 
-      expect(userService.findById).toHaveBeenCalledWith('user-7');
       expect(studentRepo.saveNew).toHaveBeenCalledWith(
-        expect.objectContaining({ userId: 'user-7' }),
+        expect.objectContaining({ admissionNumber: '26060002' }),
       );
-      expect(result.userId).toBe('user-7');
     });
 
-    it('provisions a new user with the student role when createUser is set', async () => {
-      studentRepo.findByAdmissionNumber.mockResolvedValue(null);
-      roleService.findSystemRole.mockResolvedValue({ id: 'role-student' });
-      userService.create.mockResolvedValue({ id: 'new-user' });
-      studentRepo.findByIdOrFail.mockResolvedValue(
-        makeStudent({ id: 'new-student', userId: 'new-user' }),
-      );
-
-      const result = await service.create({
-        admissionNumber: 'ADM-003',
-        firstName: 'Linus',
-        lastName: 'Torvalds',
-        createUser: { email: 'linus@example.com', password: 'secret123' },
-      });
-
-      expect(roleService.findSystemRole).toHaveBeenCalledWith('student');
-      expect(userService.create).toHaveBeenCalledWith({
-        name: 'Linus Torvalds',
-        email: 'linus@example.com',
-        password: 'secret123',
-        roleIds: ['role-student'],
-      });
-      expect(studentRepo.saveNew).toHaveBeenCalledWith(
-        expect.objectContaining({ userId: 'new-user' }),
-      );
-      expect(result.userId).toBe('new-user');
+    it('needs the class when the pattern uses it', async () => {
+      await expect(
+        service.create({ firstName: 'A', lastName: 'B' }),
+      ).rejects.toMatchObject({ response: { code: 'CLASS_REQUIRED' } });
     });
 
-    it('rejects when both userId and createUser are provided', async () => {
+    it('takes a typed ID only where the school allows it', async () => {
       await expect(
         service.create({
-          admissionNumber: 'ADM-004',
+          admissionNumber: 'X-1',
           firstName: 'A',
           lastName: 'B',
-          userId: 'user-1',
-          createUser: { email: 'a@b.com', password: 'secret123' },
         }),
-      ).rejects.toThrow(BadRequestException);
+      ).rejects.toMatchObject({ response: { code: 'MANUAL_ID_NOT_ALLOWED' } });
 
-      expect(studentRepo.saveNew).not.toHaveBeenCalled();
-    });
-
-    it('rejects a duplicate admission number', async () => {
-      studentRepo.findByAdmissionNumber.mockResolvedValue(makeStudent());
-
-      await expect(
-        service.create({
-          admissionNumber: 'ADM-001',
-          firstName: 'X',
-          lastName: 'Y',
-        }),
-      ).rejects.toThrow(ConflictException);
-    });
-
-    it('rejects when the user is already linked to another student', async () => {
-      studentRepo.findByAdmissionNumber.mockResolvedValue(null);
-      userService.findById.mockResolvedValue({ id: 'user-7' });
-      studentRepo.findByUserId.mockResolvedValue(
-        makeStudent({ id: 'other-student' }),
+      numberingSettings.allowManualStudentId = true;
+      await service.create({
+        admissionNumber: 'X-1',
+        firstName: 'A',
+        lastName: 'B',
+      });
+      expect(studentRepo.saveNew).toHaveBeenCalledWith(
+        expect.objectContaining({ admissionNumber: 'X-1' }),
       );
-
-      await expect(
-        service.create({
-          admissionNumber: 'ADM-005',
-          firstName: 'X',
-          lastName: 'Y',
-          userId: 'user-7',
-        }),
-      ).rejects.toThrow(ConflictException);
+      expect(numbering.nextFormatted).not.toHaveBeenCalled();
     });
 
-    it('rejects when the student system role is missing', async () => {
-      studentRepo.findByAdmissionNumber.mockResolvedValue(null);
-      roleService.findSystemRole.mockRejectedValue(new NotFoundException());
+    it('rejects a taken RFID card', async () => {
+      studentRepo.findByRfid.mockResolvedValue(makeStudent({ id: 'other' }));
 
       await expect(
-        service.create({
-          admissionNumber: 'ADM-006',
-          firstName: 'X',
-          lastName: 'Y',
-          createUser: { email: 'x@y.com', password: 'secret123' },
-        }),
-      ).rejects.toThrow(NotFoundException);
+        service.create(
+          { firstName: 'A', lastName: 'B', rfidCardNo: 'RF-1' },
+          { classId: 'c6' },
+        ),
+      ).rejects.toThrow(ConflictException);
     });
   });
 
-  describe('update', () => {
-    it('rejects a conflicting admission number from another student', async () => {
-      studentRepo.findByIdOrFail.mockResolvedValue(
-        makeStudent({ id: 'student-1', admissionNumber: 'ADM-001' }),
-      );
-      studentRepo.findByAdmissionNumber.mockResolvedValue(
-        makeStudent({ id: 'student-2', admissionNumber: 'ADM-002' }),
-      );
-
-      await expect(
-        service.update('student-1', { admissionNumber: 'ADM-002' }),
-      ).rejects.toThrow(ConflictException);
-    });
-
-    it('updates allowed fields', async () => {
-      studentRepo.findByIdOrFail
-        .mockResolvedValueOnce(makeStudent())
-        .mockResolvedValueOnce(makeStudent({ address: '12 Oak St' }));
-
-      const result = await service.update('student-1', {
-        address: '12 Oak St',
+  describe('changeStatus', () => {
+    it('records allowed transitions in the history and the audit log', async () => {
+      await service.changeStatus('student-1', {
+        status: StudentStatus.SUSPENDED,
+        reason: 'Discipline',
       });
 
-      expect(studentRepo.save).toHaveBeenCalled();
-      expect(result.address).toBe('12 Oak St');
-    });
-  });
-
-  describe('remove', () => {
-    it('deletes after verifying existence', async () => {
-      studentRepo.findByIdOrFail.mockResolvedValue(makeStudent());
-
-      await service.remove('student-1');
-
-      expect(studentRepo.deleteById).toHaveBeenCalledWith('student-1');
-    });
-  });
-
-  describe('findFiltered', () => {
-    it('passes only provided filters, plus the page, to the repository', async () => {
-      studentRepo.findFiltered.mockResolvedValue([]);
-      const filter = {
-        status: StudentStatus.ACTIVE,
-        firstName: 'Ada',
-        page: 2,
-        limit: 10,
-      };
-
-      await service.findFiltered(filter);
-
-      expect(studentRepo.findFiltered).toHaveBeenCalledWith(
-        {
-          status: StudentStatus.ACTIVE,
-          firstName: 'Ada',
-        },
-        filter,
+      expect(studentRepo.updateFields).toHaveBeenCalledWith('student-1', {
+        status: StudentStatus.SUSPENDED,
+      });
+      expect(historyRepo.saveNew).toHaveBeenCalledWith(
+        expect.objectContaining({
+          fromStatus: StudentStatus.ACTIVE,
+          toStatus: StudentStatus.SUSPENDED,
+          reason: 'Discipline',
+          effectiveDate: '2026-03-01',
+          changedBy: 'u-1',
+        }),
       );
+      expect(audit.record).toHaveBeenCalled();
     });
+
+    it('refuses transitions the lifecycle does not allow', async () => {
+      studentRepo.findByIdOrFail.mockResolvedValue(
+        makeStudent({ status: StudentStatus.GRADUATED }),
+      );
+
+      await expect(
+        service.changeStatus('student-1', { status: StudentStatus.ACTIVE }),
+      ).rejects.toThrow(BadRequestException);
+      expect(historyRepo.saveNew).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('ensurePortalAccount', () => {
+    const cls = { id: 'c6', level: 6 };
+
+    it('makes a student login when the class qualifies', async () => {
+      studentRepo.findByIdOrFail.mockResolvedValue(
+        makeStudent({ email: 'ada@school.test' }),
+      );
+      invites.provision.mockResolvedValue({ userId: 'u-9', delivery: 'email' });
+
+      const result = await service.ensurePortalAccount('student-1', cls);
+
+      expect(invites.provision).toHaveBeenCalledWith(
+        expect.objectContaining({
+          email: 'ada@school.test',
+          portalRole: 'student',
+          membership: 'active',
+        }),
+      );
+      expect(studentRepo.updateFields).toHaveBeenCalledWith('student-1', {
+        userId: 'u-9',
+      });
+      expect(result?.userId).toBe('u-9');
+    });
+
+    it('skips classes below the minimum level and students without contact', async () => {
+      studentRepo.findByIdOrFail.mockResolvedValue(
+        makeStudent({ email: 'ada@school.test' }),
+      );
+      await expect(
+        service.ensurePortalAccount('student-1', { id: 'c3', level: 3 }),
+      ).resolves.toBeNull();
+
+      studentRepo.findByIdOrFail.mockResolvedValue(makeStudent());
+      await expect(
+        service.ensurePortalAccount('student-1', cls),
+      ).resolves.toBeNull();
+      expect(invites.provision).not.toHaveBeenCalled();
+    });
+
+    it("doesn't share a member's account (e.g. a guardian's phone)", async () => {
+      studentRepo.findByIdOrFail.mockResolvedValue(
+        makeStudent({ phone: '+8801712345678' }),
+      );
+      invites.provision.mockRejectedValue(
+        new ConflictException({ code: 'ALREADY_MEMBER' }),
+      );
+
+      await expect(
+        service.ensurePortalAccount('student-1', cls),
+      ).resolves.toBeNull();
+      expect(studentRepo.updateFields).not.toHaveBeenCalled();
+    });
+  });
+
+  it('renders the class code from the code, else the padded level', () => {
+    expect(classCode({ code: 'IX', level: 9 })).toBe('IX');
+    expect(classCode({ code: null, level: 6 })).toBe('06');
+    expect(classCode({ code: null, level: null })).toBeNull();
   });
 });

@@ -15,7 +15,7 @@
 - This is a starting plan, not a fixed spec. When implementation shows a better way, change the code and update this doc to match.
 - Items marked **(1b)** are listed only so Phase 1a leaves room for them; they are tracked in section 14.
 
-**Current state:** M0 in progress (4.1–4.7 done; DB-backed checks wait for the local database or the first CI run). M1 implemented (2026-10-23) except the sample-data mode and the grading, holiday and fee-head template "apply" steps, which wait for M5, M4 and M6; its e2e specs pass against Postgres 18. M2 implemented (2026-10-24) except the staff Excel import, which waits for the M3 import framework. Section 1 lists what already exists and can be reused.
+**Current state:** M0 in progress (4.1–4.7 done; DB-backed checks wait for the local database or the first CI run). M1 implemented (2026-10-23) except the sample-data mode and the grading, holiday and fee-head template "apply" steps, which wait for M5, M4 and M6; its e2e specs pass against Postgres 18. M2 and M3 implemented (2026-10-24). Section 1 lists what already exists and can be reused.
 
 ---
 
@@ -191,7 +191,7 @@ M4, M5 and M6 don't depend on one another, so they can be reordered (fees first 
   - [x] `PermissionResolverService.getPermissionScopes` returns, per permission key, the widest scope among the user's roles that grant it (roles read once per request).
   - [x] Request-scoped `AccessScope` (`src/modules/access-scope/`, its own module because `TeachingModule` depends on `RbacModule`): `can(key)`, `sections(key)` (`null` = unrestricted, else class-sections with a class- or subject-teacher assignment in the current session), `subjectAssignments(key)`, plus `canAccessSection`/`canAccessSubject`. Data from the exported `TeachingService.activeAssignmentsForUser`, cached per request. *Sections are still a global name list shared by classes, so a section is a `{ classId, sectionId }` pair and a subject assignment `{ classId, sectionId, subjectId }`; M2 (per-session sections, `class_subject_id`, effective dates) reduces these to `sectionId` / `(sectionId, classSubjectId)`.*
   - [x] Unit suite for permission evaluation with scopes (PRD 11.1): `access-scope.service.spec.ts`, `permission-resolver.service.spec.ts`, `teaching.service.spec.ts`.
-  - [ ] Existing student/enrollment/teaching list endpoints filter by `AccessScope`. *They predate it; each is retrofitted when its module is reworked. Sections and class/subject teachers done in M2 (with the "scoped teacher sees only their own sections" e2e); students and enrollments in M3.*
+  - [x] Existing student/enrollment/teaching list endpoints filter by `AccessScope`. *They predate it; each is retrofitted when its module is reworked. Sections and class/subject teachers done in M2, students, guardians and enrollments in M3.*
 - [x] Guardian and student roles hold only `portal:*` keys (`portal:access`), so their tokens are refused on staff endpoints (portal endpoints in M7).
 
 ### 4.5 Audit log (PRD 6.3, 8.1)
@@ -344,7 +344,7 @@ Migration `1792340000000-PlatformAndOnboarding` holds every schema change below 
 
 **Scope:** PRD 6.4 (without batch mode) and the staff directory (decision 4 of PRD v1.3).
 
-*Implemented 2026-10-24. Migrations `1792350000000-AcademicSetup` and `1792350000001-PerSessionSections` ran (up, down, up) on a copy of the migrated schema seeded with legacy sections, links, enrollments, teachers and promotions, and `db:generate` finds no drift afterwards. Unit suites and the e2e suite (`test/academic-structure.e2e-spec.ts`) pass against Postgres 18. Open: the staff Excel import (waits for the M3 import framework).*
+*Implemented 2026-10-24 (staff import with M3). Migrations `1792350000000-AcademicSetup` and `1792350000001-PerSessionSections` ran (up, down, up) on a copy of the migrated schema seeded with legacy sections, links, enrollments, teachers and promotions, and `db:generate` finds no drift afterwards. Unit suites and the e2e suite (`test/academic-structure.e2e-spec.ts`) pass against Postgres 18.*
 
 ### 6.1 Sessions, terms, shifts, rooms
 
@@ -394,7 +394,7 @@ Migration `1792340000000-PlatformAndOnboarding` holds every schema change below 
 
 - [x] `employees`: generated `employee_number` via `NumberingService` (overridable), Bangla name, NID (encrypted), photo file, employment type. *Pattern setting `numbering.employeeId` (default `EMP-{SEQ:4}`); numbers typed in by hand are skipped. `POST /employees/:id/photo` (`employee_photo` purpose); `GET /employees/:id` adds a signed `photoUrl`. Employment type permanent/contract/part_time.*
 - [x] `POST /employees/:id/invite` uses the M0 invite flow with the employee's email or phone and a default role by designation. *`designations.default_role_id` (a staff role the user may assign); `roleIds` overrides. Email → activation link, phone only → slip. Needs `users:create`; links `employees.user_id`; audited as `employee.invited`. The old `createUser` option (admin-chosen password) is gone.*
-- [ ] Staff Excel import through the import framework (M3) with type `staff`.
+- [x] Staff Excel import through the import framework (M3) with type `staff`. *Landed with M3 (`StaffImporter`); logins come from the invite afterwards.*
 
 ### Done when
 
@@ -410,69 +410,72 @@ Migration `1792340000000-PlatformAndOnboarding` holds every schema change below 
 
 **Scope:** PRD 6.6 (transfers within the school) and the Excel import from 6.2.
 
+*Implemented 2026-10-24. Migration `1792360000000-StudentProfileAndGeo` ran (up, down, up) on a seeded copy of the M2 schema, and `db:generate` finds no drift. Unit suites and `test/student-information.e2e-spec.ts` pass against Postgres 18; the e2e specs use an in-memory `StorageService` (`test/support/storage.ts`) and real headless Chrome for PDFs.*
+
 ### 7.1 Profile and status
 
-- [ ] `students`: add `name_bn`, `birth_reg_no`, `blood_group`, `previous_school`; `photo_file_id` replaces `photo_url`.
-- [ ] Platform `geo_divisions`, `geo_districts`, `geo_upazilas` seeded from BBS data; `GET /public/geo/...`; addresses gain `division_id`, `district_id`, `upazila_id`.
-- [ ] **Student ID:** `admission_number` generated from the org pattern (`{YY}{CLASS}{SEQ:4}` default) at create or import; manual value only when the setting allows it.
-- [ ] **Status lifecycle:**
-  - [ ] Enum `active`, `suspended`, `transferred`, `left`, `graduated`, `dropped_out` (`applicant` comes with admissions); migration maps `inactive` → `left`.
-  - [ ] `POST /students/:id/status { status, reason, effectiveDate }` validates transitions and writes `student_status_history`.
-  - [ ] Plain PATCH can no longer change status.
-- [ ] **Search:** `pg_trgm` GIN indexes on English and Bangla names; search by name, ID, phone and guardian phone; filters by class, section, status, gender, religion.
-- [ ] Student list export (Excel/PDF) as a job.
+- [x] `students`: add `name_bn`, `birth_reg_no`, `blood_group`, `previous_school`; `photo_file_id` replaces `photo_url`. *Blood group moves off the medical record (copied over). `POST /students/:id/photo`; `GET /students/:id` adds a signed `photoUrl`. Phones are stored normalized.*
+- [x] Platform `geo_divisions`, `geo_districts`, `geo_upazilas` seeded from BBS data; `GET /public/geo/...`; addresses gain `division_id`, `district_id`, `upazila_id`. *Data in `shared/geo/bd-geo.data.ts` (8 / 64 / 494 units, from nuhil/bangladesh-geocode, MIT), seeded by the migration and, with sync, `GeoSeeder`. A lower unit fills its parents; mismatches are `INVALID_GEO`.*
+- [x] **Student ID:** `admission_number` generated from the org pattern (`{YY}{CLASS}{SEQ:4}` default) at create or import; manual value only when the setting allows it. *Counted per rendered prefix (`patternScope`), so each year and class starts at 1; `{CLASS}` is the class code, else its level padded (`06`). `POST /students` takes `classId` for it (`CLASS_REQUIRED`). Typed IDs need `allowManualStudentId` (`MANUAL_ID_NOT_ALLOWED`).*
+- [x] **Status lifecycle:**
+  - [x] Enum `active`, `suspended`, `transferred`, `left`, `graduated`, `dropped_out` (`applicant` comes with admissions); migration maps `inactive` → `left`.
+  - [x] `POST /students/:id/status { status, reason, effectiveDate }` validates transitions and writes `student_status_history`. *Leaving statuses close the current enrollment (transferred / left / completed); re-admission reopens it and counts against the plan again. In EnrollmentModule because it touches both.*
+  - [x] Plain PATCH can no longer change status.
+- [x] **Search:** `pg_trgm` GIN indexes on English and Bangla names; search by name, ID, phone and guardian phone; filters by class, section, status, gender, religion. *`?q=`; class/section filters use the given or current session. The indexes are `synchronize: false` and created by the migration (prod) or `StudentSearchBootstrap` (sync).*
+- [x] Student list export (Excel/PDF) as a job. *`POST /students/export` (`students:export`), audited as `data.exported`; the requester's scope is fixed when it is asked for. `GET /jobs/:id` now returns a signed `downloadUrl` for jobs that made a file.*
+- [x] *Scope: student endpoints (and every `/students/:id/...` sub-resource, guardians, enrollments) follow `AccessScope`: a scoped teacher reaches students enrolled in the sections they teach (`StudentScope`).*
 
 ### 7.2 Guardians and portal accounts
 
-- [ ] Relation enum `father`, `mother`, `local_guardian`, `brother`, `sister`, `other`; add `occupation`, `income`, `nid` (encrypted), `name_bn`.
-- [ ] Partial unique `(org_id, phone) WHERE deleted_at IS NULL` on guardians (also the import match key).
-- [ ] Every guardian gets a user account (email or phone) and an ACTIVE guardian membership on create or import.
-- [ ] Students get an account only when their class qualifies under `org_settings.portal` (re-checked at promotion).
-- [ ] All account creation goes through `OrgUserService` and the invite flow; no hand-set passwords.
+- [x] Relation enum `father`, `mother`, `local_guardian`, `brother`, `sister`, `other`; add `occupation`, `income`, `nid` (encrypted), `name_bn`. *`income` is monthly, in minor units.*
+- [x] Partial unique `(org_id, phone) WHERE deleted_at IS NULL` on guardians (also the import match key). *Normalized phones; the migration clears the phone of a later duplicate. Creating inline with a known phone links that guardian.*
+- [x] Every guardian gets a user account (email or phone) and an ACTIVE guardian membership on create or import. *Email: an activation link (sent after commit). Phone only: no password until `POST /guardians/:id/portal-slip` prints one. Someone already a member (a teacher) keeps their account and gains the guardian role.*
+- [x] Students get an account only when their class qualifies under `org_settings.portal` (re-checked at promotion). *At enrollment, when the student has their own email or phone; skipped when it belongs to a member already (often a guardian's phone). `POST /students/:id/portal-slip`.*
+- [x] All account creation goes through `OrgUserService` and the invite flow; no hand-set passwords. *`InviteService.provision` (mail deferred to after commit) and `issueSlip`; `RoleService.assignPortalRole` gives the portal-only roles without the escalation check. Accounts without a password share an unusable hash with `password_set = false`, so bulk imports skip bcrypt. The old `createUser` options on students and guardians are gone.*
 
 ### 7.3 Enrollment, transfers, promotion
 
-- [ ] Enrollment validation: section belongs to the class and year; capacity (override with `enrollments:override_capacity`); student active; roll unique per section.
-- [ ] **Transfers:** `POST /enrollments/:id/transfer { sectionId, reason, effectiveDate }` writes `enrollment_changes` and updates the enrollment.
-- [ ] **Promotion** (replaces `student_promotions`):
-  - [ ] `promotion_batches (from_year_id, to_year_id, class_id, status draft|committed|rolled_back, options jsonb {rollBy merit|keep|alphabetical, shuffleSections}, committed_at, committed_by)`.
-  - [ ] `promotion_batch_items (enrollment_id, outcome promote|detain|conditional|graduate, to_class_id, to_section_id, new_roll, overridden, note)`.
-  - [ ] `POST /promotions/batches` builds the draft (outcome from the published combined result when it exists, else promote) and computes rolls and sections; `GET` is the preview.
-  - [ ] `PATCH /promotions/batches/:id/items/:itemId` for manual overrides.
-  - [ ] `POST /promotions/batches/:id/commit` (job, one transaction): create next-year enrollments, mark old ones `promoted`/`completed`, graduate the final class.
-  - [ ] `POST /promotions/batches/:id/rollback` within 24 hours, only if nothing references the new enrollments.
-  - [ ] Migration drops `student_promotions` (moving any rows into a closed legacy batch).
+- [x] Enrollment validation: section belongs to the class and year; capacity (override with `enrollments:override_capacity`); student active; roll unique per section. *`SECTION_FULL`, `CAPACITY_OVERRIDE_FORBIDDEN`, `STUDENT_NOT_ACTIVE`, `ROLL_TAKEN`.*
+- [x] **Transfers:** `POST /enrollments/:id/transfer { sectionId, reason, effectiveDate }` writes `enrollment_changes` and updates the enrollment. *Same class and session; the roll moves when free there, else is cleared. `GET /enrollments/:id/transfers`.*
+- [x] **Promotion** (replaces `student_promotions`):
+  - [x] `promotion_batches (from_year_id, to_year_id, class_id, status draft|committed|rolled_back, options jsonb {rollBy merit|keep|alphabetical, shuffleSections}, committed_at, committed_by)`.
+  - [x] `promotion_batch_items (enrollment_id, outcome promote|detain|conditional|graduate, to_class_id, to_section_id, new_roll, overridden, note)`.
+  - [x] `POST /promotions/batches` builds the draft (outcome from the published combined result when it exists, else promote) and computes rolls and sections; `GET` is the preview. *No results yet (M5): everyone is promoted, merit uses the old roll. The next class is the next level up; the final class graduates. Same-name sections, or spread evenly with `shuffleSections`.*
+  - [x] `PATCH /promotions/batches/:id/items/:itemId` for manual overrides.
+  - [x] `POST /promotions/batches/:id/commit` (job, one transaction): create next-year enrollments, mark old ones `promoted`/`completed`, graduate the final class. *`promotions:commit`; refused (`PROMOTION_NOT_READY`) while a student has no section, a roll repeats or someone is already enrolled.*
+  - [x] `POST /promotions/batches/:id/rollback` within 24 hours, only if nothing references the new enrollments. *Checks subject choices and transfers; attendance and marks (M4/M5) add theirs.*
+  - [x] Migration drops `student_promotions` (moving any rows into a closed legacy batch).
 
 ### 7.4 Excel import (PRD 6.2)
 
-- [ ] `src/modules/imports/`: `imports (type students|guardians|staff|marks, file_id, status uploaded|validating|validated|committing|done|failed, mode all_or_nothing|valid_only, totals jsonb, errors jsonb [{row, column, code, message}])`.
-- [ ] `GET /imports/templates/:type`: a generated workbook with headers, examples and data-validation lists.
-- [ ] `POST /imports` (upload) → validation job: required fields, formats, phone normalization, duplicates in the file and against the DB, class/section existence.
-- [ ] `GET /imports/:id`: row-level preview.
-- [ ] `POST /imports/:id/commit` (job): students, guardians (matched by phone), links, enrollments and portal accounts; one transaction for `all_or_nothing`, per-row savepoints for `valid_only`.
-- [ ] 500 students validate and commit in well under a minute.
+- [x] `src/modules/imports/`: `imports (type students|guardians|staff|marks, file_id, status uploaded|validating|validated|committing|done|failed, mode all_or_nothing|valid_only, totals jsonb, errors jsonb [{row, column, code, message}])`. *Types `students` (with guardians) and `staff` so far; `guardians`-only and `marks` (M5) plug into the same `Importer` contract.*
+- [x] `GET /imports/templates/:type`: a generated workbook with headers, examples and data-validation lists.
+- [x] `POST /imports` (upload) → validation job: required fields, formats, phone normalization, duplicates in the file and against the DB, class/section existence. *Also rolls, groups, capacity and the manual-ID setting.*
+- [x] `GET /imports/:id`: row-level preview.
+- [x] `POST /imports/:id/commit` (job): students, guardians (matched by phone), links, enrollments and portal accounts; one transaction for `all_or_nothing`, per-row savepoints for `valid_only`.
+- [x] 500 students validate and commit in well under a minute. *About 30 s for the whole e2e spec, 500 rows included.*
 
 ### 7.5 Documents, health, notes
 
-- [ ] Documents: `file_id` replaces `file_url`; `verification_status` (pending/verified/rejected) with `verified_by`/`verified_at`.
-- [ ] Health: medical record fields encrypted; the student 360 view omits health without `student_medical:read`.
-- [ ] Notes: `health`, `disciplinary` and `counselling` types need `student_notes:read_sensitive`, enforced in the repository query.
+- [x] Documents: `file_id` replaces `file_url`; `verification_status` (pending/verified/rejected) with `verified_by`/`verified_at`. *Multipart upload; `POST …/:id/verify`, `GET …/:id/download`.*
+- [x] Health: medical record fields encrypted; the student 360 view omits health without `student_medical:read`. *Plus `medications`, `vaccinations`; the migration encrypts existing rows.*
+- [x] Notes: `health`, `disciplinary` and `counselling` types need `student_notes:read_sensitive`, enforced in the repository query. *Writing them needs it too (`SENSITIVE_NOTE_FORBIDDEN`). Principal and admin hold it.*
 
 ### 7.6 Certificates, ID cards, student 360
 
-- [ ] `certificates (student_id, type tc|testimonial|character|study, serial, issued_at, issued_by, data jsonb, status valid|revoked, revoke_reason, verify_token)`; serial from `NumberingService`.
-- [ ] One fixed PDF layout per certificate type, with a QR code to `https://<host>/verify/<token>`.
-- [ ] `GET /public/certificates/verify/:token` returns name, type, issue date and status only.
-- [ ] ID cards: one fixed layout, bulk PDF per section with photo and QR; `students.rfid_card_no` column.
-- [ ] `GET /students/:id/overview` (student 360): profile, enrollment, guardians; attendance, results and fees summaries added as M4–M6 land.
+- [x] `certificates (student_id, type tc|testimonial|character|study, serial, issued_at, issued_by, data jsonb, status valid|revoked, revoke_reason, verify_token)`; serial from `NumberingService`. *`data` freezes the student's details (names, parents, class, roll, session) and the verify URL.*
+- [x] One fixed PDF layout per certificate type, with a QR code to `https://<host>/verify/<token>`. *`POST /certificates/:id/pdf` (job); a revoked one prints a REVOKED stamp.*
+- [x] `GET /public/certificates/verify/:token` returns name, type, issue date and status only.
+- [x] ID cards: one fixed layout, bulk PDF per section with photo and QR; `students.rfid_card_no` column. *`POST /sections/:id/id-cards` (`id_cards:print`); the QR holds the student ID.*
+- [x] `GET /students/:id/overview` (student 360): profile, enrollment, guardians; attendance, results and fees summaries added as M4–M6 land. *Each part appears only with its permission.*
 
 ### Done when
 
-- [ ] 500 students with guardians import from the template, showing row errors before commit, in both modes (e2e).
-- [ ] Promotion previews, commits and rolls back within 24 hours (e2e).
-- [ ] Student IDs follow the configured pattern with no duplicates under concurrency.
-- [ ] Sensitive notes and health data are hidden without the permission (e2e).
-- [ ] A certificate QR code verifies on the public endpoint, and a revoked one shows as revoked.
+- [x] 500 students with guardians import from the template, showing row errors before commit, in both modes (e2e).
+- [x] Promotion previews, commits and rolls back within 24 hours (e2e).
+- [x] Student IDs follow the configured pattern with no duplicates under concurrency.
+- [x] Sensitive notes and health data are hidden without the permission (e2e).
+- [x] A certificate QR code verifies on the public endpoint, and a revoked one shows as revoked.
 
 ---
 

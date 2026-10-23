@@ -8,9 +8,12 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { randomBytes } from 'node:crypto';
 import { normalizeEmail, normalizePhone } from '~/common/identity/identifier';
-import { hashPassword } from '~/common/identity/password';
+import { hashPassword, unusablePasswordHash } from '~/common/identity/password';
+import type {
+  GUARDIAN_ROLE_NAME,
+  STUDENT_ROLE_NAME,
+} from '~/modules/rbac/system-roles.seed';
 import type { User } from '../entities/user.entity';
 import { Membership } from '~/modules/memberships/entities/membership.entity';
 import { MembershipStatus } from '~/modules/memberships/enums/membership-status.enum';
@@ -56,6 +59,11 @@ export interface AddMemberInput {
   password?: string;
   status: MembershipStatus;
   roleIds?: string[];
+  /**
+   * The guardian or student system role, given without the escalation
+   * check (portal roles reach no staff endpoint).
+   */
+  portalRole?: typeof GUARDIAN_ROLE_NAME | typeof STUDENT_ROLE_NAME;
 }
 
 export interface AddMemberResult {
@@ -222,8 +230,13 @@ export class OrgUserService {
     // verified: nobody has proved they own that email, so its password
     // (chosen by whoever registered it) must not carry over into the school.
     const createdAccount = !account || account.status === UserStatus.PENDING;
+    // No password given: an unusable one, and `password_set = false` so the
+    // activation link lets the owner choose theirs.
     const newPassword = () =>
-      hashPassword(input.password ?? randomBytes(32).toString('base64url'));
+      input.password !== undefined
+        ? hashPassword(input.password)
+        : unusablePasswordHash();
+    const passwordSet = input.password !== undefined;
     if (account) {
       if (await this.memberRepo.findByUserId(account.id)) {
         throw new ConflictException({
@@ -234,6 +247,7 @@ export class OrgUserService {
       if (createdAccount) {
         account.password = await newPassword();
         account.mustChangePassword = input.password !== undefined;
+        account.passwordSet = passwordSet;
         // A temporary password handed over by the school vouches for the
         // person; otherwise the account stays pending until the activation
         // link is used.
@@ -247,6 +261,7 @@ export class OrgUserService {
         phone: phone ?? null,
         password: await newPassword(),
         mustChangePassword: input.password !== undefined,
+        passwordSet,
         status: UserStatus.ACTIVE,
       });
     }
@@ -261,7 +276,26 @@ export class OrgUserService {
     for (const roleId of roleIds) {
       await this.roleService.assignRole(account.id, roleId);
     }
+    if (input.portalRole) {
+      await this.roleService.assignPortalRole(account.id, input.portalRole);
+    }
     return { userId: account.id, account, createdAccount };
+  }
+
+  /**
+   * More roles for an existing member (e.g. a teacher who is also a
+   * guardian here). Staff roles go through the escalation check.
+   */
+  async addRoles(
+    userId: string,
+    roleIds: string[] = [],
+    portalRole?: AddMemberInput['portalRole'],
+  ): Promise<void> {
+    await this.getMemberOrFail(userId);
+    for (const roleId of new Set(roleIds)) {
+      await this.roleService.assignRole(userId, roleId);
+    }
+    if (portalRole) await this.roleService.assignPortalRole(userId, portalRole);
   }
 
   /** Marks this school's membership of the user ACTIVE (existing accounts). */

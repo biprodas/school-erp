@@ -13,7 +13,9 @@ import { SubjectService } from '~/modules/subjects/subject.service';
 import { StudentService } from '~/modules/students/services/student.service';
 import { EnrollmentRepository } from '../repositories/enrollment.repository';
 import { StudentSubjectRepository } from '../repositories/student-subject.repository';
+import { StudentEnrollmentStatus } from '../enums/student-enrollment-status.enum';
 import { EnrollmentService } from './enrollment.service';
+import { fakeTenantDataSource } from '~/tenancy/tenant-datasource.testing';
 import { StudentEnrollment } from '../entities/student-enrollment.entity';
 
 const makeEnrollment = (
@@ -44,6 +46,7 @@ describe('EnrollmentService', () => {
   let subjectRepo: Record<string, jest.Mock>;
   let classSubjectRepo: Record<string, jest.Mock>;
   let groupRepo: Record<string, jest.Mock>;
+  let changeRepo: Record<string, jest.Mock>;
 
   beforeEach(() => {
     enrollmentRepo = {
@@ -54,8 +57,12 @@ describe('EnrollmentService', () => {
         Promise.resolve(makeEnrollment({ id: 'new-enr', ...data })),
       ),
       save: jest.fn((e) => Promise.resolve(e)),
+      updateFields: jest.fn(),
       deleteById: jest.fn(),
+      findByRoll: jest.fn().mockResolvedValue(null),
+      countActiveInSection: jest.fn().mockResolvedValue(0),
     };
+    changeRepo = { saveNew: jest.fn() };
     studentSubjectRepo = {
       findByEnrollment: jest.fn(),
       findLink: jest.fn(),
@@ -67,14 +74,21 @@ describe('EnrollmentService', () => {
       saveNew: jest.fn((data) => Promise.resolve({ id: 'new-link', ...data })),
       deleteById: jest.fn(),
     };
-    studentService = { findById: jest.fn() };
+    studentService = {
+      findById: jest.fn().mockResolvedValue({ id: 'std-1', status: 'active' }),
+      ensurePortalAccount: jest.fn().mockResolvedValue(null),
+    };
     yearRepo = { findById: jest.fn() };
-    classRepo = { findById: jest.fn() };
+    classRepo = {
+      findById: jest.fn().mockResolvedValue({ id: 'cls-1', level: 6 }),
+    };
     sectionRepo = {
       findById: jest.fn().mockResolvedValue({
         id: 'sec-1',
         classId: 'cls-1',
         academicYearId: 'ay-1',
+        name: 'A',
+        capacity: null,
       }),
     };
     subjectRepo = { findById: jest.fn() };
@@ -84,6 +98,7 @@ describe('EnrollmentService', () => {
     service = new EnrollmentService(
       enrollmentRepo as unknown as EnrollmentRepository,
       studentSubjectRepo as unknown as StudentSubjectRepository,
+      changeRepo as never,
       studentService as unknown as StudentService,
       yearRepo as unknown as AcademicYearService,
       classRepo as unknown as ClassService,
@@ -91,7 +106,144 @@ describe('EnrollmentService', () => {
       subjectRepo as unknown as SubjectService,
       classSubjectRepo as unknown as ClassSubjectService,
       groupRepo as unknown as ClassSubjectGroupService,
+      { today: jest.fn().mockResolvedValue('2026-05-01') } as never,
+      { record: jest.fn() } as never,
+      { current: () => ({ userId: 'u-1' }) } as never,
+      fakeTenantDataSource(),
     );
+  });
+
+  const enrollDto = {
+    studentId: 'std-1',
+    academicYearId: 'ay-1',
+    classId: 'cls-1',
+    sectionId: 'sec-1',
+  };
+
+  describe('enroll checks', () => {
+    it('refuses a student who is not active', async () => {
+      studentService.findById.mockResolvedValue({
+        id: 'std-1',
+        status: 'left',
+      });
+
+      await expect(service.enroll(enrollDto)).rejects.toMatchObject({
+        response: { code: 'STUDENT_NOT_ACTIVE' },
+      });
+    });
+
+    it('refuses a full section unless overridden by someone allowed', async () => {
+      sectionRepo.findById.mockResolvedValue({
+        id: 'sec-1',
+        classId: 'cls-1',
+        academicYearId: 'ay-1',
+        name: 'A',
+        capacity: 30,
+      });
+      enrollmentRepo.findForStudentYear.mockResolvedValue(null);
+      enrollmentRepo.countActiveInSection.mockResolvedValue(30);
+
+      await expect(service.enroll(enrollDto)).rejects.toMatchObject({
+        response: { code: 'SECTION_FULL' },
+      });
+      await expect(
+        service.enroll({ ...enrollDto, overrideCapacity: true }),
+      ).rejects.toMatchObject({
+        response: { code: 'CAPACITY_OVERRIDE_FORBIDDEN' },
+      });
+      await service.enroll(
+        { ...enrollDto, overrideCapacity: true },
+        { canOverrideCapacity: true },
+      );
+      expect(enrollmentRepo.saveNew).toHaveBeenCalled();
+    });
+
+    it('refuses a roll taken in the section', async () => {
+      enrollmentRepo.findForStudentYear.mockResolvedValue(null);
+      enrollmentRepo.findByRoll.mockResolvedValue(makeEnrollment({ id: 'x' }));
+
+      await expect(
+        service.enroll({ ...enrollDto, rollNo: '7' }),
+      ).rejects.toMatchObject({ response: { code: 'ROLL_TAKEN' } });
+    });
+
+    it('gives the student a portal login after placing them', async () => {
+      enrollmentRepo.findForStudentYear.mockResolvedValue(null);
+
+      await service.enroll(enrollDto);
+
+      expect(studentService.ensurePortalAccount).toHaveBeenCalledWith('std-1', {
+        id: 'cls-1',
+        level: 6,
+      });
+    });
+  });
+
+  describe('transfer', () => {
+    it('moves to another section of the class and keeps the history', async () => {
+      enrollmentRepo.findByIdWithRelations.mockResolvedValue(
+        makeEnrollment({ status: StudentEnrollmentStatus.ACTIVE, rollNo: '3' }),
+      );
+      sectionRepo.findById.mockResolvedValue({
+        id: 'sec-2',
+        classId: 'cls-1',
+        academicYearId: 'ay-1',
+        name: 'B',
+        capacity: null,
+      });
+
+      await service.transfer('enr-1', { sectionId: 'sec-2', reason: 'Shift' });
+
+      expect(changeRepo.saveNew).toHaveBeenCalledWith(
+        expect.objectContaining({
+          enrollmentId: 'enr-1',
+          fromSectionId: 'sec-1',
+          toSectionId: 'sec-2',
+          fromRollNo: '3',
+          effectiveDate: '2026-05-01',
+        }),
+      );
+      expect(enrollmentRepo.updateFields).toHaveBeenCalledWith('enr-1', {
+        sectionId: 'sec-2',
+        rollNo: '3',
+      });
+    });
+
+    it('clears a roll that is taken in the new section', async () => {
+      enrollmentRepo.findByIdWithRelations.mockResolvedValue(
+        makeEnrollment({ status: StudentEnrollmentStatus.ACTIVE, rollNo: '3' }),
+      );
+      sectionRepo.findById.mockResolvedValue({
+        id: 'sec-2',
+        classId: 'cls-1',
+        academicYearId: 'ay-1',
+        name: 'B',
+        capacity: null,
+      });
+      enrollmentRepo.findByRoll.mockResolvedValue(makeEnrollment({ id: 'x' }));
+
+      await service.transfer('enr-1', { sectionId: 'sec-2' });
+
+      expect(enrollmentRepo.updateFields).toHaveBeenCalledWith('enr-1', {
+        sectionId: 'sec-2',
+        rollNo: null,
+      });
+    });
+
+    it('refuses another class', async () => {
+      enrollmentRepo.findByIdWithRelations.mockResolvedValue(
+        makeEnrollment({ status: StudentEnrollmentStatus.ACTIVE }),
+      );
+      sectionRepo.findById.mockResolvedValue({
+        id: 'sec-9',
+        classId: 'cls-2',
+        academicYearId: 'ay-1',
+      });
+
+      await expect(
+        service.transfer('enr-1', { sectionId: 'sec-9' }),
+      ).rejects.toMatchObject({ response: { code: 'SECTION_NOT_IN_CLASS' } });
+    });
   });
 
   describe('create', () => {

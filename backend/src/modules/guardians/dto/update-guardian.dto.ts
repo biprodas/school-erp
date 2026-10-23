@@ -1,7 +1,5 @@
-import { OmitType, PartialType } from '@nestjs/swagger';
+import { PartialType } from '@nestjs/swagger';
 import { CreateGuardianDto } from './create-guardian.dto';
 
-/** Logins are only created together with the guardian. */
-export class UpdateGuardianDto extends PartialType(
-  OmitType(CreateGuardianDto, ['createUser'] as const),
-) {}
+/** The portal login is made with the guardian and isn't edited here. */
+export class UpdateGuardianDto extends PartialType(CreateGuardianDto) {}

@@ -26,6 +26,7 @@ describe('JobService.start', () => {
     service = new JobService(
       jobRepo as unknown as JobRepository,
       queue,
+      { getDownloadUrl: jest.fn() } as never,
       fakeTenantDataSource(),
       { user: { userId: 'user-1' } } as unknown as Request,
     );

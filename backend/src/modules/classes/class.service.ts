@@ -25,6 +25,11 @@ export class ClassService {
     return this.classRepo.findFiltered(where, filter);
   }
 
+  /** Every class, lowest level first (promotion picks the next one). */
+  findAllOrdered(): Promise<Class[]> {
+    return this.classRepo.findAllOrdered();
+  }
+
   findById(id: string): Promise<Class> {
     return this.classRepo.findByIdOrFail(id);
   }

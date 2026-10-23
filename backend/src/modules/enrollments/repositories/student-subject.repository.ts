@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { In } from 'typeorm';
 import { TENANT_DATASOURCE } from '~/tenancy/tenancy.constants';
 import { TenantDataSourceProxy } from '~/tenancy/tenant-datasource.proxy';
 import { BaseTenantRepository } from '~/tenancy/base-tenant.repository';
@@ -30,6 +31,13 @@ export class StudentSubjectRepository extends BaseTenantRepository<StudentSubjec
   ): Promise<StudentSubject | null> {
     return this.repo.findOne({
       where: { studentEnrollmentId, isFourthSubject: true },
+    });
+  }
+
+  countForEnrollments(enrollmentIds: string[]): Promise<number> {
+    if (!enrollmentIds.length) return Promise.resolve(0);
+    return this.repo.count({
+      where: { studentEnrollmentId: In(enrollmentIds) },
     });
   }
 

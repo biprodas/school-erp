@@ -17,6 +17,12 @@ export const PERMISSIONS = {
   STUDENTS_CREATE: 'students:create',
   STUDENTS_UPDATE: 'students:update',
   STUDENTS_DELETE: 'students:delete',
+  /** Excel import of students with guardians (PRD 6.2). */
+  STUDENTS_IMPORT: 'students:import',
+  /** Student list export (Excel/PDF); audited. */
+  STUDENTS_EXPORT: 'students:export',
+  /** Bulk ID card PDFs (PRD 6.6). */
+  ID_CARDS_PRINT: 'id_cards:print',
 
   // Student documents
   STUDENT_DOCUMENTS_READ: 'student_documents:read',
@@ -35,6 +41,13 @@ export const PERMISSIONS = {
   STUDENT_NOTES_CREATE: 'student_notes:create',
   STUDENT_NOTES_UPDATE: 'student_notes:update',
   STUDENT_NOTES_DELETE: 'student_notes:delete',
+  /** Health, disciplinary and counselling notes (PRD 6.6). */
+  STUDENT_NOTES_READ_SENSITIVE: 'student_notes:read_sensitive',
+
+  // Certificates (TC, testimonial, character, study)
+  CERTIFICATES_READ: 'certificates:read',
+  CERTIFICATES_ISSUE: 'certificates:issue',
+  CERTIFICATES_REVOKE: 'certificates:revoke',
 
   // Departments
   DEPARTMENTS_READ: 'departments:read',
@@ -53,6 +66,8 @@ export const PERMISSIONS = {
   EMPLOYEES_CREATE: 'employees:create',
   EMPLOYEES_UPDATE: 'employees:update',
   EMPLOYEES_DELETE: 'employees:delete',
+  /** Staff Excel import. */
+  EMPLOYEES_IMPORT: 'employees:import',
 
   // Guardians
   GUARDIANS_READ: 'guardians:read',
@@ -127,6 +142,8 @@ export const PERMISSIONS = {
   ENROLLMENTS_CREATE: 'enrollments:create',
   ENROLLMENTS_UPDATE: 'enrollments:update',
   ENROLLMENTS_DELETE: 'enrollments:delete',
+  /** Enroll into a section that is at capacity. */
+  ENROLLMENTS_OVERRIDE_CAPACITY: 'enrollments:override_capacity',
 
   // Student subject selections
   STUDENT_SUBJECTS_READ: 'student_subjects:read',
@@ -161,6 +178,8 @@ export const PERMISSIONS = {
   PROMOTIONS_READ: 'promotions:read',
   PROMOTIONS_CREATE: 'promotions:create',
   PROMOTIONS_DELETE: 'promotions:delete',
+  /** Commit and roll back a promotion batch. */
+  PROMOTIONS_COMMIT: 'promotions:commit',
 
   // Custom domains (Settings → Domain)
   DOMAINS_READ: 'domains:read',

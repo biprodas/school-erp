@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  NotFoundException,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -13,7 +14,12 @@ import {
 import { ApiBearerAuth, ApiHeader, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '~/modules/auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '~/modules/rbac/guards/permissions.guard';
-import { PERMISSIONS } from '~/modules/rbac/permissions.catalog';
+import {
+  PERMISSIONS,
+  type PermissionKey,
+} from '~/modules/rbac/permissions.catalog';
+import { AccessScope } from '~/modules/access-scope/access-scope.service';
+import { TransferEnrollmentDto } from '../dto/transfer-enrollment.dto';
 import { RequirePermissions } from '~/modules/rbac/decorators/require-permissions.decorator';
 import { CreateEnrollmentDto } from '../dto/create-enrollment.dto';
 import { FilterEnrollmentDto } from '../dto/filter-enrollment.dto';
@@ -31,27 +37,64 @@ import { ResponseMessage } from '~/common/decorators/response.decorators';
 @Controller('enrollments')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 export class EnrollmentController {
-  constructor(private readonly enrollmentService: EnrollmentService) {}
+  constructor(
+    private readonly enrollmentService: EnrollmentService,
+    private readonly scope: AccessScope,
+  ) {}
 
+  /** A teacher with assigned scope sees their sections' enrollments. */
   @Get()
   @RequirePermissions(PERMISSIONS.ENROLLMENTS_READ)
   @ResponseMessage('List of enrollments')
-  findAll(@Query() filter: FilterEnrollmentDto) {
-    return this.enrollmentService.findFiltered(filter);
+  async findAll(@Query() filter: FilterEnrollmentDto) {
+    const allowed = await this.scope.sections(PERMISSIONS.ENROLLMENTS_READ);
+    return this.enrollmentService.findFiltered(filter, allowed);
   }
 
+  /**
+   * Places an active student (capacity, roll and placement checked). A
+   * full section takes `overrideCapacity` with the override permission.
+   */
   @Post()
   @RequirePermissions(PERMISSIONS.ENROLLMENTS_CREATE)
   @ResponseMessage('Enrollment created')
-  create(@Body() dto: CreateEnrollmentDto) {
-    return this.enrollmentService.create(dto);
+  async create(@Body() dto: CreateEnrollmentDto) {
+    return this.enrollmentService.create(dto, await this.options());
   }
 
   @Get(':id')
   @RequirePermissions(PERMISSIONS.ENROLLMENTS_READ)
   @ResponseMessage('Enrollment found')
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.enrollmentService.findById(id);
+  async findOne(@Param('id', ParseUUIDPipe) id: string) {
+    const enrollment = await this.enrollmentService.findById(id);
+    await this.assertSection(
+      PERMISSIONS.ENROLLMENTS_READ,
+      enrollment.sectionId,
+    );
+    return enrollment;
+  }
+
+  /** To another section (or shift) of the same class; kept as history. */
+  @Post(':id/transfer')
+  @RequirePermissions(PERMISSIONS.ENROLLMENTS_UPDATE)
+  @ResponseMessage('Student transferred')
+  async transfer(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: TransferEnrollmentDto,
+  ) {
+    return this.enrollmentService.transfer(id, dto, await this.options());
+  }
+
+  @Get(':id/transfers')
+  @RequirePermissions(PERMISSIONS.ENROLLMENTS_READ)
+  @ResponseMessage('Transfer history')
+  async transfers(@Param('id', ParseUUIDPipe) id: string) {
+    const enrollment = await this.enrollmentService.findById(id);
+    await this.assertSection(
+      PERMISSIONS.ENROLLMENTS_READ,
+      enrollment.sectionId,
+    );
+    return this.enrollmentService.transferHistory(id);
   }
 
   @Patch(':id')
@@ -69,5 +112,19 @@ export class EnrollmentController {
   @ResponseMessage('Enrollment deleted')
   async remove(@Param('id', ParseUUIDPipe) id: string) {
     await this.enrollmentService.remove(id);
+  }
+
+  private async options() {
+    return {
+      canOverrideCapacity: await this.scope.can(
+        PERMISSIONS.ENROLLMENTS_OVERRIDE_CAPACITY,
+      ),
+    };
+  }
+
+  private async assertSection(key: PermissionKey, sectionId: string) {
+    if (!(await this.scope.canAccessSection(key, sectionId))) {
+      throw new NotFoundException('Enrollment not found');
+    }
   }
 }

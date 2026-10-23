@@ -8,11 +8,6 @@ import {
 
 export class UpsertStudentMedicalRecordDto {
   @IsOptional()
-  @IsString()
-  @MaxLength(8)
-  bloodGroup?: string;
-
-  @IsOptional()
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
   heightCm?: number;
@@ -29,6 +24,14 @@ export class UpsertStudentMedicalRecordDto {
   @IsOptional()
   @IsString()
   medicalConditions?: string;
+
+  @IsOptional()
+  @IsString()
+  medications?: string;
+
+  @IsOptional()
+  @IsString()
+  vaccinations?: string;
 
   @IsOptional()
   @IsString()

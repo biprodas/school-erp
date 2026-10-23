@@ -4,6 +4,7 @@ import { TENANT_DATASOURCE } from '~/tenancy/tenancy.constants';
 import { TenantDataSourceProxy } from '~/tenancy/tenant-datasource.proxy';
 import { BaseTenantRepository } from '~/tenancy/base-tenant.repository';
 import { StudentEnrollment } from '../entities/student-enrollment.entity';
+import { StudentEnrollmentStatus } from '../enums/student-enrollment-status.enum';
 import { PaginationQueryDto } from '~/common/dto/pagination-query.dto';
 import { Paginated } from '~/common/dto/paginated.dto';
 
@@ -24,6 +25,51 @@ export class EnrollmentRepository extends BaseTenantRepository<StudentEnrollment
 
   findByIdWithRelations(id: string): Promise<StudentEnrollment | null> {
     return this.repo.findOne({ where: { id }, relations: RELATIONS });
+  }
+
+  /** A student's enrollments, newest session first. */
+  findForStudent(studentId: string): Promise<StudentEnrollment[]> {
+    return this.repo.find({
+      where: { studentId },
+      relations: { academicYear: true, schoolClass: true, section: true },
+      order: { academicYear: { startDate: 'DESC' }, createdAt: 'DESC' },
+    });
+  }
+
+  findByRoll(
+    sectionId: string,
+    rollNo: string,
+  ): Promise<StudentEnrollment | null> {
+    return this.repo.findOne({ where: { sectionId, rollNo } });
+  }
+
+  countActiveInSection(sectionId: string): Promise<number> {
+    return this.repo.count({
+      where: { sectionId, status: StudentEnrollmentStatus.ACTIVE },
+    });
+  }
+
+  findActiveInSection(sectionId: string): Promise<StudentEnrollment[]> {
+    return this.repo.find({
+      where: { sectionId, status: StudentEnrollmentStatus.ACTIVE },
+      relations: { student: true },
+      order: { rollNo: 'ASC', id: 'ASC' },
+    });
+  }
+
+  /** Active enrollments of a class in a session, by roll then name. */
+  findActiveInClass(
+    academicYearId: string,
+    classId: string,
+  ): Promise<StudentEnrollment[]> {
+    return this.repo.find({
+      where: {
+        academicYearId,
+        classId,
+        status: StudentEnrollmentStatus.ACTIVE,
+      },
+      relations: { student: true, section: true },
+    });
   }
 
   findForStudentYear(

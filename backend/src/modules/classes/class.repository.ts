@@ -17,6 +17,10 @@ export class ClassRepository extends BaseTenantRepository<Class> {
     return this.repo.findOne({ where: { name } });
   }
 
+  findAllOrdered(): Promise<Class[]> {
+    return this.repo.find({ order: { level: 'ASC', name: 'ASC', id: 'ASC' } });
+  }
+
   findFiltered(
     where: FindOptionsWhere<Class>,
     page: PaginationQueryDto,

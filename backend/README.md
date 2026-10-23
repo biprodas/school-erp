@@ -127,7 +127,8 @@ For the full folder map, see [doc/backend-structure.md](../doc/backend-structure
 | Platform | `auth`, `users`, `organizations`, `memberships`, `plans`, `signup`, `oauth` |
 | Tenant core | `auth`, `users`, `rbac`, `settings`, `onboarding`, `audit` |
 | People | `students`, `guardians`, `employees`, `departments`, `designations` |
-| Academics | `academic-years`, `terms`, `shifts`, `rooms`, `classes`, `sections` (per class and session), `subjects`, `subject-groups`, `class-curriculum` (with subject components), `enrollments`, `teaching` (effective-dated), `rollover`, `timetable`, `promotions` |
+| Students | `students` (profile, status, documents, health, notes, export), `guardians`, `enrollments` (transfers, status), `promotions` (batches), `imports` (Excel), `certificates` (and ID cards), `student-overview` (360), `geo` (address pickers) |
+| Academics | `academic-years`, `terms`, `shifts`, `rooms`, `classes`, `sections` (per class and session), `subjects`, `subject-groups`, `class-curriculum` (with subject components), `teaching` (effective-dated), `rollover`, `timetable` |
 | Shared | `health`, `mail` (Handlebars templates + dev-only `dev/mail` trigger endpoints) |
 | Samples | `cats`, `tasks`, `products` |
 

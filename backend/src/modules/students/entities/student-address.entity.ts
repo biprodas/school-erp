@@ -9,6 +9,9 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { OrgScopedEntity } from '~/tenancy/org-scoped.entity';
+import { GeoDistrict } from '~/modules/geo/entities/geo-district.entity';
+import { GeoDivision } from '~/modules/geo/entities/geo-division.entity';
+import { GeoUpazila } from '~/modules/geo/entities/geo-upazila.entity';
 import { AddressType } from '../enums/address-type.enum';
 import { Student } from './student.entity';
 
@@ -51,6 +54,28 @@ export class StudentAddress extends OrgScopedEntity {
 
   @Column({ type: 'varchar', length: 120, nullable: true })
   state: string | null;
+
+  /** Division / District / Upazila pickers (PRD 6.6), kept consistent. */
+  @Column({ name: 'division_id', type: 'int', nullable: true })
+  divisionId: number | null;
+
+  @ManyToOne(() => GeoDivision, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'division_id' })
+  division?: GeoDivision | null;
+
+  @Column({ name: 'district_id', type: 'int', nullable: true })
+  districtId: number | null;
+
+  @ManyToOne(() => GeoDistrict, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'district_id' })
+  geoDistrict?: GeoDistrict | null;
+
+  @Column({ name: 'upazila_id', type: 'int', nullable: true })
+  upazilaId: number | null;
+
+  @ManyToOne(() => GeoUpazila, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'upazila_id' })
+  upazila?: GeoUpazila | null;
 
   @Column({ name: 'postal_code', type: 'varchar', length: 20, nullable: true })
   postalCode: string | null;

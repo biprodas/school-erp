@@ -3,24 +3,25 @@ import {
   ConflictException,
   NotFoundException,
 } from '@nestjs/common';
-import { RoleService } from '~/modules/rbac/services/role.service';
-import { StudentService } from '~/modules/students/services/student.service';
-import { OrgUserService } from '~/modules/users/services/org-user.service';
+import { fakeTenantDataSource } from '~/tenancy/tenant-datasource.testing';
+import { GuardianRepository } from '../repositories/guardian.repository';
+import { StudentGuardianRepository } from '../repositories/student-guardian.repository';
+import { GuardianService } from './guardian.service';
 import { Guardian } from '../entities/guardian.entity';
 import { StudentGuardian } from '../entities/student-guardian.entity';
 import { GuardianRelation } from '../enums/guardian-relation.enum';
-import { GuardianRepository } from '../repositories/guardian.repository';
-import { GuardianService } from './guardian.service';
-import { StudentGuardianRepository } from '../repositories/student-guardian.repository';
-import { fakeTenantDataSource } from '~/tenancy/tenant-datasource.testing';
 
 const makeGuardian = (overrides: Partial<Guardian> = {}): Guardian => ({
   id: 'g-1',
   orgId: 'org-1',
-  name: 'John Roe',
+  name: 'Jane Doe',
+  nameBn: null,
   phone: null,
   email: null,
   address: null,
+  occupation: null,
+  income: null,
+  nid: null,
   userId: null,
   links: [],
   createdAt: new Date(),
@@ -30,10 +31,10 @@ const makeGuardian = (overrides: Partial<Guardian> = {}): Guardian => ({
 
 const makeLink = (overrides: Partial<StudentGuardian> = {}): StudentGuardian =>
   ({
-    id: 'l-1',
+    id: 'link-1',
     studentId: 'stu-1',
     guardianId: 'g-1',
-    relation: GuardianRelation.FATHER,
+    relation: GuardianRelation.MOTHER,
     isPrimary: false,
     isEmergency: false,
     createdAt: new Date(),
@@ -44,231 +45,180 @@ describe('GuardianService', () => {
   let service: GuardianService;
   let guardianRepo: Record<string, jest.Mock>;
   let linkRepo: Record<string, jest.Mock>;
-  let userService: Record<string, jest.Mock>;
-  let roleService: Record<string, jest.Mock>;
-  let studentService: Record<string, jest.Mock>;
+  let invites: { provision: jest.Mock; issueSlip: jest.Mock };
+  let sendMail: jest.Mock;
+  let students: { findById: jest.Mock };
 
   beforeEach(() => {
     guardianRepo = {
-      findByIdWithUser: jest.fn(),
+      findByIdWithUser: jest.fn((id: string) =>
+        Promise.resolve(makeGuardian({ id })),
+      ),
+      findByPhone: jest.fn().mockResolvedValue(null),
       findByUserId: jest.fn(),
       findFiltered: jest.fn(),
+      findInSections: jest.fn(),
       saveNew: jest.fn((data: Partial<Guardian>) =>
         Promise.resolve(makeGuardian({ id: 'new-g', ...data })),
       ),
-      save: jest.fn((entity) => Promise.resolve(entity)),
+      updateFields: jest.fn(),
       deleteById: jest.fn(),
     };
     linkRepo = {
       findByStudent: jest.fn(),
-      findLink: jest.fn(),
-      clearPrimary: jest.fn(),
-      findByIdOrFail: jest.fn(),
-      saveNew: jest.fn((data: Partial<StudentGuardian>) =>
-        Promise.resolve(makeLink({ id: 'new-l', ...data })),
+      findLink: jest.fn().mockResolvedValue(null),
+      findByIdOrFail: jest.fn((id: string) =>
+        Promise.resolve(makeLink({ id })),
       ),
-      save: jest.fn((entity) => Promise.resolve(entity)),
+      saveNew: jest.fn((data: Partial<StudentGuardian>) =>
+        Promise.resolve(makeLink({ id: 'new-link', ...data })),
+      ),
+      save: jest.fn((e) => Promise.resolve(e)),
+      clearPrimary: jest.fn(),
       deleteById: jest.fn(),
       deleteByGuardian: jest.fn(),
     };
-    userService = { findById: jest.fn(), create: jest.fn() };
-    roleService = { findSystemRole: jest.fn() };
-    studentService = { findById: jest.fn() };
+    sendMail = jest.fn();
+    invites = {
+      provision: jest
+        .fn()
+        .mockResolvedValue({ userId: 'u-1', delivery: 'email', sendMail }),
+      issueSlip: jest.fn().mockResolvedValue({ temporaryPassword: 'abc' }),
+    };
+    students = { findById: jest.fn().mockResolvedValue({ id: 'stu-1' }) };
 
     service = new GuardianService(
       guardianRepo as unknown as GuardianRepository,
       linkRepo as unknown as StudentGuardianRepository,
-      userService as unknown as OrgUserService,
-      roleService as unknown as RoleService,
-      studentService as unknown as StudentService,
+      invites as never,
+      students as never,
       fakeTenantDataSource(),
     );
   });
 
   describe('create', () => {
-    it('creates a guardian with no user link', async () => {
-      guardianRepo.findByIdWithUser.mockResolvedValue(
-        makeGuardian({ id: 'new-g' }),
-      );
-
-      const result = await service.create({ name: 'John Roe' });
-
-      expect(result.id).toBe('new-g');
-      expect(guardianRepo.saveNew).toHaveBeenCalledWith(
-        expect.objectContaining({ name: 'John Roe', userId: null }),
-      );
-      expect(userService.create).not.toHaveBeenCalled();
-    });
-
-    it('provisions a new user with the parent role when createUser is set', async () => {
-      roleService.findSystemRole.mockResolvedValue({ id: 'role-guardian' });
-      userService.create.mockResolvedValue({ id: 'new-user' });
-      guardianRepo.findByIdWithUser.mockResolvedValue(
-        makeGuardian({ id: 'new-g', userId: 'new-user' }),
-      );
-
-      const result = await service.create({
-        name: 'Jane Roe',
-        createUser: { email: 'jane@example.com', password: 'secret123' },
-      });
-
-      expect(roleService.findSystemRole).toHaveBeenCalledWith('guardian');
-      expect(userService.create).toHaveBeenCalledWith({
-        name: 'Jane Roe',
+    it('gives the guardian a portal login and mails after saving', async () => {
+      await service.create({
+        name: 'Jane',
+        phone: '017-1234-5678',
         email: 'jane@example.com',
-        password: 'secret123',
-        roleIds: ['role-guardian'],
       });
-      expect(result.userId).toBe('new-user');
+
+      expect(invites.provision).toHaveBeenCalledWith(
+        expect.objectContaining({
+          email: 'jane@example.com',
+          phone: '+8801712345678',
+          portalRole: 'guardian',
+          membership: 'active',
+          linkExistingMember: true,
+        }),
+      );
+      expect(guardianRepo.saveNew).toHaveBeenCalledWith(
+        expect.objectContaining({ phone: '+8801712345678', userId: 'u-1' }),
+      );
+      expect(sendMail).toHaveBeenCalledTimes(1);
     });
 
-    it('rejects when the parent system role is missing', async () => {
-      roleService.findSystemRole.mockRejectedValue(new NotFoundException());
+    it('refuses a phone another guardian already has', async () => {
+      guardianRepo.findByPhone.mockResolvedValue(makeGuardian());
 
       await expect(
-        service.create({
-          name: 'X',
-          createUser: { email: 'x@y.com', password: 'secret123' },
-        }),
-      ).rejects.toThrow(NotFoundException);
+        service.create({ name: 'Jane', phone: '01712345678' }),
+      ).rejects.toMatchObject({ response: { code: 'GUARDIAN_PHONE_TAKEN' } });
+      expect(invites.provision).not.toHaveBeenCalled();
     });
 
-    it('rejects when both userId and createUser are provided', async () => {
+    it('rejects an invalid phone', async () => {
       await expect(
-        service.create({
-          name: 'X',
-          userId: 'user-1',
-          createUser: { email: 'a@b.com', password: 'secret123' },
-        }),
+        service.create({ name: 'Jane', phone: '12' }),
       ).rejects.toThrow(BadRequestException);
     });
   });
 
-  describe('attach', () => {
-    it('links an existing guardian to a student', async () => {
-      studentService.findById.mockResolvedValue({ id: 'stu-1' });
-      guardianRepo.findByIdWithUser.mockResolvedValue(makeGuardian());
-      linkRepo.findLink.mockResolvedValue(null);
-      linkRepo.findByIdOrFail.mockResolvedValue(
-        makeLink({ id: 'new-l', relation: GuardianRelation.FATHER }),
-      );
+  describe('findOrProvision', () => {
+    it('returns the existing guardian with the phone', async () => {
+      guardianRepo.findByPhone.mockResolvedValue(makeGuardian({ id: 'old' }));
 
-      const result = await service.attach('stu-1', {
-        guardianId: 'g-1',
-        relation: GuardianRelation.FATHER,
+      const made = await service.findOrProvision({
+        name: 'Other spelling',
+        phone: '01712345678',
       });
 
-      expect(linkRepo.saveNew).toHaveBeenCalledWith(
-        expect.objectContaining({
-          studentId: 'stu-1',
-          guardianId: 'g-1',
-          relation: GuardianRelation.FATHER,
-          isPrimary: false,
-        }),
-      );
-      expect(result.id).toBe('new-l');
-      expect(linkRepo.clearPrimary).not.toHaveBeenCalled();
+      expect(made).toMatchObject({ created: false, account: null });
+      expect(made.guardian.id).toBe('old');
+      expect(guardianRepo.saveNew).not.toHaveBeenCalled();
     });
+  });
 
-    it('clears other primaries when attaching a primary guardian', async () => {
-      studentService.findById.mockResolvedValue({ id: 'stu-1' });
-      guardianRepo.findByIdWithUser.mockResolvedValue(makeGuardian());
-      linkRepo.findLink.mockResolvedValue(null);
-      linkRepo.findByIdOrFail.mockResolvedValue(makeLink({ isPrimary: true }));
-
+  describe('attach', () => {
+    it('links an existing guardian, taking over the primary flag', async () => {
       await service.attach('stu-1', {
         guardianId: 'g-1',
-        relation: GuardianRelation.OTHER,
+        relation: GuardianRelation.MOTHER,
         isPrimary: true,
       });
 
       expect(linkRepo.clearPrimary).toHaveBeenCalledWith('stu-1');
+      expect(linkRepo.saveNew).toHaveBeenCalledWith(
+        expect.objectContaining({
+          studentId: 'stu-1',
+          guardianId: 'g-1',
+          isPrimary: true,
+        }),
+      );
     });
 
-    it('creates a guardian inline when createGuardian is provided', async () => {
-      studentService.findById.mockResolvedValue({ id: 'stu-1' });
-      linkRepo.findByIdOrFail.mockResolvedValue(makeLink({ id: 'new-l' }));
-
+    it('creates the guardian inline (or links the one with that phone)', async () => {
       await service.attach('stu-1', {
-        createGuardian: { name: 'New Mom' },
-        relation: GuardianRelation.MOTHER,
+        createGuardian: { name: 'New', phone: '01812345678' },
+        relation: GuardianRelation.FATHER,
       });
 
-      expect(guardianRepo.saveNew).toHaveBeenCalledWith(
-        expect.objectContaining({ name: 'New Mom' }),
-      );
-      expect(linkRepo.saveNew).toHaveBeenCalledWith(
-        expect.objectContaining({ guardianId: 'new-g' }),
-      );
+      expect(guardianRepo.saveNew).toHaveBeenCalled();
+      expect(sendMail).toHaveBeenCalled();
     });
 
-    it('rejects a duplicate link', async () => {
-      studentService.findById.mockResolvedValue({ id: 'stu-1' });
-      guardianRepo.findByIdWithUser.mockResolvedValue(makeGuardian());
+    it('rejects a guardian already linked', async () => {
       linkRepo.findLink.mockResolvedValue(makeLink());
 
       await expect(
         service.attach('stu-1', {
           guardianId: 'g-1',
-          relation: GuardianRelation.FATHER,
+          relation: GuardianRelation.MOTHER,
         }),
       ).rejects.toThrow(ConflictException);
     });
 
-    it('rejects when neither guardianId nor createGuardian is provided', async () => {
-      studentService.findById.mockResolvedValue({ id: 'stu-1' });
-
+    it('needs exactly one of guardianId and createGuardian', async () => {
       await expect(
         service.attach('stu-1', { relation: GuardianRelation.OTHER }),
       ).rejects.toThrow(BadRequestException);
     });
   });
 
-  describe('updateLink', () => {
-    it('clears other primaries when promoting a link to primary', async () => {
-      linkRepo.findByIdOrFail
-        .mockResolvedValueOnce(makeLink({ id: 'l-1', isPrimary: false }))
-        .mockResolvedValueOnce(makeLink({ id: 'l-1', isPrimary: true }));
-
-      const result = await service.updateLink('stu-1', 'l-1', {
-        isPrimary: true,
-      });
-
-      expect(linkRepo.clearPrimary).toHaveBeenCalledWith('stu-1');
-      expect(result.isPrimary).toBe(true);
-    });
-
-    it('rejects a link that belongs to another student', async () => {
-      linkRepo.findByIdOrFail.mockResolvedValue(
-        makeLink({ id: 'l-1', studentId: 'other' }),
+  describe('portalSlip', () => {
+    it('issues a slip for the guardian login', async () => {
+      guardianRepo.findByIdWithUser.mockResolvedValue(
+        makeGuardian({ userId: 'u-1' }),
       );
 
-      await expect(
-        service.updateLink('stu-1', 'l-1', { isEmergency: true }),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.portalSlip('g-1')).resolves.toEqual({
+        temporaryPassword: 'abc',
+      });
+      expect(invites.issueSlip).toHaveBeenCalledWith('u-1');
+    });
+
+    it('404s without a login', async () => {
+      await expect(service.portalSlip('g-1')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
-  describe('detach', () => {
-    it('removes a link after verifying ownership', async () => {
-      linkRepo.findByIdOrFail.mockResolvedValue(makeLink({ id: 'l-1' }));
+  it('scopes the list to a teacher’s sections', async () => {
+    await service.findFiltered({}, ['sec-1']);
 
-      await service.detach('stu-1', 'l-1');
-
-      expect(linkRepo.deleteById).toHaveBeenCalledWith('l-1');
-    });
-  });
-
-  describe('remove', () => {
-    it('unlinks the guardian from their students, then deletes them', async () => {
-      jest
-        .spyOn(service, 'findById')
-        .mockResolvedValue({ id: 'g-1' } as Guardian);
-
-      await service.remove('g-1');
-
-      expect(linkRepo.deleteByGuardian).toHaveBeenCalledWith('g-1');
-      expect(guardianRepo.deleteById).toHaveBeenCalledWith('g-1');
-    });
+    expect(guardianRepo.findInSections).toHaveBeenCalledWith({}, ['sec-1']);
+    expect(guardianRepo.findFiltered).not.toHaveBeenCalled();
   });
 });

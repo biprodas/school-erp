@@ -65,6 +65,12 @@ export class FileService {
     return this.fileRepo.findByIdOrFail(id);
   }
 
+  /** The file's bytes (server-side rendering, e.g. photos on ID cards). */
+  async read(id: string): Promise<{ buffer: Buffer; mime: string }> {
+    const file = await this.fileRepo.findByIdOrFail(id);
+    return { buffer: await this.storage.getBuffer(file.key), mime: file.mime };
+  }
+
   async getDownloadUrl(id: string): Promise<string> {
     const file = await this.fileRepo.findByIdOrFail(id);
     return this.storage.getSignedUrl(file.key);

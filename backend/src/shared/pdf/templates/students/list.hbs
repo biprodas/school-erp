@@ -1,0 +1,28 @@
+<h1 style='font-size:14pt;margin:0 0 6mm'>{{title}}</h1>
+<p style='margin:0 0 4mm;color:#555'>{{generatedAt}} · {{count}} students</p>
+<table>
+  <thead>
+    <tr style='background:#eee'>
+      <th style='text-align:left;padding:2mm;border:1px solid #ccc'>ID</th>
+      <th style='text-align:left;padding:2mm;border:1px solid #ccc'>Name</th>
+      <th style='text-align:left;padding:2mm;border:1px solid #ccc'>নাম</th>
+      <th style='text-align:left;padding:2mm;border:1px solid #ccc'>Gender</th>
+      <th style='text-align:left;padding:2mm;border:1px solid #ccc'>Phone</th>
+      <th style='text-align:left;padding:2mm;border:1px solid #ccc'>Status</th>
+    </tr>
+  </thead>
+  <tbody>
+    {{#each rows}}
+      <tr>
+        <td
+          style='padding:2mm;border:1px solid #ccc'
+        >{{this.admissionNumber}}</td>
+        <td style='padding:2mm;border:1px solid #ccc'>{{this.name}}</td>
+        <td style='padding:2mm;border:1px solid #ccc'>{{this.nameBn}}</td>
+        <td style='padding:2mm;border:1px solid #ccc'>{{this.gender}}</td>
+        <td style='padding:2mm;border:1px solid #ccc'>{{this.phone}}</td>
+        <td style='padding:2mm;border:1px solid #ccc'>{{this.status}}</td>
+      </tr>
+    {{/each}}
+  </tbody>
+</table>

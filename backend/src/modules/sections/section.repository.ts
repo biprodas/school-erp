@@ -8,6 +8,7 @@ import { PaginationQueryDto } from '~/common/dto/pagination-query.dto';
 import { Paginated } from '~/common/dto/paginated.dto';
 
 const RELATIONS: FindOptionsRelations<Section> = {
+  academicYear: true,
   schoolClass: true,
   shift: true,
   room: true,

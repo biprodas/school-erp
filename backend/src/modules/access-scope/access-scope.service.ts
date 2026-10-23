@@ -33,6 +33,11 @@ export class AccessScope {
     private readonly teachingService: TeachingService,
   ) {}
 
+  /** Whether the user holds `key` at all (any scope). */
+  async can(key: PermissionKey): Promise<boolean> {
+    return this.isAdmin || (await this.scopeOf(key)) !== undefined;
+  }
+
   /**
    * Section ids reachable with `key`: those the user is class teacher of
    * plus those they teach a subject in.

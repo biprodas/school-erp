@@ -49,6 +49,17 @@ export const AUDIT_ACTIONS = {
   // Staff directory
   EMPLOYEE_INVITED: 'employee.invited',
 
+  // Students and guardians (PRD 6.6)
+  SLIP_ISSUED: 'member.slip_issued',
+  STUDENT_STATUS_CHANGED: 'student.status_changed',
+  ENROLLMENT_TRANSFERRED: 'enrollment.transferred',
+  PROMOTION_COMMITTED: 'promotion.committed',
+  PROMOTION_ROLLED_BACK: 'promotion.rolled_back',
+  CERTIFICATE_ISSUED: 'certificate.issued',
+  CERTIFICATE_REVOKED: 'certificate.revoked',
+  IMPORT_COMMITTED: 'import.committed',
+  DATA_EXPORTED: 'data.exported',
+
   // Sensitive data access (PRD 6.3). Recorded without the data itself.
   STUDENT_MEDICAL_VIEWED: 'student_medical.viewed',
   STUDENT_NOTE_SENSITIVE_VIEWED: 'student_note.sensitive_viewed',

@@ -24,11 +24,12 @@ export class JobController {
 
   /**
    * Status of a background job. Only the user who started it, or a school
-   * admin, can read it; anyone else gets 404.
+   * admin, can read it; anyone else gets 404. A job that produced a file
+   * (export, PDFs) carries a short-lived `downloadUrl`.
    */
   @Get(':id')
   @ResponseMessage('Job status')
   findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.jobService.findForCurrentUser(id);
+    return this.jobService.viewForCurrentUser(id);
   }
 }

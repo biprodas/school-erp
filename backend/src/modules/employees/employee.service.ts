@@ -87,6 +87,10 @@ export class EmployeeService {
     return Object.assign(employee, { photoUrl });
   }
 
+  findByEmployeeNumber(employeeNumber: string): Promise<Employee | null> {
+    return this.employeeRepo.findByEmployeeNumber(employeeNumber);
+  }
+
   /** The employee record linked to a user account, if any. */
   findByUserId(userId: string): Promise<Employee | null> {
     return this.employeeRepo.findByUserId(userId);

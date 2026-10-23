@@ -23,6 +23,10 @@ import { ShiftModule } from '~/modules/shifts/shift.module';
 import { RoomModule } from '~/modules/rooms/room.module';
 import { TermModule } from '~/modules/terms/term.module';
 import { RolloverModule } from '~/modules/rollover/rollover.module';
+import { GeoModule } from '~/modules/geo/geo.module';
+import { CertificateModule } from '~/modules/certificates/certificate.module';
+import { StudentOverviewModule } from '~/modules/student-overview/student-overview.module';
+import { ImportModule } from '~/modules/imports/import.module';
 import { SubjectModule } from '~/modules/subjects/subject.module';
 import { SubjectGroupModule } from '~/modules/subject-groups/subject-group.module';
 import { ClassCurriculumModule } from '~/modules/class-curriculum/class-curriculum.module';
@@ -110,6 +114,10 @@ const envFilePath = ['.env', `.env.${nodeEnv}`];
     RoomModule,
     TermModule,
     RolloverModule,
+    GeoModule,
+    CertificateModule,
+    StudentOverviewModule,
+    ImportModule,
     SubjectModule,
     ClassModule,
     SubjectGroupModule,

@@ -14,6 +14,7 @@ import { ApiBearerAuth, ApiHeader, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '~/modules/auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '~/modules/rbac/guards/permissions.guard';
 import { PERMISSIONS } from '~/modules/rbac/permissions.catalog';
+import { AccessScope } from '~/modules/access-scope/access-scope.service';
 import { RequirePermissions } from '~/modules/rbac/decorators/require-permissions.decorator';
 import { CreateGuardianDto } from '../dto/create-guardian.dto';
 import { FilterGuardianDto } from '../dto/filter-guardian.dto';
@@ -31,13 +32,18 @@ import { ResponseMessage } from '~/common/decorators/response.decorators';
 @Controller('guardians')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 export class GuardianController {
-  constructor(private readonly guardianService: GuardianService) {}
+  constructor(
+    private readonly guardianService: GuardianService,
+    private readonly scope: AccessScope,
+  ) {}
 
+  /** A teacher with assigned scope sees the guardians of their students. */
   @Get()
   @RequirePermissions(PERMISSIONS.GUARDIANS_READ)
   @ResponseMessage('List of guardians')
-  findAll(@Query() filter: FilterGuardianDto) {
-    return this.guardianService.findFiltered(filter);
+  async findAll(@Query() filter: FilterGuardianDto) {
+    const allowed = await this.scope.sections(PERMISSIONS.GUARDIANS_READ);
+    return this.guardianService.findFiltered(filter, allowed);
   }
 
   @Post()
@@ -50,8 +56,18 @@ export class GuardianController {
   @Get(':id')
   @RequirePermissions(PERMISSIONS.GUARDIANS_READ)
   @ResponseMessage('Guardian found')
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
+  async findOne(@Param('id', ParseUUIDPipe) id: string) {
+    const allowed = await this.scope.sections(PERMISSIONS.GUARDIANS_READ);
+    await this.guardianService.assertReachable(id, allowed);
     return this.guardianService.findById(id);
+  }
+
+  /** A one-time password for the guardian's portal login (printed slip). */
+  @Post(':id/portal-slip')
+  @RequirePermissions(PERMISSIONS.GUARDIANS_UPDATE)
+  @ResponseMessage('Portal password issued')
+  portalSlip(@Param('id', ParseUUIDPipe) id: string) {
+    return this.guardianService.portalSlip(id);
   }
 
   @Patch(':id')

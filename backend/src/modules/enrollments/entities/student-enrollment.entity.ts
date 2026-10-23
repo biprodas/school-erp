@@ -77,7 +77,7 @@ export class StudentEnrollment extends OrgScopedEntity {
     length: 16,
     default: StudentEnrollmentStatus.ACTIVE,
   })
-  status: string;
+  status: StudentEnrollmentStatus;
 
   @OneToMany(() => StudentSubject, (link) => link.enrollment)
   subjects: StudentSubject[];
