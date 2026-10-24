@@ -1,4 +1,6 @@
 import { IdentityService } from './identity.service';
+import { EntitlementService } from '~/modules/plans/services/entitlement.service';
+import { allowAllEntitlements } from '~/modules/plans/entitlement.testing';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { REQUEST } from '@nestjs/core';
@@ -90,6 +92,7 @@ describe('PlatformAuthService.issueHandoff', () => {
           provide: IdentityService,
           useValue: { list: () => Promise.resolve([]) },
         },
+        { provide: EntitlementService, useValue: allowAllEntitlements() },
         { provide: PlatformAuditService, useValue: { record: jest.fn() } },
       ],
     }).compile();
@@ -203,6 +206,7 @@ describe('AuthService.exchangeHandoff', () => {
           provide: IdentityService,
           useValue: { list: () => Promise.resolve([]) },
         },
+        { provide: EntitlementService, useValue: allowAllEntitlements() },
         {
           provide: getRepositoryToken(Organization),
           useValue: { findOne: () => Promise.resolve(null) },

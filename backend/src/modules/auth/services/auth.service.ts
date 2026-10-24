@@ -44,6 +44,7 @@ import { AUDIT_ACTIONS } from '~/modules/audit/audit-actions';
 import { signInRefusalReason } from './sign-in-audit';
 import { SessionService, type IssuedSession } from './session.service';
 import { IdentityService } from './identity.service';
+import { EntitlementService } from '~/modules/plans/services/entitlement.service';
 
 /** Global account states that may never sign in, in any organization. */
 const BLOCKED_ACCOUNT_STATUSES = new Set<string>([
@@ -71,6 +72,7 @@ export class AuthService {
     private readonly mail: MailService,
     private readonly audit: AuditService,
     private readonly identities: IdentityService,
+    private readonly entitlements: EntitlementService,
     @InjectRepository(Organization)
     private readonly organizations: Repository<Organization>,
     @Inject(REQUEST) private readonly request: RequestWithOrg,
@@ -384,7 +386,7 @@ export class AuthService {
     }
 
     const { password: _password, ...account } = membership.user;
-    const [roles, permissions, identities, org] = await Promise.all([
+    const [roles, permissions, identities, org, plan] = await Promise.all([
       this.getRoleNames(userId),
       this.roleService.effectivePermissions(
         userId,
@@ -397,9 +399,11 @@ export class AuthService {
           id: true,
           slug: true,
           name: true,
+          status: true,
           onboardingCompletedAt: true,
         },
       }),
+      this.entitlements.summary(membership.orgId),
     ]);
     return {
       ...account,
@@ -415,8 +419,11 @@ export class AuthService {
         id: membership.orgId,
         slug: org?.slug ?? this.request.orgSlug,
         name: org?.name ?? null,
+        status: org?.status ?? null,
         onboardingCompletedAt: org?.onboardingCompletedAt ?? null,
       },
+      // For hiding or badging features outside the plan; guards still decide.
+      plan,
     };
   }
 

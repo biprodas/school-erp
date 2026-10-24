@@ -132,13 +132,22 @@ describe('Auth sessions (e2e)', () => {
     }
   });
 
-  it('me lists the permissions for UI gating (a school admin holds all)', async () => {
+  it('me lists the permissions and plan for UI gating', async () => {
     const { data } = (await login(orgA, admin.email!).expect(201))
       .body as TokenBody;
     const body = (await me(orgA, data.access_token).expect(200)).body as {
-      data: { permissions: string[] };
+      data: {
+        permissions: string[];
+        organization: { status: string };
+        plan: { code: string; onTrial: boolean; modules: string[] };
+      };
     };
+    // A school admin holds every key.
     expect(body.data.permissions).toEqual([...ALL_PERMISSIONS].sort());
+    // No plan assigned and no trial: Free.
+    expect(body.data.organization.status).toBe(OrganizationStatus.ACTIVE);
+    expect(body.data.plan).toMatchObject({ code: 'free', onTrial: false });
+    expect(Array.isArray(body.data.plan.modules)).toBe(true);
   });
 
   it("is not a member of school B, and A's token is refused there", async () => {
@@ -275,5 +284,71 @@ describe('Auth sessions (e2e)', () => {
       'PASSWORD_CHANGE_REQUIRED',
     );
     await login(orgA, invitedPhone, 'My-own-pass-9').expect(201);
+  });
+
+  it('switches to another school of the account with a one-time code', async () => {
+    const tokenA = (
+      (await login(orgA, admin.email!).expect(201)).body as TokenBody
+    ).data.access_token;
+    const schools = () =>
+      http()
+        .get('/api/auth/schools')
+        .set('x-tenant-id', orgA.slug)
+        .set('Authorization', `Bearer ${tokenA}`)
+        .expect(200);
+    const switchTo = (orgId: string) =>
+      http()
+        .post('/api/auth/schools/handoff')
+        .set('x-tenant-id', orgA.slug)
+        .set('Authorization', `Bearer ${tokenA}`)
+        .send({ orgId });
+    const exchange = (code: string) =>
+      http()
+        .post('/api/auth/handoff')
+        .set('x-tenant-id', orgB.slug)
+        .send({ code });
+
+    // Not a member of school B: nothing to switch to, and no code for it.
+    expect((await schools()).body).toMatchObject({ data: [] });
+    await switchTo(orgB.id).expect(403);
+    const same = await switchTo(orgA.id).expect(400);
+    expect((same.body as { code: string }).code).toBe('ALREADY_IN_SCHOOL');
+
+    await rootDs.getRepository(Membership).save({
+      orgId: orgB.id,
+      userId: admin.id,
+      role: MembershipRole.MEMBER,
+      isAdmin: false,
+      status: MembershipStatus.ACTIVE,
+    });
+
+    const listed = (await schools()).body as {
+      data: { orgId: string; slug: string; host: string; isAdmin: boolean }[];
+    };
+    expect(listed.data).toEqual([
+      expect.objectContaining({
+        orgId: orgB.id,
+        slug: orgB.slug,
+        host: expect.stringContaining(orgB.slug) as unknown,
+        isAdmin: false,
+      }),
+    ]);
+
+    const issued = (await switchTo(orgB.id).expect(200)).body as {
+      data: { redirectUrl: string };
+    };
+    const url = new URL(issued.data.redirectUrl);
+    expect(url.hostname.startsWith(`${orgB.slug}.`)).toBe(true);
+    expect(url.pathname).toBe('/auth/handoff');
+    const code = url.searchParams.get('code')!;
+
+    const signedIn = (await exchange(code).expect(200)).body as TokenBody;
+    const onB = (await me(orgB, signedIn.data.access_token).expect(200))
+      .body as { data: { organization: { id: string }; isAdmin: boolean } };
+    expect(onB.data.organization.id).toBe(orgB.id);
+    expect(onB.data.isAdmin).toBe(false);
+
+    // Single use.
+    await exchange(code).expect(400);
   });
 });

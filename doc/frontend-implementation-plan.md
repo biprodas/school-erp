@@ -28,7 +28,7 @@
 | ---- | --------- |
 | Host resolution | `GET /public/organizations/resolve?host=` → `{ slug, name }`; `GET /public/organizations/by-slug?slug=` (gives `movedFrom` for an old slug); 410 `TENANT_MOVED` |
 | School home | `GET /public/organizations/:slug/home` |
-| Tenant auth | `POST /auth/login` (`identifier` + `password`), `POST /auth/refresh`, `POST /auth/logout`, `POST /auth/logout-all`, `GET /auth/me`, `POST /auth/handoff`, `GET`/`POST /auth/activate`, `POST /auth/forgot-password`, `GET`/`POST /auth/reset-password`, `GET`/`POST /auth/verify-email`, `POST /auth/change-password`, `GET /auth/sessions`, `DELETE /auth/sessions/:id` |
+| Tenant auth | `POST /auth/login` (`identifier` + `password`), `POST /auth/refresh`, `POST /auth/logout`, `POST /auth/logout-all`, `GET /auth/me`, `POST /auth/handoff`, `GET`/`POST /auth/activate`, `POST /auth/forgot-password`, `GET`/`POST /auth/reset-password`, `GET`/`POST /auth/verify-email`, `POST /auth/change-password`, `GET /auth/sessions`, `DELETE /auth/sessions/:id`, `GET /auth/schools`, `POST /auth/schools/handoff` |
 | Platform auth | `POST /platform/auth/login`, `refresh`, `logout`, `me`, `POST /platform/auth/handoff` (issue a school code), `POST /platform/auth/handoff/exchange` |
 | Google | `GET /oauth/google/start?return=&next=&intent=signin|signup|link` (404 `GOOGLE_SIGNIN_DISABLED` when not configured); link/unlink under `/auth/identities/google` |
 | Signup | `POST /public/signup` → `{ status: 'verification_sent' }` or `{ status: 'created', redirectUrl }`; `POST /public/signup/verify`; `GET /public/slugs/check`, `GET /public/slugs/reserved` |
@@ -44,10 +44,8 @@ Token response from `login`, `handoff` and `activate`: `{ access_token, refresh_
 | # | Gap | Proposal |
 | - | --- | -------- |
 | B1 | ~~No endpoint gives the signed-in member's effective permission keys.~~ **Done.** | `GET /auth/me` returns `permissions: string[]`: the member's effective keys, sorted, retired keys left out (`RoleService.effectivePermissions`). School admins get the whole catalog, since they pass every check. Refetch it on focus so role changes show up. |
-| B2 | No tenant endpoint gives the school's plan modules, so the UI cannot hide or badge features outside the plan. | Add `modules: string[]` and the plan/trial state (`plan`, `trialEndsAt`) to `GET /auth/me` or `GET /settings/display`. |
-| B3 | `JWT_EXPIRES_IN=7d` in `.env.example`. A long-lived access token weakens session revocation for the BFF. | Use a short access TTL (15 min) in all envs; the BFF refreshes transparently (section 4.3). Not a blocker. |
-
-B2 can follow; until then everything in the plan is shown.
+| B2 | ~~No tenant endpoint gives the school's plan modules.~~ **Done.** | `GET /auth/me` returns `plan` (`code`, `effectiveCode`, `onTrial`, `trialEndsAt`, `modules`, `limits`) and `organization.status`. |
+| B3 | `JWT_EXPIRES_IN=7d` in `.env.example`. A long-lived access token weakens session revocation for the BFF. | Use a short access TTL (15 min) in all envs; the BFF refreshes transparently (section 4.3). **Done in M2**, once web-2 refreshes (the old frontend doesn't). |
 
 ---
 
@@ -247,7 +245,7 @@ A stepper over `GET /onboarding/checklist` (steps `profile`, `session`, `classes
 - `dashboard/layout.tsx` (server): reads the session, prefetches `GET /auth/me` (with `permissions`) and `GET /settings/display`, and hydrates them into TanStack Query.
 - **Sidebar** (`components/layout/app-sidebar.tsx`, on `components/ui/sidebar.tsx`): the menu from `example-menu-frontend.md`, trimmed to what the MVP backend covers (Dashboard, Academics, People, Attendance, Exams, Fees, Notices, Administration, Settings). Items declare `permission` (and later `module`) instead of role names; `lib/permissions.ts` filters them. A menu with no visible children is hidden, and so is an empty category. Collapses to icons on desktop and to a sheet at mobile width. Includes search over menu labels.
 - **Header**: breadcrumb from the route, notification bell (`GET /notifications/unread-count`, polled every 60 s; dropdown with the latest and "Mark all read"), language switch, theme toggle, user menu (name, roles, "Account", "Sign out", "Sign out everywhere").
-- **School switcher**: in the user menu, lists the user's other schools (`GET /portal/schools` for portal users; for staff, a platform-session-free list needs a backend endpoint later) and moves between them with a handoff. Ships after the rest if the endpoint is not there.
+- **School switcher**: in the user menu, lists the user's other schools (`GET /auth/schools`) and moves to one with `POST /auth/schools/handoff` (navigate to the returned `redirectUrl`). Hidden when the list is empty.
 - **Branding**: the school logo and primary color from `settings/display` become CSS variables on the shell.
 - **Unbuilt links**: `dashboard/[...slug]/page.tsx` shows a "Coming soon" empty state with the page title, so nothing 404s.
 - **Account** (`/dashboard/account`): profile summary, change password, active sessions (`GET /auth/sessions`, end one), Google link/unlink.
@@ -293,7 +291,7 @@ Tick a box when the item is implemented and verified locally (against the docker
 
 | # | Milestone | Depends on | Status |
 | - | --------- | ---------- | ------ |
-| MB | Backend prerequisites | — | In progress (B1 done) |
+| MB | Backend prerequisites | — | Implemented; B1 committed, the rest not yet (B3 moved to M2) |
 | M0 | Foundations | — | Implemented, not committed (CI not yet run) |
 | M1 | Host routing | M0 | Not started |
 | M2 | Session layer and BFF | M1 | Not started |
@@ -312,13 +310,20 @@ M1–M3 are the critical path. M4, M5 and M8 can run in parallel once M3 is merg
 - [x] B1: `GET /auth/me` returns `permissions: string[]` (`RoleService.effectivePermissions`; school admins get the whole catalog; retired keys left out).
 - [x] B1 tests: unit (`role.service.spec.ts`) and e2e (`test/auth-sessions.e2e-spec.ts`).
 - [x] B1 committed (`0ba5839`).
-- [ ] B2: plan modules and trial state (`modules`, `plan`, `trialEndsAt`) on `GET /auth/me` or `GET /settings/display`, with tests.
-- [ ] B3: short access-token TTL (`JWT_EXPIRES_IN=15m`) in `.env.example` and the deployment env; confirm refresh works with it.
-- [ ] Endpoint listing a staff member's other schools for the school switcher (open question in section 10), or a decision to defer it.
-- [ ] Backend host settings for dev (`APP_URL`, root domain `lvh.me`) so signup and Google `redirectUrl`s point at `*.lvh.me:3000`.
-- [ ] `TRUST_PROXY` includes the Next server, so the client IP the BFF forwards is used for audit rows and rate limits.
+- [x] B2: `GET /auth/me` returns `plan: { code, effectiveCode, onTrial, trialEndsAt, modules, limits }` (`EntitlementService.summary`, modules sorted; a running trial shows Standard as `effectiveCode`) and `organization.status` (`trial` / `active` / `past_due`, for trial and billing banners).
+- [x] B2 tests: unit (`entitlement.service.spec.ts`) and e2e (`auth-sessions.e2e-spec.ts`: a school with no plan is Free, not on trial).
+- [x] School switcher endpoints (`SchoolSwitchService`, answers the section 10 question):
+  - `GET /auth/schools`: the user's other schools (active memberships in operational schools), sorted by name: `{ orgId, slug, name, host, isAdmin }`.
+  - `POST /auth/schools/handoff { orgId }` → `{ orgId, expiresAt, redirectUrl }`; `redirectUrl` is `<school host>/auth/handoff?code=…` with no `next`, so the handoff route sends the user to their home there (section 4.5). 403 for a school the user can't enter (same answer always), 400 `ALREADY_IN_SCHOOL` for the current one. Throttled like sign-in.
+  - Unit (`school-switch.service.spec.ts`) and e2e (`auth-sessions.e2e-spec.ts`: listed only once a member, code redeemed on the other school, single use).
+- [x] Portal handoff fixed: `POST /portal/handoff` sent users to `next=/portal`, which is not a frontend route; it now uses `next=/student`.
+- [x] Dev host settings: nothing to change. `AppHosts.url()` takes protocol and port from `APP_URL` (`http://localhost:3000`) and hosts from `ROOT_DOMAIN` (`lvh.me`), so signup, Google and switch redirects already read `http://<slug>.lvh.me:3000/…`. Documented in `backend/.env.example`.
+- [x] `TRUST_PROXY`: the default (`loopback, linklocal, uniquelocal`) already trusts a frontend server on the same machine or a private network. `backend/.env.example` now says the web-2 server must stay on one of these networks.
+- [x] `doc/error-codes.md` regenerated (`ALREADY_IN_SCHOOL`).
+- [ ] MB changes committed.
+- B3 (15-minute access tokens) moved to M2: the old `frontend/` never refreshes tokens, so a short TTL now would sign its users out every 15 minutes (backend plan decision 2026-10-18). It flips when web-2's refresh works.
 
-**Done when:** `GET /auth/me` for an admin, a teacher and a guardian returns the expected `permissions`, and signup's `redirectUrl` points at the dev school host.
+**Done when:** `GET /auth/me` returns `permissions` and `plan` (checked in e2e for an admin and a member without roles), and the switch endpoints redirect to the other school's dev host (checked in e2e).
 
 ### M0. Foundations
 
@@ -409,7 +414,8 @@ Backend calls:
 BFF:
 
 - [ ] `app/api/[...path]/route.ts`: all methods; forwards to `${API_URL}/api/<path>?<query>`; streams request and response bodies; passes `Content-Type`, `Content-Disposition`, `Cache-Control`.
-- [ ] Path allow-list: tenant paths and `public/*` from school hosts, `platform/*` only from the admin host, only `public/*` from the apex.
+- [ ] Path allow-list: tenant paths and `public/*` from school hosts, `platform/*` only from the admin host, `public/*` and `oauth/*` from the apex (Google start and callback live on the product domain, `domains-and-routing.md` 5a).
+- [ ] B3: `JWT_EXPIRES_IN=15m` in `backend/.env.example` and the deployment env (and `.env.local` by hand), once refresh works here; check a session survives past 15 minutes of use.
 - [ ] CSRF: mutating requests need `x-requested-with: kampasy` and a same-origin `Origin`, otherwise 403.
 - [ ] Never forwards the browser's own `cookie` or `Authorization` headers.
 - [ ] 401 after refresh → clear the cookie and answer 401 `SESSION_EXPIRED`; `apiFetch` then sends the user to `/login?next=<current path>`.
@@ -585,6 +591,5 @@ Admin host:
 
 ## 10. Open questions
 
-- Should a staff user who belongs to several schools get a school switcher in this slice? It needs a tenant endpoint listing the user's schools (today only `GET /portal/schools` and `GET /memberships/me` exist; check whether the latter fits).
 - Should `/` on a school host redirect signed-in users to their home, or always show the public page with a "Go to dashboard" button? This plan assumes the button.
 - Access-token TTL (B3) and whether refresh needs a shared lock before running more than one frontend instance.

@@ -141,7 +141,7 @@ export class PortalAccessService {
       ...issued,
       redirectUrl: this.hosts.url(
         host,
-        `/auth/handoff?code=${encodeURIComponent(issued.code)}&next=/portal`,
+        `/auth/handoff?code=${encodeURIComponent(issued.code)}&next=/student`,
       ),
     };
   }

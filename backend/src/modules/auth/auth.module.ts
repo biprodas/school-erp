@@ -11,10 +11,12 @@ import { Organization } from '~/modules/organizations/entities/organization.enti
 import { UserModule } from '~/modules/users/user.module';
 import { RbacModule } from '~/modules/rbac/rbac.module';
 import { SettingsModule } from '~/modules/settings/settings.module';
+import { PlanModule } from '~/modules/plans/plan.module';
 import { AuthToken } from './entities/auth-token.entity';
 import { UserSession } from './entities/user-session.entity';
 import { UserIdentity } from './entities/user-identity.entity';
 import { IdentityService } from './services/identity.service';
+import { SchoolSwitchService } from './services/school-switch.service';
 import { AuthController } from './controllers/auth.controller';
 import { PlatformAuthController } from './controllers/platform-auth.controller';
 import { InviteController } from './controllers/invite.controller';
@@ -50,6 +52,7 @@ import { SessionModule } from './session.module';
     RbacModule,
     SettingsModule,
     SessionModule,
+    PlanModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -77,6 +80,7 @@ import { SessionModule } from './session.module';
     CredentialService,
     InviteService,
     IdentityService,
+    SchoolSwitchService,
   ],
   exports: [
     PlatformAuthService,

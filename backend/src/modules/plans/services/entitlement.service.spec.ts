@@ -78,6 +78,36 @@ describe('EntitlementService', () => {
     expect(expired.effectivePlanCode).toBe(PlanCode.FREE);
   });
 
+  it('summarizes the plan as JSON, modules sorted', async () => {
+    org.plan = plan(PlanCode.FREE);
+    org.status = OrganizationStatus.TRIAL;
+    org.trialEndsAt = new Date(Date.now() + 5 * DAY);
+    org.addOnModules = [PLAN_MODULES.TRANSPORT];
+
+    const summary = await service.summary('org-1');
+
+    expect(summary).toMatchObject({
+      code: PlanCode.FREE,
+      effectiveCode: PlanCode.STANDARD,
+      onTrial: true,
+      trialEndsAt: org.trialEndsAt,
+    });
+    expect(summary.modules).toEqual(
+      [
+        ...new Set([
+          ...plan(PlanCode.STANDARD).modules,
+          PLAN_MODULES.TRANSPORT,
+        ]),
+      ].sort(),
+    );
+    expect(Object.keys(summary.limits).sort()).toEqual([
+      'admins',
+      'storageMb',
+      'students',
+      'users',
+    ]);
+  });
+
   it('never lowers a higher plan during a trial', async () => {
     org.plan = plan(PlanCode.PREMIUM);
     org.status = OrganizationStatus.TRIAL;

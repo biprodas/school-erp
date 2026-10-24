@@ -25,6 +25,17 @@ export interface Entitlements {
   limits: PlanLimits;
 }
 
+/** `Entitlements` as JSON, for the frontend to hide or badge features. */
+export interface PlanSummary {
+  code: string;
+  effectiveCode: string;
+  onTrial: boolean;
+  trialEndsAt: Date | null;
+  /** Sorted module keys (`PLAN_MODULES`). */
+  modules: string[];
+  limits: PlanLimits;
+}
+
 const CACHE_TTL_MS = 60_000;
 const MB = 1024 * 1024;
 
@@ -72,6 +83,19 @@ export class EntitlementService {
     const value = await this.compute(org);
     this.cache.set(orgId, { value, expiresAt: Date.now() + CACHE_TTL_MS });
     return value;
+  }
+
+  /** The school's plan for UI gating (`GET /auth/me`); guards still decide. */
+  async summary(orgId: string): Promise<PlanSummary> {
+    const e = await this.get(orgId);
+    return {
+      code: e.planCode,
+      effectiveCode: e.effectivePlanCode,
+      onTrial: e.onTrial,
+      trialEndsAt: e.trialEndsAt,
+      modules: [...e.modules].sort(),
+      limits: e.limits,
+    };
   }
 
   invalidate(orgId?: string): void {

@@ -1,6 +1,8 @@
 import { Organization } from '~/modules/organizations/entities/organization.entity';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { IdentityService } from './identity.service';
+import { EntitlementService } from '~/modules/plans/services/entitlement.service';
+import { allowAllEntitlements } from '~/modules/plans/entitlement.testing';
 import { UnauthorizedException } from '@nestjs/common';
 import { REQUEST } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
@@ -86,6 +88,7 @@ describe('AuthService sign-in auditing', () => {
           provide: IdentityService,
           useValue: { list: () => Promise.resolve([]) },
         },
+        { provide: EntitlementService, useValue: allowAllEntitlements() },
         {
           provide: getRepositoryToken(Organization),
           useValue: { findOne: () => Promise.resolve(null) },

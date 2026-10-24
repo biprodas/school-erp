@@ -40,6 +40,7 @@ Every error response is `{ success: false, statusCode, message, code?, … }`. T
 | ---- | ----------------- |
 | `ACCOUNT_LOCKED` | Too many failed sign-ins. Try again after ${lockedUntil.toISOString()}. |
 | `ACCOUNT_PENDING` | Please verify your email or use your invitation link. |
+| `ALREADY_IN_SCHOOL` | You are already signed in to this school |
 | `EMAIL_NOT_VERIFIED` | Please verify your email before logging in. |
 | `EMAIL_TAKEN` | Email already registered |
 | `IDENTITY_ALREADY_LINKED` | Another account of this provider is already linked |

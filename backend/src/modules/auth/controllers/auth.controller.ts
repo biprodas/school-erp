@@ -16,6 +16,7 @@ import { AUTH_THROTTLE } from '~/common/throttling/throttle.constants';
 import { ReqContext } from '~/common/decorators/request-context.decorator';
 import { RequestContextDto } from '~/common/dto/request-context.dto';
 import { AuthService } from '../services/auth.service';
+import { SchoolSwitchService } from '../services/school-switch.service';
 import { LoginDto } from '../dto/login.dto';
 import { ActivateDto } from '../dto/activate.dto';
 import { ForgotPasswordDto } from '../dto/forgot-password.dto';
@@ -23,7 +24,7 @@ import { ResetPasswordDto } from '../dto/reset-password.dto';
 import { VerifyEmailDto } from '../dto/verify-email.dto';
 import { ResendVerificationDto } from '../dto/resend-verification.dto';
 import { ChangePasswordDto } from '../dto/change-password.dto';
-import { ExchangeHandoffDto } from '../dto/handoff.dto';
+import { ExchangeHandoffDto, IssueHandoffDto } from '../dto/handoff.dto';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { ResponseMessage } from '~/common/decorators/response.decorators';
 import { AllowPendingPasswordChange } from '~/common/auth/password-change';
@@ -43,7 +44,10 @@ const GENERIC_EMAIL_MSG =
 })
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService) {}
+  constructor(
+    private authService: AuthService,
+    private schools: SchoolSwitchService,
+  ) {}
 
   @Get('activate')
   @ResponseMessage('Activation token valid.')
@@ -125,6 +129,27 @@ export class AuthController {
     @Client() client: ClientInfo,
   ) {
     return this.authService.exchangeHandoff(dto.code, client);
+  }
+
+  /** The user's other schools (active memberships), for the school switcher. */
+  @Get('schools')
+  @UseGuards(JwtAuthGuard)
+  @ResponseMessage('Other schools.')
+  otherSchools(@ReqContext() ctx: RequestContextDto) {
+    return this.schools.otherSchools(ctx.userId!);
+  }
+
+  /** A one-time code that signs the user in to another of their schools. */
+  @Post('schools/handoff')
+  @HttpCode(200)
+  @UseGuards(JwtAuthGuard)
+  @Throttle(AUTH_THROTTLE)
+  @ResponseMessage('Sign-in code issued.')
+  switchSchool(
+    @ReqContext() ctx: RequestContextDto,
+    @Body() dto: IssueHandoffDto,
+  ) {
+    return this.schools.handoff(ctx.userId!, dto.orgId);
   }
 
   @Post('forgot-password')
