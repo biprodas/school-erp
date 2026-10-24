@@ -94,6 +94,13 @@ const ATTENDANCE_MARKING: PermissionKey[] = [
   P.STUDENT_LEAVES_READ,
 ];
 
+/** Exam setup and grading, read-only (Teacher, Class teacher: R). */
+const EXAMS_READ: PermissionKey[] = [
+  P.GRADING_SYSTEMS_READ,
+  P.EXAMS_READ,
+  P.RESULTS_READ,
+];
+
 /** HR directory, read-only (Principal: R). */
 const HR_READ: PermissionKey[] = [
   P.DEPARTMENTS_READ,
@@ -166,6 +173,16 @@ export const SYSTEM_ROLES: SystemRoleSeed[] = [
       P.HOLIDAYS_UPDATE,
       P.STUDENT_LEAVES_CREATE,
       P.STUDENT_LEAVES_APPROVE,
+      ...EXAMS_READ,
+      P.GRADING_SYSTEMS_CREATE,
+      P.GRADING_SYSTEMS_UPDATE,
+      P.EXAMS_CREATE,
+      P.EXAMS_UPDATE,
+      P.RESULTS_VERIFY,
+      P.RESULTS_APPROVE,
+      P.RESULTS_PUBLISH,
+      P.RESULTS_REOPEN,
+      P.REPORT_CARDS_PRINT,
       ...HR_READ,
     ],
   },
@@ -191,6 +208,8 @@ export const SYSTEM_ROLES: SystemRoleSeed[] = [
       P.STUDENT_NOTES_READ,
       P.GUARDIANS_READ,
       ...ATTENDANCE_MARKING,
+      ...EXAMS_READ,
+      P.RESULTS_ENTER,
     ],
   },
   {
@@ -213,6 +232,10 @@ export const SYSTEM_ROLES: SystemRoleSeed[] = [
       ...ATTENDANCE_MARKING,
       P.STUDENT_LEAVES_CREATE,
       P.STUDENT_LEAVES_APPROVE,
+      ...EXAMS_READ,
+      P.RESULTS_ENTER,
+      P.RESULTS_REMARKS,
+      P.REPORT_CARDS_PRINT,
     ],
   },
   {
@@ -254,6 +277,7 @@ export const SYSTEM_ROLES: SystemRoleSeed[] = [
       P.DOMAINS_READ,
       ...ACADEMIC_SETUP_READ,
       P.HOLIDAYS_READ,
+      P.EXAMS_READ,
     ],
   },
   {

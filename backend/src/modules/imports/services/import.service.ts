@@ -39,10 +39,17 @@ import {
 import { ImportMode, ImportStatus, ImportType } from '../enums/import.enum';
 import { ImportRepository } from '../import.repository';
 import type { ImportContext, Importer } from '../importers/importer';
+import { MarksImporter } from '../importers/marks.importer';
 import { StaffImporter } from '../importers/staff.importer';
 import { StudentImporter } from '../importers/student.importer';
 
 export const IMPORT_VALIDATE_JOB = 'validate';
+
+const SHEET_NAMES: Record<ImportType, string> = {
+  [ImportType.STUDENTS]: 'Students',
+  [ImportType.STAFF]: 'Staff',
+  [ImportType.MARKS]: 'Marks',
+};
 export const IMPORT_COMMIT_JOB = 'commit';
 
 /**
@@ -65,16 +72,22 @@ export class ImportService {
     private readonly context: RequestContext,
     private readonly studentImporter: StudentImporter,
     private readonly staffImporter: StaffImporter,
+    private readonly marksImporter: MarksImporter,
     @Inject(TENANT_DATASOURCE) private readonly ds: TenantDataSourceProxy,
   ) {}
 
   /** The template workbook: headers, an example row, dropdowns. */
-  async template(type: ImportType): Promise<Buffer> {
+  async template(
+    type: ImportType,
+    markSheetId: string | null = null,
+  ): Promise<Buffer> {
     const importer = await this.importer(type);
-    await this.assertMay(importer);
+    const ctx: ImportContext = { academicYearId: null, markSheetId };
+    await this.assertMay(importer, ctx);
     return buildTemplate(
-      await importer.columns({ academicYearId: null }),
-      type === ImportType.STUDENTS ? 'Students' : 'Staff',
+      await importer.columns(ctx),
+      SHEET_NAMES[type],
+      importer.templateRows ? await importer.templateRows(ctx) : undefined,
     );
   }
 
@@ -95,7 +108,9 @@ export class ImportService {
     file: IncomingFile,
   ): Promise<{ import: ImportBatch; job: Job }> {
     const importer = await this.importer(dto.type);
-    await this.assertMay(importer);
+    const markSheetId =
+      dto.type === ImportType.MARKS ? (dto.markSheetId ?? null) : null;
+    await this.assertMay(importer, { academicYearId: null, markSheetId });
     let academicYearId: string | null = null;
     if (dto.type === ImportType.STUDENTS) {
       academicYearId =
@@ -117,6 +132,7 @@ export class ImportService {
       status: ImportStatus.UPLOADED,
       mode: dto.mode ?? ImportMode.ALL_OR_NOTHING,
       academicYearId,
+      markSheetId,
       totals: null,
       errors: [],
       rows: [],
@@ -137,7 +153,7 @@ export class ImportService {
   /** Queues the commit of a validated import. */
   async startCommit(id: string, dto: CommitImportDto): Promise<Job> {
     const batch = await this.findById(id);
-    await this.assertMay(await this.importer(batch.type));
+    await this.assertMay(await this.importer(batch.type), this.ctx(batch));
     if (batch.status !== ImportStatus.VALIDATED) {
       throw new ConflictException({
         message: `The import is ${batch.status}`,
@@ -305,7 +321,10 @@ export class ImportService {
   // --- Helpers -------------------------------------------------------------
 
   private ctx(batch: ImportBatch): ImportContext {
-    return { academicYearId: batch.academicYearId };
+    return {
+      academicYearId: batch.academicYearId,
+      markSheetId: batch.markSheetId,
+    };
   }
 
   /** The importer of a type (same request scope, so same transaction). */
@@ -313,17 +332,22 @@ export class ImportService {
     const importers: Record<ImportType, Importer> = {
       [ImportType.STUDENTS]: this.studentImporter as unknown as Importer,
       [ImportType.STAFF]: this.staffImporter as unknown as Importer,
+      [ImportType.MARKS]: this.marksImporter as unknown as Importer,
     };
     return Promise.resolve(importers[type]);
   }
 
-  private async assertMay(importer: Importer): Promise<void> {
+  private async assertMay(
+    importer: Importer,
+    ctx?: ImportContext,
+  ): Promise<void> {
     if (!(await this.scope.can(importer.permission))) {
       throw new ForbiddenException({
         message: `Importing ${importer.type} needs ${importer.permission}`,
         code: 'FORBIDDEN',
       });
     }
+    if (ctx && importer.assertAccess) await importer.assertAccess(ctx);
   }
 
   private async fail(

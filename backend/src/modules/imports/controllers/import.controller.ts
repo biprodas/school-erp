@@ -35,13 +35,14 @@ import {
   CommitImportDto,
   FilterImportDto,
   StartImportDto,
+  TemplateQueryDto,
 } from '../dto/import.dto';
 import { ImportType } from '../enums/import.enum';
 import { ImportService } from '../services/import.service';
 
 /**
  * Excel imports (PRD 6.2). Each type needs its own key (`students:import`,
- * `employees:import`), checked in the service.
+ * `employees:import`, `results:enter`), checked in the service.
  */
 @ApiTags('Tenant / Imports')
 @ApiBearerAuth('tenant-jwt')
@@ -52,7 +53,11 @@ import { ImportService } from '../services/import.service';
 })
 @Controller('imports')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
-@RequirePermissions(PERMISSIONS.STUDENTS_IMPORT, PERMISSIONS.EMPLOYEES_IMPORT)
+@RequirePermissions(
+  PERMISSIONS.STUDENTS_IMPORT,
+  PERMISSIONS.EMPLOYEES_IMPORT,
+  PERMISSIONS.RESULTS_ENTER,
+)
 export class ImportController {
   constructor(private readonly imports: ImportService) {}
 
@@ -61,10 +66,12 @@ export class ImportController {
   @Header('Content-Type', MIME.xlsx)
   async template(
     @Param('type', new ParseEnumPipe(ImportType)) type: ImportType,
+    @Query() query: TemplateQueryDto,
   ) {
-    return new StreamableFile(await this.imports.template(type), {
-      disposition: `attachment; filename="${type}-import.xlsx"`,
-    });
+    return new StreamableFile(
+      await this.imports.template(type, query.markSheetId ?? null),
+      { disposition: `attachment; filename="${type}-import.xlsx"` },
+    );
   }
 
   @Get()

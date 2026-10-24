@@ -41,10 +41,14 @@ export interface ParseResult<T> {
 
 const norm = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ');
 
-/** An import template: bold headers, an example row, dropdowns for options. */
+/**
+ * An import template: bold headers, an example row (or `rows` to fill in,
+ * e.g. a mark sheet's students), dropdowns for options.
+ */
 export async function buildTemplate<T>(
   columns: SheetColumn<T>[],
   sheetName = 'Data',
+  rows?: Partial<T>[],
 ): Promise<Buffer> {
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet(sheetName);
@@ -55,7 +59,9 @@ export async function buildTemplate<T>(
   }));
   ws.getRow(1).font = { bold: true };
   ws.views = [{ state: 'frozen', ySplit: 1 }];
-  if (columns.some((c) => c.example !== undefined)) {
+  if (rows) {
+    ws.addRows(rows);
+  } else if (columns.some((c) => c.example !== undefined)) {
     ws.addRow(
       Object.fromEntries(columns.map((c) => [c.key, c.example ?? null])),
     );

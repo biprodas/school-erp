@@ -15,6 +15,18 @@ export class StartImportDto {
   @IsOptional()
   @IsUUID('4')
   academicYearId?: string;
+
+  /** Marks: the (draft) mark sheet to fill. */
+  @IsOptional()
+  @IsUUID('4')
+  markSheetId?: string;
+}
+
+export class TemplateQueryDto {
+  /** Marks: the sheet whose students and components the template lists. */
+  @IsOptional()
+  @IsUUID('4')
+  markSheetId?: string;
 }
 
 export class CommitImportDto {

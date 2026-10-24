@@ -1,7 +1,9 @@
-/** What an import creates. `guardians`-only and `marks` (M5) come later. */
+/** What an import creates. A `guardians`-only import comes later. */
 export enum ImportType {
   STUDENTS = 'students',
   STAFF = 'staff',
+  /** One mark sheet's marks (M5). */
+  MARKS = 'marks',
 }
 
 export enum ImportStatus {

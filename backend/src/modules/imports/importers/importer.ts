@@ -10,6 +10,8 @@ import type { ImportType } from '../enums/import.enum';
 export interface ImportContext {
   /** Students: the session they are enrolled in. */
   academicYearId: string | null;
+  /** Marks: the mark sheet. */
+  markSheetId: string | null;
 }
 
 /**
@@ -22,6 +24,10 @@ export interface Importer<T = Record<string, unknown>> {
   /** Needed to upload, validate and commit this type. */
   readonly permission: PermissionKey;
   columns(ctx: ImportContext): Promise<SheetColumn<T>[]>;
+  /** Rows to prefill the template with (default: one example row). */
+  templateRows?(ctx: ImportContext): Promise<Partial<T>[]>;
+  /** Checks beyond `permission` (scope on the target), at every step. */
+  assertAccess?(ctx: ImportContext): Promise<void>;
   /** Errors per row number (beyond the format errors of `parseSheet`). */
   validate(
     rows: ParsedRow<T>[],

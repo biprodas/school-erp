@@ -7,6 +7,7 @@ import { ClassCurriculumModule } from '~/modules/class-curriculum/class-curricul
 import { DepartmentModule } from '~/modules/departments/department.module';
 import { DesignationModule } from '~/modules/designations/designation.module';
 import { EmployeeModule } from '~/modules/employees/employee.module';
+import { ExamModule } from '~/modules/exams/exam.module';
 import { EnrollmentModule } from '~/modules/enrollments/enrollment.module';
 import { FileModule } from '~/modules/files/file.module';
 import { GuardianModule } from '~/modules/guardians/guardian.module';
@@ -17,11 +18,12 @@ import { SubjectGroupModule } from '~/modules/subject-groups/subject-group.modul
 import { ImportController } from './controllers/import.controller';
 import { ImportJob } from './import.job';
 import { ImportRepository } from './import.repository';
+import { MarksImporter } from './importers/marks.importer';
 import { StaffImporter } from './importers/staff.importer';
 import { StudentImporter } from './importers/student.importer';
 import { ImportService } from './services/import.service';
 
-/** Excel imports for students (with guardians) and staff (PRD 6.2). */
+/** Excel imports for students (with guardians), staff and marks (PRD 6.2). */
 @Module({
   imports: [
     RbacModule,
@@ -35,6 +37,7 @@ import { ImportService } from './services/import.service';
     GuardianModule,
     EnrollmentModule,
     EmployeeModule,
+    ExamModule,
     DepartmentModule,
     DesignationModule,
     FileModule,
@@ -46,6 +49,7 @@ import { ImportService } from './services/import.service';
     ImportService,
     StudentImporter,
     StaffImporter,
+    MarksImporter,
     ImportJob,
   ],
 })

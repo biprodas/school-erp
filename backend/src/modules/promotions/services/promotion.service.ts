@@ -13,6 +13,8 @@ import { TENANT_DATASOURCE } from '~/tenancy/tenancy.constants';
 import { TenantDataSourceProxy } from '~/tenancy/tenant-datasource.proxy';
 import { AcademicYearService } from '~/modules/academic-years/academic-year.service';
 import { AttendanceUsageService } from '~/modules/attendance/services/attendance-usage.service';
+import { MarkSheetService } from '~/modules/exams/services/mark-sheet.service';
+import { ResultService } from '~/modules/exams/services/result.service';
 import { AUDIT_ACTIONS } from '~/modules/audit/audit-actions';
 import { AuditService } from '~/modules/audit/services/audit.service';
 import type { ProvisionResult } from '~/modules/auth/services/invite.service';
@@ -72,8 +74,10 @@ const byRoll = (a: string | null, b: string | null) => {
  * 4. `rollback` undoes a commit within 24 hours, if nothing uses the new
  *    enrollments yet.
  *
- * Outcomes will come from the published combined result once exams (M5)
- * exist; until then everyone is promoted and merit order is the old roll.
+ * Outcomes come from the class's published session result (a combined
+ * one when published, else the latest exam): failed students are
+ * detained, and merit order is the class position. Without a published
+ * result everyone is promoted and merit order is the old roll.
  */
 @Injectable()
 export class PromotionService {
@@ -87,6 +91,8 @@ export class PromotionService {
     private readonly students: StudentService,
     private readonly jobs: JobService,
     private readonly attendance: AttendanceUsageService,
+    private readonly marks: MarkSheetService,
+    private readonly results: ResultService,
     private readonly audit: AuditService,
     private readonly context: RequestContext,
     @Inject(TENANT_DATASOURCE) private readonly ds: TenantDataSourceProxy,
@@ -143,9 +149,14 @@ export class PromotionService {
             code: 'PROMOTION_EXISTS',
           });
         }
+        const outcomes = await this.results.publishedOutcomes(
+          dto.fromYearId,
+          dto.classId,
+        );
         const options: PromotionOptions = {
           rollBy: dto.options?.rollBy ?? RollBy.MERIT,
           shuffleSections: dto.options?.shuffleSections ?? false,
+          resultDefinitionId: outcomes?.resultDefinitionId ?? null,
         };
         const batch = await this.batchRepo.saveNew({
           fromYearId: dto.fromYearId,
@@ -159,7 +170,7 @@ export class PromotionService {
           rolledBackAt: null,
           rolledBackBy: null,
         });
-        await this.buildItems(batch, cls);
+        await this.buildItems(batch, cls, outcomes?.byEnrollment ?? null);
         return batch.id;
       })
       .then((id) => this.preview(id));
@@ -309,8 +320,7 @@ export class PromotionService {
   /**
    * Undoes a commit within 24 hours: the new enrollments go, the old ones
    * reopen, graduates get their status back. Refused once anything uses a
-   * new enrollment (subjects chosen, a transfer, attendance taken; marks
-   * from M5 add theirs).
+   * new enrollment (subjects chosen, a transfer, attendance or marks).
    */
   rollback(id: string): Promise<PromotionPreview> {
     return this.ds
@@ -333,7 +343,8 @@ export class PromotionService {
         const used =
           (await this.enrollments.countSubjectChoices(created)) +
           (await this.enrollments.countChanges(created)) +
-          (await this.attendance.countForEnrollments(created));
+          (await this.attendance.countForEnrollments(created)) +
+          (await this.marks.countForEnrollments(created));
         if (used > 0) {
           throw new ConflictException({
             message: 'The new enrollments are already in use',
@@ -378,7 +389,14 @@ export class PromotionService {
 
   // --- Building ------------------------------------------------------------
 
-  private async buildItems(batch: PromotionBatch, cls: Class): Promise<void> {
+  private async buildItems(
+    batch: PromotionBatch,
+    cls: Class,
+    outcomes: Map<
+      string,
+      { passed: boolean; positionClass: number | null }
+    > | null,
+  ): Promise<void> {
     const enrollments = await this.enrollments.findActiveInClass(
       batch.fromYearId,
       batch.classId,
@@ -387,20 +405,26 @@ export class PromotionService {
     const targets = nextClass
       ? await this.targetSections(batch.toYearId, nextClass.id)
       : [];
+    const repeatTargets = await this.targetSections(batch.toYearId, cls.id);
 
+    const position = (id: string) =>
+      outcomes?.get(id)?.positionClass ?? Number.MAX_SAFE_INTEGER;
     const ordered = [...enrollments].sort((a, b) =>
       batch.options.rollBy === RollBy.ALPHABETICAL
         ? (a.student?.fullName ?? '').localeCompare(b.student?.fullName ?? '')
-        : byRoll(a.rollNo, b.rollNo),
+        : batch.options.rollBy === RollBy.MERIT
+          ? position(a.id) - position(b.id) || byRoll(a.rollNo, b.rollNo)
+          : byRoll(a.rollNo, b.rollNo),
     );
     const placed = new Map<string, number>(); // section id → rolls given
     for (const [index, enrollment] of ordered.entries()) {
-      if (!nextClass) {
+      const failed = outcomes?.get(enrollment.id)?.passed === false;
+      if (!nextClass && !failed) {
         await this.saveItem(batch, enrollment, PromotionOutcome.GRADUATE, null);
         continue;
       }
       const section = this.pickSection(
-        targets,
+        failed ? repeatTargets : targets,
         enrollment,
         index,
         batch.options.shuffleSections,
@@ -412,11 +436,16 @@ export class PromotionService {
         newRoll =
           batch.options.rollBy === RollBy.KEEP ? enrollment.rollNo : String(n);
       }
-      await this.saveItem(batch, enrollment, PromotionOutcome.PROMOTE, {
-        classId: nextClass.id,
-        sectionId: section?.id ?? null,
-        newRoll,
-      });
+      await this.saveItem(
+        batch,
+        enrollment,
+        failed ? PromotionOutcome.DETAIN : PromotionOutcome.PROMOTE,
+        {
+          classId: failed ? cls.id : nextClass!.id,
+          sectionId: section?.id ?? null,
+          newRoll,
+        },
+      );
     }
   }
 

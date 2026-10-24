@@ -15,6 +15,7 @@ describe('PromotionService (draft)', () => {
   let enrollments: Record<string, jest.Mock>;
   let sections: { findInYear: jest.Mock; findById: jest.Mock };
   let classes: Record<string, jest.Mock>;
+  let outcomes: unknown;
 
   const build = () =>
     new PromotionService(
@@ -45,11 +46,14 @@ describe('PromotionService (draft)', () => {
       {} as never,
       {} as never,
       {} as never,
+      { publishedOutcomes: jest.fn().mockResolvedValue(outcomes) } as never,
+      {} as never,
       { current: () => ({ userId: 'u-1' }) } as never,
       fakeTenantDataSource(),
     );
 
   beforeEach(() => {
+    outcomes = null;
     items = [];
     enrollments = {
       findActiveInClass: jest
@@ -111,6 +115,36 @@ describe('PromotionService (draft)', () => {
       ['e10', 'A7', '1'], // Anik
       ['e1', 'B7', '1'], // Mita
       ['e2', 'A7', '2'], // Zara
+    ]);
+  });
+
+  it('detains failed students and orders the rest by class position', async () => {
+    sections.findInYear.mockResolvedValue([
+      { id: 'A7', classId: 'c7', name: 'A', isActive: true },
+      { id: 'A6', classId: 'c6', name: 'A', isActive: true },
+    ]);
+    outcomes = {
+      resultDefinitionId: 'rd-1',
+      byEnrollment: new Map([
+        ['e1', { passed: true, positionClass: 2 }],
+        ['e2', { passed: true, positionClass: 1 }],
+        ['e10', { passed: false, positionClass: 3 }],
+      ]),
+    };
+    await build().create({ fromYearId: 'y1', toYearId: 'y2', classId: 'c6' });
+
+    expect(
+      items.map((i) => [
+        i.enrollmentId,
+        i.outcome,
+        i.toClassId,
+        i.toSectionId,
+        i.newRoll,
+      ]),
+    ).toEqual([
+      ['e2', PromotionOutcome.PROMOTE, 'c7', 'A7', '1'],
+      ['e1', PromotionOutcome.PROMOTE, 'c7', 'A7', '2'],
+      ['e10', PromotionOutcome.DETAIN, 'c6', 'A6', '1'],
     ]);
   });
 

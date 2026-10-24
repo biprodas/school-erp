@@ -6,6 +6,11 @@ export const DOMAIN_EVENTS = {
    * absentee alerts from it, once per student and day.
    */
   ATTENDANCE_SUBMITTED: 'attendance.submitted',
+  /**
+   * A class's results were published. Payload: `resultDefinitionId`,
+   * `academicYearId`, `classId`, `enrollmentIds`. M7 notifies guardians.
+   */
+  RESULTS_PUBLISHED: 'results.published',
 } as const;
 
 export type DomainEventType =

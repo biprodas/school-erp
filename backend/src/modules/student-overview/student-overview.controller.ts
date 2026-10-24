@@ -44,6 +44,7 @@ export class StudentOverviewController {
       ),
       guardians: await this.scope.can(PERMISSIONS.GUARDIANS_READ),
       attendance: await this.scope.can(PERMISSIONS.ATTENDANCE_READ),
+      results: await this.scope.can(PERMISSIONS.RESULTS_READ),
     });
   }
 }

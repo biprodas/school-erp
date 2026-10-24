@@ -86,6 +86,11 @@ export class ClassSubjectService {
     return entity;
   }
 
+  /** Every class subject of a session, with components (exam setup). */
+  findInYear(academicYearId: string): Promise<ClassSubject[]> {
+    return this.classSubjectRepo.findInYear(academicYearId);
+  }
+
   countInYear(academicYearId: string): Promise<number> {
     return this.classSubjectRepo.countInYear(academicYearId);
   }

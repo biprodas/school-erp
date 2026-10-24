@@ -112,7 +112,6 @@ describe('Onboarding (e2e)', () => {
     expect(first.percentage).toBe(0);
     expect(first.canComplete).toBe(false);
     expect(first.steps.filter((s) => !s.available).map((s) => s.key)).toEqual([
-      'grading',
       'fees',
     ]);
 
@@ -190,7 +189,7 @@ describe('Onboarding (e2e)', () => {
 
     list = await checklist();
     expect(done(list)).toEqual(['profile', 'session', 'classes', 'curriculum']);
-    expect(list.percentage).toBe(67); // 4 of the 6 available steps
+    expect(list.percentage).toBe(57); // 4 of the 7 available steps
     expect(list.canComplete).toBe(true);
 
     const completed = data<Checklist>(
@@ -214,7 +213,7 @@ describe('Onboarding (e2e)', () => {
     expect(rows).toHaveLength(1);
   });
 
-  it('lists templates, with grading and fee heads not yet applicable', async () => {
+  it('lists templates and applies a grading template once', async () => {
     const templates = data<{
       curriculum: { code: string }[];
       grading: { code: string; applicable: boolean }[];
@@ -226,8 +225,22 @@ describe('Onboarding (e2e)', () => {
     ]);
     expect(templates.grading[0]).toMatchObject({
       code: 'bd-gpa-5',
-      applicable: false,
+      applicable: true,
     });
+    const apply = () =>
+      school()
+        .post('/api/onboarding/templates/grading/bd-gpa-5/apply')
+        .expect(200);
+    const first = data<{
+      created: boolean;
+      gradingSystem: { isDefault: boolean };
+    }>(await apply());
+    expect(first).toMatchObject({
+      created: true,
+      gradingSystem: { isDefault: true },
+    });
+    expect(data<{ created: boolean }>(await apply()).created).toBe(false);
+    expect(done(await checklist())).toContain('grading');
   });
 
   it('"Find your school" answers the same for known and unknown emails', async () => {

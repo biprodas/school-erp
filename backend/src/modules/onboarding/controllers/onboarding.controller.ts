@@ -13,6 +13,7 @@ import { JwtAuthGuard } from '~/modules/auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '~/modules/rbac/guards/permissions.guard';
 import { RequirePermissions } from '~/modules/rbac/decorators/require-permissions.decorator';
 import { PERMISSIONS } from '~/modules/rbac/permissions.catalog';
+import { GradingService } from '~/modules/grading/services/grading.service';
 import { HolidayService } from '~/modules/holidays/holiday.service';
 import { ApplyHolidayTemplateDto } from '~/modules/holidays/dto/apply-holiday-template.dto';
 import { ApplyTemplateDto } from '../dto/onboarding.dto';
@@ -30,6 +31,7 @@ export class OnboardingController {
     private readonly onboarding: OnboardingService,
     private readonly templates: CurriculumTemplateService,
     private readonly holidays: HolidayService,
+    private readonly grading: GradingService,
   ) {}
 
   @Get('checklist')
@@ -69,6 +71,18 @@ export class OnboardingController {
   @ResponseMessage('Template applied')
   applyCurriculum(@Param('code') code: string, @Body() dto: ApplyTemplateDto) {
     return this.templates.applyCurriculum(code, dto.academicYearId);
+  }
+
+  /**
+   * Creates a grading system from a template (once; the first one becomes
+   * the school's default).
+   */
+  @Post('templates/grading/:code/apply')
+  @HttpCode(200)
+  @RequirePermissions(PERMISSIONS.ONBOARDING_MANAGE)
+  @ResponseMessage('Template applied')
+  applyGrading(@Param('code') code: string) {
+    return this.grading.applyTemplate(code);
   }
 
   /**

@@ -62,6 +62,10 @@ export class ImportBatch extends OrgScopedEntity {
   @Column({ name: 'academic_year_id', type: 'uuid', nullable: true })
   academicYearId: string | null;
 
+  /** Marks: the mark sheet they go into. */
+  @Column({ name: 'mark_sheet_id', type: 'uuid', nullable: true })
+  markSheetId: string | null;
+
   @Column({ type: 'jsonb', nullable: true })
   totals: ImportTotals | null;
 

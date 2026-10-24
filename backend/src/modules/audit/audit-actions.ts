@@ -65,6 +65,13 @@ export const AUDIT_ACTIONS = {
   STUDENT_LEAVE_APPROVED: 'student_leave.approved',
   STUDENT_LEAVE_REJECTED: 'student_leave.rejected',
 
+  // Exams and results (PRD 6.9)
+  MARKS_CHANGED: 'marks.changed',
+  MARK_SHEETS_APPROVED: 'mark_sheet.approved',
+  MARK_SHEET_REOPENED: 'mark_sheet.reopened',
+  RESULTS_PUBLISHED: 'results.published',
+  RESULT_REMARKS_UPDATED: 'result.remarks_updated',
+
   // Sensitive data access (PRD 6.3). Recorded without the data itself.
   STUDENT_MEDICAL_VIEWED: 'student_medical.viewed',
   STUDENT_NOTE_SENSITIVE_VIEWED: 'student_note.sensitive_viewed',

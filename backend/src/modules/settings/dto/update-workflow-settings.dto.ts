@@ -1,4 +1,13 @@
+import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
+  ArrayMinSize,
+  ArrayUnique,
+  IsArray,
+  IsObject,
+  IsString,
+  MaxLength,
+  ValidateNested,
   IsBoolean,
   IsIn,
   IsInt,
@@ -7,10 +16,39 @@ import {
   Max,
   Min,
 } from 'class-validator';
+import {
+  TIE_BREAKERS,
+  type TieBreaker,
+} from '~/modules/grading/engine/positions';
+
+export class UpdateReportCardSettingsDto {
+  @IsIn(['bn', 'en']) language?: 'bn' | 'en';
+  @IsBoolean() showPosition?: boolean;
+  @IsBoolean() showAttendance?: boolean;
+  @IsBoolean() showRemarks?: boolean;
+
+  @IsArray()
+  @ArrayMaxSize(4)
+  @IsString({ each: true })
+  @MaxLength(40, { each: true })
+  signatures?: string[];
+}
 
 export class UpdateResultsSettingsDto {
   /** Require the Verified step between Submitted and Approved (PRD 6.9). */
   @IsBoolean() verifyStep?: boolean;
+
+  /** Merit tie-breakers in order, each once. */
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayUnique()
+  @IsIn(TIE_BREAKERS, { each: true })
+  tieBreakers?: TieBreaker[];
+
+  @IsObject()
+  @ValidateNested()
+  @Type(() => UpdateReportCardSettingsDto)
+  reportCard?: UpdateReportCardSettingsDto;
 }
 
 export class UpdateAttendanceSettingsDto {

@@ -1,0 +1,52 @@
+{{#each cards}}
+  <div class='card'>
+    <div class='head'>
+      {{#if ../logo}}<img class='logo' src='{{../logo}}' />{{/if}}
+      <div class='school'>{{../schoolName}}</div>
+      {{#if ../schoolNameBn}}<div class='serif school-bn'>{{../schoolNameBn}}</div>{{/if}}
+      <div class='title'>{{../l.title}}</div>
+      <div class='sub'>{{../resultName}} · {{../l.session}} {{../session}}</div>
+    </div>
+    <table class='info'><tr>
+        <td>{{../l.name}}: <b>{{this.name}}</b>{{#if this.nameBn}} <span class='serif'>({{this.nameBn}})</span>{{/if}}</td>
+        <td>{{../l.id}}: <b>{{this.admissionNumber}}</b></td>
+      </tr><tr>
+        <td>{{../l.class}}: <b>{{../className}}</b> · {{../l.section}}: <b>{{this.sectionName}}</b></td>
+        <td>{{../l.roll}}: <b>{{this.rollNo}}</b></td>
+      </tr></table>
+    <table class='marks'>
+      <thead><tr>
+          <th class='subj'>{{../l.subject}}</th>
+          <th>{{../l.full}}</th>
+          <th>{{../l.obtained}}</th>
+          <th>{{../l.grade}}</th>
+          {{#if ../showPoint}}<th>{{../l.point}}</th>{{/if}}
+        </tr></thead>
+      <tbody>
+        {{#each this.subjects}}
+          <tr class='{{#unless this.passed}}fail{{/unless}}'>
+            <td class='subj'>{{this.name}}{{#if this.isFourth}} ({{../../l.fourth}}){{/if}}
+              {{#if this.parts}}<div class='parts'>{{this.parts}}</div>{{/if}}</td>
+            <td>{{this.fullMarks}}</td>
+            <td>{{this.obtained}}</td>
+            <td>{{this.grade}}</td>
+            {{#if ../../showPoint}}<td>{{this.point}}</td>{{/if}}
+          </tr>
+        {{/each}}
+      </tbody>
+    </table>
+    <table class='summary'><tr>
+        <td>{{../l.total}}: <b>{{this.total}} / {{this.fullMarks}}</b></td>
+        {{#if ../showPoint}}<td>{{../l.gpa}}: <b>{{this.gpa}}</b></td>{{/if}}
+        <td>{{../l.grade}}: <b>{{this.grade}}</b></td>
+        <td>{{../l.result}}: <b>{{this.outcome}}</b></td>
+      </tr>
+      {{#if this.extra}}<tr>
+          {{#each this.extra}}<td>{{this.label}}: <b>{{this.value}}</b></td>{{/each}}
+        </tr>{{/if}}</table>
+    {{#if this.remarks}}<div class='remarks'>{{../l.remarks}}: {{this.remarks}}</div>{{/if}}
+    <table class='signs'><tr>
+        {{#each ../signatures}}<td><div class='line'></div>{{this}}</td>{{/each}}
+      </tr></table>
+  </div>
+{{/each}}

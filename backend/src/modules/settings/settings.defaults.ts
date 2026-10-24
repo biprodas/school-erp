@@ -55,7 +55,17 @@ export const DEFAULT_SETTINGS: OrgSettingsValues = {
     studentMinLevel: 6,
     studentClassIds: [],
   },
-  results: { verifyStep: false },
+  results: {
+    verifyStep: false,
+    tieBreakers: ['gpa', 'total', 'roll'],
+    reportCard: {
+      language: 'en',
+      showPosition: true,
+      showAttendance: true,
+      showRemarks: true,
+      signatures: ['Class teacher', 'Guardian', 'Head teacher'],
+    },
+  },
   attendance: { mode: 'day', lockAfterDays: 7, cutoffTime: null },
   fees: { billingDay: 1, graceDays: 10, blockResultsOnDues: false },
   notifications: {

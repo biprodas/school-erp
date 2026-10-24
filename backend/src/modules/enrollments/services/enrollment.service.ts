@@ -158,6 +158,40 @@ export class EnrollmentService {
   }
 
   /** The student's enrollment in a session, if any. */
+  /**
+   * A class's enrollments that sit its exams: active ones, and those
+   * closed at the end of the session (promoted or completed).
+   */
+  findExamTakers(
+    academicYearId: string,
+    classId: string,
+  ): Promise<StudentEnrollment[]> {
+    return this.enrollmentRepo.findInClass(academicYearId, classId, [
+      StudentEnrollmentStatus.ACTIVE,
+      StudentEnrollmentStatus.PROMOTED,
+      StudentEnrollmentStatus.COMPLETED,
+    ]);
+  }
+
+  /**
+   * Chosen subjects per enrollment (optional, elective and 4th), as
+   * subject id → whether it is the 4th subject.
+   */
+  async subjectChoices(
+    enrollmentIds: string[],
+  ): Promise<Map<string, Map<string, boolean>>> {
+    const choices = new Map<string, Map<string, boolean>>();
+    for (const s of await this.studentSubjectRepo.findForEnrollments(
+      enrollmentIds,
+    )) {
+      if (!choices.has(s.studentEnrollmentId)) {
+        choices.set(s.studentEnrollmentId, new Map());
+      }
+      choices.get(s.studentEnrollmentId)!.set(s.subjectId, s.isFourthSubject);
+    }
+    return choices;
+  }
+
   /** Enrollments by id with student, class and section (reports). */
   findByIds(ids: string[]): Promise<StudentEnrollment[]> {
     return this.enrollmentRepo.findByIds(ids);

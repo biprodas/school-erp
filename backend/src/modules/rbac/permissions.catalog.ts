@@ -207,6 +207,36 @@ export const PERMISSIONS = {
   /** Approve or reject (class teachers: their own sections). */
   STUDENT_LEAVES_APPROVE: 'student_leaves:approve',
 
+  // Grading systems and class grading (PRD 6.9)
+  GRADING_SYSTEMS_READ: 'grading_systems:read',
+  GRADING_SYSTEMS_CREATE: 'grading_systems:create',
+  GRADING_SYSTEMS_UPDATE: 'grading_systems:update',
+  GRADING_SYSTEMS_DELETE: 'grading_systems:delete',
+
+  // Exams, exam types and exam subjects
+  EXAMS_READ: 'exams:read',
+  EXAMS_CREATE: 'exams:create',
+  EXAMS_UPDATE: 'exams:update',
+  EXAMS_DELETE: 'exams:delete',
+
+  // Marks and results (the mark-sheet workflow)
+  /** Mark sheets, results and result sheets (scope applies). */
+  RESULTS_READ: 'results:read',
+  /** Enter and submit marks (subject teachers: the subjects they teach). */
+  RESULTS_ENTER: 'results:enter',
+  /** The optional Verified step (`results.verifyStep`). */
+  RESULTS_VERIFY: 'results:verify',
+  /** Approve mark sheets (they become read-only) and tabulate. */
+  RESULTS_APPROVE: 'results:approve',
+  /** Publish results to the portal; set up result definitions. */
+  RESULTS_PUBLISH: 'results:publish',
+  /** Send approved or published mark sheets back to draft. */
+  RESULTS_REOPEN: 'results:reopen',
+  /** Remarks on a student's result (class teachers: their sections). */
+  RESULTS_REMARKS: 'results:remarks',
+  /** Bulk report-card PDFs. */
+  REPORT_CARDS_PRINT: 'report_cards:print',
+
   // Custom domains (Settings → Domain)
   DOMAINS_READ: 'domains:read',
   DOMAINS_MANAGE: 'domains:manage',

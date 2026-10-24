@@ -4,6 +4,7 @@ import { AcademicYearModule } from '~/modules/academic-years/academic-year.modul
 import { ClassModule } from '~/modules/classes/class.module';
 import { EnrollmentModule } from '~/modules/enrollments/enrollment.module';
 import { AttendanceModule } from '~/modules/attendance/attendance.module';
+import { ExamModule } from '~/modules/exams/exam.module';
 import { JobModule } from '~/modules/jobs/job.module';
 import { SectionModule } from '~/modules/sections/section.module';
 import { StudentModule } from '~/modules/students/student.module';
@@ -23,6 +24,7 @@ import { PromotionService } from './services/promotion.service';
     SectionModule,
     JobModule,
     AttendanceModule,
+    ExamModule,
   ],
   controllers: [PromotionController],
   providers: [

@@ -15,7 +15,7 @@
 - This is a starting plan, not a fixed spec. When implementation shows a better way, change the code and update this doc to match.
 - Items marked **(1b)** are listed only so Phase 1a leaves room for them; they are tracked in section 14.
 
-**Current state:** M0 in progress (4.1–4.7 done; DB-backed checks wait for the local database or the first CI run). M1 implemented (2026-10-23) except the sample-data mode and the grading, holiday and fee-head template "apply" steps, which wait for M5, M4 and M6; its e2e specs pass against Postgres 18. M2, M3 and M4 implemented (2026-10-24; M4 waits on the portal leave endpoint from M7 and a check of the register PDF against a paper one). Section 1 lists what already exists and can be reused.
+**Current state:** M0 in progress (4.1–4.7 done; DB-backed checks wait for the local database or the first CI run). M1 implemented (2026-10-23) except the sample-data mode and the grading, holiday and fee-head template "apply" steps, which wait for M5, M4 and M6; its e2e specs pass against Postgres 18. M2–M5 implemented (2026-10-24; M4 waits on the portal leave endpoint from M7 and a check of the register PDF against a paper one, M5 on the portal and notifications from M7 and the report-card timing on the M8 performance seed). Section 1 lists what already exists and can be reused.
 
 ---
 
@@ -310,7 +310,7 @@ Migration `1792340000000-PlatformAndOnboarding` holds every schema change below 
   - [x] NCTB classes and subjects (Class 1–10, SSC subject codes, Science/Business Studies/Humanities groups for 9–10)
   - [x] Cambridge (Year 1–11, IGCSE/O Level codes, Science/Commerce groups)
   - [x] Alia madrasa (Ebtedayee and Dakhil, Science/General groups)
-  - [ ] Grading templates (BD GPA 5.0 and the others in M5). *BD GPA 5.0 is defined and listed; applying it arrives with grading systems in M5.*
+  - [x] Grading templates (BD GPA 5.0 and the others in M5). *M5: BD GPA 5.0, GPA 4.0, Cambridge, percentage/division, Alia madrasa; `POST /onboarding/templates/grading/:code/apply`.*
   - [x] BD government holidays for the year. *M4: the six fixed-date ones (`POST /onboarding/templates/holidays/bd/apply`); the lunar-calendar ones are listed for the school to date each year.*
   - [ ] Default fee heads. *Defined and listed; applying them arrives with fees in M6.*
   - *The subject lists were written from the published syllabi and should be reviewed by someone who runs a school before the pilot.*
@@ -443,12 +443,12 @@ Migration `1792340000000-PlatformAndOnboarding` holds every schema change below 
   - [x] `POST /promotions/batches` builds the draft (outcome from the published combined result when it exists, else promote) and computes rolls and sections; `GET` is the preview. *No results yet (M5): everyone is promoted, merit uses the old roll. The next class is the next level up; the final class graduates. Same-name sections, or spread evenly with `shuffleSections`.*
   - [x] `PATCH /promotions/batches/:id/items/:itemId` for manual overrides.
   - [x] `POST /promotions/batches/:id/commit` (job, one transaction): create next-year enrollments, mark old ones `promoted`/`completed`, graduate the final class. *`promotions:commit`; refused (`PROMOTION_NOT_READY`) while a student has no section, a roll repeats or someone is already enrolled.*
-  - [x] `POST /promotions/batches/:id/rollback` within 24 hours, only if nothing references the new enrollments. *Checks subject choices, transfers and attendance (M4); marks (M5) add theirs.*
+  - [x] `POST /promotions/batches/:id/rollback` within 24 hours, only if nothing references the new enrollments. *Checks subject choices, transfers, attendance (M4) and marks (M5).*
   - [x] Migration drops `student_promotions` (moving any rows into a closed legacy batch).
 
 ### 7.4 Excel import (PRD 6.2)
 
-- [x] `src/modules/imports/`: `imports (type students|guardians|staff|marks, file_id, status uploaded|validating|validated|committing|done|failed, mode all_or_nothing|valid_only, totals jsonb, errors jsonb [{row, column, code, message}])`. *Types `students` (with guardians) and `staff` so far; `guardians`-only and `marks` (M5) plug into the same `Importer` contract.*
+- [x] `src/modules/imports/`: `imports (type students|guardians|staff|marks, file_id, status uploaded|validating|validated|committing|done|failed, mode all_or_nothing|valid_only, totals jsonb, errors jsonb [{row, column, code, message}])`. *Types `students` (with guardians), `staff` and `marks` (M5); `guardians`-only plugs into the same `Importer` contract.*
 - [x] `GET /imports/templates/:type`: a generated workbook with headers, examples and data-validation lists.
 - [x] `POST /imports` (upload) → validation job: required fields, formats, phone normalization, duplicates in the file and against the DB, class/section existence. *Also rolls, groups, capacity and the manual-ID setting.*
 - [x] `GET /imports/:id`: row-level preview.
@@ -532,61 +532,65 @@ Migration `1792340000000-PlatformAndOnboarding` holds every schema change below 
 
 **Scope:** PRD 6.9 core cycle. Exam routine, seat plans, admit cards, invigilators and the report-card designer are Phase 2.
 
+*Implemented 2026-10-24. Migration `1792380000000-ExamsAndResults` ran (up, down, up) on the migrated M4 schema, and `db:generate` finds no drift. Unit suites (the engine's `[gpa-regression]` suite included) and `test/exams-results.e2e-spec.ts` pass against Postgres 18 with RLS on, headless Chrome for the PDFs.*
+
 ### 9.1 Grading engine (pure TypeScript)
 
-- [ ] `src/modules/grading/engine/` with no Nest or DB dependencies.
-- [ ] Per-subject: component marks → marks, grade, point, pass/fail per component (minimum pass per component).
-- [ ] Overall: total, GPA, grade, failed-subject count; F in any compulsory subject → overall F.
-- [ ] 4th-subject bonus: point − 2.0 when above 2.0, GPA capped at 5.00.
-- [ ] Grace marks (max per subject and total, only to reach pass); absent and exempt handling; rounding to 2 decimals.
-- [ ] Combined results: weighted per-subject marks across exams, then graded.
-- [ ] Positions: section and class merit with configurable tie-breakers (GPA, total, compulsory total, roll).
-- [ ] **Regression suites** (PRD 11.5):
-  - [ ] BD GPA 5.0: board cases for 4th subject, compulsory F, component pass and grace.
-  - [ ] GPA 4.0
-  - [ ] Cambridge A*–U
-  - [ ] Percentage/division
-  - [ ] Alia madrasa
+- [x] `src/modules/grading/engine/` with no Nest or DB dependencies.
+- [x] Per-subject: component marks → marks, grade, point, pass/fail per component (minimum pass per component). *Plus the subject pass mark and the scale's pass band; fractional totals rounded per the rules (BD: up).*
+- [x] Overall: total, GPA, grade, failed-subject count; F in any compulsory subject → overall F. *Any subject that counts (all but exempt ones and the 4th) fails the result, so optional/elective choices count too.*
+- [x] 4th-subject bonus: point − 2.0 when above 2.0, GPA capped at 5.00.
+- [x] Grace marks (max per subject and total, only to reach pass); absent and exempt handling; rounding to 2 decimals. *Grace goes to the smallest needs first and lifts failing components; absent subjects get none; exempt subjects leave totals and GPA.*
+- [x] Combined results: weighted per-subject marks across exams, then graded. *Per component, scaled to the heaviest exam's full marks.*
+- [x] Positions: section and class merit with configurable tie-breakers (GPA, total, compulsory total, roll). *`results.tieBreakers` setting (also `percentage`); passed first, then failed by fewest failed subjects; full ties share a position.*
+- [x] **Regression suites** (PRD 11.5): *`engine.spec.ts`, tagged `[gpa-regression]`.*
+  - [x] BD GPA 5.0: board cases for 4th subject, compulsory F, component pass and grace.
+  - [x] GPA 4.0 *(UGC uniform scale)*
+  - [x] Cambridge A*–U *(IGCSE A*–G, U)*
+  - [x] Percentage/division
+  - [x] Alia madrasa *(the board's GPA 5.0 rules)*
+  - *The templates (`shared/templates/grading.ts`) were written from the published rules and should be checked against a board result sheet before the pilot.*
 
 ### 9.2 Model
 
-- [ ] `grading_systems (name, kind gpa|letter|percentage, rules jsonb)` and `grade_scale_items (grading_system_id, letter, min_mark, max_mark, point, is_fail)`, created from templates.
-- [ ] `class_grading (academic_year_id, class_id, grading_system_id)`.
-- [ ] `exam_types (name, default_weight)`.
-- [ ] `exams (academic_year_id, term_id, exam_type_id, name, weight, start_date, end_date, status)`.
-- [ ] `exam_subjects (exam_id, class_subject_id, full_marks, pass_marks)` and `exam_subject_components` copied from the class subject, editable per exam.
-- [ ] `mark_sheets (exam_subject_id, section_id, status draft|submitted|verified|approved|published, submitted/verified/approved/reopened by and at, reopen_reason)`, unique per exam subject and section.
-- [ ] `marks (mark_sheet_id, enrollment_id, component_id, value numeric(6,2) nullable, absent, exempt)`, unique `(mark_sheet_id, enrollment_id, component_id)`.
-- [ ] `result_definitions (academic_year_id, class_id, name, items [{exam_id, weight}])`; single-exam results use an implicit definition.
-- [ ] `results (result_definition_id, enrollment_id, total, gpa, grade, position_section, position_class, failed_count, computed_at, published_at)` and `result_subjects (result_id, class_subject_id, marks, grade, point, passed)`.
+- [x] `grading_systems (name, kind gpa|letter|percentage, rules jsonb)` and `grade_scale_items (grading_system_id, letter, min_mark, max_mark, point, is_fail)`, created from templates. *`min_percent`/`max_percent`; one default system per school (`is_default`). `/grading-systems` (CRUD, `templates/:code`, `PUT :id/scale`); onboarding `POST /onboarding/templates/grading/:code/apply` (idempotent) and the checklist's grading step is live.*
+- [x] `class_grading (academic_year_id, class_id, grading_system_id)`. *`/class-grading`; classes without one use the default (`NO_GRADING_SYSTEM` when there is none).*
+- [x] `exam_types (name, default_weight)`.
+- [x] `exams (academic_year_id, term_id, exam_type_id, name, weight, start_date, end_date, status)`. *Status `draft` → `open` (`POST /exams/:id/open` creates the sheets and the exam's own result definition per class); deleting needs no marks.*
+- [x] `exam_subjects (exam_id, class_subject_id, full_marks, pass_marks)` and `exam_subject_components` copied from the class subject, editable per exam. *`POST /exams/:id/subjects { classIds | classSubjectIds }`; a subject without components gets one `written` part. Edits and removal stop once marks exist (`MARKS_EXIST`).*
+- [x] `mark_sheets (exam_subject_id, section_id, status draft|submitted|verified|approved|published, submitted/verified/approved/reopened by and at, reopen_reason)`, unique per exam subject and section. *Plus `first_submitted_at`, `published_at`.*
+- [x] `marks (mark_sheet_id, enrollment_id, component_id, value numeric(6,2) nullable, absent, exempt)`, unique `(mark_sheet_id, enrollment_id, component_id)`.
+- [x] `result_definitions (academic_year_id, class_id, name, items [{exam_id, weight}])`; single-exam results use an implicit definition. *The implicit one is a row with `exam_id` set, made when the exam opens.*
+- [x] `results (result_definition_id, enrollment_id, total, gpa, grade, position_section, position_class, failed_count, computed_at, published_at)` and `result_subjects (result_id, class_subject_id, marks, grade, point, passed)`. *Plus section, percentage, GPA without the 4th, grace, remarks, report card file; subjects keep their component marks.*
 
 ### 9.3 Workflow
 
-- [ ] `GET/PUT /mark-sheets/:id/marks` for the grid; the response includes engine-computed grades.
-- [ ] Marks Excel import through the import framework (type `marks`).
-- [ ] Transitions:
-  - [ ] submit (`results:enter`, subject-teacher scope)
-  - [ ] verify (`results:verify`, only when `verifyStep` is on)
-  - [ ] approve (`results:approve`); approved sheets are read-only
-  - [ ] publish (`results:publish`, per result definition and class)
-  - [ ] `POST /mark-sheets/:id/reopen { reason }` (`results:reopen`) back to draft
-- [ ] Every value change after first submission writes an audit row with old and new values.
-- [ ] Tabulation job runs when all sheets of a definition are approved, and again after reopen and re-approval; publish is blocked until results are current.
-- [ ] Publishing makes results visible on the portal and notifies guardians (M7 notifications).
+- [x] `GET/PUT /mark-sheets/:id/marks` for the grid; the response includes engine-computed grades. *The roster is who sits the subject: compulsory subjects for everyone (in their group), optional/4th/elective for those who chose them. `MARK_OUT_OF_RANGE`, `NOT_IN_ROSTER`; `Idempotency-Key` accepted.*
+- [x] Marks Excel import through the import framework (type `marks`). *`GET /imports/templates/marks?markSheetId=` is prefilled with the sheet's students and entered marks; cells take a mark, `AB` or `EX`. `imports.mark_sheet_id`; importers can now prefill templates and add access checks.*
+- [x] Transitions:
+  - [x] submit (`results:enter`, subject-teacher scope) *(`MARKS_INCOMPLETE` until every cell is entered; others' subjects 403 `NOT_SUBJECT_TEACHER`)*
+  - [x] verify (`results:verify`, only when `verifyStep` is on) *(`VERIFY_STEP_OFF`; with it on, approve needs it: `NOT_VERIFIED`)*
+  - [x] approve (`results:approve`); approved sheets are read-only *(also `POST /mark-sheets/approve { markSheetIds }` for a whole class; edits 409 `MARK_SHEET_LOCKED`)*
+  - [x] publish (`results:publish`, per result definition and class)
+  - [x] `POST /mark-sheets/:id/reopen { reason }` (`results:reopen`) back to draft
+- [x] Every value change after first submission writes an audit row with old and new values. *`marks.changed` per save; reopen is `mark_sheet.reopened` with the reason.*
+- [x] Tabulation job runs when all sheets of a definition are approved, and again after reopen and re-approval; publish is blocked until results are current. *Queued after the approving transaction commits; "current" = every sheet approved and tabulated after the last approval (`RESULTS_NOT_CURRENT`). `POST /result-definitions/:id/tabulate` runs it by hand. A re-tabulation unpublishes until published again. Combined definitions: `POST /result-definitions`.*
+- [ ] Publishing makes results visible on the portal and notifies guardians (M7 notifications). *Publishing records `results.published` in `domain_events`; the portal and notifications arrive with M7.*
+- *Promotion (M3) now takes outcomes from the class's published session result (combined if published, else the latest exam): failed students are detained and merit order is the class position. Rollback is refused once marks exist on the new enrollments. The student 360 view lists published results.*
 
 ### 9.4 Report cards and sheets
 
-- [ ] Two fixed layouts (Bangla and English variants), with options from settings: logo, letterhead, signatures, remarks, attendance summary, co-curricular grades.
-- [ ] `PUT /results/:id/remarks` for the class teacher.
-- [ ] Bulk generation per section on the `pdf` queue: one PDF per student (stored, signed URL) plus a merged section PDF.
-- [ ] Merit list, tabulation sheet, failed list and subject-wise analysis as Excel and PDF.
+- [x] Two fixed layouts (Bangla and English variants), with options from settings: logo, letterhead, signatures, remarks, attendance summary, co-curricular grades. *One layout with Bangla and English labels; `results.reportCard` sets language, position, attendance, remarks and signature lines. Logo and co-curricular grades are not printed yet (no co-curricular data until P1).*
+- [x] `PUT /results/:id/remarks` for the class teacher. *(`results:remarks`, own sections)*
+- [x] Bulk generation per section on the `pdf` queue: one PDF per student (stored, signed URL) plus a merged section PDF. *`POST /result-definitions/:id/report-cards { sectionId, language }` (plan module `report_cards`); `GET /results/:id/report-card`.*
+- [x] Merit list, tabulation sheet, failed list and subject-wise analysis as Excel and PDF. *JSON at `GET /result-definitions/:id/{results,merit-list,failed,analysis}`; files via `POST …/exports { type, format }`.*
 
 ### Done when
 
-- [ ] Every grading regression suite passes 100%.
-- [ ] A mark sheet goes draft → published, with and without the verify step (e2e).
-- [ ] Approved marks can't be edited; reopen is audited with old and new values (e2e).
-- [ ] 500 report cards render in under 2 minutes on the performance seed.
+- [x] Every grading regression suite passes 100%.
+- [x] A mark sheet goes draft → published, with and without the verify step (e2e).
+- [x] Approved marks can't be edited; reopen is audited with old and new values (e2e).
+- [ ] 500 report cards render in under 2 minutes on the performance seed. *Not measured: the performance seed is M8. Cards render in parallel up to `PDF_CONCURRENCY`.*
 
 ---
 

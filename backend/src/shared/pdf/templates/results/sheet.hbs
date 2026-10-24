@@ -1,0 +1,12 @@
+<div class='head'>
+  <div class='school'>{{schoolName}}</div>
+  <div class='title'>{{title}}</div>
+  <div class='sub'>{{subtitle}}</div>
+</div>
+<table class='sheet'>
+  <thead><tr>{{#each headers}}<th>{{this}}</th>{{/each}}</tr></thead>
+  <tbody>
+    {{#each rows}}<tr>{{#each this}}<td>{{this}}</td>{{/each}}</tr>{{/each}}
+  </tbody>
+</table>
+<div class='foot'>{{generatedAt}}</div>

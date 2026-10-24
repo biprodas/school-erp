@@ -1,3 +1,5 @@
+import type { TieBreaker } from '~/modules/grading/engine/positions';
+
 /**
  * The school's settings (PRD 6.24), one typed section each. Stored per
  * section in `org_settings`; a missing section or field reads as its default
@@ -94,9 +96,22 @@ export interface PortalSettings {
   studentClassIds: string[];
 }
 
+export interface ReportCardSettings {
+  language: 'bn' | 'en';
+  showPosition: boolean;
+  /** The session's attendance so far (days and percentage). */
+  showAttendance: boolean;
+  showRemarks: boolean;
+  /** Signature lines at the bottom, left to right. */
+  signatures: string[];
+}
+
 export interface ResultsSettings {
   /** Mark sheets need the Verified step between Submitted and Approved. */
   verifyStep: boolean;
+  /** Merit ties are broken by these, in order (after pass/fail). */
+  tieBreakers: TieBreaker[];
+  reportCard: ReportCardSettings;
 }
 
 export interface AttendanceSettings {

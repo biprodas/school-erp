@@ -73,7 +73,7 @@ export class CurriculumTemplateService {
     @Inject(TENANT_DATASOURCE) private readonly ds: TenantDataSourceProxy,
   ) {}
 
-  /** What onboarding can offer; grading and fee heads apply from M5/M6. */
+  /** What onboarding can offer; fee heads apply from M6. */
   list() {
     return {
       curriculum: CURRICULUM_TEMPLATES.map((t) => ({
@@ -85,7 +85,7 @@ export class CurriculumTemplateService {
         subjects: t.subjects.length,
         groups: t.groups.map((g) => g.name),
       })),
-      grading: GRADING_TEMPLATES.map((t) => ({ ...t, applicable: false })),
+      grading: GRADING_TEMPLATES.map((t) => ({ ...t, applicable: true })),
       feeHeads: { items: DEFAULT_FEE_HEADS, applicable: false },
       holidays: {
         code: 'bd',

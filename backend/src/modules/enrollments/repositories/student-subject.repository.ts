@@ -34,6 +34,14 @@ export class StudentSubjectRepository extends BaseTenantRepository<StudentSubjec
     });
   }
 
+  /** The choices of many enrollments (results). */
+  findForEnrollments(enrollmentIds: string[]): Promise<StudentSubject[]> {
+    if (!enrollmentIds.length) return Promise.resolve([]);
+    return this.repo.find({
+      where: { studentEnrollmentId: In(enrollmentIds) },
+    });
+  }
+
   countForEnrollments(enrollmentIds: string[]): Promise<number> {
     if (!enrollmentIds.length) return Promise.resolve(0);
     return this.repo.count({

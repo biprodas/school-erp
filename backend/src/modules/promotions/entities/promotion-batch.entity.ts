@@ -19,6 +19,8 @@ export interface PromotionOptions {
   rollBy: RollBy;
   /** Spread students over the target sections instead of same-name ones. */
   shuffleSections: boolean;
+  /** The published result outcomes and merit came from (null = none). */
+  resultDefinitionId?: string | null;
   /** Rows moved from the old `student_promotions` (no items to commit). */
   legacy?: boolean;
 }
