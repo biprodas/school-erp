@@ -28,7 +28,12 @@ import { Input } from "~/components/ui/input"
 import { Spinner } from "~/components/ui/spinner"
 import { Toggle } from "~/components/ui/toggle"
 import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group"
-import { Block, BlockGrid, Example, ShowcaseSection } from "../_showcase/section"
+import {
+  Block,
+  BlockGrid,
+  Example,
+  ShowcaseSection,
+} from "../_showcase/section"
 
 const BUTTON_VARIANTS = [
   "default",
@@ -61,11 +66,17 @@ export function Actions() {
           name="Button"
           when="Starts an action: save the register, collect a fee, send a notice. For navigation, render it as a link."
         >
-          <Example title="Variant × size" frameClassName="block overflow-x-auto">
+          <Example
+            title="Variant × size"
+            frameClassName="block overflow-x-auto"
+          >
             <div className="grid min-w-max grid-cols-[auto_repeat(4,auto)] items-center gap-x-4 gap-y-3">
               <span />
               {BUTTON_SIZES.map((size) => (
-                <code key={size} className="font-mono text-xs text-muted-foreground">
+                <code
+                  key={size}
+                  className="font-mono text-xs text-muted-foreground"
+                >
                   {size}
                 </code>
               ))}
@@ -89,12 +100,22 @@ export function Actions() {
           <div className="grid gap-5 md:grid-cols-2">
             <Example title="Icon sizes · icon-xs, icon-sm, icon, icon-lg">
               {ICON_SIZES.map((size) => (
-                <Button key={size} size={size} variant="outline" aria-label="Add student">
+                <Button
+                  key={size}
+                  size={size}
+                  variant="outline"
+                  aria-label="Add student"
+                >
                   <PlusIcon />
                 </Button>
               ))}
               {ICON_SIZES.map((size) => (
-                <Button key={size} size={size} variant="ghost" aria-label="Print register">
+                <Button
+                  key={size}
+                  size={size}
+                  variant="ghost"
+                  aria-label="Print register"
+                >
                   <PrinterIcon />
                 </Button>
               ))}
@@ -124,7 +145,12 @@ export function Actions() {
                 <Spinner data-icon="inline-start" />
                 Saving register
               </Button>
-              <Button variant="outline" size="icon" disabled aria-label="Loading">
+              <Button
+                variant="outline"
+                size="icon"
+                disabled
+                aria-label="Loading"
+              >
                 <Spinner />
               </Button>
             </Example>
@@ -180,7 +206,11 @@ export function Actions() {
                 Notify guardians
               </Button>
               <ButtonGroupSeparator />
-              <Button variant="secondary" size="icon" aria-label="Notice options">
+              <Button
+                variant="secondary"
+                size="icon"
+                aria-label="Notice options"
+              >
                 <ChevronDownIcon />
               </Button>
             </ButtonGroup>
@@ -257,14 +287,19 @@ export function Actions() {
           name="ToggleGroup"
           when="A set of toggles. Single selection for one choice per row, such as attendance; multiple for independent options like formatting."
         >
-          <Example title="Single · attendance per student" frameClassName="flex-col items-stretch">
+          <Example
+            title="Single · attendance per student"
+            frameClassName="flex-col items-stretch"
+          >
             {ATTENDANCE.map((student) => (
               <div
                 key={student.roll}
                 className="flex flex-wrap items-center justify-between gap-3"
               >
                 <div className="flex min-w-0 flex-col">
-                  <span className="truncate text-sm font-medium">{student.name}</span>
+                  <span className="truncate text-sm font-medium">
+                    {student.name}
+                  </span>
                   <span className="text-xs text-muted-foreground">
                     Roll {student.roll} · Class 7 · Section B
                   </span>
@@ -291,7 +326,11 @@ export function Actions() {
           </Example>
 
           <Example title="Multiple · notice formatting">
-            <ToggleGroup multiple defaultValue={["bold"]} aria-label="Text formatting">
+            <ToggleGroup
+              multiple
+              defaultValue={["bold"]}
+              aria-label="Text formatting"
+            >
               <ToggleGroupItem value="bold" aria-label="Bold">
                 <BoldIcon />
               </ToggleGroupItem>

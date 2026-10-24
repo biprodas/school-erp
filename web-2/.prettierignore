@@ -4,4 +4,6 @@ node_modules/
 .turbo/
 coverage/
 pnpm-lock.yaml
-.pnpm-store/
+.pnpm-store/test-results/
+playwright-report/
+blob-report/

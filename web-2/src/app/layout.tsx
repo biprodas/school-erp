@@ -5,8 +5,11 @@ import {
   Hind_Siliguri,
   Noto_Sans_Bengali,
 } from "next/font/google"
+import { NextIntlClientProvider } from "next-intl"
+import { getLocale } from "next-intl/server"
 
 import "./globals.css"
+import { QueryProvider } from "~/components/query-provider"
 import { ThemeProvider } from "~/components/theme-provider"
 import { Toaster } from "~/components/ui/toast"
 import { cn } from "~/lib/utils"
@@ -44,14 +47,16 @@ export const metadata: Metadata = {
     "Attendance, results, fees and notices on one mobile-first platform, in Bangla and English.",
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const locale = await getLocale()
+
   return (
     <html
-      lang="en"
+      lang={locale}
       suppressHydrationWarning
       className={cn(
         "font-sans antialiased",
@@ -62,9 +67,13 @@ export default function RootLayout({
       )}
     >
       <body>
-        <ThemeProvider>
-          <Toaster>{children}</Toaster>
-        </ThemeProvider>
+        <NextIntlClientProvider>
+          <QueryProvider>
+            <ThemeProvider>
+              <Toaster>{children}</Toaster>
+            </ThemeProvider>
+          </QueryProvider>
+        </NextIntlClientProvider>
       </body>
     </html>
   )

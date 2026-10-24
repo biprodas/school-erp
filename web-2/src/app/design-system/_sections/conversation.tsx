@@ -55,7 +55,12 @@ import {
   MessageScrollerProvider,
   MessageScrollerViewport,
 } from "~/components/ui/message-scroller"
-import { Block, BlockGrid, Example, ShowcaseSection } from "../_showcase/section"
+import {
+  Block,
+  BlockGrid,
+  Example,
+  ShowcaseSection,
+} from "../_showcase/section"
 
 /** Incoming: the guardian, on the left with an avatar. */
 function Guardian({ children, time }: { children: ReactNode; time: string }) {
@@ -117,7 +122,9 @@ function FeeReceipt() {
       </AttachmentMedia>
       <AttachmentContent>
         <AttachmentTitle>receipt-oct-2026-0412.pdf</AttachmentTitle>
-        <AttachmentDescription>PDF · 86 KB · ৳ 2,500 paid</AttachmentDescription>
+        <AttachmentDescription>
+          PDF · 86 KB · ৳ 2,500 paid
+        </AttachmentDescription>
       </AttachmentContent>
       <AttachmentActions>
         <AttachmentAction aria-label="Download receipt-oct-2026-0412.pdf">
@@ -182,7 +189,10 @@ function Thread() {
                       it tomorrow.
                     </BubbleContent>
                     <BubbleReactions align="start">
-                      <ThumbsUpIcon className="size-3.5" aria-label="Liked by Nasrin Rahman" />
+                      <ThumbsUpIcon
+                        className="size-3.5"
+                        aria-label="Liked by Nasrin Rahman"
+                      />
                     </BubbleReactions>
                   </Bubble>
                 </Teacher>
@@ -321,8 +331,8 @@ export function Conversation() {
                   <MessageHeader>Mr. Karim (class teacher)</MessageHeader>
                   <Bubble variant="secondary">
                     <BubbleContent>
-                      Parent-teacher meeting is on Saturday, 2 November at
-                      10:00 AM.
+                      Parent-teacher meeting is on Saturday, 2 November at 10:00
+                      AM.
                     </BubbleContent>
                   </Bubble>
                   <MessageFooter>Mon 8:15 AM</MessageFooter>
@@ -331,7 +341,9 @@ export function Conversation() {
               <Message align="end">
                 <MessageContent>
                   <Bubble align="end">
-                    <BubbleContent>We&apos;ll be there. Thank you.</BubbleContent>
+                    <BubbleContent>
+                      We&apos;ll be there. Thank you.
+                    </BubbleContent>
                   </Bubble>
                   <MessageFooter>Mon 8:40 AM · Seen</MessageFooter>
                 </MessageContent>
@@ -417,18 +429,20 @@ export function Conversation() {
           </Example>
           <Example title="group, small" frameClassName="block">
             <AttachmentGroup>
-              {["routine-term-2.pdf", "seat-plan-hall-2.pdf", "syllabus-class-7.pdf"].map(
-                (name) => (
-                  <Attachment key={name} size="sm">
-                    <AttachmentMedia>
-                      <FileTextIcon />
-                    </AttachmentMedia>
-                    <AttachmentContent>
-                      <AttachmentTitle>{name}</AttachmentTitle>
-                    </AttachmentContent>
-                  </Attachment>
-                )
-              )}
+              {[
+                "routine-term-2.pdf",
+                "seat-plan-hall-2.pdf",
+                "syllabus-class-7.pdf",
+              ].map((name) => (
+                <Attachment key={name} size="sm">
+                  <AttachmentMedia>
+                    <FileTextIcon />
+                  </AttachmentMedia>
+                  <AttachmentContent>
+                    <AttachmentTitle>{name}</AttachmentTitle>
+                  </AttachmentContent>
+                </Attachment>
+              ))}
             </AttachmentGroup>
           </Example>
         </Block>
@@ -437,7 +451,10 @@ export function Conversation() {
           name="Marker"
           when="Dividers and system notes between messages: the day, where unread messages start, and things the system did."
         >
-          <Example title="variants" frameClassName="flex-col items-stretch gap-4">
+          <Example
+            title="variants"
+            frameClassName="flex-col items-stretch gap-4"
+          >
             <Marker variant="separator">
               <MarkerContent>Today</MarkerContent>
             </Marker>

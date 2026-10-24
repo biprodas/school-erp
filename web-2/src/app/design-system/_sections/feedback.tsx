@@ -17,11 +17,20 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "~/components/ui/empty"
-import { Progress, ProgressLabel, ProgressValue } from "~/components/ui/progress"
+import {
+  Progress,
+  ProgressLabel,
+  ProgressValue,
+} from "~/components/ui/progress"
 import { Skeleton } from "~/components/ui/skeleton"
 import { Spinner } from "~/components/ui/spinner"
 import { toast } from "~/components/ui/toast"
-import { Block, BlockGrid, Example, ShowcaseSection } from "../_showcase/section"
+import {
+  Block,
+  BlockGrid,
+  Example,
+  ShowcaseSection,
+} from "../_showcase/section"
 
 function publishResults() {
   const id = toast.add({
@@ -161,8 +170,8 @@ export function Feedback() {
                 </EmptyMedia>
                 <EmptyTitle>No students in this section yet</EmptyTitle>
                 <EmptyDescription>
-                  Class 7 · Section C has no enrolled students. Add them one by one or
-                  import a spreadsheet.
+                  Class 7 · Section C has no enrolled students. Add them one by
+                  one or import a spreadsheet.
                 </EmptyDescription>
               </EmptyHeader>
               <EmptyContent>
@@ -211,7 +220,8 @@ export function Feedback() {
               onClick={() =>
                 toast.add({
                   title: "SMS credit is low",
-                  description: "38 messages left. Top up before sending fee reminders.",
+                  description:
+                    "38 messages left. Top up before sending fee reminders.",
                   type: "warning",
                 })
               }
@@ -223,7 +233,8 @@ export function Feedback() {
               onClick={() =>
                 toast.add({
                   title: "Couldn't record the payment",
-                  description: "Receipt ৳3,500 for Ayesha Rahman was not saved. Try again.",
+                  description:
+                    "Receipt ৳3,500 for Ayesha Rahman was not saved. Try again.",
                   type: "error",
                 })
               }

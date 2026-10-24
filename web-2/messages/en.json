@@ -1,0 +1,10 @@
+{
+  "common": {
+    "language": "Language",
+    "switchLanguage": "Switch language",
+    "languages": {
+      "bn": "বাংলা",
+      "en": "English"
+    }
+  }
+}

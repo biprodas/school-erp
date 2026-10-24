@@ -191,10 +191,16 @@ export function Navigation() {
                   Timetable
                 </TabsTrigger>
               </TabsList>
-              <TabsContent value="attendance" className="pt-2 text-muted-foreground">
+              <TabsContent
+                value="attendance"
+                className="pt-2 text-muted-foreground"
+              >
                 Class 7 · Section B: 38 of 41 present today.
               </TabsContent>
-              <TabsContent value="results" className="pt-2 text-muted-foreground">
+              <TabsContent
+                value="results"
+                className="pt-2 text-muted-foreground"
+              >
                 Half-yearly results publish on 12 November 2026.
               </TabsContent>
               <TabsContent value="fees" className="pt-2 text-muted-foreground">
@@ -218,19 +224,32 @@ export function Navigation() {
                   Documents
                 </TabsTrigger>
               </TabsList>
-              <TabsContent value="profile" className="pt-3 text-muted-foreground">
+              <TabsContent
+                value="profile"
+                className="pt-3 text-muted-foreground"
+              >
                 Ayesha Rahman · Roll 12 · Class 7 · Section B
               </TabsContent>
-              <TabsContent value="guardians" className="pt-3 text-muted-foreground">
+              <TabsContent
+                value="guardians"
+                className="pt-3 text-muted-foreground"
+              >
                 Primary guardian: Karim Rahman, 01712 345678
               </TabsContent>
-              <TabsContent value="documents" className="pt-3 text-muted-foreground">
+              <TabsContent
+                value="documents"
+                className="pt-3 text-muted-foreground"
+              >
                 Birth certificate and transfer certificate on file.
               </TabsContent>
             </Tabs>
           </Example>
           <Example title="Vertical" frameClassName="block">
-            <Tabs defaultValue="term1" orientation="vertical" className="flex-row">
+            <Tabs
+              defaultValue="term1"
+              orientation="vertical"
+              className="flex-row"
+            >
               <TabsList>
                 <TabsTrigger value="term1">First term</TabsTrigger>
                 <TabsTrigger value="half">Half-yearly</TabsTrigger>
@@ -268,7 +287,9 @@ export function Navigation() {
                           >
                             <module.icon className="mt-0.5" />
                             <span className="flex flex-col gap-0.5">
-                              <span className="font-medium">{module.title}</span>
+                              <span className="font-medium">
+                                {module.title}
+                              </span>
                               <span className="text-muted-foreground">
                                 {module.description}
                               </span>
@@ -280,10 +301,14 @@ export function Navigation() {
                   </NavigationMenuContent>
                 </NavigationMenuItem>
                 <NavigationMenuItem>
-                  <NavigationMenuLink href="#navigation">Pricing</NavigationMenuLink>
+                  <NavigationMenuLink href="#navigation">
+                    Pricing
+                  </NavigationMenuLink>
                 </NavigationMenuItem>
                 <NavigationMenuItem>
-                  <NavigationMenuLink href="#navigation">Help</NavigationMenuLink>
+                  <NavigationMenuLink href="#navigation">
+                    Help
+                  </NavigationMenuLink>
                 </NavigationMenuItem>
               </NavigationMenuList>
             </NavigationMenu>
@@ -319,7 +344,9 @@ export function Navigation() {
                   </MenubarGroup>
                   <MenubarSeparator />
                   <MenubarGroup>
-                    <MenubarItem variant="destructive">Clear all marks</MenubarItem>
+                    <MenubarItem variant="destructive">
+                      Clear all marks
+                    </MenubarItem>
                   </MenubarGroup>
                 </MenubarContent>
               </MenubarMenu>
@@ -328,17 +355,25 @@ export function Navigation() {
                 <MenubarContent>
                   <MenubarGroup>
                     <MenubarLabel>Columns</MenubarLabel>
-                    <MenubarCheckboxItem defaultChecked>Roll number</MenubarCheckboxItem>
-                    <MenubarCheckboxItem defaultChecked>Grade point</MenubarCheckboxItem>
+                    <MenubarCheckboxItem defaultChecked>
+                      Roll number
+                    </MenubarCheckboxItem>
+                    <MenubarCheckboxItem defaultChecked>
+                      Grade point
+                    </MenubarCheckboxItem>
                     <MenubarCheckboxItem>Guardian phone</MenubarCheckboxItem>
                   </MenubarGroup>
                   <MenubarSeparator />
                   <MenubarGroup>
                     <MenubarLabel>Sort by</MenubarLabel>
                     <MenubarRadioGroup defaultValue="roll">
-                      <MenubarRadioItem value="roll">Roll number</MenubarRadioItem>
+                      <MenubarRadioItem value="roll">
+                        Roll number
+                      </MenubarRadioItem>
                       <MenubarRadioItem value="name">Name</MenubarRadioItem>
-                      <MenubarRadioItem value="total">Total marks</MenubarRadioItem>
+                      <MenubarRadioItem value="total">
+                        Total marks
+                      </MenubarRadioItem>
                     </MenubarRadioGroup>
                   </MenubarGroup>
                 </MenubarContent>
@@ -423,7 +458,10 @@ export function Navigation() {
           name="Command"
           when="A searchable list of actions and records. Shown inline here; in the app it opens in a dialog with Ctrl K."
         >
-          <Example title="Inline palette" frameClassName="block p-0 overflow-hidden">
+          <Example
+            title="Inline palette"
+            frameClassName="block p-0 overflow-hidden"
+          >
             <Command className="rounded-none!">
               <CommandInput placeholder="Search students, pages, actions…" />
               <CommandList>
@@ -437,7 +475,9 @@ export function Navigation() {
                   <CommandItem>
                     <UsersIcon />
                     Rafi Ahmed
-                    <span className="text-muted-foreground">Class 9 · Science</span>
+                    <span className="text-muted-foreground">
+                      Class 9 · Science
+                    </span>
                   </CommandItem>
                 </CommandGroup>
                 <CommandSeparator />
@@ -537,7 +577,9 @@ export function Navigation() {
                               render={
                                 <a
                                   href="#navigation"
-                                  aria-current={item.active ? "page" : undefined}
+                                  aria-current={
+                                    item.active ? "page" : undefined
+                                  }
                                 />
                               }
                             >
@@ -568,7 +610,9 @@ export function Navigation() {
                 <Breadcrumb>
                   <BreadcrumbList>
                     <BreadcrumbItem>
-                      <BreadcrumbLink href="#navigation">Students</BreadcrumbLink>
+                      <BreadcrumbLink href="#navigation">
+                        Students
+                      </BreadcrumbLink>
                     </BreadcrumbItem>
                     <BreadcrumbSeparator />
                     <BreadcrumbItem>

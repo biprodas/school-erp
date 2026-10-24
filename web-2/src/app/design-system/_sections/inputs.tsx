@@ -153,7 +153,9 @@ function SliderExamples() {
           max={6000}
           step={100}
         />
-        <FieldDescription>Filters the fee report to this band.</FieldDescription>
+        <FieldDescription>
+          Filters the fee report to this band.
+        </FieldDescription>
       </Field>
       <Field data-disabled>
         <FieldLabel>Late fee (locked)</FieldLabel>
@@ -410,9 +412,19 @@ export function Inputs() {
           name="Input"
           when="Single-line text: names, phone numbers, roll numbers, files."
         >
-          <Example title="Default · disabled · invalid" frameClassName="flex-col items-stretch">
-            <Input aria-label="Guardian email" placeholder="guardian@example.com" />
-            <Input aria-label="Student ID" disabled defaultValue="STU-2026-0412" />
+          <Example
+            title="Default · disabled · invalid"
+            frameClassName="flex-col items-stretch"
+          >
+            <Input
+              aria-label="Guardian email"
+              placeholder="guardian@example.com"
+            />
+            <Input
+              aria-label="Student ID"
+              disabled
+              defaultValue="STU-2026-0412"
+            />
             <Input
               aria-label="Admission date"
               aria-invalid
@@ -444,7 +456,11 @@ export function Inputs() {
               </Field>
               <Field data-invalid>
                 <FieldLabel htmlFor="ds-notice">Notice</FieldLabel>
-                <Textarea id="ds-notice" aria-invalid placeholder="Write the notice" />
+                <Textarea
+                  id="ds-notice"
+                  aria-invalid
+                  placeholder="Write the notice"
+                />
                 <FieldError>A notice needs a message.</FieldError>
               </Field>
             </FieldGroup>
@@ -504,7 +520,11 @@ export function Inputs() {
               />
               <InputGroupAddon align="block-end">
                 <InputGroupText>0 / 160</InputGroupText>
-                <InputGroupButton size="sm" variant="default" className="ml-auto">
+                <InputGroupButton
+                  size="sm"
+                  variant="default"
+                  className="ml-auto"
+                >
                   Send
                 </InputGroupButton>
               </InputGroupAddon>
@@ -542,7 +562,10 @@ export function Inputs() {
                   </Field>
                   <Field orientation="horizontal" data-disabled>
                     <Checkbox id="ds-notify-email" disabled />
-                    <FieldLabel htmlFor="ds-notify-email" className="font-normal">
+                    <FieldLabel
+                      htmlFor="ds-notify-email"
+                      className="font-normal"
+                    >
                       Email (no address on file)
                     </FieldLabel>
                   </Field>
@@ -607,7 +630,9 @@ export function Inputs() {
                 <Field orientation="horizontal">
                   <FieldContent>
                     <span className="text-sm font-medium">Yearly</span>
-                    <FieldDescription>৳27,000 for 2026, one payment.</FieldDescription>
+                    <FieldDescription>
+                      ৳27,000 for 2026, one payment.
+                    </FieldDescription>
                   </FieldContent>
                   <RadioGroupItem value="yearly" id="ds-plan-yearly" />
                 </Field>
@@ -624,7 +649,9 @@ export function Inputs() {
             <FieldGroup>
               <Field orientation="horizontal">
                 <FieldContent>
-                  <FieldLabel htmlFor="ds-absence-sms">Absence alerts</FieldLabel>
+                  <FieldLabel htmlFor="ds-absence-sms">
+                    Absence alerts
+                  </FieldLabel>
                   <FieldDescription>
                     Sent at 9:15 AM to guardians of absent students.
                   </FieldDescription>
@@ -632,11 +659,15 @@ export function Inputs() {
                 <Switch id="ds-absence-sms" defaultChecked />
               </Field>
               <Field orientation="horizontal">
-                <FieldLabel htmlFor="ds-weekly">Weekly attendance summary</FieldLabel>
+                <FieldLabel htmlFor="ds-weekly">
+                  Weekly attendance summary
+                </FieldLabel>
                 <Switch id="ds-weekly" size="sm" />
               </Field>
               <Field orientation="horizontal" data-disabled>
-                <FieldLabel htmlFor="ds-results">Publish results to portal</FieldLabel>
+                <FieldLabel htmlFor="ds-results">
+                  Publish results to portal
+                </FieldLabel>
                 <Switch id="ds-results" disabled />
               </Field>
             </FieldGroup>
@@ -656,7 +687,10 @@ export function Inputs() {
           name="Select"
           when="Picks one option from a short, known list such as a class or a term."
         >
-          <Example title="Grouped · small" frameClassName="flex-col items-stretch">
+          <Example
+            title="Grouped · small"
+            frameClassName="flex-col items-stretch"
+          >
             <Select items={CLASSES} defaultValue="7b">
               <SelectTrigger aria-label="Class" className="w-full sm:w-64">
                 <SelectValue placeholder="Choose a class" />
@@ -720,10 +754,19 @@ export function Inputs() {
               </NativeSelectOption>
               <NativeSelectOption value="tuition">Tuition</NativeSelectOption>
               <NativeSelectOption value="exam">Exam fee</NativeSelectOption>
-              <NativeSelectOption value="transport">Transport</NativeSelectOption>
+              <NativeSelectOption value="transport">
+                Transport
+              </NativeSelectOption>
             </NativeSelect>
-            <NativeSelect aria-label="Shift" size="sm" disabled defaultValue="morning">
-              <NativeSelectOption value="morning">Morning shift</NativeSelectOption>
+            <NativeSelect
+              aria-label="Shift"
+              size="sm"
+              disabled
+              defaultValue="morning"
+            >
+              <NativeSelectOption value="morning">
+                Morning shift
+              </NativeSelectOption>
               <NativeSelectOption value="day">Day shift</NativeSelectOption>
             </NativeSelect>
           </Example>
@@ -747,10 +790,16 @@ export function Inputs() {
           when="Picks a date or a span of dates: an exam day, a leave request, a fee due date. Usually shown inside a Popover."
         >
           <div className="grid gap-5 md:grid-cols-2">
-            <Example title="Single date" frameClassName="justify-center overflow-x-auto">
+            <Example
+              title="Single date"
+              frameClassName="justify-center overflow-x-auto"
+            >
               <SingleDateCalendar />
             </Example>
-            <Example title="Range" frameClassName="justify-center overflow-x-auto">
+            <Example
+              title="Range"
+              frameClassName="justify-center overflow-x-auto"
+            >
               <RangeCalendar />
             </Example>
           </div>

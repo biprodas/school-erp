@@ -122,7 +122,7 @@ The existing `components/ui`, `components/brand`, `theme-provider`, `theme-toggl
 | Package | Use |
 | ------- | --- |
 | `@tanstack/react-query` (+ devtools) | Server state |
-| `react-hook-form`, `zod`, `@hookform/resolvers` | Forms |
+| `react-hook-form`, `zod` (own resolver in `lib/forms/zod-resolver.ts`) | Forms |
 | `jose` | Sealing the session cookie (JWE) |
 | `next-intl` | Bangla/English without locale routing |
 | `nuqs` | URL state for list filters (needed from the first list page) |
@@ -289,12 +289,12 @@ Minimal in this slice: layout with a child picker (`GET /portal/children`), a ho
 
 ## 7. Milestones
 
-Tick a box only when the item is merged to `main` and works against the local docker-compose stack. Every milestone also ends with the **exit checks**: `npm run lint`, `npm run typecheck` and `npm run build` pass in `web-2/`, and its "Done when" scenarios have been tried by hand.
+Tick a box when the item is implemented and verified locally (against the docker-compose stack where it talks to the backend); the status table says whether the milestone is committed. Every milestone also ends with the **exit checks**: `npm run lint`, `npm run typecheck` and `npm run build` pass in `web-2/`, and its "Done when" scenarios have been tried by hand.
 
 | # | Milestone | Depends on | Status |
 | - | --------- | ---------- | ------ |
 | MB | Backend prerequisites | — | In progress (B1 done) |
-| M0 | Foundations | — | Not started |
+| M0 | Foundations | — | Implemented, not committed (CI not yet run) |
 | M1 | Host routing | M0 | Not started |
 | M2 | Session layer and BFF | M1 | Not started |
 | M3 | School sign-in | M2 | Not started |
@@ -311,7 +311,7 @@ M1–M3 are the critical path. M4, M5 and M8 can run in parallel once M3 is merg
 
 - [x] B1: `GET /auth/me` returns `permissions: string[]` (`RoleService.effectivePermissions`; school admins get the whole catalog; retired keys left out).
 - [x] B1 tests: unit (`role.service.spec.ts`) and e2e (`test/auth-sessions.e2e-spec.ts`).
-- [ ] B1 committed.
+- [x] B1 committed (`0ba5839`).
 - [ ] B2: plan modules and trial state (`modules`, `plan`, `trialEndsAt`) on `GET /auth/me` or `GET /settings/display`, with tests.
 - [ ] B3: short access-token TTL (`JWT_EXPIRES_IN=15m`) in `.env.example` and the deployment env; confirm refresh works with it.
 - [ ] Endpoint listing a staff member's other schools for the school switcher (open question in section 10), or a decision to defer it.
@@ -324,35 +324,48 @@ M1–M3 are the critical path. M4, M5 and M8 can run in parallel once M3 is merg
 
 Packages and config:
 
-- [ ] Runtime deps: `@tanstack/react-query`, `react-hook-form`, `zod`, `@hookform/resolvers`, `jose`, `next-intl`, `nuqs`, `zustand`, `@date-fns/tz`.
-- [ ] Dev deps: `@tanstack/react-query-devtools`, `vitest`, `@vitejs/plugin-react`, `@testing-library/react`, `@testing-library/user-event`, `jsdom`, `@playwright/test`.
-- [ ] Scripts: `test` (Vitest) and `test:e2e` (Playwright); `typecheck` exists.
-- [ ] `vitest.config.ts` with the `~/*` alias and jsdom; `playwright.config.ts` with a 360 px and a desktop project, `baseURL` on `lvh.me:3000`.
-- [ ] `web-2/.env.example`: `API_URL`, `NEXT_PUBLIC_ROOT_DOMAIN`, `NEXT_PUBLIC_ADMIN_HOST`, `SESSION_SECRET`, `NEXT_PUBLIC_APP_PORT`.
-- [ ] `lib/env.ts`: zod-validated env; server-only values kept out of client bundles (`server-only` import).
+- [x] Runtime deps: `@tanstack/react-query`, `react-hook-form`, `zod`, `jose`, `next-intl`, `nuqs`, `zustand`, `@date-fns/tz`, `server-only`.
+- [x] Dev deps: `@tanstack/react-query-devtools`, `vitest`, `@testing-library/react`, `@testing-library/user-event`, `@testing-library/jest-dom`, `jsdom`, `@playwright/test`; `@types/node` raised to `^24` (Node 24, and Vitest 5 needs it).
+- [x] `next` and `eslint-config-next` 16.4.0 → 16.4.3 (exact pins) for the critical Next.js advisories; `npm audit fix` for a transitive `body-parser`. `npm audit` is clean.
+- [x] Existing `components/ui/` and `app/design-system/` files formatted with Prettier once, so `format:check` passes.
+- [x] Scripts: `test` (Vitest), `test:watch`, `test:e2e` (Playwright), `format:check`; `typecheck` exists.
+- [x] `vitest.config.ts` (jsdom, `~` alias, `server-only` stubbed, setup with jest-dom matchers); `playwright.config.ts` with a 360 px and a desktop project, `baseURL` `lvh.me:3000` (`E2E_BASE_URL` overrides).
+- [x] `web-2/.env.example`: `API_URL`, `SESSION_SECRET`, `NEXT_PUBLIC_ROOT_DOMAIN`, `NEXT_PUBLIC_ADMIN_HOST`, `NEXT_PUBLIC_APP_PORT` (`.gitignore` lets it through).
+- [x] `lib/env.ts`: zod-validated server env, read on first use (so `next build` needs none), `server-only`; public values in `lib/public-env.ts`.
 
 Shared code:
 
-- [ ] `lib/api/errors.ts`: `ApiError { status, code, message, details }` and `toApiError(body, status)`.
-- [ ] `lib/api/envelope.ts`: unwrap `{ success, statusCode, message, data, meta }`; paginated results as `{ items, meta }`.
-- [ ] `lib/api/client.ts`: `apiFetch<T>()` on relative `/api`, adds `x-requested-with: kampasy`, JSON and `FormData` bodies.
-- [ ] `components/query-provider.tsx`: one `QueryClient` per tab (`staleTime` 30 s, no retry on 4xx, refetch on focus), devtools in dev only; wired into `app/layout.tsx`.
-- [ ] `lib/format.ts`: `formatMoney` (minor units as string or bigint, `৳`, lakh grouping), `formatNumber`, `formatDate` / `formatDateTime` in a given time zone, Bangla digits when the locale is `bn`.
-- [ ] `lib/safe-next.ts`: same-host path check (one leading `/`, no `//`, no scheme, not `/auth/handoff`).
+- [x] `lib/api/errors.ts`: `ApiError { status, code, messages, details, requestId }`, `toApiError(status, body)`, `networkError()` (status 0, `NETWORK_ERROR`).
+- [x] `lib/api/envelope.ts`: `unwrap` / `unwrapPage` (`{ items, meta }`); raw `@RawResponse()` bodies pass through.
+- [x] `lib/api/client.ts`: `apiFetch<T>()` / `apiFetchPage<T>()` on relative `/api`, `x-requested-with: kampasy`, JSON and `FormData` bodies, query params.
+- [x] `components/query-provider.tsx`: one `QueryClient` per tab (`staleTime` 30 s, no retry on 4xx, refetch on focus), devtools (dropped from production builds by the package); wired into `app/layout.tsx`.
+- [x] `lib/format.ts`: `formatMoney` (minor units, `৳`, lakh grouping), `formatNumber`, `formatDate` / `formatDateTime` (school time zone and date format; date-only strings never shifted), Bangla digits and month names. Mirrors `backend/src/shared/locale/format.ts`.
+- [x] `lib/safe-next.ts`: same-host path only; rejects absolute and protocol-relative URLs, backslashes, control characters, `/auth/handoff` and `/api`.
+- [x] `lib/forms/zod-resolver.ts`: react-hook-form resolver for zod (replaces `@hookform/resolvers`, see below).
 
 i18n:
 
-- [ ] `next-intl` without routing: `i18n/request.ts` reads the `locale` cookie (fallback `bn`); `messages/en.json` and `messages/bn.json`.
-- [ ] `NextIntlClientProvider` in the root layout; `<html lang>` follows the locale.
-- [ ] Language switch component (sets the cookie, refreshes the route).
+- [x] `next-intl` without routing: `i18n/request.ts` reads the `locale` cookie; `messages/en.json` and `messages/bn.json`; typed keys through `i18n/app-config.d.ts`.
+- [x] `NextIntlClientProvider` in the root layout; `<html lang>` follows the locale.
+- [x] `components/language-switch.tsx` (sets the cookie, `router.refresh()`). Not placed on any page yet; the auth layout (M3) is the first user.
 
 CI:
 
-- [ ] `web-2` job in `.github/workflows/ci.yml`: install, lint, typecheck, Vitest, build.
+- [x] `web-2` job in `.github/workflows/ci.yml`: install, format check, lint, typecheck, Vitest, build.
+- [ ] CI job green on GitHub (runs after the push).
 
 Tests:
 
-- [ ] Vitest: formatters (Bangla digits, lakh grouping, minor units, time zone), envelope unwrap and `ApiError`, `safeNext`.
+- [x] Vitest (65 tests): formatters, envelope and `ApiError`, `apiFetch` (headers, bodies, errors, network failure), `safeNext`, zod resolver, Bangla/English catalog parity, `LanguageSwitch` component.
+- [x] Playwright smoke (`e2e/landing.spec.ts`) passes at 360 px and desktop.
+
+Deviations from the plan, found while building:
+
+- **`@hookform/resolvers` not used.** v5 and v6 pull optional peers (`@typeschema/*`, `effect`) that conflict with zod 4 under npm, so `lib/forms/zod-resolver.ts` (25 lines) does the job.
+- **`@vitejs/plugin-react` not used.** Its latest needs Babel 8, which clashes with the shadcn CLI's Babel 7; Vitest compiles TSX without it.
+- **No `createNextIntlPlugin`.** It imports `@swc/core` (for message extraction, which we don't use), and Windows here refuses to load swc's unpacked native DLL from `AppData` (`LoadLibraryExW failed`). `next.config.ts` sets the one alias the plugin would set (`next-intl/config`).
+- **Default locale is `en`, not `bn`,** while the marketing copy is English only. School hosts will use the school's `locale.language` (M1+).
+- **Every page is now dynamic** (`ƒ /`), because the root layout reads the locale cookie. Fine for school hosts; revisit for the marketing pages if static rendering matters (for example, a separate root layout for `app/site`).
 
 **Done when:** the app builds and runs as before (landing unchanged), `npm test` passes, and the CI job is green.
 

@@ -86,7 +86,12 @@ import {
   TableRow,
 } from "~/components/ui/table"
 import { cn } from "~/lib/utils"
-import { Block, BlockGrid, Example, ShowcaseSection } from "../_showcase/section"
+import {
+  Block,
+  BlockGrid,
+  Example,
+  ShowcaseSection,
+} from "../_showcase/section"
 
 const taka = (amount: number) => `৳${amount.toLocaleString("en-IN")}`
 
@@ -99,11 +104,35 @@ const FEE_ROWS: {
   amount: number
   status: FeeStatus
 }[] = [
-  { roll: "01", name: "Ayesha Rahman", attendance: 97, amount: 3500, status: "Paid" },
-  { roll: "02", name: "Tanvir Hossain", attendance: 91, amount: 3500, status: "Paid" },
-  { roll: "03", name: "Nusrat Jahan", attendance: 84, amount: 1750, status: "Partial" },
+  {
+    roll: "01",
+    name: "Ayesha Rahman",
+    attendance: 97,
+    amount: 3500,
+    status: "Paid",
+  },
+  {
+    roll: "02",
+    name: "Tanvir Hossain",
+    attendance: 91,
+    amount: 3500,
+    status: "Paid",
+  },
+  {
+    roll: "03",
+    name: "Nusrat Jahan",
+    attendance: 84,
+    amount: 1750,
+    status: "Partial",
+  },
   { roll: "04", name: "Rafi Ahmed", attendance: 72, amount: 0, status: "Due" },
-  { roll: "05", name: "Sadia Islam", attendance: 95, amount: 0, status: "Waived" },
+  {
+    roll: "05",
+    name: "Sadia Islam",
+    attendance: 95,
+    amount: 0,
+    status: "Waived",
+  },
 ]
 
 const STATUS_VARIANT = {
@@ -214,7 +243,9 @@ export function DataDisplay() {
               <CardContent>
                 <dl className="grid grid-cols-3 gap-3">
                   <div className="flex flex-col gap-0.5">
-                    <dt className="text-xs text-muted-foreground">Attendance</dt>
+                    <dt className="text-xs text-muted-foreground">
+                      Attendance
+                    </dt>
                     <dd className="font-medium tabular-nums">97%</dd>
                   </div>
                   <div className="flex flex-col gap-0.5">
@@ -276,9 +307,14 @@ export function DataDisplay() {
           when="Rows of the same kind of record to compare and total, like a section's fee status."
           wide
         >
-          <Example title="fee status · Class 7 · Section B" frameClassName="block p-0 sm:p-2">
+          <Example
+            title="fee status · Class 7 · Section B"
+            frameClassName="block p-0 sm:p-2"
+          >
             <Table>
-              <TableCaption>October tuition, updated today at 2:15 PM.</TableCaption>
+              <TableCaption>
+                October tuition, updated today at 2:15 PM.
+              </TableCaption>
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-16">Roll</TableHead>
@@ -299,7 +335,9 @@ export function DataDisplay() {
                       {row.attendance}%
                     </TableCell>
                     <TableCell>
-                      <Badge variant={STATUS_VARIANT[row.status]}>{row.status}</Badge>
+                      <Badge variant={STATUS_VARIANT[row.status]}>
+                        {row.status}
+                      </Badge>
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
                       {taka(row.amount)}
@@ -345,7 +383,9 @@ export function DataDisplay() {
               ))}
               <AvatarGroupCount>+37</AvatarGroupCount>
             </AvatarGroup>
-            <span className="text-sm text-muted-foreground">41 students in Section B</span>
+            <span className="text-sm text-muted-foreground">
+              41 students in Section B
+            </span>
           </Example>
         </Block>
 
@@ -361,7 +401,9 @@ export function DataDisplay() {
                 </ItemMedia>
                 <ItemContent>
                   <ItemTitle>Birth certificate</ItemTitle>
-                  <ItemDescription>Uploaded 12 Jan · PDF · 420 KB</ItemDescription>
+                  <ItemDescription>
+                    Uploaded 12 Jan · PDF · 420 KB
+                  </ItemDescription>
                 </ItemContent>
                 <ItemActions>
                   <Button variant="outline" size="sm">
@@ -380,10 +422,18 @@ export function DataDisplay() {
                   <ItemDescription>Father · primary guardian</ItemDescription>
                 </ItemContent>
                 <ItemActions>
-                  <Button variant="ghost" size="icon-sm" aria-label="Call Karim Rahman">
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label="Call Karim Rahman"
+                  >
                     <PhoneIcon />
                   </Button>
-                  <Button variant="ghost" size="icon-sm" aria-label="More actions">
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label="More actions"
+                  >
                     <MoreHorizontalIcon />
                   </Button>
                 </ItemActions>
@@ -407,22 +457,29 @@ export function DataDisplay() {
           <Example frameClassName="block">
             <Accordion defaultValue={["late-fee"]}>
               <AccordionItem value="late-fee">
-                <AccordionTrigger>When does the late fee apply?</AccordionTrigger>
+                <AccordionTrigger>
+                  When does the late fee apply?
+                </AccordionTrigger>
                 <AccordionContent>
-                  A ৳100 late fee is added to tuition not paid by the 10th of the month.
+                  A ৳100 late fee is added to tuition not paid by the 10th of
+                  the month.
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="attendance">
-                <AccordionTrigger>What is the minimum attendance?</AccordionTrigger>
+                <AccordionTrigger>
+                  What is the minimum attendance?
+                </AccordionTrigger>
                 <AccordionContent>
                   Students need 75% attendance in a term to sit the final exam.
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="transfer">
-                <AccordionTrigger>How do I request a section transfer?</AccordionTrigger>
+                <AccordionTrigger>
+                  How do I request a section transfer?
+                </AccordionTrigger>
                 <AccordionContent>
-                  The guardian submits a request to the class teacher, who forwards it to the
-                  academic office.
+                  The guardian submits a request to the class teacher, who
+                  forwards it to the academic office.
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
@@ -442,13 +499,20 @@ export function DataDisplay() {
           name="Separator"
           when="A quiet line between groups of content, across or between items in a row."
         >
-          <Example title="horizontal" frameClassName="flex-col items-stretch gap-3">
+          <Example
+            title="horizontal"
+            frameClassName="flex-col items-stretch gap-3"
+          >
             <div className="flex flex-col gap-0.5">
               <span className="text-sm font-medium">Ayesha Rahman</span>
-              <span className="text-sm text-muted-foreground">Class 7 · Section B</span>
+              <span className="text-sm text-muted-foreground">
+                Class 7 · Section B
+              </span>
             </div>
             <Separator />
-            <span className="text-sm text-muted-foreground">Guardian: Karim Rahman</span>
+            <span className="text-sm text-muted-foreground">
+              Guardian: Karim Rahman
+            </span>
           </Example>
           <Example title="vertical">
             <div className="flex h-5 items-center gap-3 text-sm">
@@ -537,10 +601,18 @@ export function DataDisplay() {
           wide
         >
           <Example title="fee collection · Jan to Jun" frameClassName="block">
-            <ChartContainer config={chartConfig} className="aspect-auto h-72 w-full">
+            <ChartContainer
+              config={chartConfig}
+              className="aspect-auto h-72 w-full"
+            >
               <BarChart accessibilityLayer data={FEE_COLLECTION}>
                 <CartesianGrid vertical={false} />
-                <XAxis dataKey="month" tickLine={false} axisLine={false} tickMargin={8} />
+                <XAxis
+                  dataKey="month"
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={8}
+                />
                 <YAxis
                   tickLine={false}
                   axisLine={false}
@@ -549,7 +621,11 @@ export function DataDisplay() {
                 />
                 <ChartTooltip content={<ChartTooltipContent />} />
                 <ChartLegend content={<ChartLegendContent />} />
-                <Bar dataKey="collected" fill="var(--color-collected)" radius={4} />
+                <Bar
+                  dataKey="collected"
+                  fill="var(--color-collected)"
+                  radius={4}
+                />
                 <Bar dataKey="due" fill="var(--color-due)" radius={4} />
               </BarChart>
             </ChartContainer>
@@ -561,26 +637,35 @@ export function DataDisplay() {
           when="Side-by-side panes people size themselves, like a student list next to a profile."
           wide
         >
-          <Example title="drag the handles" frameClassName="block overflow-hidden p-0">
+          <Example
+            title="drag the handles"
+            frameClassName="block overflow-hidden p-0"
+          >
             <ResizablePanelGroup orientation="horizontal" className="min-h-56">
               <ResizablePanel defaultSize="30%" minSize="20%">
                 <div className="flex h-full flex-col gap-1 p-4">
                   <span className="text-sm font-medium">Sections</span>
-                  <span className="text-sm text-muted-foreground">Class 7 · A, B, C</span>
+                  <span className="text-sm text-muted-foreground">
+                    Class 7 · A, B, C
+                  </span>
                 </div>
               </ResizablePanel>
               <ResizableHandle withHandle />
               <ResizablePanel defaultSize="40%" minSize="20%">
                 <div className="flex h-full flex-col gap-1 p-4">
                   <span className="text-sm font-medium">Students</span>
-                  <span className="text-sm text-muted-foreground">41 in Section B</span>
+                  <span className="text-sm text-muted-foreground">
+                    41 in Section B
+                  </span>
                 </div>
               </ResizablePanel>
               <ResizableHandle withHandle />
               <ResizablePanel defaultSize="30%" minSize="20%">
                 <div className="flex h-full flex-col gap-1 p-4">
                   <span className="text-sm font-medium">Ayesha Rahman</span>
-                  <span className="text-sm text-muted-foreground">Roll 01 · 97% attendance</span>
+                  <span className="text-sm text-muted-foreground">
+                    Roll 01 · 97% attendance
+                  </span>
                 </div>
               </ResizablePanel>
             </ResizablePanelGroup>
@@ -595,7 +680,11 @@ function CollapsibleNotes() {
   const [open, setOpen] = useState(false)
 
   return (
-    <Collapsible open={open} onOpenChange={setOpen} className="flex flex-col gap-2">
+    <Collapsible
+      open={open}
+      onOpenChange={setOpen}
+      className="flex flex-col gap-2"
+    >
       <div className="flex items-center justify-between gap-4">
         <span className="text-sm font-medium">Notes on Rafi Ahmed</span>
         <CollapsibleTrigger render={<Button variant="ghost" size="sm" />}>
@@ -610,8 +699,12 @@ function CollapsibleNotes() {
         19 Oct: absent, guardian replied &quot;fever&quot;.
       </p>
       <CollapsibleContent className="flex flex-col gap-2">
-        <p className="rounded-lg bg-muted px-3 py-2 text-sm">2 Oct: late twice this week.</p>
-        <p className="rounded-lg bg-muted px-3 py-2 text-sm">14 Sep: moved from Section A.</p>
+        <p className="rounded-lg bg-muted px-3 py-2 text-sm">
+          2 Oct: late twice this week.
+        </p>
+        <p className="rounded-lg bg-muted px-3 py-2 text-sm">
+          14 Sep: moved from Section A.
+        </p>
       </CollapsibleContent>
     </Collapsible>
   )

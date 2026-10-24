@@ -115,14 +115,21 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "~/components/ui/tooltip"
-import { Block, BlockGrid, Example, ShowcaseSection } from "../_showcase/section"
+import {
+  Block,
+  BlockGrid,
+  Example,
+  ShowcaseSection,
+} from "../_showcase/section"
 
 const SHEET_SIDES = ["right", "left", "top", "bottom"] as const
 
 function StudentSheet({ side }: { side: (typeof SHEET_SIDES)[number] }) {
   return (
     <Sheet>
-      <SheetTrigger render={<Button variant="outline" className="capitalize" />}>
+      <SheetTrigger
+        render={<Button variant="outline" className="capitalize" />}
+      >
         {side}
       </SheetTrigger>
       <SheetContent side={side}>
@@ -176,7 +183,8 @@ export function Overlays() {
                 <DialogHeader>
                   <DialogTitle>Edit guardian contact</DialogTitle>
                   <DialogDescription>
-                    Nasrin Rahman, mother of Ayesha Rahman (Class 7 · Section B).
+                    Nasrin Rahman, mother of Ayesha Rahman (Class 7 · Section
+                    B).
                   </DialogDescription>
                 </DialogHeader>
                 <FieldGroup>
@@ -238,7 +246,9 @@ export function Overlays() {
                   <AlertDialogMedia className="bg-destructive/10 text-destructive">
                     <UserMinusIcon />
                   </AlertDialogMedia>
-                  <AlertDialogTitle>Remove student from section?</AlertDialogTitle>
+                  <AlertDialogTitle>
+                    Remove student from section?
+                  </AlertDialogTitle>
                   <AlertDialogDescription>
                     Ayesha Rahman will leave Class 7 · Section B. Her attendance
                     and marks stay on record, but she won&apos;t appear in this
@@ -247,7 +257,9 @@ export function Overlays() {
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Keep in section</AlertDialogCancel>
-                  <AlertDialogAction variant="destructive">Remove</AlertDialogAction>
+                  <AlertDialogAction variant="destructive">
+                    Remove
+                  </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
@@ -261,13 +273,15 @@ export function Overlays() {
                 <AlertDialogHeader>
                   <AlertDialogTitle>Discard this notice?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    &ldquo;Parent-teacher meeting, 2 November&rdquo; has not been
-                    sent.
+                    &ldquo;Parent-teacher meeting, 2 November&rdquo; has not
+                    been sent.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction variant="destructive">Discard</AlertDialogAction>
+                  <AlertDialogAction variant="destructive">
+                    Discard
+                  </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
@@ -298,22 +312,24 @@ export function Overlays() {
                 <DrawerHeader>
                   <DrawerTitle>Mark 3 students absent?</DrawerTitle>
                   <DrawerDescription>
-                    Class 7 · Section B, period 1 on 20 October. Guardians get an
-                    SMS when you save.
+                    Class 7 · Section B, period 1 on 20 October. Guardians get
+                    an SMS when you save.
                   </DrawerDescription>
                 </DrawerHeader>
                 <ul className="flex flex-col gap-2 p-4 text-sm">
-                  {["Ayesha Rahman · Roll 12", "Tanvir Hasan · Roll 18", "Sadia Islam · Roll 27"].map(
-                    (name) => (
-                      <li
-                        key={name}
-                        className="flex items-center gap-2 rounded-lg border px-3 py-2"
-                      >
-                        <UserRoundIcon className="size-4 text-muted-foreground" />
-                        {name}
-                      </li>
-                    )
-                  )}
+                  {[
+                    "Ayesha Rahman · Roll 12",
+                    "Tanvir Hasan · Roll 18",
+                    "Sadia Islam · Roll 27",
+                  ].map((name) => (
+                    <li
+                      key={name}
+                      className="flex items-center gap-2 rounded-lg border px-3 py-2"
+                    >
+                      <UserRoundIcon className="size-4 text-muted-foreground" />
+                      {name}
+                    </li>
+                  ))}
                 </ul>
                 <DrawerFooter>
                   <DrawerClose render={<Button />}>Save register</DrawerClose>
@@ -439,7 +455,11 @@ export function Overlays() {
               <Tooltip>
                 <TooltipTrigger
                   render={
-                    <Button variant="outline" size="icon" aria-label="Print register" />
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      aria-label="Print register"
+                    />
                   }
                 >
                   <PrinterIcon />
@@ -449,7 +469,11 @@ export function Overlays() {
               <Tooltip>
                 <TooltipTrigger
                   render={
-                    <Button variant="outline" size="icon" aria-label="Search students" />
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      aria-label="Search students"
+                    />
                   }
                 >
                   <SearchIcon />
@@ -461,7 +485,11 @@ export function Overlays() {
               <Tooltip>
                 <TooltipTrigger
                   render={
-                    <Button variant="outline" size="icon" aria-label="Email guardians" />
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      aria-label="Email guardians"
+                    />
                   }
                 >
                   <MailIcon />
@@ -526,9 +554,16 @@ export function Overlays() {
                 <DropdownMenuSeparator />
                 <DropdownMenuGroup>
                   <DropdownMenuLabel>Sort by</DropdownMenuLabel>
-                  <DropdownMenuRadioGroup value={sortBy} onValueChange={setSortBy}>
-                    <DropdownMenuRadioItem value="roll">Roll number</DropdownMenuRadioItem>
-                    <DropdownMenuRadioItem value="name">Name</DropdownMenuRadioItem>
+                  <DropdownMenuRadioGroup
+                    value={sortBy}
+                    onValueChange={setSortBy}
+                  >
+                    <DropdownMenuRadioItem value="roll">
+                      Roll number
+                    </DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="name">
+                      Name
+                    </DropdownMenuRadioItem>
                     <DropdownMenuRadioItem value="attendance">
                       Attendance
                     </DropdownMenuRadioItem>
