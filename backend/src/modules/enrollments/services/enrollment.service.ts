@@ -192,6 +192,13 @@ export class EnrollmentService {
     return choices;
   }
 
+  /** Every active enrollment of a session (notice audiences, dashboards). */
+  findActiveInYear(academicYearId: string): Promise<StudentEnrollment[]> {
+    return this.enrollmentRepo.findInYear(academicYearId, [
+      StudentEnrollmentStatus.ACTIVE,
+    ]);
+  }
+
   /** Enrollments by id with student, class and section (reports). */
   findByIds(ids: string[]): Promise<StudentEnrollment[]> {
     return this.enrollmentRepo.findByIds(ids);

@@ -9,4 +9,8 @@ export class DomainEventRepository extends BaseTenantRepository<DomainEvent> {
   constructor(@Inject(TENANT_DATASOURCE) ds: TenantDataSourceProxy) {
     super(ds, DomainEvent, 'DomainEvent');
   }
+
+  async markProcessed(id: string): Promise<void> {
+    await this.repo.update({ id }, { processedAt: new Date() });
+  }
 }

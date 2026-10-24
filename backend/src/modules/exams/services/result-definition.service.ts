@@ -284,6 +284,7 @@ export class ResultDefinitionService {
       });
       await this.events.record(DOMAIN_EVENTS.RESULTS_PUBLISHED, {
         resultDefinitionId: id,
+        resultName: definition.name,
         academicYearId: definition.academicYearId,
         classId: definition.classId,
         enrollmentIds: results.map((r) => r.enrollmentId),

@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { In } from 'typeorm';
 import { TENANT_DATASOURCE } from '~/tenancy/tenancy.constants';
 import { TenantDataSourceProxy } from '~/tenancy/tenant-datasource.proxy';
 import { BaseTenantRepository } from '~/tenancy/base-tenant.repository';
@@ -15,6 +16,15 @@ export class StudentGuardianRepository extends BaseTenantRepository<StudentGuard
       where: { studentId },
       relations: { guardian: true },
       order: { createdAt: 'ASC' },
+    });
+  }
+
+  /** Links of many students, with their guardians. */
+  findByStudents(studentIds: string[]): Promise<StudentGuardian[]> {
+    if (!studentIds.length) return Promise.resolve([]);
+    return this.repo.find({
+      where: { studentId: In(studentIds) },
+      relations: { guardian: true },
     });
   }
 

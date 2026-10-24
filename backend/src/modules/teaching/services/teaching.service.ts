@@ -93,6 +93,21 @@ export class TeachingService {
     );
   }
 
+  /** Accounts of the sections' class teachers today (notice recipients). */
+  async classTeacherUserIds(sectionIds: string[]): Promise<string[]> {
+    const today = await this.settings.today();
+    const ids = new Set<string>();
+    for (const sectionId of sectionIds) {
+      for (const ct of await this.classTeacherRepo.findActiveInSection(
+        sectionId,
+        today,
+      )) {
+        if (ct.employee?.userId) ids.add(ct.employee.userId);
+      }
+    }
+    return [...ids];
+  }
+
   /** The section's class teachers on a day. */
   classTeachersOn(sectionId: string, date: string): Promise<ClassTeacher[]> {
     return this.classTeacherRepo.findActiveInSection(sectionId, date);

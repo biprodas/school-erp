@@ -105,6 +105,6 @@ import { StudentDiscountService } from './services/student-discount.service';
     FeeJobs,
     FeeScheduler,
   ],
-  exports: [FeeSetupService, FeeReportService],
+  exports: [FeeSetupService, FeeReportService, InvoiceService, PaymentService],
 })
 export class FeeModule {}

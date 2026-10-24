@@ -115,6 +115,27 @@ export class ExamService {
     await this.examRepo.deleteById(id);
   }
 
+  /** Exams a class sits that end on or after `today`, soonest first. */
+  async upcomingForClass(
+    academicYearId: string,
+    classId: string,
+    today: string,
+  ): Promise<Exam[]> {
+    const exams = await this.examRepo.find({
+      where: { academicYearId },
+      order: { startDate: 'ASC' },
+    });
+    const upcoming: Exam[] = [];
+    for (const exam of exams) {
+      if (exam.endDate && exam.endDate < today) continue;
+      if (!exam.startDate && !exam.endDate) continue;
+      if ((await this.subjectRepo.classIdsOf(exam.id)).includes(classId)) {
+        upcoming.push(exam);
+      }
+    }
+    return upcoming;
+  }
+
   // --- Subjects ------------------------------------------------------------
 
   async subjects(examId: string, classId?: string): Promise<ExamSubject[]> {

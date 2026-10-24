@@ -146,8 +146,15 @@ export class AttendanceRecordRepository extends BaseTenantRepository<AttendanceR
               rec."status_code"
        FROM "attendance_records" rec
        JOIN d ON d."id" = rec."register_id"
-       WHERE rec."org_id" = $1`,
-        [this.orgId, filter.from, filter.to, filter.sectionIds],
+       WHERE rec."org_id" = $1
+         AND ($5::uuid[] IS NULL OR rec."enrollment_id" = ANY($5::uuid[]))`,
+        [
+          this.orgId,
+          filter.from,
+          filter.to,
+          filter.sectionIds,
+          filter.enrollmentIds ?? null,
+        ],
       );
     return rows.map((r) => ({
       enrollmentId: r.enrollment_id,

@@ -114,6 +114,31 @@ export class MailService {
     return this.config.get<MailerConfig>('mailer')!.rootDomain;
   }
 
+  /**
+   * A notification email (PRD 6.13). Unlike the account emails this throws
+   * on a transport failure, so the delivery job can retry and log it.
+   * Returns the provider's message id.
+   */
+  async deliverNotification(
+    to: string,
+    subject: string,
+    body: string,
+    options: { link?: string | null; schoolName: string },
+  ): Promise<string | null> {
+    const info = (await this.mailer.sendMail({
+      to,
+      subject,
+      template: 'notification',
+      context: {
+        subject,
+        paragraphs: body.split(/\n+/).filter(Boolean),
+        link: options.link ?? null,
+        schoolName: options.schoolName,
+      },
+    })) as { messageId?: string } | undefined;
+    return info?.messageId ?? null;
+  }
+
   private async send(
     to: string,
     subject: string,

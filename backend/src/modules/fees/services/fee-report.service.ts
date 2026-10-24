@@ -324,6 +324,38 @@ export class FeeReportService {
     };
   }
 
+  /** Payments received in a date range (dashboards), by channel. */
+  async collectionBetween(from: string, to: string) {
+    const rows = await this.paymentRepo.sql<
+      { channel: string; n: number; amount: string }[]
+    >(
+      `SELECT "channel", count(*)::int AS n, sum("amount") AS amount FROM "payments"
+       WHERE "org_id" = $1 AND "status" = 'completed' AND "received_on" BETWEEN $2 AND $3
+       GROUP BY "channel"`,
+      [this.paymentRepo.org, from, to],
+    );
+    const byChannel = Object.fromEntries(
+      rows.map((r) => [r.channel, Number(r.amount)]),
+    );
+    return {
+      from,
+      to,
+      payments: rows.reduce((n, r) => n + r.n, 0),
+      total: rows.reduce((n, r) => n + Number(r.amount), 0),
+      byChannel,
+    };
+  }
+
+  /** Expenses paid in a date range, not voided (dashboards). */
+  async expensesBetween(from: string, to: string): Promise<number> {
+    const [row] = await this.paymentRepo.sql<{ amount: string | null }[]>(
+      `SELECT sum("amount") AS amount FROM "expenses"
+       WHERE "org_id" = $1 AND "voided_at" IS NULL AND "date" BETWEEN $2 AND $3`,
+      [this.paymentRepo.org, from, to],
+    );
+    return Number(row?.amount ?? 0);
+  }
+
   /** Whether any of the students owes on an overdue invoice (M7 results hold). */
   async hasDues(studentIds: string[], asOf?: string): Promise<Set<string>> {
     if (!studentIds.length) return new Set();

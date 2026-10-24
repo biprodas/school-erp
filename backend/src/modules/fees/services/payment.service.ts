@@ -5,7 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Between, FindOptionsWhere, IsNull } from 'typeorm';
+import { Between, FindOptionsWhere, In, IsNull } from 'typeorm';
 import { Paginated } from '~/common/dto/paginated.dto';
 import { QUEUES } from '~/shared/queue';
 import { RequestContext } from '~/shared/request-context/request-context.service';
@@ -295,6 +295,55 @@ export class PaymentService {
       },
       filter,
     );
+  }
+
+  /**
+   * Payments that settled any invoice of these students (the portal's
+   * payment history), newest first, with their receipts.
+   */
+  async paymentsForStudents(studentIds: string[]) {
+    if (!studentIds.length) return [];
+    const rows = await this.paymentRepo.sql<{ payment_id: string }[]>(
+      `SELECT DISTINCT a."payment_id" FROM "payment_allocations" a
+       JOIN "invoices" i ON i."id" = a."invoice_id"
+       WHERE a."org_id" = $1 AND i."student_id" = ANY($2::uuid[])`,
+      [this.paymentRepo.org, studentIds],
+    );
+    const payments = (
+      await this.paymentRepo.findByIds(rows.map((r) => r.payment_id))
+    ).sort((a, b) => b.receivedAt.getTime() - a.receivedAt.getTime());
+    const receipts = await this.receiptRepo.find({
+      where: payments.length
+        ? { paymentId: In(payments.map((p) => p.id)) }
+        : { id: In([]) },
+    });
+    return payments.map((p) => {
+      const r = receipts.find((x) => x.paymentId === p.id);
+      return {
+        id: p.id,
+        amount: p.amount,
+        channel: p.channel,
+        status: p.status,
+        receivedAt: p.receivedAt,
+        receiptId: r?.id ?? null,
+        receiptNumber: r?.number ?? null,
+        receiptStatus: r?.status ?? null,
+      };
+    });
+  }
+
+  /** Whether a receipt settled anything of these students. */
+  async receiptCovers(
+    receiptId: string,
+    studentIds: string[],
+  ): Promise<boolean> {
+    const receipt = await this.receiptRepo.findById(receiptId);
+    if (!receipt) return false;
+    const covered = await this.allocationRepo.find({
+      where: { paymentId: receipt.paymentId },
+      relations: { invoice: true },
+    });
+    return covered.some((a) => studentIds.includes(a.invoice!.studentId));
   }
 
   /** A receipt with its payment and what the payment settled. */

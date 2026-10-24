@@ -101,6 +101,13 @@ const EXAMS_READ: PermissionKey[] = [
   P.RESULTS_READ,
 ];
 
+/** Notices to their own sections and the teacher dashboard. */
+const TEACHER_COMMUNICATION: PermissionKey[] = [
+  P.NOTICES_READ,
+  P.NOTICES_MANAGE,
+  P.DASHBOARD_TEACHER,
+];
+
 /** HR directory, read-only (Principal: R). */
 const HR_READ: PermissionKey[] = [
   P.DEPARTMENTS_READ,
@@ -185,6 +192,12 @@ export const SYSTEM_ROLES: SystemRoleSeed[] = [
       P.REPORT_CARDS_PRINT,
       P.FEES_READ,
       P.LEDGER_READ,
+      P.NOTICES_READ,
+      P.NOTICES_MANAGE,
+      P.COMMUNICATION_READ,
+      P.COMMUNICATION_MANAGE,
+      P.DASHBOARD_ADMIN,
+      P.DASHBOARD_ACCOUNTANT,
       ...HR_READ,
     ],
   },
@@ -206,6 +219,8 @@ export const SYSTEM_ROLES: SystemRoleSeed[] = [
       P.FEES_APPROVE_WAIVER,
       P.EXPENSES_MANAGE,
       P.LEDGER_READ,
+      P.NOTICES_READ,
+      P.DASHBOARD_ACCOUNTANT,
     ],
   },
   {
@@ -221,6 +236,7 @@ export const SYSTEM_ROLES: SystemRoleSeed[] = [
       ...ATTENDANCE_MARKING,
       ...EXAMS_READ,
       P.RESULTS_ENTER,
+      ...TEACHER_COMMUNICATION,
     ],
   },
   {
@@ -249,6 +265,7 @@ export const SYSTEM_ROLES: SystemRoleSeed[] = [
       P.REPORT_CARDS_PRINT,
       // Their own section's dues (fees: R own section).
       P.FEES_READ,
+      ...TEACHER_COMMUNICATION,
     ],
   },
   {
@@ -271,13 +288,15 @@ export const SYSTEM_ROLES: SystemRoleSeed[] = [
       P.CERTIFICATES_ISSUE,
       P.FEES_READ,
       P.FEES_COLLECT,
+      P.NOTICES_READ,
+      P.NOTICES_MANAGE,
     ],
   },
   {
     name: 'librarian',
     description: 'Library management; reads students',
     scope: RoleScope.SCHOOL,
-    permissions: [...STUDENT_LOOKUPS, ...STUDENTS_READ],
+    permissions: [...STUDENT_LOOKUPS, ...STUDENTS_READ, P.NOTICES_READ],
   },
   {
     // Read-only by design: never student health, notes or guardian details.
@@ -296,6 +315,8 @@ export const SYSTEM_ROLES: SystemRoleSeed[] = [
       // Finance reports: collection, dues.
       P.FEES_READ,
       P.LEDGER_READ,
+      P.NOTICES_READ,
+      P.DASHBOARD_ADMIN,
     ],
   },
   {

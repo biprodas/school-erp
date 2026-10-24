@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { Brackets } from 'typeorm';
+import { Brackets, In } from 'typeorm';
 import { normalizePhone } from '~/common/identity/identifier';
 import { TENANT_DATASOURCE } from '~/tenancy/tenancy.constants';
 import { TenantDataSourceProxy } from '~/tenancy/tenant-datasource.proxy';
@@ -65,6 +65,12 @@ export class StudentRepository extends BaseTenantRepository<Student> {
 
   findByUserId(userId: string): Promise<Student | null> {
     return this.repo.findOne({ where: { userId } });
+  }
+
+  /** Students by id, with only what notifications need. */
+  findManyByIds(ids: string[]): Promise<Student[]> {
+    if (!ids.length) return Promise.resolve([]);
+    return this.repo.find({ where: { id: In(ids) } });
   }
 
   findByRfid(rfidCardNo: string): Promise<Student | null> {

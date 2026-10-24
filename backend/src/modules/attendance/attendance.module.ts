@@ -63,6 +63,7 @@ import { StudentLeaveService } from './services/student-leave.service';
     AttendanceRegisterPdfJob,
   ],
   exports: [
+    AttendanceService,
     AttendanceReportService,
     AttendanceUsageService,
     StudentLeaveService,

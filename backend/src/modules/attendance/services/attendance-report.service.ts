@@ -372,6 +372,41 @@ export class AttendanceReportService {
     return { ...range, ...withPercentage(tallyOf(counts, statuses)) };
   }
 
+  /** One enrollment's day statuses over a range (the portal's history). */
+  async enrollmentDays(enrollmentId: string, from: string, to: string) {
+    const statuses = await this.statuses.byCode();
+    const days = (
+      await this.recordRepo.dayStatuses({
+        from,
+        to,
+        sectionIds: null,
+        enrollmentIds: [enrollmentId],
+      })
+    ).sort((a, b) => a.date.localeCompare(b.date));
+    const tally = emptyTally();
+    for (const d of days) {
+      addToTally(
+        tally,
+        statuses.get(d.statusCode)?.countsAs ?? CountsAs.PRESENT,
+      );
+    }
+    return {
+      from,
+      to,
+      ...withPercentage(tally),
+      days: days.map((d) => {
+        const s = statuses.get(d.statusCode);
+        return {
+          date: d.date,
+          status: d.statusCode,
+          label: s?.labelEn ?? d.statusCode,
+          labelBn: s?.labelBn ?? d.statusCode,
+          countsAs: s?.countsAs ?? CountsAs.PRESENT,
+        };
+      }),
+    };
+  }
+
   private async studentRows(
     query: AttendanceRangeQueryDto,
     allowed: string[] | null,

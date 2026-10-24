@@ -77,6 +77,16 @@ export interface AddMemberResult {
   createdAccount: boolean;
 }
 
+/** An active member as notifications and notices see them. */
+export interface MemberContact {
+  userId: string;
+  name: string;
+  email: string | null;
+  roleIds: string[];
+  /** Holds only portal roles (a guardian or student). */
+  portalOnly: boolean;
+}
+
 /**
  * Manages the users of the current school. Users are global accounts (one
  * login across schools); "adding" a user creates a membership in this org and
@@ -138,6 +148,35 @@ export class OrgUserService {
       email,
     });
     return this.serialize(members);
+  }
+
+  /**
+   * Active members to reach (notifications, notice audiences), optionally
+   * only some users: id, name, email, whether they hold only portal roles.
+   */
+  async activeContacts(userIds?: string[]): Promise<MemberContact[]> {
+    if (userIds && !userIds.length) return [];
+    const members = (
+      await this.memberRepo.findFiltered(userIds ? { userIds } : {})
+    ).filter((m) => m.status === MembershipStatus.ACTIVE);
+    const assignments = await this.roleService.findAssignments(
+      members.map((m) => m.userId),
+    );
+    return members.map((m) => {
+      const roles = assignments.filter((a) => a.userId === m.userId && a.role);
+      return {
+        userId: m.userId,
+        name: m.user.name,
+        email: m.user.email,
+        roleIds: roles.map((a) => a.role.id),
+        portalOnly:
+          !m.isAdmin &&
+          roles.length > 0 &&
+          roles.every((a) =>
+            a.role.permissions.every((k) => k.startsWith('portal:')),
+          ),
+      };
+    });
   }
 
   /** Members of this school, any status. */

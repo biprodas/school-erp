@@ -186,6 +186,47 @@ export class GuardianService {
     return this.linkRepo.findByStudent(studentId);
   }
 
+  /**
+   * The students a signed-in user may see on the portal: the children of
+   * the guardian record with their account, and their own student record.
+   */
+  async studentsOfUser(userId: string): Promise<{
+    guardianId: string | null;
+    childIds: string[];
+    ownStudentId: string | null;
+  }> {
+    const guardian = await this.guardianRepo.findByUserId(userId);
+    const own = await this.studentService.findByUserId(userId);
+    return {
+      guardianId: guardian?.id ?? null,
+      childIds: guardian ? await this.linkRepo.studentIdsOf(guardian.id) : [],
+      ownStudentId: own?.id ?? null,
+    };
+  }
+
+  /**
+   * The accounts to reach about each student: their guardians' and their
+   * own (portal accounts only).
+   */
+  async familyUserIds(studentIds: string[]): Promise<Map<string, string[]>> {
+    const family = new Map<string, Set<string>>(
+      studentIds.map((id) => [id, new Set<string>()]),
+    );
+    for (const link of await this.linkRepo.findByStudents(studentIds)) {
+      if (link.guardian?.userId)
+        family.get(link.studentId)?.add(link.guardian.userId);
+    }
+    for (const s of await this.studentService.findManyByIds(studentIds)) {
+      if (s.userId) family.get(s.id)?.add(s.userId);
+    }
+    return new Map([...family].map(([id, users]) => [id, [...users]]));
+  }
+
+  /** Every guardian's portal account. */
+  async allUserIds(): Promise<string[]> {
+    return this.guardianRepo.userIds();
+  }
+
   /** Ids of a guardian's children (fee payments for several children). */
   async childIds(guardianId: string): Promise<string[]> {
     await this.findById(guardianId);

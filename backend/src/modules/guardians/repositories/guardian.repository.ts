@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { FindOptionsWhere } from 'typeorm';
+import { FindOptionsWhere, IsNull, Not } from 'typeorm';
 import { TENANT_DATASOURCE } from '~/tenancy/tenancy.constants';
 import { TenantDataSourceProxy } from '~/tenancy/tenant-datasource.proxy';
 import { BaseTenantRepository } from '~/tenancy/base-tenant.repository';
@@ -64,6 +64,14 @@ export class GuardianRepository extends BaseTenantRepository<Guardian> {
   ): Promise<void> {
     if (Object.values(patch).every((v) => v === undefined)) return;
     await this.repo.update({ id }, patch);
+  }
+
+  async userIds(): Promise<string[]> {
+    const rows = await this.repo.find({
+      where: { userId: Not(IsNull()) },
+      select: { id: true, userId: true },
+    });
+    return rows.map((r) => r.userId!);
   }
 
   findByUserId(userId: string): Promise<Guardian | null> {

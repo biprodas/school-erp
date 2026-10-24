@@ -15,7 +15,7 @@
 - This is a starting plan, not a fixed spec. When implementation shows a better way, change the code and update this doc to match.
 - Items marked **(1b)** are listed only so Phase 1a leaves room for them; they are tracked in section 14.
 
-**Current state:** M0 in progress (4.1–4.7 done; DB-backed checks wait for the local database or the first CI run). M1 implemented (2026-10-23) except the sample-data mode and the grading, holiday and fee-head template "apply" steps, which wait for M5, M4 and M6; its e2e specs pass against Postgres 18. M2–M6 implemented (2026-10-24; what is left of M4–M6 waits on M7 (portal, notifications, guardian confirmations and reminders) or the M8 performance seed, plus a check of the register PDF against a paper one). Section 1 lists what already exists and can be reused.
+**Current state:** M0 in progress (4.1–4.7 done; DB-backed checks wait for the local database or the first CI run). M1 implemented (2026-10-23) except the sample-data mode and the grading, holiday and fee-head template "apply" steps, which wait for M5, M4 and M6; its e2e specs pass against Postgres 18. M2–M7 implemented (2026-10-24; what is left waits on the M8 performance seed, plus a check of the register PDF against a paper one). Section 1 lists what already exists and can be reused.
 
 ---
 
@@ -508,7 +508,7 @@ Migration `1792340000000-PlatformAndOnboarding` holds every schema change below 
 ### 8.3 Student leave
 
 - [x] `student_leave_requests (enrollment_id, from_date, to_date, reason, attachment_file_id, status pending|approved|rejected, applied_by_user_id, decided_by, decided_at)`. *Plus `student_id`, `decision_note` and `cancelled`; overlapping open requests are refused (`LEAVE_OVERLAPS`). Attachment: `POST /student-leaves/:id/attachment` (image or PDF).*
-- [ ] Guardians apply through `/portal` (M7); the class teacher (scope) approves or rejects. *Staff side done: `/student-leaves` (list, create on a guardian's behalf, approve, reject, cancel). Deciding needs `student_leaves:approve` and, for assigned-scope roles, being the section's class teacher (`AccessScope.homeSections`; else 403 `NOT_CLASS_TEACHER`). The portal endpoint arrives with M7 and calls `StudentLeaveService.create`.*
+- [x] Guardians apply through `/portal` (M7); the class teacher (scope) approves or rejects. *`POST /portal/children/:id/leave` (M7). Staff side: `/student-leaves` (list, create on a guardian's behalf, approve, reject, cancel). Deciding needs `student_leaves:approve` and, for assigned-scope roles, being the section's class teacher (`AccessScope.homeSections`; else 403 `NOT_CLASS_TEACHER`). The portal endpoint arrives with M7 and calls `StudentLeaveService.create`.*
 - [x] Approval pre-fills Leave in the registers for those dates; overwriting it with Absent needs a correction. *Registers already taken get Leave as `leave_approval` corrections; later ones default to Leave, and anything else then needs a reason.*
 
 ### 8.4 Reports
@@ -575,7 +575,7 @@ Migration `1792340000000-PlatformAndOnboarding` holds every schema change below 
   - [x] `POST /mark-sheets/:id/reopen { reason }` (`results:reopen`) back to draft
 - [x] Every value change after first submission writes an audit row with old and new values. *`marks.changed` per save; reopen is `mark_sheet.reopened` with the reason.*
 - [x] Tabulation job runs when all sheets of a definition are approved, and again after reopen and re-approval; publish is blocked until results are current. *Queued after the approving transaction commits; "current" = every sheet approved and tabulated after the last approval (`RESULTS_NOT_CURRENT`). `POST /result-definitions/:id/tabulate` runs it by hand. A re-tabulation unpublishes until published again. Combined definitions: `POST /result-definitions`.*
-- [ ] Publishing makes results visible on the portal and notifies guardians (M7 notifications). *Publishing records `results.published` in `domain_events`; the portal and notifications arrive with M7.*
+- [x] Publishing makes results visible on the portal and notifies guardians (M7 notifications). *The `results.published` event becomes a notification per child (M7).*
 - *Promotion (M3) now takes outcomes from the class's published session result (combined if published, else the latest exam): failed students are detained and merit order is the class position. Rollback is refused once marks exist on the new enrollments. The student 360 view lists published results.*
 
 ### 9.4 Report cards and sheets
@@ -628,14 +628,14 @@ Migration `1792340000000-PlatformAndOnboarding` holds every schema change below 
   - [x] Can span several invoices and several children of one guardian. *`guardianId` instead of `studentId`.*
 - [x] `receipts (number, payment_id, issued_at, issued_by, status valid|cancelled, cancel_reason, cancelled_by)`; number from `NumberingService` in the payment transaction (gap-free).
 - [x] Receipt cancellation (`fees:cancel_receipt`) needs a reason and creates `payment_reversals`, which releases the allocations; the original stays visible. *Refused once part of the payment was refunded (`PAYMENT_REFUNDED`).*
-- [ ] Receipt PDF in thermal 80 mm and A4; in-app/email confirmation to the guardian. *PDFs done (`POST /receipts/:id/pdf { paper }`). Each payment records `payment.received` in `domain_events`; M7 sends the confirmation.*
+- [x] Receipt PDF in thermal 80 mm and A4; in-app/email confirmation to the guardian. *PDFs: `POST /receipts/:id/pdf { paper }`; the `payment.received` event becomes the family's confirmation (M7).*
 - [x] `adjustments (type refund|waiver|correction, invoice_line_id, amount, reason, status pending|approved|rejected, requested_by, decided_by)`; only approved adjustments change balances. *A refund lowers both what the line owes and what was collected (its balance stays) and writes a ledger expense; a correction is signed.*
 
 ### 10.4 Dues and reports
 
 - [x] Due list by class and section with aging buckets (0–30, 31–60, 61–90, 90+ days). *`GET /fees/dues` (plus `current`, not yet due); class teachers see their sections.*
-- [ ] Email/in-app due reminders on a configurable schedule (SMS **(1b)**). *`fees.reminderDays` (default 3 and 15 days after the due date): the scheduler records one `fees.due_reminder` event per invoice and offset; M7 delivers them.*
-- [ ] `blockResultsOnDues` setting hides published results on the portal until dues are cleared. *`FeeReportService.hasDues(studentIds)` is ready for the portal (M7).*
+- [x] Email/in-app due reminders on a configurable schedule (SMS **(1b)**). *`fees.reminderDays` (default 3 and 15 days after the due date): one `fees.due_reminder` event per invoice and offset, delivered by M7's dispatcher.*
+- [x] `blockResultsOnDues` setting hides published results on the portal until dues are cleared. *`FeeReportService.hasDues`, applied by the portal (M7).*
 - [x] Reports: collection vs. demand, head-wise collection, discount report, defaulters, daily collection per collector. *`/fees/reports/*`; finance totals need `fees:read` school-wide.*
 - [x] **Fee regression suite** (PRD 11.5): discounts, fines, generation, allocation, plus property-based tests of "billed − discounts − collected = outstanding" and "line outstanding = net − allocations" over random payment sequences. *`domain/fee-math.spec.ts`, tagged `[fee-regression]`: seeded random histories of billing, payments, reversals, waivers and refunds (adjustments and refunds included in the identities).*
 
@@ -659,47 +659,50 @@ Migration `1792340000000-PlatformAndOnboarding` holds every schema change below 
 
 **Scope:** PRD 6.13 Phase 1a, 6.14 web portal, 6.22 Phase 1a set.
 
+*Implemented 2026-10-24. Migration `1792400000000-NoticesAndNotifications` ran (up, down, up) on the migrated M6 schema, and `db:generate` finds no drift. Unit suites and `test/portal-communication.e2e-spec.ts` pass against Postgres 18 with RLS on.*
+
 ### 11.1 Notices
 
-- [ ] `notices (title, body, attachment file ids, audience jsonb {type all|role|class|section|group|users, ids}, publish_at, expires_at, pinned, is_public, created_by)` and `notice_reads (notice_id, user_id, read_at)`.
-- [ ] `GET /notices/feed` resolves the audience for the viewer (roles, own or children's sections, staff assignments).
-- [ ] Public notices on the school home page: `GET /public/organizations/:slug/home`.
+- [x] `notices (title, body, attachment file ids, audience jsonb {type all|role|class|section|group|users, ids}, publish_at, expires_at, pinned, is_public, created_by)` and `notice_reads (notice_id, user_id, read_at)`. *Audience types also `staff`, `guardians`, `students`; `group` is a subject group. Plus `notified_at`. Teachers (assigned scope) post only to their sections (`AUDIENCE_OUT_OF_SCOPE`) and edit only their own.*
+- [x] `GET /notices/feed` resolves the audience for the viewer (roles, own or children's sections, staff assignments). *`AudienceService.viewer`; `GET /notices/:id/reads` gives the audience size and readers; `/portal/notices` is the same feed. Publishing (now, or when a scheduled notice comes due) notifies the audience once.*
+- [x] Public notices on the school home page: `GET /public/organizations/:slug/home`. *With name, branding and contact; read as the school through `TenantJobRunner`.*
 
 ### 11.2 Notifications
 
-- [ ] `NotificationService.notify({ recipients, templateKey, vars, channels })` writes in-app rows and enqueues email; SMS and push plug into the same call **(1b)**.
-- [ ] `notifications (user_id, type, title, body, link, read_at)`; `GET /notifications`, `POST /notifications/:id/read`, `POST /notifications/read-all`.
-- [ ] `notification_templates (key, channel, locale, subject, body)` per org overriding code defaults (absent, fee due, payment received, result published, notice published), in Bangla and English.
-- [ ] `delivery_logs (channel, recipient, template_key, status queued|sent|failed, provider_message_id, error, created_at)`; `GET /communication-log`.
-- [ ] Queue retries with backoff.
+- [x] `NotificationService.notify({ recipients, templateKey, vars, channels })` writes in-app rows and enqueues email; SMS and push plug into the same call **(1b)**. *Channels come from `notifications.events` in settings; the language from `locale.language`.*
+- [x] `notifications (user_id, type, title, body, link, read_at)`; `GET /notifications`, `POST /notifications/:id/read`, `POST /notifications/read-all`. *Plus `GET /notifications/unread-count`.*
+- [x] `notification_templates (key, channel, locale, subject, body)` per org overriding code defaults (absent, fee due, payment received, result published, notice published), in Bangla and English. *`GET/PUT /notification-templates`, `DELETE` resets to the default; `{variable}` placeholders.*
+- [x] `delivery_logs (channel, recipient, template_key, status queued|sent|failed, provider_message_id, error, created_at)`; `GET /communication-log`. *In-app messages are logged too.*
+- [x] Queue retries with backoff. *The `notifications` queue job retries 3 times; the last failure marks the log `failed` with the error.*
+- *Automated notifications: `CommunicationScheduler` (every minute) turns `results.published`, `payment.received` and `fees.due_reminder` events into notifications for each student's family, once per event. `attendance.submitted` stays pending for the 1b absentee alerts.*
 
 ### 11.3 Portal API (`/portal/*`)
 
-- [ ] `PortalAccessService.linkedEnrollments(userId)`: guardian links via `guardians.user_id` → `student_guardians`, or the student's own `students.user_id`. Every portal query filters by it.
-- [ ] `GET /portal/children`: this school's children, plus children at other schools (from the user's other memberships) with their host.
-- [ ] `POST /portal/handoff { orgId }`: handoff code for another school where the user has an active membership.
-- [ ] `GET /portal/children/:id/dashboard`: today's attendance, upcoming exams, dues, latest notices.
-- [ ] Attendance history.
-- [ ] Results and report-card download (signed URL; respects the dues block).
-- [ ] Invoices, payment history and receipt PDFs.
-- [ ] Notices.
-- [ ] `POST /portal/children/:id/leave`.
-- [ ] IDOR e2e suite: a guardian can't reach another family's student on any portal or staff endpoint.
+- [x] `PortalAccessService.linkedEnrollments(userId)`: guardian links via `guardians.user_id` → `student_guardians`, or the student's own `students.user_id`. Every portal query filters by it. *`children()` / `child(id)` (404 for anyone else).*
+- [x] `GET /portal/children`: this school's children, plus children at other schools (from the user's other memberships) with their host. *Other schools at `GET /portal/schools`.*
+- [x] `POST /portal/handoff { orgId }`: handoff code for another school where the user has an active membership. *Returns `redirectUrl` to that host's `/auth/handoff`.*
+- [x] `GET /portal/children/:id/dashboard`: today's attendance, upcoming exams, dues, latest notices.
+- [x] Attendance history. *`GET /portal/children/:id/attendance?month=`.*
+- [x] Results and report-card download (signed URL; respects the dues block). *`fees.blockResultsOnDues` hides results while an overdue invoice is unpaid (`blocked: true`, report card 403 `RESULTS_HELD_FOR_DUES`).*
+- [x] Invoices, payment history and receipt PDFs. *`/portal/children/:id/fees`, `/portal/payments`, `POST /portal/receipts/:id/pdf` (job).*
+- [x] Notices.
+- [x] `POST /portal/children/:id/leave`. *Plus `GET` for the child's requests.*
+- [x] IDOR e2e suite: a guardian can't reach another family's student on any portal or staff endpoint. *Tagged `[tenant-isolation]`.*
 
 ### 11.4 Dashboards and reports
 
-- [ ] `GET /dashboards/admin`: enrollment, attendance today, collection today and month-to-date, dues, staff count, upcoming events.
-- [ ] `GET /dashboards/teacher`: today's sections, pending attendance and mark sheets.
-- [ ] `GET /dashboards/accountant`: collection, dues.
-- [ ] Redis cache for 60 seconds per org.
-- [ ] Large exports through `report_exports` jobs and signed URLs.
+- [x] `GET /dashboards/admin`: enrollment, attendance today, collection today and month-to-date, dues, staff count, upcoming events. *Upcoming: holidays and exams in the next 30 days (events arrive with 6.19).*
+- [x] `GET /dashboards/teacher`: today's sections, pending attendance and mark sheets.
+- [x] `GET /dashboards/accountant`: collection, dues. *Plus expenses month-to-date and recent payments.*
+- [x] Redis cache for 60 seconds per org. *`CacheStore` (`~/shared/cache`): Redis alongside BullMQ, memory with the inline queue; the teacher dashboard is cached per user.*
+- [x] Large exports through `report_exports` jobs and signed URLs. *`POST /reports/exports { report, params }` for fee dues and defaulters and attendance defaulters and late-comers (Excel), audited; results and attendance PDFs/sheets already export through their own jobs.*
 
 ### Done when
 
-- [ ] A guardian with two children sees only them, and is notified when results are published (e2e).
-- [ ] A guardian with children at two schools can switch between them through a handoff (e2e).
-- [ ] Dashboards load in under 2 seconds on the 5,000-student performance seed.
-- [ ] The communication log shows every email sent, with its status.
+- [x] A guardian with two children sees only them, and is notified when results are published (e2e).
+- [x] A guardian with children at two schools can switch between them through a handoff (e2e).
+- [ ] Dashboards load in under 2 seconds on the 5,000-student performance seed. *Not measured: the performance seed is M8.*
+- [x] The communication log shows every email sent, with its status.
 
 ---
 

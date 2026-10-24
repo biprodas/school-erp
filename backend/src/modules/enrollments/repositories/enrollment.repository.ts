@@ -84,6 +84,16 @@ export class EnrollmentRepository extends BaseTenantRepository<StudentEnrollment
     });
   }
 
+  /** A session's enrollments with any of the statuses (no relations). */
+  findInYear(
+    academicYearId: string,
+    statuses: StudentEnrollmentStatus[],
+  ): Promise<StudentEnrollment[]> {
+    return this.repo.find({
+      where: { academicYearId, status: In(statuses) },
+    });
+  }
+
   /** Enrollments by id with student, class and section (reports). */
   findByIds(ids: string[]): Promise<StudentEnrollment[]> {
     if (!ids.length) return Promise.resolve([]);

@@ -42,6 +42,11 @@ import { AttendanceModule } from '~/modules/attendance/attendance.module';
 import { GradingModule } from '~/modules/grading/grading.module';
 import { ExamModule } from '~/modules/exams/exam.module';
 import { FeeModule } from '~/modules/fees/fee.module';
+import { NotificationModule } from '~/modules/notifications/notification.module';
+import { NoticeModule } from '~/modules/notices/notice.module';
+import { PortalModule } from '~/modules/portal/portal.module';
+import { ReportsModule } from '~/modules/reports/reports.module';
+import { CacheModule } from '~/shared/cache';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { configLoaders, envValidationSchema, ThrottleConfig } from '~/config';
@@ -101,6 +106,7 @@ const envFilePath = ['.env', `.env.${nodeEnv}`];
     MailModule,
     HostsModule,
     QueueModule,
+    CacheModule,
     StorageModule,
     PdfModule,
     TenancyModule,
@@ -140,6 +146,10 @@ const envFilePath = ['.env', `.env.${nodeEnv}`];
     GradingModule,
     ExamModule,
     FeeModule,
+    NotificationModule,
+    NoticeModule,
+    PortalModule,
+    ReportsModule,
     FileModule,
     NumberingModule,
     IdempotencyModule,

@@ -118,6 +118,37 @@ export class MarkSheetService {
       }));
   }
 
+  /**
+   * Draft sheets of open exams for the subjects taught (a teacher's
+   * pending marks); null = every draft sheet.
+   */
+  async pendingFor(
+    refs: { sectionId: string; classSubjectId: string }[] | null,
+  ) {
+    if (refs && !refs.length) return [];
+    const sheets = await this.sheetRepo.findMany({
+      status: MarkSheetStatus.DRAFT,
+      examSubject: { exam: { status: ExamStatus.OPEN } },
+    });
+    return sheets
+      .filter(
+        (s) =>
+          !refs ||
+          refs.some(
+            (r) =>
+              r.sectionId === s.sectionId &&
+              r.classSubjectId === s.examSubject!.classSubjectId,
+          ),
+      )
+      .map((s) => ({
+        id: s.id,
+        examId: s.examSubject!.examId,
+        subjectName: s.examSubject!.classSubject?.subject?.name ?? '',
+        sectionId: s.sectionId,
+        sectionName: s.section?.name ?? '',
+      }));
+  }
+
   async findById(id: string): Promise<MarkSheet> {
     const sheet = await this.sheetRepo.findWithRelations(id);
     if (!sheet) throw new NotFoundException(`Mark sheet "${id}" not found`);

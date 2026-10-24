@@ -130,6 +130,15 @@ export class StudentService {
     return this.studentRepo.findByIdOrFail(id);
   }
 
+  /** The student whose own portal account this is, if any. */
+  findByUserId(userId: string): Promise<Student | null> {
+    return this.studentRepo.findByUserId(userId);
+  }
+
+  findManyByIds(ids: string[]): Promise<Student[]> {
+    return this.studentRepo.findManyByIds(ids);
+  }
+
   findByAdmissionNumber(admissionNumber: string): Promise<Student | null> {
     return this.studentRepo.findByAdmissionNumber(admissionNumber);
   }

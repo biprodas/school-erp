@@ -256,6 +256,21 @@ export const PERMISSIONS = {
   /** Cash book, bank book, payments and receipts. */
   LEDGER_READ: 'ledger:read',
 
+  // Notices and communication (PRD 6.13)
+  /** Every notice, read receipts (the feed needs no key). */
+  NOTICES_READ: 'notices:read',
+  /** Write and publish notices (assigned scope: own sections only). */
+  NOTICES_MANAGE: 'notices:manage',
+  /** The communication log. */
+  COMMUNICATION_READ: 'communication:read',
+  /** Notification templates. */
+  COMMUNICATION_MANAGE: 'communication:manage',
+
+  // Role dashboards (PRD 6.22)
+  DASHBOARD_ADMIN: 'dashboard_admin:read',
+  DASHBOARD_TEACHER: 'dashboard_teacher:read',
+  DASHBOARD_ACCOUNTANT: 'dashboard_accountant:read',
+
   // Custom domains (Settings → Domain)
   DOMAINS_READ: 'domains:read',
   DOMAINS_MANAGE: 'domains:manage',

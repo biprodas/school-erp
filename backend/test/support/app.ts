@@ -33,6 +33,7 @@ export class MailCapture {
       'sendPasswordResetEmail',
       'sendSignupVerificationEmail',
       'sendFindSchoolEmail',
+      'deliverNotification',
     ].map((method) => [
       method,
       (to: string, ...args: unknown[]) => {
