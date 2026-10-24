@@ -52,7 +52,12 @@ import { CredentialSlipModule } from '~/modules/credential-slips/credential-slip
 import { ObservabilityModule } from '~/shared/observability/observability.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { configLoaders, envValidationSchema, ThrottleConfig } from '~/config';
+import {
+  configLoaders,
+  envFilePaths,
+  envValidationSchema,
+  ThrottleConfig,
+} from '~/config';
 import { DatabaseModule } from './database/database.module';
 import { HealthModule } from '~/shared/health/health.module';
 import { LoggingModule } from '~/shared/logging/logging.module';
@@ -73,9 +78,6 @@ import { OnboardingModule } from '~/modules/onboarding/onboarding.module';
 import { OAuthModule } from '~/modules/oauth/oauth.module';
 import { HostsModule } from '~/shared/hosts/app-hosts';
 
-const nodeEnv = process.env.NODE_ENV ?? 'development';
-const envFilePath = ['.env', `.env.${nodeEnv}`];
-
 @Module({
   imports: [
     // Background jobs (e.g. the custom-domain DNS check). Off under test so
@@ -87,7 +89,7 @@ const envFilePath = ['.env', `.env.${nodeEnv}`];
     }),
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath,
+      envFilePath: envFilePaths(),
       validationSchema: envValidationSchema,
       load: configLoaders,
     }),

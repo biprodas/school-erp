@@ -10,27 +10,31 @@ NestJS 11 API for the multi-tenant School ERP SaaS. It uses TypeORM with Postgre
 
 ```bash
 # 1. Start local infrastructure (from the repo root)
-docker compose up -d          # Postgres :5433, pgAdmin :5050, Redis :6379, RedisInsight :5540, Mailpit :1025/:8025
+docker compose up -d          # Postgres :5433, pgAdmin :5050, Redis :6379, RedisInsight :5540, MinIO :9000/:9001, Mailpit :1025/:8025
 
 # 2. Configure env (from backend/)
-cp -n .env.example .env.development   # skipped if it exists; then set JWT_SECRET (min 32 chars) and DB_SYNC=true for first run
+cp -n .env.example .env.local   # skipped if it exists (.env.development works too); then set JWT_SECRET (min 32 chars)
 
-# 3. Install and run
+# 3. Install, build the database and run
 npm install
+npm run db:migrate            # after creating the app role, see "Database bootstrap"
+npm run db:seed:core
 npm run start:dev
 ```
+
+To skip migrations on a throwaway DB, set `DB_SYNC=true` and go straight to `npm run start:dev`. [Database bootstrap](#database-bootstrap) explains both paths.
 
 See the root [README](../README.md#local-infrastructure) for the service URLs and credentials.
 
 ## Environment
 
-The app loads `.env` first, then `.env.${NODE_ENV}` (`.env.development` by default). Joi validates every variable at boot in `src/config/env.validation.ts`, and the app won't start if validation fails. `.env.example` lists every variable. The ones that matter most:
+The app loads `.env.local` (this machine's settings, skipped under `NODE_ENV=test`), then `.env`, then `.env.${NODE_ENV}` (`.env.development` by default); a variable in an earlier file wins, and the shell wins over all of them (`src/config/env-files.ts`). Joi validates every variable at boot in `src/config/env.validation.ts`, and the app won't start if validation fails. `.env.example` lists every variable. The ones that matter most:
 
 | Variable | Notes |
 |----------|-------|
 | `DB_HOST` / `DB_PORT` / `DB_NAME` | `localhost` / `5433` / `school_erp` for the docker Postgres |
 | `DB_SYNC` | `true` in dev: auto-syncs the schema on boot. Never in production |
-| `DB_APP_USERNAME` / `DB_APP_PASSWORD` | Restricted role the tenant pool uses so row-level security applies. Created automatically in dev; create it yourself in production (LOGIN NOSUPERUSER NOBYPASSRLS, not the table owner) |
+| `DB_APP_USERNAME` / `DB_APP_PASSWORD` | Restricted role the tenant pool uses so row-level security applies. Created when the app boots outside production, but `db:migrate` needs it first (see [Database bootstrap](#database-bootstrap)); create it yourself in production (LOGIN NOSUPERUSER NOBYPASSRLS, not the table owner) |
 | `JWT_SECRET` | Required, at least 32 characters |
 | `MAIL_HOST` / `MAIL_PORT` | Mailpit at `localhost:1025`. Read sent mail at http://localhost:8025 |
 | `APP_URL` / `ROOT_DOMAIN` | Used to build email links (`{slug}.{ROOT_DOMAIN}`). Dev uses `lvh.me` |
@@ -51,7 +55,7 @@ npm run typecheck      # tsc --noEmit over src and test (CI)
 
 npm test               # unit tests (src/**/*.spec.ts)
 npm run test:cov       # with coverage
-npm run test:e2e       # test/*.e2e-spec.ts. Loads .env.development and needs a running Postgres
+npm run test:e2e       # test/*.e2e-spec.ts. Loads .env.local or .env.development and needs a running Postgres
 
 npx jest src/modules/students/services/student.service.spec.ts   # single file
 npx jest -t "creates a student"                                          # single test by name
@@ -145,11 +149,96 @@ The quickest way in dev is `npm run db:seed:core`, which creates ready-to-use pl
 4. Log in with `POST /api/platform/auth/login` and create an organization through `/api/organizations`.
 5. Tenant APIs are then reachable with an `x-tenant-id: <slug>` header, or through `http://<slug>.lvh.me:3900/api`.
 
+## Database bootstrap
+
+The database needs three things before the app can serve a school:
+
+- **The schema:** tables, indexes and constraints.
+- **The restricted app role** (`DB_APP_USERNAME`): the tenant pool connects as it, so row-level security applies. It has no superuser rights and owns no tables.
+- **The RLS policies and grants:** an `org_isolation` policy on every org-scoped table, plus DML rights for the app role on the tables tenant requests use.
+
+There are two ways to build a local database. Pick one per database and stick to it.
+
+| | Sync (`DB_SYNC=true`) | Migrations (`DB_SYNC=false`) |
+|---|---|---|
+| Schema | Synced from the entities on every boot | `npm run db:migrate` |
+| App role | Created on boot if missing | Create it before migrating (step 2 below) |
+| RLS and grants | Re-applied on boot (`src/tenancy/rls.ts`) | `RowLevelSecurity` and `AppRoleGrants` migrations |
+| Use it for | Quick prototyping on a throwaway DB | Day-to-day work, and before writing a migration. Matches production |
+
+With sync, `docker compose up -d` and `npm run start:dev` are all you need. The rest of this section is the migrations path.
+
+### Fresh local database with migrations
+
+1. **Start the infrastructure** (from the repo root):
+   ```bash
+   docker compose up -d
+   ```
+   Postgres listens on `localhost:5433` (user `postgres`). The `school_erp` database is created by the container.
+
+2. **Create the app role.** `AppRoleGrants` refuses to run without it (`role "school_erp_app" does not exist`). Use the password from `DB_APP_PASSWORD` in your env file (`.env.local` or `.env.development`):
+   ```bash
+   docker compose exec postgres psql -U postgres -d school_erp -c \
+     "CREATE ROLE school_erp_app LOGIN PASSWORD '<DB_APP_PASSWORD>' NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE;"
+   ```
+   Roles belong to the Postgres server, not to one database. The role survives dropping and recreating `school_erp`, but not `docker compose down -v`, which deletes the volume.
+
+   Instead of running the command, you can start the app once (`npm run start:dev`, any non-production `NODE_ENV`). It creates the role if it's missing. Do this only on an empty DB with `DB_SYNC=false`; otherwise sync builds the tables first and the initial migration then fails.
+
+3. **Apply the migrations** (from `backend/`, with `DB_SYNC=false`):
+   ```bash
+   npm run db:migrate
+   ```
+   All pending migrations run in one transaction, so a failure leaves the DB untouched. Fix the cause and run it again.
+
+4. **Seed the platform accounts:**
+   ```bash
+   npm run db:seed:core
+   ```
+
+5. **Start the app:**
+   ```bash
+   npm run start:dev
+   ```
+   Then sign in on the platform with `admin@biprodas.dev` / `sadmin@123` and create the first school (see [First run](#first-run-creating-a-platform-admin)). The owner's activation email lands in Mailpit (http://localhost:8025).
+
+### Check that it worked
+
+```bash
+npm run db:status   # every migration shows [X]
+docker compose exec postgres psql -U postgres -d school_erp -c \
+  "SELECT count(*) AS rls_policies FROM pg_policies WHERE policyname = 'org_isolation';"
+docker compose exec postgres psql -U postgres -d school_erp -c \
+  "SELECT count(DISTINCT table_name) AS granted_tables FROM information_schema.role_table_grants WHERE grantee = 'school_erp_app';"
+```
+
+Both counts must be above zero. If the boot log warns `DB_APP_USERNAME is not set`, the tenant pool runs as the owner and RLS is not enforced.
+
+### Reset a local database
+
+```bash
+docker compose exec postgres psql -U postgres -c "DROP DATABASE school_erp WITH (FORCE);"
+docker compose exec postgres psql -U postgres -c "CREATE DATABASE school_erp;"
+npm run db:migrate && npm run db:seed:core
+```
+
+The app role is kept, so there's no need to create it again. To wipe everything (all databases, roles, MinIO files and mail), run `docker compose down -v` from the repo root, then start again at step 1.
+
+### Troubleshooting
+
+| Error | Cause and fix |
+|-------|---------------|
+| `AppRoleGrants: role "school_erp_app" does not exist` | The app role is missing. Create it (step 2), then run `npm run db:migrate` again. |
+| `relation "…" already exists` on `InitialSchema` | The DB was built with `DB_SYNC=true`. See [A dev DB that was built with `DB_SYNC=true`](#a-dev-db-that-was-built-with-db_synctrue). |
+| `password authentication failed for user "school_erp_app"` | The role was created with a different password. Run `ALTER ROLE school_erp_app PASSWORD '<DB_APP_PASSWORD>';` as `postgres`. |
+| `permission denied for table …` in tenant requests | A table has no grant for the app role. Its migration must grant it (see [Production](#production)). In dev, restarting the app re-applies the grants. |
+| `ECONNREFUSED 127.0.0.1:5433` | Postgres isn't running. Run `docker compose up -d postgres` and check `docker compose ps`. |
+
 ## Database migrations
 
 Migrations are TypeORM classes in `src/migrations/`, run through the CLI data source `src/database/public.datasource.ts`. That data source:
 
-- **Env:** loads the same env files as the app, `.env` and then `.env.${NODE_ENV}`. Variables already set in the shell win, so `DB_NAME=other npm run db:migrate` works.
+- **Env:** loads the same env files as the app (see [Environment](#environment)). Variables already set in the shell win, so `DB_NAME=other npm run db:migrate` works.
 - **Role:** connects as the owner (`DB_USERNAME`), so it bypasses RLS.
 - **Tracking:** records applied migrations in the `migrations` table.
 
@@ -163,7 +252,7 @@ npm run db:rollback                             # undo the last applied migratio
 
 ### Workflow for a schema change
 
-1. Point your DB at the latest migrations, not at sync: set `DB_SYNC=false` in `.env.development`, then run `npm run db:migrate`. With `DB_SYNC=true` the app has already applied your entity changes, so `db:generate` finds nothing to diff.
+1. Point your DB at the latest migrations, not at sync: set `DB_SYNC=false` in your env file, then run `npm run db:migrate`. With `DB_SYNC=true` the app has already applied your entity changes, so `db:generate` finds nothing to diff.
 2. Change the entity.
 3. Run `npm run db:generate -- src/migrations/<PascalCaseName>`, then read the generated SQL. TypeORM sometimes drops and recreates a column where you meant a rename. Fix that by hand to keep the data.
 4. Run `npm run db:migrate`, check the app, and confirm `npm run db:rollback` works too.
@@ -247,15 +336,3 @@ npm run db:seed:core    # platform user accounts
 2. Register it in the `SEEDERS` map in `run-seed.ts`.
 3. Add `"db:seed:<name>": "ts-node src/database/seeds/run-seed.ts <name>"` to `package.json`.
 4. Tenanted data must set `orgId` explicitly, because the owner connection bypasses RLS and the tenant repository scoping. Reuse the existing provisioning code where it fits, for example `RbacSeederService.seedSystemRoles(manager, orgId)` for an org's system roles.
-
-### Fresh local database, end to end
-
-```bash
-docker compose up -d        # from the repo root
-cd backend
-npm run db:migrate          # with DB_SYNC=false
-npm run db:seed:core
-npm run start:dev
-```
-
-Then log in on the platform with `admin@biprodas.dev` / `sadmin@123` (`POST /api/platform/auth/login`).

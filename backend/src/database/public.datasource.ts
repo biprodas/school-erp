@@ -1,6 +1,7 @@
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { DataSource, DataSourceOptions } from 'typeorm';
+import { envFilePaths } from '../config/env-files';
 import {
   INVALID_WHERE_VALUES_BEHAVIOR,
   PUBLIC_SCHEMA,
@@ -11,12 +12,11 @@ import {
  * the owner role, like the app's root connection, and is never imported by
  * the Nest app.
  *
- * Env files are loaded the same way as `ConfigModule` in `app.module.ts`:
- * `.env`, then `.env.${NODE_ENV}`. Values that are already set (shell, or an
- * earlier file) win.
+ * Env files are loaded the same way as `ConfigModule` in `app.module.ts`
+ * (`envFilePaths`). Values that are already set (shell, or an earlier file)
+ * win.
  */
-const nodeEnv = process.env.NODE_ENV ?? 'development';
-for (const file of ['.env', `.env.${nodeEnv}`]) {
+for (const file of envFilePaths()) {
   const path = resolve(process.cwd(), file);
   if (existsSync(path)) process.loadEnvFile(path);
 }

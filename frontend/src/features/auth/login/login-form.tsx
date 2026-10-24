@@ -11,6 +11,10 @@ import { toast } from "sonner"
 import { z } from "zod"
 import { resolveTenantLanding } from "~/constants";
 import { signInWithCredentials } from "~/features/auth/hooks"
+import {
+  safeCallbackUrl,
+  signInErrorMessage,
+} from "~/features/auth/sign-in-errors"
 import { resolveClientTenantSlug } from "~/lib/tenant"
 import { Button } from "~/components/ui/button"
 import {
@@ -35,9 +39,7 @@ const loginSchema = z.object({
     .string()
     .min(1, "Email is required")
     .email("Enter a valid email"),
-  password: z
-    .string()
-    .min(8, "Password must be at least 8 characters"),
+  password: z.string().min(1, "Password is required"),
 })
 
 type LoginFormValues = z.infer<typeof loginSchema>
@@ -88,13 +90,13 @@ export const LoginForm = () => {
     )
 
     if (!result || result.error) {
-      toast.error("Invalid email or password")
+      toast.error(signInErrorMessage(result?.code))
       return
     }
 
     // Honor an explicit callbackUrl; otherwise land the user on the surface
     // their role belongs to (students → student area, staff → dashboard).
-    const callbackUrl = searchParams.get("callbackUrl")
+    const callbackUrl = safeCallbackUrl(searchParams.get("callbackUrl"))
     const target =
       callbackUrl ||
       resolveTenantLanding((await getSession())?.user?.roles)

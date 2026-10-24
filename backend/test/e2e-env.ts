@@ -2,8 +2,9 @@ import { config } from 'dotenv';
 import { resolve } from 'path';
 
 /**
- * Loads `.env.development` and points the e2e run at its own database, so
- * tests that hit Postgres never touch dev data:
+ * Loads `.env.local` and `.env.development` (an earlier file wins) and points
+ * the e2e run at its own database, so tests that hit Postgres never touch dev
+ * data:
  *
  * - `DB_NAME` becomes `<DB_NAME>_e2e` (override with `E2E_DB_NAME`).
  * - The tenant pool connects as a restricted app role (default
@@ -15,10 +16,12 @@ import { resolve } from 'path';
  */
 export function loadE2eEnv(): void {
   const { parsed } = config({
-    path: resolve(__dirname, '..', '.env.development'),
+    path: ['.env.local', '.env.development'].map((file) =>
+      resolve(__dirname, '..', file),
+    ),
   });
 
-  // Derived from the file (not process.env), so running this again in the
+  // Derived from the files (not process.env), so running this again in the
   // same Jest worker doesn't stack the suffix.
   const baseName = parsed?.DB_NAME ?? 'school_erp';
   process.env.DB_NAME = process.env.E2E_DB_NAME ?? `${baseName}_e2e`;

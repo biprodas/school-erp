@@ -38,7 +38,7 @@ The frontend has no test runner.
 
 CI (`.github/workflows/ci.yml`) runs on every PR and push to `main`: backend format/lint/typecheck/unit/build, backend e2e against Postgres 17 + Redis service containers (`--runInBand`), and the frontend build. A test that checks cross-school isolation carries `[tenant-isolation]` in its `describe`/`it` name; the grading and fee regression suites use `[gpa-regression]` / `[fee-regression]`. CI also checks `dist/main.js` exists and runs `npm audit --omit=dev --audit-level=high`. `doc/release-checklist.md` maps each PRD 11.5 criterion to its suite or check; `doc/operations.md` is the runbook (monitoring, backups and restore, pilot onboarding).
 
-Local env: the backend reads `.env` and then `.env.${NODE_ENV}` (`.env.development` by default), validated by Joi in `src/config/env.validation.ts`. Mail defaults to Mailpit on `localhost:1025`. `CORS_ORIGIN` is required in production and accepts `https://*.example.com` entries for tenant subdomains (`src/config/cors.ts`). Tenant subdomains use `lvh.me` in dev (e.g. `http://acme.lvh.me:3000`). See `backend/.env.example` and `frontend/.env.example`.
+Local env: the backend reads `.env.local` (not under `NODE_ENV=test`), `.env`, then `.env.${NODE_ENV}` (`.env.development` by default), earlier files winning (`src/config/env-files.ts`), validated by Joi in `src/config/env.validation.ts`. Mail defaults to Mailpit on `localhost:1025`. `CORS_ORIGIN` is required in production and accepts `https://*.example.com` entries for tenant subdomains (`src/config/cors.ts`). Tenant subdomains use `lvh.me` in dev (e.g. `http://acme.lvh.me:3000`). See `backend/.env.example` and `frontend/.env.example`.
 
 ## Backend architecture
 

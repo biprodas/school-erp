@@ -46,4 +46,5 @@ export type {
   GoogleConfig,
 } from './config.types';
 export { validateEnv, envValidationSchema } from './env.validation';
+export { envFilePaths } from './env-files';
 export { setupSwagger } from './swagger.setup';

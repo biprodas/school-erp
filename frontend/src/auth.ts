@@ -1,9 +1,31 @@
-import NextAuth from "next-auth";
+import NextAuth, { CredentialsSignin } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { authConfig } from "~/auth.config";
 import { AUTH_ENDPOINTS, apiConfig } from "~/config/api-config";
-import { backendPost } from "~/lib/api/backend";
+import { BackendError, backendPost } from "~/lib/api/backend";
+import {
+  isSignInErrorCode,
+  type SignInErrorCode,
+} from "~/features/auth/sign-in-errors";
 import type { PlatformAuthData, TenantAuthData } from "~/types/api";
+
+/**
+ * A failed credentials sign-in. Auth.js hands `code` back to `signIn()` as
+ * `result.code`, which the login forms turn into a message.
+ */
+class SignInFailed extends CredentialsSignin {
+  constructor(code: SignInErrorCode) {
+    super();
+    this.code = code;
+  }
+}
+
+/** Maps a failed backend call to the code the login form shows. */
+function signInErrorCode(err: unknown): SignInErrorCode {
+  if (!(err instanceof BackendError)) return "SERVER_UNAVAILABLE";
+  if (err.status >= 500) return "SERVER_UNAVAILABLE";
+  return isSignInErrorCode(err.code) ? err.code : "INVALID_CREDENTIALS";
+}
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -45,7 +67,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           };
         } catch (err) {
           console.error("tenant-credentials authorize failed:", err);
-          return null;
+          throw new SignInFailed(signInErrorCode(err));
         }
       },
     }),
@@ -82,7 +104,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           };
         } catch (err) {
           console.error("handoff authorize failed:", err);
-          return null;
+          throw new SignInFailed(signInErrorCode(err));
         }
       },
     }),
@@ -114,7 +136,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           };
         } catch (err) {
           console.error("platform-credentials authorize failed:", err);
-          return null;
+          throw new SignInFailed(signInErrorCode(err));
         }
       },
     }),

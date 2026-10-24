@@ -79,8 +79,10 @@ services:
       redis:
         condition: service_healthy
 
+  # MinIO no longer publishes minio/minio or minio/mc images; pgsty builds them
+  # from the upstream source (same binaries, commands and env vars).
   minio:
-    image: minio/minio:latest
+    image: pgsty/minio:latest
     restart: unless-stopped
     command: ['server', '/data', '--console-address', ':9001']
     environment:
@@ -99,7 +101,7 @@ services:
 
   # One-shot: creates the app bucket (private) and exits.
   minio-init:
-    image: minio/mc:latest
+    image: pgsty/mc:latest
     depends_on:
       minio:
         condition: service_healthy

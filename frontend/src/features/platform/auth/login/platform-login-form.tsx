@@ -10,6 +10,10 @@ import { toast } from "sonner"
 import { z } from "zod"
 import { ROUTES } from "~/constants";
 import { signInWithCredentials } from "~/features/auth/hooks"
+import {
+  safeCallbackUrl,
+  signInErrorMessage,
+} from "~/features/auth/sign-in-errors"
 import { Button } from "~/components/ui/button"
 import {
   Card,
@@ -30,7 +34,7 @@ import { cn } from "~/lib/utils"
 
 const loginSchema = z.object({
   email: z.string().min(1, "Email is required").email("Enter a valid email"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
+  password: z.string().min(1, "Password is required"),
 })
 
 type LoginFormValues = z.infer<typeof loginSchema>
@@ -49,12 +53,13 @@ export const PlatformLoginForm = () => {
     const result = await signInWithCredentials("platform", values)
 
     if (!result || result.error) {
-      toast.error("Invalid email or password")
+      toast.error(signInErrorMessage(result?.code))
       return
     }
 
     const callbackUrl =
-      searchParams.get("callbackUrl") || ROUTES.PLATFORM_LOGIN_REDIRECT
+      safeCallbackUrl(searchParams.get("callbackUrl")) ??
+      ROUTES.PLATFORM_LOGIN_REDIRECT
 
     toast.success("Welcome back")
     router.push(callbackUrl)
