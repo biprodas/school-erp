@@ -87,6 +87,14 @@ describe('AccessScope', () => {
       expect(teaching.activeAssignmentsForUser).toHaveBeenCalledWith('u1');
     });
 
+    it('reaches only class-teacher sections for home-section actions', async () => {
+      const scope = build({ [P.STUDENT_LEAVES_APPROVE]: RoleScope.ASSIGNED });
+
+      await expect(
+        scope.homeSections(P.STUDENT_LEAVES_APPROVE),
+      ).resolves.toEqual(['s6A']);
+    });
+
     it('checks one section by id', async () => {
       const scope = build({ [P.STUDENTS_READ]: RoleScope.ASSIGNED });
 

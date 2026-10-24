@@ -6,6 +6,7 @@ import { NCTB_TEMPLATE } from './curriculum/nctb';
 export * from './curriculum/curriculum-template';
 export * from './grading';
 export * from './fee-heads';
+export * from './holidays';
 
 /** Curriculum templates by code. */
 export const CURRICULUM_TEMPLATES: readonly CurriculumTemplate[] = [

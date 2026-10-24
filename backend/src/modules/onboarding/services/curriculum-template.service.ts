@@ -4,6 +4,8 @@ import { MAX_PAGE_SIZE } from '~/common/dto/pagination-query.dto';
 import { TENANT_DATASOURCE } from '~/tenancy/tenancy.constants';
 import { TenantDataSourceProxy } from '~/tenancy/tenant-datasource.proxy';
 import {
+  BD_FIXED_HOLIDAYS,
+  BD_MOVABLE_HOLIDAYS,
   CURRICULUM_TEMPLATES,
   DEFAULT_FEE_HEADS,
   GRADING_TEMPLATES,
@@ -85,6 +87,12 @@ export class CurriculumTemplateService {
       })),
       grading: GRADING_TEMPLATES.map((t) => ({ ...t, applicable: false })),
       feeHeads: { items: DEFAULT_FEE_HEADS, applicable: false },
+      holidays: {
+        code: 'bd',
+        fixed: BD_FIXED_HOLIDAYS,
+        movable: BD_MOVABLE_HOLIDAYS,
+        applicable: true,
+      },
     };
   }
 

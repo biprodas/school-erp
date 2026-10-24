@@ -44,6 +44,7 @@ describe('PromotionService (draft)', () => {
       {} as never,
       {} as never,
       {} as never,
+      {} as never,
       { current: () => ({ userId: 'u-1' }) } as never,
       fakeTenantDataSource(),
     );

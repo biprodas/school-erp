@@ -158,6 +158,11 @@ export class EnrollmentService {
   }
 
   /** The student's enrollment in a session, if any. */
+  /** Enrollments by id with student, class and section (reports). */
+  findByIds(ids: string[]): Promise<StudentEnrollment[]> {
+    return this.enrollmentRepo.findByIds(ids);
+  }
+
   findForStudentYear(
     studentId: string,
     academicYearId: string,

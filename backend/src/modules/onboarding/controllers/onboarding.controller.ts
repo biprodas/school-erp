@@ -13,6 +13,8 @@ import { JwtAuthGuard } from '~/modules/auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '~/modules/rbac/guards/permissions.guard';
 import { RequirePermissions } from '~/modules/rbac/decorators/require-permissions.decorator';
 import { PERMISSIONS } from '~/modules/rbac/permissions.catalog';
+import { HolidayService } from '~/modules/holidays/holiday.service';
+import { ApplyHolidayTemplateDto } from '~/modules/holidays/dto/apply-holiday-template.dto';
 import { ApplyTemplateDto } from '../dto/onboarding.dto';
 import { OnboardingService } from '../services/onboarding.service';
 import { CurriculumTemplateService } from '../services/curriculum-template.service';
@@ -27,6 +29,7 @@ export class OnboardingController {
   constructor(
     private readonly onboarding: OnboardingService,
     private readonly templates: CurriculumTemplateService,
+    private readonly holidays: HolidayService,
   ) {}
 
   @Get('checklist')
@@ -66,5 +69,17 @@ export class OnboardingController {
   @ResponseMessage('Template applied')
   applyCurriculum(@Param('code') code: string, @Body() dto: ApplyTemplateDto) {
     return this.templates.applyCurriculum(code, dto.academicYearId);
+  }
+
+  /**
+   * Adds Bangladesh's fixed-date government holidays for a year
+   * (idempotent) and lists the moon-dependent ones to add by hand.
+   */
+  @Post('templates/holidays/bd/apply')
+  @HttpCode(200)
+  @RequirePermissions(PERMISSIONS.ONBOARDING_MANAGE)
+  @ResponseMessage('Template applied')
+  applyHolidays(@Body() dto: ApplyHolidayTemplateDto) {
+    return this.holidays.applyBdTemplate(dto.year);
   }
 }

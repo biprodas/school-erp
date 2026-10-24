@@ -181,6 +181,32 @@ export const PERMISSIONS = {
   /** Commit and roll back a promotion batch. */
   PROMOTIONS_COMMIT: 'promotions:commit',
 
+  // Student attendance (PRD 6.7)
+  /** Rosters, submission status and attendance reports (scope applies). */
+  ATTENDANCE_READ: 'attendance:read',
+  /** Submit a section's register (scope applies). */
+  ATTENDANCE_TAKE: 'attendance:take',
+  /** Write registers older than the lock window. */
+  ATTENDANCE_EDIT_LOCKED: 'attendance:edit_locked',
+
+  // The school's own attendance statuses (the five system ones are fixed)
+  ATTENDANCE_STATUSES_CREATE: 'attendance_statuses:create',
+  ATTENDANCE_STATUSES_UPDATE: 'attendance_statuses:update',
+  ATTENDANCE_STATUSES_DELETE: 'attendance_statuses:delete',
+
+  // Holiday calendar
+  HOLIDAYS_READ: 'holidays:read',
+  HOLIDAYS_CREATE: 'holidays:create',
+  HOLIDAYS_UPDATE: 'holidays:update',
+  HOLIDAYS_DELETE: 'holidays:delete',
+
+  // Student leave requests
+  STUDENT_LEAVES_READ: 'student_leaves:read',
+  /** Enter a request on a guardian's behalf. */
+  STUDENT_LEAVES_CREATE: 'student_leaves:create',
+  /** Approve or reject (class teachers: their own sections). */
+  STUDENT_LEAVES_APPROVE: 'student_leaves:approve',
+
   // Custom domains (Settings → Domain)
   DOMAINS_READ: 'domains:read',
   DOMAINS_MANAGE: 'domains:manage',

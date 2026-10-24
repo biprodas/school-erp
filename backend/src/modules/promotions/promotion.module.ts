@@ -3,6 +3,7 @@ import { RbacModule } from '~/modules/rbac/rbac.module';
 import { AcademicYearModule } from '~/modules/academic-years/academic-year.module';
 import { ClassModule } from '~/modules/classes/class.module';
 import { EnrollmentModule } from '~/modules/enrollments/enrollment.module';
+import { AttendanceModule } from '~/modules/attendance/attendance.module';
 import { JobModule } from '~/modules/jobs/job.module';
 import { SectionModule } from '~/modules/sections/section.module';
 import { StudentModule } from '~/modules/students/student.module';
@@ -21,6 +22,7 @@ import { PromotionService } from './services/promotion.service';
     ClassModule,
     SectionModule,
     JobModule,
+    AttendanceModule,
   ],
   controllers: [PromotionController],
   providers: [

@@ -53,6 +53,15 @@ export class AccessScope {
     ];
   }
 
+  /**
+   * Like `sections`, but only those the user is class teacher of: for
+   * actions that belong to the class teacher (approving a student's leave).
+   */
+  async homeSections(key: PermissionKey): Promise<string[] | null> {
+    const assigned = await this.assignedFor(key);
+    return assigned === null ? null : [...new Set(assigned.sections)];
+  }
+
   /** Subjects (per section) reachable with `key`. */
   async subjectAssignments(
     key: PermissionKey,

@@ -36,6 +36,9 @@ import { AccessScopeModule } from '~/modules/access-scope/access-scope.module';
 import { TimetableModule } from '~/modules/timetable/timetable.module';
 import { PromotionModule } from '~/modules/promotions/promotion.module';
 import { JobModule } from '~/modules/jobs/job.module';
+import { HolidayModule } from '~/modules/holidays/holiday.module';
+import { DomainEventModule } from '~/modules/domain-events/domain-event.module';
+import { AttendanceModule } from '~/modules/attendance/attendance.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { configLoaders, envValidationSchema, ThrottleConfig } from '~/config';
@@ -128,6 +131,9 @@ const envFilePath = ['.env', `.env.${nodeEnv}`];
     TimetableModule,
     PromotionModule,
     JobModule,
+    HolidayModule,
+    DomainEventModule,
+    AttendanceModule,
     FileModule,
     NumberingModule,
     IdempotencyModule,

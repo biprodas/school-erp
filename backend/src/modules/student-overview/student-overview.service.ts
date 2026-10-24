@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { AttendanceReportService } from '~/modules/attendance/services/attendance-report.service';
 import { EnrollmentService } from '~/modules/enrollments/services/enrollment.service';
 import { StudentEnrollmentStatus } from '~/modules/enrollments/enums/student-enrollment-status.enum';
 import { GuardianService } from '~/modules/guardians/services/guardian.service';
@@ -14,13 +15,15 @@ export interface OverviewAccess {
   notes: boolean;
   sensitiveNotes: boolean;
   guardians: boolean;
+  attendance: boolean;
 }
 
 /**
  * The student 360 view (PRD 6.6): profile, current placement, enrollment
  * history, guardians, documents and notes at a glance. Health shows only
  * with `student_medical:read` (and is audited like any health read).
- * Attendance, results and fees join as M4–M6 land.
+ * Attendance shows the current session so far (with `attendance:read`);
+ * results and fees join as M5–M6 land.
  */
 @Injectable()
 export class StudentOverviewService {
@@ -31,6 +34,7 @@ export class StudentOverviewService {
     private readonly medical: StudentMedicalRecordService,
     private readonly documents: StudentDocumentService,
     private readonly notes: StudentNoteService,
+    private readonly attendance: AttendanceReportService,
   ) {}
 
   async overview(studentId: string, access: OverviewAccess) {
@@ -64,8 +68,11 @@ export class StudentOverviewService {
             ),
           }
         : null,
-      // Filled in by attendance (M4), results (M5) and fees (M6).
-      attendance: null,
+      attendance:
+        access.attendance && current
+          ? await this.attendance.enrollmentSummary(current.id)
+          : null,
+      // Filled in by results (M5) and fees (M6).
       results: null,
       fees: null,
     };

@@ -43,6 +43,7 @@ export class StudentOverviewController {
         PERMISSIONS.STUDENT_NOTES_READ_SENSITIVE,
       ),
       guardians: await this.scope.can(PERMISSIONS.GUARDIANS_READ),
+      attendance: await this.scope.can(PERMISSIONS.ATTENDANCE_READ),
     });
   }
 }

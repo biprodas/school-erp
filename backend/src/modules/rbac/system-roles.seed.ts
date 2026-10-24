@@ -86,6 +86,14 @@ const STUDENTS_READ: PermissionKey[] = [
   P.STUDENT_SUBJECTS_READ,
 ];
 
+/** Taking attendance in assigned sections (Teacher, Class teacher: W). */
+const ATTENDANCE_MARKING: PermissionKey[] = [
+  P.ATTENDANCE_READ,
+  P.ATTENDANCE_TAKE,
+  P.HOLIDAYS_READ,
+  P.STUDENT_LEAVES_READ,
+];
+
 /** HR directory, read-only (Principal: R). */
 const HR_READ: PermissionKey[] = [
   P.DEPARTMENTS_READ,
@@ -150,6 +158,14 @@ export const SYSTEM_ROLES: SystemRoleSeed[] = [
       P.PROMOTIONS_READ,
       P.PROMOTIONS_CREATE,
       P.PROMOTIONS_COMMIT,
+      ...ATTENDANCE_MARKING,
+      P.ATTENDANCE_EDIT_LOCKED,
+      P.ATTENDANCE_STATUSES_CREATE,
+      P.ATTENDANCE_STATUSES_UPDATE,
+      P.HOLIDAYS_CREATE,
+      P.HOLIDAYS_UPDATE,
+      P.STUDENT_LEAVES_CREATE,
+      P.STUDENT_LEAVES_APPROVE,
       ...HR_READ,
     ],
   },
@@ -174,6 +190,7 @@ export const SYSTEM_ROLES: SystemRoleSeed[] = [
       P.STUDENT_DOCUMENTS_READ,
       P.STUDENT_NOTES_READ,
       P.GUARDIANS_READ,
+      ...ATTENDANCE_MARKING,
     ],
   },
   {
@@ -193,6 +210,9 @@ export const SYSTEM_ROLES: SystemRoleSeed[] = [
       P.STUDENT_NOTES_UPDATE,
       P.GUARDIANS_READ,
       P.GUARDIANS_UPDATE,
+      ...ATTENDANCE_MARKING,
+      P.STUDENT_LEAVES_CREATE,
+      P.STUDENT_LEAVES_APPROVE,
     ],
   },
   {
@@ -227,7 +247,14 @@ export const SYSTEM_ROLES: SystemRoleSeed[] = [
     description:
       'Managing committee: read-only settings, academic setup and reports',
     scope: RoleScope.SCHOOL,
-    permissions: [P.SETTINGS_READ, P.DOMAINS_READ, ...ACADEMIC_SETUP_READ],
+    // Attendance summaries reach them through the dashboards (M7): rosters
+    // and registers name individual students.
+    permissions: [
+      P.SETTINGS_READ,
+      P.DOMAINS_READ,
+      ...ACADEMIC_SETUP_READ,
+      P.HOLIDAYS_READ,
+    ],
   },
   {
     name: STUDENT_ROLE_NAME,

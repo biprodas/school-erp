@@ -15,7 +15,7 @@
 - This is a starting plan, not a fixed spec. When implementation shows a better way, change the code and update this doc to match.
 - Items marked **(1b)** are listed only so Phase 1a leaves room for them; they are tracked in section 14.
 
-**Current state:** M0 in progress (4.1–4.7 done; DB-backed checks wait for the local database or the first CI run). M1 implemented (2026-10-23) except the sample-data mode and the grading, holiday and fee-head template "apply" steps, which wait for M5, M4 and M6; its e2e specs pass against Postgres 18. M2 and M3 implemented (2026-10-24). Section 1 lists what already exists and can be reused.
+**Current state:** M0 in progress (4.1–4.7 done; DB-backed checks wait for the local database or the first CI run). M1 implemented (2026-10-23) except the sample-data mode and the grading, holiday and fee-head template "apply" steps, which wait for M5, M4 and M6; its e2e specs pass against Postgres 18. M2, M3 and M4 implemented (2026-10-24; M4 waits on the portal leave endpoint from M7 and a check of the register PDF against a paper one). Section 1 lists what already exists and can be reused.
 
 ---
 
@@ -311,7 +311,7 @@ Migration `1792340000000-PlatformAndOnboarding` holds every schema change below 
   - [x] Cambridge (Year 1–11, IGCSE/O Level codes, Science/Commerce groups)
   - [x] Alia madrasa (Ebtedayee and Dakhil, Science/General groups)
   - [ ] Grading templates (BD GPA 5.0 and the others in M5). *BD GPA 5.0 is defined and listed; applying it arrives with grading systems in M5.*
-  - [ ] BD government holidays for the year. *Not written: holidays arrive in M4, and the lunar-calendar dates need confirming each year.*
+  - [x] BD government holidays for the year. *M4: the six fixed-date ones (`POST /onboarding/templates/holidays/bd/apply`); the lunar-calendar ones are listed for the school to date each year.*
   - [ ] Default fee heads. *Defined and listed; applying them arrives with fees in M6.*
   - *The subject lists were written from the published syllabi and should be reviewed by someone who runs a school before the pilot.*
 - [x] `POST /public/find-school { email }`: always 202; enqueues a `mail` job that lists every operational school with an ACTIVE membership, each linking to `https://<host>/login?identifier=…` (the primary verified custom domain, else the subdomain); nothing is sent to unknown addresses; rate-limited per IP (10/min) and per recipient (3/hour, in memory per process). Phone input **(1b)**.
@@ -443,7 +443,7 @@ Migration `1792340000000-PlatformAndOnboarding` holds every schema change below 
   - [x] `POST /promotions/batches` builds the draft (outcome from the published combined result when it exists, else promote) and computes rolls and sections; `GET` is the preview. *No results yet (M5): everyone is promoted, merit uses the old roll. The next class is the next level up; the final class graduates. Same-name sections, or spread evenly with `shuffleSections`.*
   - [x] `PATCH /promotions/batches/:id/items/:itemId` for manual overrides.
   - [x] `POST /promotions/batches/:id/commit` (job, one transaction): create next-year enrollments, mark old ones `promoted`/`completed`, graduate the final class. *`promotions:commit`; refused (`PROMOTION_NOT_READY`) while a student has no section, a roll repeats or someone is already enrolled.*
-  - [x] `POST /promotions/batches/:id/rollback` within 24 hours, only if nothing references the new enrollments. *Checks subject choices and transfers; attendance and marks (M4/M5) add theirs.*
+  - [x] `POST /promotions/batches/:id/rollback` within 24 hours, only if nothing references the new enrollments. *Checks subject choices, transfers and attendance (M4); marks (M5) add theirs.*
   - [x] Migration drops `student_promotions` (moving any rows into a closed legacy batch).
 
 ### 7.4 Excel import (PRD 6.2)
@@ -467,7 +467,7 @@ Migration `1792340000000-PlatformAndOnboarding` holds every schema change below 
 - [x] One fixed PDF layout per certificate type, with a QR code to `https://<host>/verify/<token>`. *`POST /certificates/:id/pdf` (job); a revoked one prints a REVOKED stamp.*
 - [x] `GET /public/certificates/verify/:token` returns name, type, issue date and status only.
 - [x] ID cards: one fixed layout, bulk PDF per section with photo and QR; `students.rfid_card_no` column. *`POST /sections/:id/id-cards` (`id_cards:print`); the QR holds the student ID.*
-- [x] `GET /students/:id/overview` (student 360): profile, enrollment, guardians; attendance, results and fees summaries added as M4–M6 land. *Each part appears only with its permission.*
+- [x] `GET /students/:id/overview` (student 360): profile, enrollment, guardians; attendance, results and fees summaries added as M4–M6 land. *Each part appears only with its permission. Attendance (the current session so far) landed with M4.*
 
 ### Done when
 
@@ -483,44 +483,48 @@ Migration `1792340000000-PlatformAndOnboarding` holds every schema change below 
 
 **Scope:** PRD 6.7 student attendance, online only (offline sync and alerts are 1b).
 
+*Implemented 2026-10-24. Migration `1792370000000-AttendanceAndLeave` ran (up, down, up) on the migrated M3 schema, and `db:generate` finds no drift. Unit suites and `test/attendance.e2e-spec.ts` pass against Postgres 18 with RLS on, headless Chrome for the register PDF.*
+
 ### 8.1 Model
 
-- [ ] `holidays (date_from, date_to, name, type public|school|religious, applies_to all|class ids)`; the BD template from M1 applies.
-- [ ] `attendance_statuses (code, label_en, label_bn, counts_as present|absent|late|leave|half_day, is_system, sort_order)`, seeded with Present, Absent, Late, Leave, Half-day.
-- [ ] `attendance_registers (section_id, date, period_id nullable, taken_by, submitted_at, client_request_id)`, unique `(org_id, section_id, date, coalesce(period_id))`.
-- [ ] `attendance_records (register_id, enrollment_id, status_code, remark, updated_by, updated_at)`, unique `(register_id, enrollment_id)`.
-- [ ] `attendance_corrections (record_id, old_status, new_status, changed_by, changed_at, reason, source manual|sync_overwrite)`.
+- [x] `holidays (date_from, date_to, name, type public|school|religious, applies_to all|class ids)`; the BD template from M1 applies. *`class_ids uuid[]`, empty = the whole school; unique `(org_id, name, date_from)`. `POST /onboarding/templates/holidays/bd/apply { year? }` adds the six fixed-date government holidays idempotently and returns the moon-dependent ones (`toConfirm`) for the school to add once announced. CRUD on `/holidays`.*
+- [x] `attendance_statuses (code, label_en, label_bn, counts_as present|absent|late|leave|half_day, is_system, sort_order)`, seeded with Present, Absent, Late, Leave, Half-day. *The five system statuses are code-defined (`SYSTEM_STATUSES`, like the permission catalog), so nothing is seeded per school; the table holds the school's own (`symbol` for the register grid, `is_active`; delete only while unused, `STATUS_IN_USE`). `GET /attendance/statuses` returns both.*
+- [x] `attendance_registers (section_id, date, period_id nullable, taken_by, submitted_at, client_request_id)`, unique `(org_id, section_id, date, coalesce(period_id))`. *Two partial unique indexes (day: `period_id IS NULL`; period). A register exists once submitted.*
+- [x] `attendance_records (register_id, enrollment_id, status_code, remark, updated_by, updated_at)`, unique `(register_id, enrollment_id)`. *One row per student on the roster, not only the exceptions, so reports are plain counts. An enrollment with records can't be deleted (409).*
+- [x] `attendance_corrections (record_id, old_status, new_status, changed_by, changed_at, reason, source manual|sync_overwrite)`. *Plus `leave_approval`.*
 
 ### 8.2 Marking
 
-- [ ] `GET /attendance/sections/:sectionId?date=`: roster of active enrollments on that date with current statuses, defaulting to Present.
-- [ ] `PUT /attendance/sections/:sectionId?date=`: exceptions only, `Idempotency-Key`, one-transaction bulk upsert (< 1 s for 50 students).
-- [ ] Rejected on holidays and weekend days (`ATTENDANCE_HOLIDAY`).
-- [ ] Rejected outside the user's scope (`attendance:take`, assigned sections).
-- [ ] Changes to submitted records require a reason and write a correction.
-- [ ] Records older than the lock window require `attendance:edit_locked`.
-- [ ] `GET /attendance/submission-status?date=` lists sections not yet submitted.
-- [ ] Domain event `attendance.submitted` recorded for the 1b absentee-alert job; nothing is sent in 1a.
+- [x] `GET /attendance/sections/:sectionId?date=`: roster of active enrollments on that date with current statuses, defaulting to Present. *Active enrollments now, plus anyone already recorded in the register; Leave by default for approved leave. Shows `dayOff` (holiday/weekend), `locked` and the register.*
+- [x] `PUT /attendance/sections/:sectionId?date=`: exceptions only, `Idempotency-Key`, one-transaction bulk upsert (< 1 s for 50 students). *Register row-locked (`INSERT … ON CONFLICT DO NOTHING` then `FOR UPDATE`), so concurrent submits queue. Unlisted students keep their status on a taken register. 50 students save in well under a second in e2e.*
+- [x] Rejected on holidays and weekend days (`ATTENDANCE_HOLIDAY`). *Also future days (`ATTENDANCE_FUTURE_DATE`) and days outside the section's session (`DATE_OUTSIDE_SESSION`).*
+- [x] Rejected outside the user's scope (`attendance:take`, assigned sections). *404, like the other scoped single-section endpoints.*
+- [x] Changes to submitted records require a reason and write a correction. *`CORRECTION_REASON_REQUIRED` (nothing written); one `attendance.corrected` audit row per submission. `GET /attendance/sections/:id/corrections?date=` lists them.*
+- [x] Records older than the lock window require `attendance:edit_locked`. *`ATTENDANCE_LOCKED` (403); with `lockAfterDays` 7, today and the 7 days before stay open. Applies to first submissions too.*
+- [x] `GET /attendance/submission-status?date=` lists sections not yet submitted. *Every active section of the session (scope applies) as `submitted`, `pending` or `holiday`, with totals.*
+- [x] Domain event `attendance.submitted` recorded for the 1b absentee-alert job; nothing is sent in 1a. *New outbox table `domain_events` (`DomainEventService.record`, same transaction); payload has the absent enrollments.*
+- *Period mode: `?periodId=` is required when `attendance.mode` is `period` (`PERIOD_REQUIRED`) and refused in day mode (`PERIOD_MODE_OFF`). A student's day status in reports is the day register, or the first period taken that day.*
 
 ### 8.3 Student leave
 
-- [ ] `student_leave_requests (enrollment_id, from_date, to_date, reason, attachment_file_id, status pending|approved|rejected, applied_by_user_id, decided_by, decided_at)`.
-- [ ] Guardians apply through `/portal` (M7); the class teacher (scope) approves or rejects.
-- [ ] Approval pre-fills Leave in the registers for those dates; overwriting it with Absent needs a correction.
+- [x] `student_leave_requests (enrollment_id, from_date, to_date, reason, attachment_file_id, status pending|approved|rejected, applied_by_user_id, decided_by, decided_at)`. *Plus `student_id`, `decision_note` and `cancelled`; overlapping open requests are refused (`LEAVE_OVERLAPS`). Attachment: `POST /student-leaves/:id/attachment` (image or PDF).*
+- [ ] Guardians apply through `/portal` (M7); the class teacher (scope) approves or rejects. *Staff side done: `/student-leaves` (list, create on a guardian's behalf, approve, reject, cancel). Deciding needs `student_leaves:approve` and, for assigned-scope roles, being the section's class teacher (`AccessScope.homeSections`; else 403 `NOT_CLASS_TEACHER`). The portal endpoint arrives with M7 and calls `StudentLeaveService.create`.*
+- [x] Approval pre-fills Leave in the registers for those dates; overwriting it with Absent needs a correction. *Registers already taken get Leave as `leave_approval` corrections; later ones default to Leave, and anything else then needs a reason.*
 
 ### 8.4 Reports
 
-- [ ] Daily summary by class and section.
-- [ ] Monthly register PDF in the paper register layout (A4/Legal landscape).
-- [ ] Defaulters below X%.
-- [ ] Late-comers.
-- [ ] Unit suite for summary and percentage math.
+- [x] Daily summary by class and section. *`GET /attendance/reports/daily?date=`: enrolled, submitted, counts and percentage per section, class and school.*
+- [x] Monthly register PDF in the paper register layout (A4/Legal landscape). *`GET /attendance/reports/monthly-register?sectionId&month` (grid as JSON) and `POST` (PDF job, `paper`); holidays and weekends shaded, daily present totals, signature lines.*
+- [x] Defaulters below X%. *`GET /attendance/reports/defaulters?threshold=75&from&to&classId&sectionId`.*
+- [x] Late-comers. *`GET /attendance/reports/late-comers?minLate=1&…`.*
+- [x] Unit suite for summary and percentage math. *`attendance-math.spec.ts`: late counts as present, a half-day as half, leave as a day not attended, one decimal.*
+- *All reports follow `attendance:read` scope. The student 360 view now carries the current session's attendance; promotion rollback is refused once a new enrollment has attendance.*
 
 ### Done when
 
-- [ ] The 1a acceptance criteria of PRD 6.7 pass in e2e: holiday block, lock, correction audit, scope, submission tracking.
-- [ ] Saving 50 students takes under 1 second on the performance seed.
-- [ ] The monthly register PDF matches the paper layout (checked against a sample register).
+- [x] The 1a acceptance criteria of PRD 6.7 pass in e2e: holiday block, lock, correction audit, scope, submission tracking.
+- [ ] Saving 50 students takes under 1 second on the performance seed. *Under a second in e2e; the performance seed itself is M8.*
+- [ ] The monthly register PDF matches the paper layout (checked against a sample register). *Renders; still to be compared with a school's paper register.*
 
 ---
 

@@ -60,6 +60,11 @@ export const AUDIT_ACTIONS = {
   IMPORT_COMMITTED: 'import.committed',
   DATA_EXPORTED: 'data.exported',
 
+  // Attendance and leave (PRD 6.7)
+  ATTENDANCE_CORRECTED: 'attendance.corrected',
+  STUDENT_LEAVE_APPROVED: 'student_leave.approved',
+  STUDENT_LEAVE_REJECTED: 'student_leave.rejected',
+
   // Sensitive data access (PRD 6.3). Recorded without the data itself.
   STUDENT_MEDICAL_VIEWED: 'student_medical.viewed',
   STUDENT_NOTE_SENSITIVE_VIEWED: 'student_note.sensitive_viewed',

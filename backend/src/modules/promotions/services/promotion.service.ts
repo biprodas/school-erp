@@ -12,6 +12,7 @@ import { RequestContext } from '~/shared/request-context/request-context.service
 import { TENANT_DATASOURCE } from '~/tenancy/tenancy.constants';
 import { TenantDataSourceProxy } from '~/tenancy/tenant-datasource.proxy';
 import { AcademicYearService } from '~/modules/academic-years/academic-year.service';
+import { AttendanceUsageService } from '~/modules/attendance/services/attendance-usage.service';
 import { AUDIT_ACTIONS } from '~/modules/audit/audit-actions';
 import { AuditService } from '~/modules/audit/services/audit.service';
 import type { ProvisionResult } from '~/modules/auth/services/invite.service';
@@ -85,6 +86,7 @@ export class PromotionService {
     private readonly enrollments: EnrollmentService,
     private readonly students: StudentService,
     private readonly jobs: JobService,
+    private readonly attendance: AttendanceUsageService,
     private readonly audit: AuditService,
     private readonly context: RequestContext,
     @Inject(TENANT_DATASOURCE) private readonly ds: TenantDataSourceProxy,
@@ -307,8 +309,8 @@ export class PromotionService {
   /**
    * Undoes a commit within 24 hours: the new enrollments go, the old ones
    * reopen, graduates get their status back. Refused once anything uses a
-   * new enrollment (subjects chosen, a transfer; attendance and marks from
-   * M4/M5 add theirs).
+   * new enrollment (subjects chosen, a transfer, attendance taken; marks
+   * from M5 add theirs).
    */
   rollback(id: string): Promise<PromotionPreview> {
     return this.ds
@@ -330,7 +332,8 @@ export class PromotionService {
           .filter((x): x is string => !!x);
         const used =
           (await this.enrollments.countSubjectChoices(created)) +
-          (await this.enrollments.countChanges(created));
+          (await this.enrollments.countChanges(created)) +
+          (await this.attendance.countForEnrollments(created));
         if (used > 0) {
           throw new ConflictException({
             message: 'The new enrollments are already in use',

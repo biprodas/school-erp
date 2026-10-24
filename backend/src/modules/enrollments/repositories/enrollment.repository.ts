@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { FindOptionsRelations, FindOptionsWhere } from 'typeorm';
+import { FindOptionsRelations, FindOptionsWhere, In } from 'typeorm';
 import { TENANT_DATASOURCE } from '~/tenancy/tenancy.constants';
 import { TenantDataSourceProxy } from '~/tenancy/tenant-datasource.proxy';
 import { BaseTenantRepository } from '~/tenancy/base-tenant.repository';
@@ -69,6 +69,15 @@ export class EnrollmentRepository extends BaseTenantRepository<StudentEnrollment
         status: StudentEnrollmentStatus.ACTIVE,
       },
       relations: { student: true, section: true },
+    });
+  }
+
+  /** Enrollments by id with student, class and section (reports). */
+  findByIds(ids: string[]): Promise<StudentEnrollment[]> {
+    if (!ids.length) return Promise.resolve([]);
+    return this.repo.find({
+      where: { id: In(ids) },
+      relations: { student: true, schoolClass: true, section: true },
     });
   }
 

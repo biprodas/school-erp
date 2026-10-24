@@ -15,6 +15,7 @@ import { SubjectGroupModule } from '~/modules/subject-groups/subject-group.modul
 import { ClassCurriculumModule } from '~/modules/class-curriculum/class-curriculum.module';
 import { EmployeeModule } from '~/modules/employees/employee.module';
 import { StudentModule } from '~/modules/students/student.module';
+import { HolidayModule } from '~/modules/holidays/holiday.module';
 import { OnboardingController } from './controllers/onboarding.controller';
 import { PublicFindSchoolController } from './controllers/public-find-school.controller';
 import { OnboardingService } from './services/onboarding.service';
@@ -40,6 +41,7 @@ import { FindSchoolService } from './services/find-school.service';
     ClassCurriculumModule,
     EmployeeModule,
     StudentModule,
+    HolidayModule,
   ],
   controllers: [OnboardingController, PublicFindSchoolController],
   providers: [OnboardingService, CurriculumTemplateService, FindSchoolService],

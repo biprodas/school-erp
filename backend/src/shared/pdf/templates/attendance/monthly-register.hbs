@@ -1,0 +1,70 @@
+<div class='head'>
+  <div class='school'>{{schoolName}}</div>
+  {{#if schoolNameBn}}<div class='serif school-bn'>{{schoolNameBn}}</div>{{/if}}
+  <div class='title'>Attendance Register · হাজিরা খাতা</div>
+  <table class='meta'><tr>
+      <td>Class: <b>{{className}}</b></td>
+      <td>Section: <b>{{sectionName}}</b></td>
+      <td>Session: <b>{{session}}</b></td>
+      <td>Month: <b>{{monthLabel}}</b></td>
+      <td>Working days: <b>{{workingDays}}</b></td>
+    </tr></table>
+</div>
+<table class='grid'>
+  <thead>
+    <tr>
+      <th rowspan='2' class='roll'>Roll</th>
+      <th rowspan='2' class='name'>Name of student</th>
+      {{#each days}}
+        <th class='day{{#if this.off}} off{{/if}}'>{{this.day}}</th>
+      {{/each}}
+      <th rowspan='2' class='sum'>P</th>
+      <th rowspan='2' class='sum'>A</th>
+      <th rowspan='2' class='sum'>L</th>
+      <th rowspan='2' class='sum'>LV</th>
+      <th rowspan='2' class='sum'>%</th>
+    </tr>
+    <tr>
+      {{#each days}}
+        <th class='wd{{#if this.off}} off{{/if}}'>{{this.weekday}}</th>
+      {{/each}}
+    </tr>
+  </thead>
+  <tbody>
+    {{#each students}}
+      <tr>
+        <td class='roll'>{{this.rollNo}}</td>
+        <td class='name'>{{this.name}}</td>
+        {{#each this.cells}}
+          <td
+            class='cell{{#if this.off}} off{{/if}}{{#if this.absent}} absent{{/if}}'
+          >{{this.text}}</td>
+        {{/each}}
+        <td class='sum'>{{this.attended}}</td>
+        <td class='sum'>{{this.absent}}</td>
+        <td class='sum'>{{this.late}}</td>
+        <td class='sum'>{{this.leave}}</td>
+        <td class='sum'>{{this.percentage}}</td>
+      </tr>
+    {{/each}}
+  </tbody>
+  <tfoot>
+    <tr>
+      <td colspan='2' class='name'><b>Present</b></td>
+      {{#each days}}
+        <td class='cell{{#if this.off}} off{{/if}}'>{{this.attendedText}}</td>
+      {{/each}}
+      <td colspan='5'></td>
+    </tr>
+  </tfoot>
+</table>
+<div class='legend'>
+  {{#each legend}}<span><b>{{this.symbol}}</b>
+      {{this.label}}
+      <span class='serif'>({{this.labelBn}})</span></span>{{/each}}
+  <span><b>▒</b> Holiday / weekend</span>
+</div>
+<table class='signs'><tr>
+    <td><div class='line'></div>Class teacher · শ্রেণি শিক্ষক</td>
+    <td><div class='line'></div>Head teacher · প্রধান শিক্ষক</td>
+  </tr></table>
