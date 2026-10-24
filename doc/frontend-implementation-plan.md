@@ -181,9 +181,9 @@ Handoff is a **route handler** (`school/auth/handoff/route.ts`, `admin/auth/hand
 - Accepts all methods, forwards to `${API_URL}/api/<path>?<query>` with `Authorization: Bearer <at>`, `x-tenant-id`, `x-request-id`, `x-forwarded-for` / `x-forwarded-host`, `accept-language`. Streams request and response bodies (uploads and PDF downloads) and passes `Content-Disposition` through.
 - Only paths on an allow-list prefix are forwarded from a school host (everything tenanted plus `public/*`); `platform/*` is forwarded only from the admin host.
 - CSRF: mutating requests must carry `x-requested-with: kampasy` (the browser client adds it) and a same-origin `Origin`.
-- **Refresh**: if `atExp` is within 60 s, or the backend answers 401 (other than `SESSION_REVOKED`), call `POST /auth/refresh` once, rewrite the cookie and retry. Concurrent requests for one session share one in-flight refresh (a `Map<sessionId, Promise>` in the server process). Refresh tokens rotate and a reused one revokes the whole sign-in, so if two server instances ever race, the loser gets 401 and the user signs in again; with sticky sessions or one instance this does not happen. Revisit before scaling out (a short Redis lock).
+- **Refresh**: if `atExp` is within 60 s, or the backend answers 401 `UNAUTHORIZED`, call `POST /auth/refresh` once, rewrite the cookie and retry. Concurrent refreshes of one refresh token share one in-flight request, and a token rotated in the last 30 s answers with its replacement (a request that left the browser before the new cookie arrived would otherwise send the old token again, and a reused one revokes the whole sign-in). Both maps are per server process: with several instances, use sticky sessions or a short Redis lock.
 - 401 after refresh, or `SESSION_REVOKED` → clear the cookie and return 401 with `code: 'SESSION_EXPIRED'`; the browser client sends the user to `/login?next=…`.
-- Server components call `backendFetch()` from `lib/api/server.ts` directly (same headers, same refresh, writes the cookie only where allowed: in actions and route handlers; a server component that finds an expired token redirects through `/api/session/refresh?next=`).
+- Server components and actions call `backendFetch()` from `lib/api/server.ts` directly (same headers). They never refresh: `src/proxy.ts` refreshes a session that is about to expire on every page request, and passes the new cookie both to the browser and to the page it renders.
 
 ### 4.4 Browser client
 
@@ -294,7 +294,7 @@ Tick a box when the item is implemented and verified locally (against the docker
 | MB | Backend prerequisites | — | Implemented; B1 committed, the rest not yet (B3 moved to M2) |
 | M0 | Foundations | — | Implemented, not committed (CI not yet run) |
 | M1 | Host routing | M0 | Implemented, not committed |
-| M2 | Session layer and BFF | M1 | Not started |
+| M2 | Session layer and BFF | M1 | Implemented, not committed |
 | M3 | School sign-in | M2 | Not started |
 | M4 | Signup and find school | M3 | Not started |
 | M5 | Staff app shell | M3, B1 | Not started |
@@ -412,32 +412,47 @@ Notes:
 
 Session:
 
-- [ ] `lib/session/seal.ts`: `seal(payload)` / `unseal(token)` with `jose` (`dir`, `A256GCM`, key derived from `SESSION_SECRET`), expiry checked.
-- [ ] `lib/session/cookie.ts`: cookie names (`kampasy_session`, `kampasy_admin`) and options (host-only, `HttpOnly`, `Secure` outside dev, `SameSite=Lax`, `Path=/`, `Max-Age` from `refresh_expires_at`).
-- [ ] `lib/session/index.ts`: `getSession()`, `setSession(tokens)`, `updateSession(patch)`, `clearSession()`; a cookie whose `slug` doesn't match the host's tenant counts as no session.
-- [ ] `fromTokenResponse(body)` maps the backend token response to the session payload (section 4.1); payload stays under 4 KB.
+- [x] `lib/session/seal.ts`: `seal()` / `unseal()` with `jose` (`dir` + `A256GCM`, key from `SESSION_SECRET` through HKDF-SHA256); expires with the refresh token; a tampered, foreign-secret, expired or old-shape value reads as no session.
+- [x] `lib/session/cookie.ts`: `kampasy_session` (tenant) and `kampasy_admin` (platform); host-only, `HttpOnly`, `Secure` in production, `SameSite=Lax`, `Path=/`, `Max-Age` = refresh-token lifetime.
+- [x] `lib/session/index.ts` (server components, actions): `getSession()`, `setSession()`, `updateSession(patch)`, `clearSession()`. `lib/session/fresh.ts`: `readSession()` treats a cookie of another realm or school as none.
+- [x] `lib/session/tokens.ts`: `fromTokenResponse()` (`sid` and `exp` decoded from the access token; keeps `onboardingCompletedAt`), `withAccessToken()` for change-password's access-only answer. A realistic sealed session is well under 3.5 KB (tested).
 
 Backend calls:
 
-- [ ] `lib/api/server.ts`: `backendFetch()` for server components, actions and route handlers; adds `Authorization`, `x-tenant-id`, `x-request-id`, `x-forwarded-for`, `x-forwarded-host`, `accept-language`.
-- [ ] `lib/session/refresh.ts`: refresh when `atExp` is within 60 s or on 401; one in-flight refresh per session (`Map<sessionId, Promise>`); `SESSION_REVOKED` or a failed refresh clears the session.
-- [ ] `/api/session/refresh?next=` route handler for server components that find an expired access token (they can't write cookies).
+- [x] `lib/api/server.ts`: `backendFetch()` / `backendFetchPage()` for server components and actions: bearer token, `x-tenant-id`, client address and user agent, `accept-language`. Never refreshes (the proxy already did).
+- [x] `lib/session/refresh.ts`: refresh when `atExp` is within 60 s, or forced after a 401. Concurrent refreshes of one refresh token share one request, and a token rotated in the last 30 s answers with its replacement, so a request still carrying the old cookie doesn't trip the backend's reuse detection (`REFRESH_TOKEN_REUSED` ends the whole sign-in). 4xx → signed out; network or 5xx → keep the session.
+- [x] ~~`/api/session/refresh?next=` route~~ replaced: `src/proxy.ts` refreshes on page requests, sets the new cookie on the response **and** rewrites the request's `cookie` header, so server components and server actions render with the fresh token (they can't write cookies themselves).
+- [x] `lib/client-ip.ts`: Next fills `X-Forwarded-For` only when it is missing, so a client could pick its own address. The BFF sends the backend one entry, the one the nearest trusted proxy appended (`TRUSTED_PROXY_HOPS`, default 1). Production must run behind a reverse proxy. The browser's `User-Agent` is forwarded too (the backend's session list shows it).
 
 BFF:
 
-- [ ] `app/api/[...path]/route.ts`: all methods; forwards to `${API_URL}/api/<path>?<query>`; streams request and response bodies; passes `Content-Type`, `Content-Disposition`, `Cache-Control`.
-- [ ] Path allow-list: tenant paths and `public/*` from school hosts, `platform/*` only from the admin host, `public/*` and `oauth/*` from the apex (Google start and callback live on the product domain, `domains-and-routing.md` 5a).
-- [ ] B3: `JWT_EXPIRES_IN=15m` in `backend/.env.example` and the deployment env (and `.env.local` by hand), once refresh works here; check a session survives past 15 minutes of use.
-- [ ] CSRF: mutating requests need `x-requested-with: kampasy` and a same-origin `Origin`, otherwise 403.
-- [ ] Never forwards the browser's own `cookie` or `Authorization` headers.
-- [ ] 401 after refresh → clear the cookie and answer 401 `SESSION_EXPIRED`; `apiFetch` then sends the user to `/login?next=<current path>`.
-- [ ] Logout: `POST /api/session/logout` (backend `POST /auth/logout`, then clear the cookie); "Sign out everywhere" through `POST /auth/logout-all`.
+- [x] `app/api/[...path]/route.ts` → `lib/bff/handler.ts`: GET/HEAD/POST/PUT/PATCH/DELETE to `${API_URL}/api/<path>?<query>`. Bodies up to 1 MB are buffered (so a 401 can be retried); larger ones and multipart are streamed. Responses stream back with only safe headers (`content-type`, `content-disposition`, `cache-control`, `etag`, `location`, `retry-after`, `x-ratelimit-*`, …; never `set-cookie`). Redirects go to the browser (`redirect: "manual"`, for OAuth).
+- [x] Path rules (`lib/bff/rules.ts`; paths normalized the way Express matches them: decoded, lower-case, no trailing slash, dot segments refused). School hosts reach everything except platform routes (`platform`, `organizations`, `memberships`, `oauth`, `metrics`, `health`, `dev`); the admin host only platform, `public` and `oauth`; the apex only `public` and `oauth`; unknown hosts nothing.
+- [x] **Session endpoints are never forwarded** (login, refresh, handoff, activate, change-password, logout and their platform twins, plus platform register and verify-email): their answers carry tokens, which must not reach browser JavaScript. Sign-in goes through server actions and route handlers (M3).
+- [x] B3: `JWT_EXPIRES_IN=15m` in `backend/.env.example` (comment in `jwt.config.ts`). The code default stays `1d` for the old `frontend/`, which doesn't refresh. **`backend/.env.local` still says `7d`**: change it, and the deployment env, when the old frontend is retired.
+- [x] CSRF: unsafe methods need `x-requested-with: kampasy` and, when the browser sends one, an `Origin` on this host; otherwise 403 `CSRF_REJECTED`.
+- [x] Never forwards the browser's `cookie` or `authorization` (request headers are an allow-list).
+- [x] A 401 `UNAUTHORIZED` triggers one forced refresh and a retry. If that fails, or on `SESSION_REVOKED`, the cookie is deleted and the answer is 401 `SESSION_EXPIRED`. Other 401s (`INVALID_CREDENTIALS`, …) pass through untouched. `apiFetch` turns `SESSION_EXPIRED` into a full page load of `/login?next=<current path>` (except on `/login` itself).
+- [x] Backend down → 502 `BAD_GATEWAY`; school lookup down → 503 `SERVICE_UNAVAILABLE` (same envelope as the backend's errors).
+- [x] `POST /api/session/logout` (CSRF-checked): backend `/auth/logout`, or `/auth/logout-all` with `{ "everywhere": true }` (platform twins on the admin host). The cookie is deleted even when the backend call fails.
 
 Tests:
 
-- [ ] Vitest: seal/unseal round trip, tampered and expired tokens, refresh dedupe (two concurrent calls → one backend refresh), path allow-list, payload size.
+- [x] Vitest (163 in all): sealing (round trip, tampering, other secret, expiry, shape, cookie size), token mapping, cookie options, refresh (endpoints and headers, dedupe, 30 s grace, refusal, outage), `ensureFreshSession` (keep / set / clear, other school or realm), `replaceCookie`, path rules and normalization, CSRF, the BFF end to end against a mocked backend (headers in and out, query, signed out, refused paths, early refresh, retry with a replayed body, refresh refused, revoked, other 401s, OAuth redirect, backend down, spoofed `X-Forwarded-For`), proxy refresh (keep, refresh for browser and page, drop, none on the apex), client IP, `apiFetch` redirect on `SESSION_EXPIRED`.
+- [x] Live against the running backend, with a school made through self-serve signup (`m2-check-6pveig`) and session cookies sealed by hand:
+  - `/api/auth/me` through the BFF;
+  - an expired access token refreshed silently, with a new 30-day `HttpOnly`, `SameSite=Lax` cookie; the old cookie again within 30 s still worked (grace) and the new one kept working;
+  - a page request refreshed a stale cookie through the proxy, and the BFF accepted the cookie the page set;
+  - `/api/auth/login` and `/api/platform/users` → 404; POST without the header → 403;
+  - logout cleared the cookie, the backend answered `SESSION_REVOKED` to the old token, the BFF answered `SESSION_EXPIRED` to the old cookie; "sign out everywhere" → 200;
+  - after a BFF refresh the session row recorded the browser's user agent.
 
-**Done when:** with a session set by hand, a client component reads `/api/auth/me` through the BFF; with the access token expired, the next call refreshes silently; logout clears the cookie and ends the backend session (`GET /auth/sessions` no longer lists it).
+Notes:
+
+- The in-flight and grace maps live in one server process. Several frontend instances need sticky sessions or a shared lock (Redis) before they share traffic.
+- Route handlers under `/api` aren't seen by `src/proxy.ts` (matcher), so they resolve the host themselves (`lib/resolve-host.ts`, now used by the proxy too).
+
+**Done when:** with a session set by hand, a client component reads `/api/auth/me` through the BFF; with the access token expired, the next call refreshes silently; logout clears the cookie and ends the backend session (`GET /auth/sessions` no longer lists it). *Checked live, with curl standing in for the client component (no signed-in page exists until M3).*
 
 ### M3. School sign-in
 

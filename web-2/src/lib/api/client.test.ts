@@ -115,6 +115,63 @@ describe("apiFetch", () => {
   })
 })
 
+describe("an ended session", () => {
+  const realLocation = window.location
+  let assign: ReturnType<typeof vi.fn>
+
+  function onPage(pathname: string, search = "") {
+    assign = vi.fn()
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: { pathname, search, assign },
+    })
+  }
+
+  afterEach(() => {
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: realLocation,
+    })
+  })
+
+  const expired = () =>
+    json(
+      {
+        success: false,
+        statusCode: 401,
+        message: "Your session has ended.",
+        code: "SESSION_EXPIRED",
+      },
+      401
+    )
+
+  it("sends the user to sign in and back to this page", async () => {
+    onPage("/dashboard/students", "?page=2")
+    mockFetch(expired())
+
+    await expect(apiFetch("/students")).rejects.toMatchObject({
+      code: "SESSION_EXPIRED",
+    })
+    expect(assign).toHaveBeenCalledWith(
+      "/login?next=%2Fdashboard%2Fstudents%3Fpage%3D2"
+    )
+  })
+
+  it("doesn't loop on the sign-in page, or react to other 401s", async () => {
+    onPage("/login")
+    mockFetch(expired())
+    await expect(apiFetch("/auth/me")).rejects.toThrow()
+    expect(assign).not.toHaveBeenCalled()
+
+    onPage("/dashboard")
+    mockFetch(
+      json({ success: false, statusCode: 401, code: "UNAUTHORIZED" }, 401)
+    )
+    await expect(apiFetch("/auth/me")).rejects.toThrow()
+    expect(assign).not.toHaveBeenCalled()
+  })
+})
+
 describe("apiFetchPage", () => {
   it("returns items and meta", async () => {
     const meta = { page: 1, limit: 20, total: 1, totalPages: 1 }

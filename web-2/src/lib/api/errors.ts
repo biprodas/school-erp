@@ -14,6 +14,12 @@ const ENVELOPE_KEYS = new Set([
 export const NETWORK_ERROR = "NETWORK_ERROR"
 
 /**
+ * `code` the BFF answers with (401) when the session can't be renewed:
+ * the user has to sign in again. The backend never sends it.
+ */
+export const SESSION_EXPIRED = "SESSION_EXPIRED"
+
+/**
  * A failed API call. `code` is the backend's machine-readable code (see
  * `doc/error-codes.md`), which the UI maps to Bangla or English text;
  * `message` is the backend's English fallback. Extra fields the backend

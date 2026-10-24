@@ -7,16 +7,22 @@ import {
   unstable_doesMiddlewareMatch,
 } from "next/experimental/testing/server"
 import { NextRequest } from "next/server"
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+import { clearRefreshState } from "~/lib/session/refresh"
+import { unseal } from "~/lib/session/seal"
 import type { TenantLookup } from "~/lib/tenant"
+import {
+  failure,
+  ok,
+  sealedSession,
+  TEST_SECRET,
+  tokenResponse,
+} from "~/test/sessions"
 
 const lookupTenant = vi.fn<() => Promise<TenantLookup>>()
 
 vi.mock("~/lib/tenant", () => ({ lookupTenant }))
-vi.mock("~/lib/env", () => ({
-  serverEnv: () => ({ API_URL: "http://api.test", SESSION_SECRET: "x" }),
-}))
 
 const { config, proxy } = await import("./proxy")
 
@@ -31,6 +37,11 @@ const forwarded = (response: Response, name: string) =>
 
 beforeEach(() => {
   lookupTenant.mockReset()
+  clearRefreshState()
+})
+
+afterEach(() => {
+  vi.unstubAllGlobals()
 })
 
 describe("proxy", () => {
@@ -171,6 +182,84 @@ describe("proxy", () => {
       request("http://old.lvh.me/notices", { "x-forwarded-proto": "https" })
     )
     expect(getRedirectUrl(response)).toBe("https://new.lvh.me/notices")
+  })
+})
+
+describe("proxy session refresh", () => {
+  const acme = { status: "found", slug: "acme", name: "Acme" } as const
+  const page = (cookie: string) =>
+    request("http://acme.lvh.me:3000/dashboard", {
+      cookie: `locale=bn; kampasy_session=${cookie}`,
+    })
+  const nowSeconds = () => Math.floor(Date.now() / 1000)
+
+  it("leaves a valid session alone", async () => {
+    lookupTenant.mockResolvedValue(acme)
+    const fetchMock = vi.fn()
+    vi.stubGlobal("fetch", fetchMock)
+
+    const response = await proxy(page(await sealedSession()))
+
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(response.headers.get("set-cookie")).toBeNull()
+  })
+
+  it("refreshes a session about to expire, for the browser and the page", async () => {
+    lookupTenant.mockResolvedValue(acme)
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() =>
+        Promise.resolve(
+          ok(tokenResponse({ refresh_token: "n".repeat(64) }), 201)
+        )
+      )
+    )
+
+    const response = await proxy(
+      page(await sealedSession({ atExp: nowSeconds() + 5 }))
+    )
+
+    // The browser gets the new cookie…
+    const setCookie = response.headers.get("set-cookie") ?? ""
+    const value = /kampasy_session=([^;]+)/.exec(setCookie)?.[1]
+    await expect(unseal(value, TEST_SECRET)).resolves.toMatchObject({
+      rt: "n".repeat(64),
+    })
+    // …and the page rendering after the proxy reads it already.
+    const pageCookie = forwarded(response, "cookie") ?? ""
+    expect(pageCookie).toContain(`kampasy_session=${value}`)
+    expect(pageCookie).toContain("locale=bn")
+  })
+
+  it("drops a session the backend no longer accepts", async () => {
+    lookupTenant.mockResolvedValue(acme)
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => Promise.resolve(failure(401, "REFRESH_TOKEN_REUSED")))
+    )
+
+    const response = await proxy(
+      page(await sealedSession({ atExp: nowSeconds() - 5 }))
+    )
+
+    expect(response.headers.get("set-cookie")).toMatch(
+      /kampasy_session=;.*Max-Age=0/i
+    )
+    expect(forwarded(response, "cookie")).toBe("locale=bn")
+  })
+
+  it("never reads a school session on the marketing site", async () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal("fetch", fetchMock)
+
+    const response = await proxy(
+      request("http://lvh.me:3000/", {
+        cookie: `kampasy_session=${await sealedSession({ atExp: nowSeconds() - 5 })}`,
+      })
+    )
+
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(response.headers.get("set-cookie")).toBeNull()
   })
 })
 

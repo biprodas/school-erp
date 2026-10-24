@@ -1,5 +1,5 @@
 import { unwrap, unwrapPage, type Page } from "./envelope"
-import { networkError } from "./errors"
+import { networkError, SESSION_EXPIRED } from "./errors"
 
 /**
  * Header the BFF (`app/api/[...path]`) requires on mutating requests, as a
@@ -17,17 +17,21 @@ export interface ApiRequest extends Omit<RequestInit, "body"> {
   query?: Record<string, QueryValue | QueryValue[]>
 }
 
-/** `/students` + `{ page: 2 }` → `/api/students?page=2`. */
-export function apiUrl(path: string, query?: ApiRequest["query"]): string {
-  const url = `/api${path.startsWith("/") ? path : `/${path}`}`
-  if (!query) return url
+/** `{ page: 2, q: undefined, ids: ["a", "b"] }` → `page=2&ids=a&ids=b`. */
+export function toSearch(query: ApiRequest["query"] = {}): string {
   const params = new URLSearchParams()
   for (const [key, value] of Object.entries(query)) {
     for (const item of Array.isArray(value) ? value : [value]) {
       if (item !== null && item !== undefined) params.append(key, String(item))
     }
   }
-  const search = params.toString()
+  return params.toString()
+}
+
+/** `/students` + `{ page: 2 }` → `/api/students?page=2`. */
+export function apiUrl(path: string, query?: ApiRequest["query"]): string {
+  const url = `/api${path.startsWith("/") ? path : `/${path}`}`
+  const search = toSearch(query)
   return search ? `${url}?${search}` : url
 }
 
@@ -72,7 +76,28 @@ async function send(
     .get("content-type")
     ?.includes("application/json")
   const parsed = isJson ? await response.json().catch(() => null) : null
+  if (isSessionExpired(response.status, parsed)) signInAgain()
   return { status: response.status, body: parsed }
+}
+
+const isSessionExpired = (status: number, body: unknown) =>
+  status === 401 &&
+  (body as { code?: unknown } | null)?.code === SESSION_EXPIRED
+
+/**
+ * The BFF ended the session (refresh token expired or revoked): go to the
+ * sign-in page and come back here afterwards. The call still rejects.
+ */
+function signInAgain() {
+  if (typeof window === "undefined") return
+  const { pathname, search } = window.location
+  if (pathname === "/login") return
+  // A full page load on purpose: it drops the ended session's cached data,
+  // and this module runs outside React, where there is no router.
+  // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+  window.location.assign(
+    `/login?next=${encodeURIComponent(`${pathname}${search}`)}`
+  )
 }
 
 /**

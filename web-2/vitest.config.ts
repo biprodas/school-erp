@@ -17,5 +17,10 @@ export default defineConfig({
     setupFiles: ["./src/test/setup.ts"],
     include: ["src/**/*.test.{ts,tsx}"],
     css: false,
+    // `serverEnv()` values for code under test; fetch is always mocked.
+    env: {
+      API_URL: "http://api.test",
+      SESSION_SECRET: "test-session-secret-0123456789abcdef",
+    },
   },
 })

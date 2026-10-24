@@ -12,8 +12,9 @@ export function durationMs(value: string): number {
 const jwtConfig = registerAs('jwt', () => ({
   secret: process.env.JWT_SECRET,
   /**
-   * Access-token lifetime. Target is `15m` once the frontend refreshes
-   * tokens; until then it stays long (see doc/backend-plan.md M0 4.3).
+   * Access-token lifetime. `.env.example` sets `15m` (web-2 refreshes
+   * tokens); the default stays long for the old frontend/, which doesn't
+   * (doc/backend-plan.md M0 4.3).
    */
   expiresIn: process.env.JWT_EXPIRES_IN ?? '1d',
   /** Refresh-token lifetime; each refresh starts a new window. */
