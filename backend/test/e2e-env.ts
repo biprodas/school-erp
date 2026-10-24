@@ -9,6 +9,7 @@ import { resolve } from 'path';
  * - The tenant pool connects as a restricted app role (default
  *   `school_erp_e2e_app`) so row-level security is enforced, as in production.
  * - A small tenant pool makes connection leaks show up quickly.
+ * - A fixed, test-only `FIELD_ENCRYPTION_KEY` lets encrypted columns work.
  *
  * Variables already set in the shell win over these defaults.
  */
@@ -24,6 +25,9 @@ export function loadE2eEnv(): void {
   process.env.DB_SYNC = 'true';
   process.env.DB_APP_USERNAME ||= 'school_erp_e2e_app';
   process.env.DB_APP_PASSWORD ||= 'school_erp_e2e_app_password';
+  // Encrypted columns (NID, health) need a key; CI has no .env file.
+  process.env.FIELD_ENCRYPTION_KEY ||=
+    'e2e:ZTJlLW9ubHktZmllbGQta2V5ZTJlLW9ubHktZmllbGQ=';
   process.env.LOG_LEVEL ??= 'silent';
   process.env.DB_TENANT_POOL_SIZE = process.env.E2E_DB_TENANT_POOL_SIZE ?? '5';
 }
