@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { JobHandler, QUEUES } from '~/shared/queue';
 import type { JobContext, JobPayload } from '~/shared/queue';
+import { formatNumber, type Numerals } from '~/shared/locale/format';
 import { PdfService } from '~/shared/pdf/pdf.service';
 import { FileService } from '~/modules/files/file.service';
 import { JobTracker } from '~/modules/jobs/services/job-tracker.service';
@@ -57,24 +58,32 @@ export function registerTemplateData(
   register: MonthlyRegister,
   school: { name: string; nameBn: string | null },
   absentSymbols: ReadonlySet<string>,
+  numerals: Numerals = 'en',
 ) {
   const [y, m] = register.month.split('-').map(Number);
+  const n = (v: number | string | null | undefined) =>
+    formatNumber(v, numerals);
   return {
     schoolName: school.name,
     schoolNameBn: school.nameBn,
     className: register.section.className,
     sectionName: register.section.name,
     session: register.section.session,
-    monthLabel: `${MONTHS[m - 1]} ${y}`,
-    workingDays: register.days.filter((d) => d.taken).length,
+    monthLabel: `${MONTHS[m - 1]} ${n(y)}`,
+    workingDays: n(register.days.filter((d) => d.taken).length),
     days: register.days.map((d) => ({
       ...d,
-      attendedText: d.taken ? String(d.attended) : '',
+      day: n(d.day),
+      attendedText: d.taken ? n(d.attended) : '',
     })),
     students: register.students.map((s) => ({
       ...s,
-      attended: s.present + s.late + s.halfDay,
-      percentage: s.percentage === null ? '' : s.percentage,
+      rollNo: n(s.rollNo),
+      attended: n(s.present + s.late + s.halfDay),
+      absent: n(s.absent),
+      late: n(s.late),
+      leave: n(s.leave),
+      percentage: s.percentage === null ? '' : n(s.percentage),
       cells: s.cells.map((text, i) => ({
         text,
         off: !!register.days[i].off,
@@ -109,7 +118,7 @@ export class AttendanceRegisterPdfJob {
       );
       const buffer = await this.pdf.render(
         'attendance/monthly-register',
-        registerTemplateData(register, school, absent),
+        registerTemplateData(register, school, absent, school.locale.numerals),
         { paper: paper ?? 'A4-landscape', margin: '8mm', css: CSS },
       );
       const stored = await files.storeGenerated({

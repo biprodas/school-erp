@@ -1,3 +1,5 @@
+import { Throttle } from '@nestjs/throttler';
+import { UPLOAD_THROTTLE } from '~/common/throttling/throttle.constants';
 import {
   BadRequestException,
   Body,
@@ -158,6 +160,7 @@ export class SettingsController {
 
   @Post('files/logo')
   @RequirePermissions(PERMISSIONS.SETTINGS_UPDATE)
+  @Throttle(UPLOAD_THROTTLE)
   @UseInterceptors(FileUpload('org_logo'))
   @ApiConsumes('multipart/form-data')
   @ApiBody(UPLOAD_BODY)
@@ -168,6 +171,7 @@ export class SettingsController {
 
   @Post('files/signature')
   @RequirePermissions(PERMISSIONS.SETTINGS_UPDATE)
+  @Throttle(UPLOAD_THROTTLE)
   @UseInterceptors(FileUpload('signature'))
   @ApiConsumes('multipart/form-data')
   @ApiBody(UPLOAD_BODY)

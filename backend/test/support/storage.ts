@@ -24,6 +24,10 @@ export class MemoryStorage {
     return Promise.resolve(object.body);
   }
 
+  ping(): Promise<void> {
+    return Promise.resolve();
+  }
+
   delete(key: string): Promise<void> {
     this.objects.delete(key);
     return Promise.resolve();

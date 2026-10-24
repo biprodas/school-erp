@@ -8,8 +8,13 @@ import { Queue, Worker } from 'bullmq';
 import IORedis from 'ioredis';
 import type { QueueConfig } from '~/config';
 import { JobHandlerRegistry } from './job-handler.registry';
-import { EnqueueOptions, JobPayload, JobQueue } from './job.types';
-import type { QueueName } from './queue.constants';
+import {
+  EnqueueOptions,
+  JobPayload,
+  JobQueue,
+  type QueueStats,
+} from './job.types';
+import { QUEUES, type QueueName } from './queue.constants';
 
 /**
  * BullMQ on Redis. One `Queue` per name for producing, and one `Worker` per
@@ -51,6 +56,30 @@ export class BullJobQueue
       removeOnComplete: 1000,
       removeOnFail: 5000,
     });
+  }
+
+  async stats(): Promise<QueueStats[]> {
+    const stats: QueueStats[] = [];
+    for (const name of Object.values(QUEUES)) {
+      const c = await this.queue(name).getJobCounts(
+        'waiting',
+        'active',
+        'delayed',
+        'failed',
+      );
+      stats.push({
+        queue: name,
+        waiting: c.waiting ?? 0,
+        active: c.active ?? 0,
+        delayed: c.delayed ?? 0,
+        failed: c.failed ?? 0,
+      });
+    }
+    return stats;
+  }
+
+  async ping(): Promise<void> {
+    await this.connection.ping();
   }
 
   onApplicationBootstrap(): void {

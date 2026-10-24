@@ -1,3 +1,5 @@
+import { Throttle } from '@nestjs/throttler';
+import { UPLOAD_THROTTLE } from '~/common/throttling/throttle.constants';
 import {
   Body,
   Controller,
@@ -82,6 +84,7 @@ export class NoticeController {
   /** Multipart `file`; pass its id in `attachmentFileIds`. */
   @Post('attachments')
   @RequirePermissions(PERMISSIONS.NOTICES_MANAGE)
+  @Throttle(UPLOAD_THROTTLE)
   @UseInterceptors(FileUpload('attachment'))
   @ApiConsumes('multipart/form-data')
   @ResponseMessage('Attachment uploaded')

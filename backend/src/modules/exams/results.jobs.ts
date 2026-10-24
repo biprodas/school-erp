@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { JobHandler, QUEUES } from '~/shared/queue';
 import type { JobContext, JobPayload } from '~/shared/queue';
+import { formatNumber, type Numerals } from '~/shared/locale/format';
 import { PdfService } from '~/shared/pdf/pdf.service';
 import { writeSheet } from '~/shared/spreadsheet/spreadsheet';
 import { AttendanceReportService } from '~/modules/attendance/services/attendance-report.service';
@@ -157,7 +158,18 @@ export class ResultJobs {
         const summary = options.showAttendance
           ? await attendance.enrollmentSummary(r.enrollmentId)
           : null;
-        cards.push(card(r, l, options, summary));
+        cards.push(
+          card(
+            r,
+            l,
+            {
+              ...options,
+              // Bangla cards use Bangla digits; English ones the school's choice.
+              numerals: language === 'bn' ? 'bn' : school.locale.numerals,
+            },
+            summary,
+          ),
+        );
       }
       const page = {
         l,
@@ -252,7 +264,7 @@ type Labels = (typeof LABELS)[keyof typeof LABELS];
 function card(
   r: ResultRow,
   l: Labels,
-  options: { showPosition: boolean; showRemarks: boolean },
+  options: { showPosition: boolean; showRemarks: boolean; numerals: Numerals },
   attendance: {
     days: number;
     percentage: number | null;
@@ -261,19 +273,23 @@ function card(
     halfDay: number;
   } | null,
 ) {
+  const n = (v: number | string | null | undefined) =>
+    formatNumber(v, options.numerals);
   const extra: { label: string; value: string | number }[] = [];
   if (options.showPosition) {
     if (r.positionSection !== null)
-      extra.push({ label: l.sectionPosition, value: r.positionSection });
+      extra.push({ label: l.sectionPosition, value: n(r.positionSection) });
     if (r.positionClass !== null)
-      extra.push({ label: l.classPosition, value: r.positionClass });
+      extra.push({ label: l.classPosition, value: n(r.positionClass) });
   }
   if (attendance && attendance.days) {
     const attended =
       attendance.present + attendance.late + attendance.halfDay / 2;
     extra.push({
       label: l.attendance,
-      value: `${attended} / ${attendance.days} (${attendance.percentage ?? 0}%)`,
+      value: n(
+        `${attended} / ${attendance.days} (${attendance.percentage ?? 0}%)`,
+      ),
     });
   }
   return {
@@ -281,10 +297,10 @@ function card(
     nameBn: r.nameBn,
     admissionNumber: r.admissionNumber,
     sectionName: r.sectionName,
-    rollNo: r.rollNo ?? '',
-    total: r.total,
-    fullMarks: r.fullMarks,
-    gpa: r.gpa === null ? '' : r.gpa.toFixed(2),
+    rollNo: n(r.rollNo),
+    total: n(r.total),
+    fullMarks: n(r.fullMarks),
+    gpa: r.gpa === null ? '' : n(r.gpa.toFixed(2)),
     grade: r.grade,
     outcome: r.passed ? l.passed : l.failed,
     remarks: options.showRemarks ? r.remarks : null,
@@ -293,11 +309,11 @@ function card(
       name: s.subjectName,
       isFourth: s.isFourth,
       passed: s.passed,
-      parts: s.parts,
-      fullMarks: s.exempt ? '' : s.fullMarks,
-      obtained: s.exempt ? l.exempt : s.absent ? l.absent : s.marks,
+      parts: n(s.parts),
+      fullMarks: s.exempt ? '' : n(s.fullMarks),
+      obtained: s.exempt ? l.exempt : s.absent ? l.absent : n(s.marks),
       grade: s.grade ?? '',
-      point: s.point === null ? '' : s.point.toFixed(2),
+      point: s.point === null ? '' : n(s.point.toFixed(2)),
     })),
   };
 }

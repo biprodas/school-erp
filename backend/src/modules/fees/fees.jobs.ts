@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { JobHandler, QUEUES } from '~/shared/queue';
 import type { JobContext, JobPayload } from '~/shared/queue';
+import { formatMoney } from '~/shared/locale/format';
 import { PdfService } from '~/shared/pdf/pdf.service';
 import { FileService } from '~/modules/files/file.service';
 import { JobTracker } from '~/modules/jobs/services/job-tracker.service';
@@ -12,13 +13,6 @@ import {
   type BillingJobData,
 } from './services/billing.service';
 import { PaymentService, RECEIPT_PDF_JOB } from './services/payment.service';
-
-/** Minor units as `1,234.50`. */
-export const formatMoney = (minor: number) =>
-  (minor / 100).toLocaleString('en-US', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
 
 const RECEIPT_CSS = {
   '80mm': `body{font-size:9pt}.receipt{padding:3mm}
@@ -70,11 +64,12 @@ export class FeeJobs {
       const r = await payments.receipt(payload.data.receiptId);
       const school = await settings.getDisplay();
       const payment = r.payment!;
+      const numerals = school.locale.numerals;
       const lines = r.allocations.map((a) => ({
         student: a.studentName,
         description: a.description,
         period: a.period,
-        amount: formatMoney(a.amount),
+        amount: formatMoney(a.amount, { numerals }),
       }));
       const buffer = await this.pdf.render(
         'fees/receipt',
@@ -87,7 +82,7 @@ export class FeeJobs {
           channel: payment.channel,
           reference: payment.reference,
           currency: school.locale.currency,
-          total: formatMoney(payment.amount),
+          total: formatMoney(payment.amount, { numerals }),
           lines,
           cancelled: r.status === ReceiptStatus.CANCELLED,
           cancelReason: r.cancelReason,

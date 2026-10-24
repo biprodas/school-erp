@@ -15,7 +15,7 @@
 - This is a starting plan, not a fixed spec. When implementation shows a better way, change the code and update this doc to match.
 - Items marked **(1b)** are listed only so Phase 1a leaves room for them; they are tracked in section 14.
 
-**Current state:** M0 in progress (4.1–4.7 done; DB-backed checks wait for the local database or the first CI run). M1 implemented (2026-10-23) except the sample-data mode and the grading, holiday and fee-head template "apply" steps, which wait for M5, M4 and M6; its e2e specs pass against Postgres 18. M2–M7 implemented (2026-10-24; what is left waits on the M8 performance seed, plus a check of the register PDF against a paper one). Section 1 lists what already exists and can be reused.
+**Current state:** M0 in progress (4.1–4.7 done; DB-backed checks wait for the local database or the first CI run). M1 implemented (2026-10-23) except the sample-data mode and the grading, holiday and fee-head template "apply" steps, which wait for M5, M4 and M6; its e2e specs pass against Postgres 18. M2–M7 implemented (2026-10-24; what is left is a check of the register PDF against a paper one). M8 implemented (2026-10-24). What is left are operator tasks: a restore drill on the pilot environment and creating the pilot schools (`doc/operations.md`). Section 1 lists what already exists and can be reused.
 
 ---
 
@@ -523,7 +523,7 @@ Migration `1792340000000-PlatformAndOnboarding` holds every schema change below 
 ### Done when
 
 - [x] The 1a acceptance criteria of PRD 6.7 pass in e2e: holiday block, lock, correction audit, scope, submission tracking.
-- [ ] Saving 50 students takes under 1 second on the performance seed. *Under a second in e2e; the performance seed itself is M8.*
+- [x] Saving 50 students takes under 1 second on the performance seed. *90–164 ms (`npm run perf:seed`).*
 - [ ] The monthly register PDF matches the paper layout (checked against a sample register). *Renders; still to be compared with a school's paper register.*
 
 ---
@@ -590,7 +590,7 @@ Migration `1792340000000-PlatformAndOnboarding` holds every schema change below 
 - [x] Every grading regression suite passes 100%.
 - [x] A mark sheet goes draft → published, with and without the verify step (e2e).
 - [x] Approved marks can't be edited; reopen is audited with old and new values (e2e).
-- [ ] 500 report cards render in under 2 minutes on the performance seed. *Not measured: the performance seed is M8. Cards render in parallel up to `PDF_CONCURRENCY`.*
+- [x] 500 report cards render in under 2 minutes on the performance seed. *91–97 s on 4 cores (`npm run perf:seed`). It is tight; see M8.*
 
 ---
 
@@ -701,7 +701,7 @@ Migration `1792340000000-PlatformAndOnboarding` holds every schema change below 
 
 - [x] A guardian with two children sees only them, and is notified when results are published (e2e).
 - [x] A guardian with children at two schools can switch between them through a handoff (e2e).
-- [ ] Dashboards load in under 2 seconds on the 5,000-student performance seed. *Not measured: the performance seed is M8.*
+- [x] Dashboards load in under 2 seconds on the 5,000-student performance seed. *Under 0.5 s cold (`npm run perf:seed`).*
 - [x] The communication log shows every email sent, with its status.
 
 ---
@@ -710,28 +710,31 @@ Migration `1792340000000-PlatformAndOnboarding` holds every schema change below 
 
 **Scope:** the rest of PRD 6.24 Phase 1a, and the "Pilot hardening" row of PRD 12.2.
 
-- [ ] **Data export:** `POST /settings/export` (owner/admin, audited) job writes one CSV per tenant table through the tenant connection, plus a manifest, into a zip in storage, then emails a signed link.
-- [ ] **Localization:** every mail, notification and PDF template in Bangla and English; Bangla numerals and lakh-grouped BDT in PDFs; error codes documented for the frontend.
-- [ ] **Security review** against PRD 11.4:
-  - [ ] Cross-tenant and IDOR suites over students, invoices, documents and exports.
-  - [ ] Platform tokens on school APIs and school tokens on platform APIs.
-  - [ ] Rate limits on login, signup, find-school, slug check and uploads.
-  - [ ] Upload type and size checks.
-  - [ ] Helmet and secure headers reviewed.
-  - [ ] `npm audit` clean of high/critical issues.
-- [ ] **Ops:**
-  - [ ] Error tracking (Sentry or similar).
-  - [ ] Metrics for queue depth and job failures.
-  - [ ] Health checks for Redis and S3.
-  - [ ] Postgres PITR backups documented, with a restore drill (RPO 15 minutes).
-- [ ] **Performance seed:** a script that creates a 5,000-student school with a year of attendance, one exam cycle and a month of fees.
-- [ ] **Pilot onboarding:** platform admin creates the pilot schools, assigns plans, extends trials; sample data off.
+- [x] **Data export:** `POST /settings/export` (owner/admin, audited) job writes one CSV per tenant table through the tenant connection, plus a manifest, into a zip in storage, then emails a signed link. *`modules/data-export/`: the tables are exactly those under RLS (`orgScopedTables`), working tables (`jobs`, `domain_events`, `idempotency_keys`, `user_sessions`) are skipped and hash/token/secret/password columns left out (both listed in `manifest.json`), soft-deleted rows included, plus `members.csv` with roles. The link goes to `/settings/data-export?job=`, which reads `GET /jobs/:id`. Non-admins get 403 `SCHOOL_ADMIN_ONLY`.*
+- [x] **Localization:** every mail, notification and PDF template in Bangla and English; Bangla numerals and lakh-grouped BDT in PDFs; error codes documented for the frontend. *Account mails are bilingual (subject, body, button); notification templates already had both languages. `~/shared/locale/format` (`formatMoney`, `formatNumber`, `toBanglaDigits`, lakh grouping) is used by receipts, report cards (Bangla cards use Bangla digits; English ones follow `locale.numerals`), the attendance register and notification amounts. `doc/error-codes.md` is generated (`npm run docs:error-codes`) and a unit spec fails when it is out of date.*
+- [x] **Security review** against PRD 11.4 (`test/security.e2e-spec.ts`; the full mapping is in `doc/release-checklist.md`):
+  - [x] Cross-tenant and IDOR suites over students, invoices, documents and exports. *Students, documents, downloads, jobs and exports in the security spec; invoices and receipts in `fees.e2e-spec.ts`. Writing it found the export reading `oauth_states`, a platform table; fixed.*
+  - [x] Platform tokens on school APIs and school tokens on platform APIs.
+  - [x] Rate limits on login, signup, find-school, slug check and uploads. *`UPLOAD_THROTTLE` (20 a minute) on every upload handler, checked by `upload-throttle.spec.ts`.*
+  - [x] Upload type and size checks.
+  - [x] Helmet and secure headers reviewed. *`helmet()` moved into `configureApp` so tests see it too, plus `Cache-Control: no-store` on every API response.*
+  - [x] `npm audit` clean of high/critical issues. *Puppeteer 25 (ESM-only, so Jest runs with `--experimental-vm-modules`), `multer` pinned to 2.5.0 via `overrides`; 4 moderate advisories remain in dev tooling. CI runs `npm audit --omit=dev --audit-level=high`.*
+- [x] **Ops** (`doc/operations.md`):
+  - [x] Error tracking (Sentry or similar). *`~/shared/observability/error-tracking`: on with `SENTRY_DSN`; 5xx responses and jobs failing their last attempt, tagged with ids only.*
+  - [x] Metrics for queue depth and job failures. *`GET /api/metrics` (Prometheus text, `METRICS_TOKEN` bearer, 404 without it): queue jobs per state, tracked jobs and notification deliveries over 24 hours, process stats.*
+  - [x] Health checks for Redis and S3.
+  - [x] Postgres PITR backups documented, with a restore drill (RPO 15 minutes). *WAL archiving with `archive_timeout = 60`. A local drill on Postgres 18 (2026-10-24) restored to just before a mass delete; it is logged in `doc/operations.md`. The drill on the pilot environment is still to do.*
+- [x] **Performance seed:** a script that creates a 5,000-student school with a year of attendance, one exam cycle and a month of fees. *`npm run perf:seed` (`scripts/perf-seed.ts`, own database `school_erp_perf`, RLS on, `--measure-only` re-measures).*
+  - *What it seeds: 10 classes × 10 sections × 50 students, imported through the real importer; about 1M attendance records over 200 days (SQL); one exam with 35,000 marks, tabulated by the job; 5,000 invoices from the billing job, 40% of them paid.*
+  - *Measured 2026-10-24 on a 4-core machine: admin dashboard 343–486 ms cold and about 10 ms warm, teacher and accountant dashboards under 110 ms, saving 50 attendance records 90–164 ms, 500 report cards 91–97 s.*
+  - *Report cards are the tight target: each section renders its cards twice, once as single PDFs and once merged. Render once and split or merge with `pdf-lib` before running on a 2-core host.*
+- [x] **Pilot onboarding:** platform admin creates the pilot schools, assigns plans, extends trials; sample data off. *The endpoints existed. The steps are in `doc/operations.md` §4; there is no sample-data mode.*
 
 ### Done when
 
-- [ ] Every PRD 11.5 release criterion has a passing suite or a documented check.
-- [ ] A restore from backup has been tested.
-- [ ] 3–5 pilot schools are created and onboarded.
+- [x] Every PRD 11.5 release criterion has a passing suite or a documented check. *`doc/release-checklist.md`.*
+- [ ] A restore from backup has been tested. *Locally, yes (`doc/operations.md` §3); the pilot environment drill is still to do.*
+- [ ] 3–5 pilot schools are created and onboarded. *An operator task, following `doc/operations.md` §4.*
 
 ---
 

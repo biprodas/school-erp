@@ -1,3 +1,5 @@
+import { Throttle } from '@nestjs/throttler';
+import { UPLOAD_THROTTLE } from '~/common/throttling/throttle.constants';
 import {
   Body,
   Controller,
@@ -84,6 +86,7 @@ export class StudentLeaveController {
   @Post(':id/attachment')
   @HttpCode(200)
   @RequirePermissions(PERMISSIONS.STUDENT_LEAVES_CREATE)
+  @Throttle(UPLOAD_THROTTLE)
   @UseInterceptors(FileUpload('attachment'))
   @ApiConsumes('multipart/form-data')
   @ResponseMessage('Attachment added')

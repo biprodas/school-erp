@@ -45,11 +45,15 @@ jobs:
       - run: npm run format:check
       - run: npm run lint:check
       - run: npm run typecheck
-      # Includes the [tenant-isolation] release suite (and later
-      # [gpa-regression], [fee-regression]); see backend/README.md.
+      # Includes the [tenant-isolation], [gpa-regression] and
+      # [fee-regression] release suites (doc/release-checklist.md).
       - name: Unit tests
         run: npm test -- --ci
       - run: npm run build
+      - name: Build output is where start:prod looks
+        run: test -f dist/main.js
+      - name: No high or critical advisories in production dependencies
+        run: npm audit --omit=dev --audit-level=high
 
   backend-e2e:
     name: Backend · e2e (Postgres 17)

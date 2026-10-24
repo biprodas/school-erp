@@ -1,3 +1,5 @@
+import { Throttle } from '@nestjs/throttler';
+import { UPLOAD_THROTTLE } from '~/common/throttling/throttle.constants';
 import {
   BadRequestException,
   Body,
@@ -77,6 +79,7 @@ export class EmployeeController {
 
   @Post(':id/photo')
   @RequirePermissions(PERMISSIONS.EMPLOYEES_UPDATE)
+  @Throttle(UPLOAD_THROTTLE)
   @UseInterceptors(FileUpload('employee_photo'))
   @ApiConsumes('multipart/form-data')
   @ApiBody({

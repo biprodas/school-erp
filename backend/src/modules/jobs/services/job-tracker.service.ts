@@ -4,6 +4,7 @@ import {
   TenantJobRunner,
   type TenantResolver,
 } from '~/tenancy/tenant-job.runner';
+import { reportError } from '~/shared/observability/error-tracking';
 import { JobStatus } from '../enums/job-status.enum';
 import { JobRepository } from '../repositories/job.repository';
 
@@ -85,6 +86,12 @@ export class JobTracker {
               `failed on attempt ${context.attempt}/${context.attempts}`,
             (err as Error)?.stack,
           );
+          if (last) {
+            reportError(err, {
+              orgId,
+              where: `job ${context.queue}:${context.name}`,
+            });
+          }
           await patch({
             status: last ? JobStatus.FAILED : JobStatus.QUEUED,
             error: publicError(err),

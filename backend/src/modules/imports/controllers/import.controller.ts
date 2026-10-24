@@ -1,3 +1,5 @@
+import { Throttle } from '@nestjs/throttler';
+import { UPLOAD_THROTTLE } from '~/common/throttling/throttle.constants';
 import {
   Body,
   Controller,
@@ -83,6 +85,7 @@ export class ImportController {
   /** Multipart `file` (.xlsx or .csv) plus `type`, `mode`, `academicYearId`. */
   @Post()
   @HttpCode(HttpStatus.ACCEPTED)
+  @Throttle(UPLOAD_THROTTLE)
   @UseInterceptors(FileUpload('import'))
   @ApiConsumes('multipart/form-data')
   @ResponseMessage('Import uploaded; validating')

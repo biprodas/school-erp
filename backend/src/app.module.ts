@@ -46,7 +46,9 @@ import { NotificationModule } from '~/modules/notifications/notification.module'
 import { NoticeModule } from '~/modules/notices/notice.module';
 import { PortalModule } from '~/modules/portal/portal.module';
 import { ReportsModule } from '~/modules/reports/reports.module';
+import { DataExportModule } from '~/modules/data-export/data-export.module';
 import { CacheModule } from '~/shared/cache';
+import { ObservabilityModule } from '~/shared/observability/observability.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { configLoaders, envValidationSchema, ThrottleConfig } from '~/config';
@@ -107,6 +109,7 @@ const envFilePath = ['.env', `.env.${nodeEnv}`];
     HostsModule,
     QueueModule,
     CacheModule,
+    ObservabilityModule,
     StorageModule,
     PdfModule,
     TenancyModule,
@@ -150,6 +153,7 @@ const envFilePath = ['.env', `.env.${nodeEnv}`];
     NoticeModule,
     PortalModule,
     ReportsModule,
+    DataExportModule,
     FileModule,
     NumberingModule,
     IdempotencyModule,
@@ -182,6 +186,7 @@ export class AppModule {
         { path: '/info', method: RequestMethod.GET },
         { path: 'health', method: RequestMethod.ALL },
         { path: 'health/*path', method: RequestMethod.ALL },
+        { path: 'metrics', method: RequestMethod.ALL },
         { path: 'organizations', method: RequestMethod.ALL },
         { path: 'organizations/*path', method: RequestMethod.ALL },
         { path: 'memberships', method: RequestMethod.ALL },

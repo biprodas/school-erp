@@ -34,6 +34,7 @@ export class MailCapture {
       'sendSignupVerificationEmail',
       'sendFindSchoolEmail',
       'deliverNotification',
+      'sendDataExportReady',
     ].map((method) => [
       method,
       (to: string, ...args: unknown[]) => {

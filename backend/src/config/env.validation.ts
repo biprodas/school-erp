@@ -112,6 +112,12 @@ export const envValidationSchema = Joi.object({
   RATE_LIMIT_ENABLED: Joi.boolean().default(true),
   RATE_LIMIT_TTL: Joi.number().integer().min(1000).default(60000),
   RATE_LIMIT_MAX: Joi.number().integer().min(1).default(100),
+  // Error tracking (Sentry; off without a DSN) and the metrics endpoint.
+  SENTRY_DSN: Joi.string().uri().allow('').optional(),
+  SENTRY_ENVIRONMENT: Joi.string().optional(),
+  SENTRY_TRACES_SAMPLE_RATE: Joi.number().min(0).max(1).optional(),
+  APP_RELEASE: Joi.string().optional(),
+  METRICS_TOKEN: Joi.string().min(24).allow('').optional(),
   // Background jobs (BullMQ on Redis; `inline` runs them in-process).
   QUEUE_DRIVER: Joi.string().valid('bullmq', 'inline').optional(),
   REDIS_URL: Joi.string()

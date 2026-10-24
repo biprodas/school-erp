@@ -19,3 +19,11 @@ export const AUTH_THROTTLE = {
 export const PUBLIC_LOOKUP_THROTTLE = {
   default: { limit: 10, ttl: seconds(60) },
 };
+
+/**
+ * File uploads (photos, documents, imports, attachments): 20 a minute per
+ * client, so bulk uploads can't fill storage or tie up the server.
+ */
+export const UPLOAD_THROTTLE = {
+  default: { limit: 20, ttl: seconds(60) },
+};

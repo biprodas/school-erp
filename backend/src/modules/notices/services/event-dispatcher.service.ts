@@ -7,6 +7,7 @@ import { GuardianService } from '~/modules/guardians/services/guardian.service';
 import { NotificationService } from '~/modules/notifications/services/notification.service';
 import { SettingsService } from '~/modules/settings/services/settings.service';
 import { StudentService } from '~/modules/students/services/student.service';
+import { formatMoney } from '~/shared/locale/format';
 
 /** The events this dispatcher turns into notifications. */
 export const DISPATCHED_EVENTS = [
@@ -14,13 +15,6 @@ export const DISPATCHED_EVENTS = [
   DOMAIN_EVENTS.PAYMENT_RECEIVED,
   DOMAIN_EVENTS.FEES_DUE_REMINDER,
 ] as const;
-
-/** Minor units as `1,234.50 BDT`. */
-const money = (minor: number, currency: string) =>
-  `${(minor / 100).toLocaleString('en-US', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })} ${currency}`;
 
 /**
  * Reads the domain event outbox and notifies families (PRD 6.13
@@ -81,7 +75,7 @@ export class EventDispatcherService {
         return;
       }
       case DOMAIN_EVENTS.PAYMENT_RECEIVED: {
-        const { currency } = await this.settings.getSection('locale');
+        const { currency, numerals } = await this.settings.getSection('locale');
         const studentIds = p.studentIds as string[];
         const names = (await this.students.findManyByIds(studentIds)).map(
           (s) => s.fullName,
@@ -91,7 +85,7 @@ export class EventDispatcherService {
           userIds: [...new Set([...family.values()].flat())],
           key: 'paymentReceived',
           vars: {
-            amount: money(Number(p.amount), currency),
+            amount: formatMoney(Number(p.amount), { currency, numerals }),
             receipt_number: text('receiptNumber'),
             student_name: names.join(', '),
           },
@@ -101,14 +95,14 @@ export class EventDispatcherService {
         return;
       }
       case DOMAIN_EVENTS.FEES_DUE_REMINDER: {
-        const { currency } = await this.settings.getSection('locale');
+        const { currency, numerals } = await this.settings.getSection('locale');
         await this.perStudent(
           [p.studentId as string],
           'feeDue',
           (s) => ({
             student_name: s.fullName,
             invoice_number: text('invoiceNumber'),
-            amount: money(Number(p.outstanding), currency),
+            amount: formatMoney(Number(p.outstanding), { currency, numerals }),
             due_date: text('dueDate'),
           }),
           (studentId) => `/portal/children/${studentId}/fees`,

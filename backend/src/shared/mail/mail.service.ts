@@ -24,11 +24,21 @@ export class MailService {
     tenantSlug: string,
   ): Promise<void> {
     const link = `${this.appUrl}/activate?token=${token}&tenant=${tenantSlug}`;
-    await this.send(to, 'Activate your account', 'activation', { name, link });
+    await this.send(
+      to,
+      'Activate your account · অ্যাকাউন্ট চালু করুন',
+      'activation',
+      { name, link },
+    );
   }
 
   async sendWelcomeEmail(to: string, name: string): Promise<void> {
-    await this.send(to, 'Welcome to School ERP', 'welcome', { name });
+    await this.send(
+      to,
+      'Welcome to School ERP · School ERP-তে স্বাগতম',
+      'welcome',
+      { name },
+    );
   }
 
   async sendEmailVerificationEmail(
@@ -38,10 +48,15 @@ export class MailService {
     tenantSlug?: string,
   ): Promise<void> {
     const link = this.buildLink(`/verify-email?token=${token}`, tenantSlug);
-    await this.send(to, 'Verify your email', 'email-verification', {
-      name,
-      link,
-    });
+    await this.send(
+      to,
+      'Verify your email · ইমেইল নিশ্চিত করুন',
+      'email-verification',
+      {
+        name,
+        link,
+      },
+    );
   }
 
   async sendPasswordResetEmail(
@@ -51,10 +66,15 @@ export class MailService {
     tenantSlug?: string,
   ): Promise<void> {
     const link = this.buildLink(`/reset-password?token=${token}`, tenantSlug);
-    await this.send(to, 'Reset your password', 'password-reset', {
-      name,
-      link,
-    });
+    await this.send(
+      to,
+      'Reset your password · পাসওয়ার্ড রিসেট করুন',
+      'password-reset',
+      {
+        name,
+        link,
+      },
+    );
   }
 
   /** Self-serve signup: the link that creates the school (PRD 6.2). */
@@ -69,7 +89,7 @@ export class MailService {
   ): Promise<void> {
     await this.send(
       to,
-      `Confirm your signup for ${context.schoolName}`,
+      `Confirm your signup for ${context.schoolName} · সাইনআপ নিশ্চিত করুন`,
       'signup-verification',
       context,
     );
@@ -83,7 +103,12 @@ export class MailService {
       schools: { name: string; host: string; link: string }[];
     },
   ): Promise<void> {
-    await this.send(to, 'Your schools on School ERP', 'find-school', context);
+    await this.send(
+      to,
+      'Your schools on School ERP · School ERP-তে আপনার স্কুল',
+      'find-school',
+      context,
+    );
   }
 
   /**
@@ -112,6 +137,20 @@ export class MailService {
 
   private get rootDomain(): string | undefined {
     return this.config.get<MailerConfig>('mailer')!.rootDomain;
+  }
+
+  /** The school's data export is ready (PRD 6.24). */
+  async sendDataExportReady(
+    to: string,
+    name: string,
+    link: string,
+  ): Promise<void> {
+    await this.send(
+      to,
+      'Your data export is ready · আপনার ডেটা এক্সপোর্ট প্রস্তুত',
+      'data-export',
+      { name, link },
+    );
   }
 
   /**

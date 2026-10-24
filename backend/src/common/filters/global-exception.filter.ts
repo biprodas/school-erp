@@ -1,3 +1,4 @@
+import { reportError } from '~/shared/observability/error-tracking';
 import {
   ArgumentsHost,
   Catch,
@@ -87,6 +88,11 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       string | undefined;
 
     if (status >= 500) {
+      reportError(exception, {
+        orgId: (req as { orgId?: string }).orgId ?? null,
+        requestId: requestId ?? null,
+        where: `${req.method} ${(req.originalUrl ?? '').split('?')[0]}`,
+      });
       this.logger.error(
         `${req.method} ${req.originalUrl} -> ${status}`,
         (exception as Error)?.stack,

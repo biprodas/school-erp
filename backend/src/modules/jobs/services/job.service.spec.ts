@@ -1,5 +1,5 @@
 import type { Request } from 'express';
-import { QUEUES } from '~/shared/queue';
+import { QUEUES, type JobQueue } from '~/shared/queue';
 import { fakeTenantDataSource } from '~/tenancy/tenant-datasource.testing';
 import { JobStatus } from '../enums/job-status.enum';
 import type { JobRepository } from '../repositories/job.repository';
@@ -25,7 +25,7 @@ describe('JobService.start', () => {
     queue = { enqueue: jest.fn().mockResolvedValue(undefined) };
     service = new JobService(
       jobRepo as unknown as JobRepository,
-      queue,
+      queue as unknown as JobQueue,
       { getDownloadUrl: jest.fn() } as never,
       fakeTenantDataSource(),
       { user: { userId: 'user-1' } } as unknown as Request,

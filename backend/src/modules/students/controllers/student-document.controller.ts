@@ -1,3 +1,5 @@
+import { Throttle } from '@nestjs/throttler';
+import { UPLOAD_THROTTLE } from '~/common/throttling/throttle.constants';
 import {
   Body,
   Controller,
@@ -58,6 +60,7 @@ export class StudentDocumentController {
   /** Multipart: `file` plus the fields of the DTO. */
   @Post()
   @RequirePermissions(PERMISSIONS.STUDENT_DOCUMENTS_CREATE)
+  @Throttle(UPLOAD_THROTTLE)
   @UseInterceptors(FileUpload('student_document'))
   @ApiConsumes('multipart/form-data')
   @ResponseMessage('Document added')

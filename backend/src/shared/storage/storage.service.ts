@@ -1,6 +1,7 @@
 import {
   DeleteObjectCommand,
   GetObjectCommand,
+  HeadBucketCommand,
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
@@ -81,6 +82,11 @@ export class StorageService implements OnApplicationShutdown {
     await this.client.send(
       new DeleteObjectCommand({ Bucket: this.cfg.bucket, Key: key }),
     );
+  }
+
+  /** Throws when the bucket can't be reached (`/health`). */
+  async ping(): Promise<void> {
+    await this.client.send(new HeadBucketCommand({ Bucket: this.cfg.bucket }));
   }
 
   onApplicationShutdown(): void {
