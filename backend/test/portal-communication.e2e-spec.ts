@@ -361,6 +361,37 @@ describe('Portal, notices and notifications (e2e)', () => {
         .expect(200),
     );
     expect(home.notices.map((n) => n.title)).toEqual(['Admission open']);
+
+    // The school decides what the page shows (PRD 6.24).
+    const homeNow = async () =>
+      data<Record<string, unknown>>(
+        await e
+          .http()
+          .get(`/api/public/organizations/${schools.a.org.slug}/home`)
+          .expect(200),
+      );
+    await admin()
+      .patch('/api/settings/profile', {
+        homePage: {
+          about: 'Since 1990',
+          showNotices: false,
+          showAddress: false,
+        },
+      })
+      .expect(200);
+    expect(await homeNow()).toMatchObject({
+      enabled: true,
+      about: 'Since 1990',
+      address: null,
+      notices: [],
+    });
+    await admin()
+      .patch('/api/settings/profile', { homePage: { enabled: false } })
+      .expect(200);
+    const off = await homeNow();
+    expect(off).toMatchObject({ enabled: false, name: schools.a.org.name });
+    expect(off).not.toHaveProperty('notices');
+    expect(off).not.toHaveProperty('contact');
   });
 
   it('notifies each family when results are published, and dues hold them back', async () => {

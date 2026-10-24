@@ -20,6 +20,7 @@ import {
   TIE_BREAKERS,
   type TieBreaker,
 } from '~/modules/grading/engine/positions';
+import { SIGNER_ROLES, type SignerRole } from '../settings.types';
 
 export class UpdateReportCardSettingsDto {
   @IsIn(['bn', 'en']) language?: 'bn' | 'en';
@@ -32,6 +33,12 @@ export class UpdateReportCardSettingsDto {
   @IsString({ each: true })
   @MaxLength(40, { each: true })
   signatures?: string[];
+
+  /** By position: whose signature image prints above each line, or null. */
+  @IsArray()
+  @ArrayMaxSize(4)
+  @IsIn([...SIGNER_ROLES, null], { each: true })
+  signatureSigners?: (SignerRole | null)[];
 }
 
 export class UpdateResultsSettingsDto {

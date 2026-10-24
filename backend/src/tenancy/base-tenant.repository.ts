@@ -1,9 +1,6 @@
 import { Inject, NotFoundException } from '@nestjs/common';
-import { Paginated } from '~/common/dto/paginated.dto';
-import {
-  DEFAULT_PAGE_SIZE,
-  PaginationQueryDto,
-} from '~/common/dto/pagination-query.dto';
+import { findPage, Paginated } from '~/common/dto/paginated.dto';
+import { PaginationQueryDto } from '~/common/dto/pagination-query.dto';
 import {
   DeepPartial,
   FindManyOptions,
@@ -89,16 +86,11 @@ export abstract class BaseTenantRepository<T extends ObjectLiteral> {
   }
 
   /** One page of `find(options)` plus the total count for `meta`. */
-  async findPage(
+  findPage(
     options: FindManyOptions<T>,
-    { page = 1, limit = DEFAULT_PAGE_SIZE }: PaginationQueryDto = {},
+    pagination: PaginationQueryDto = {},
   ): Promise<Paginated<T>> {
-    const [items, total] = await this.repo.findAndCount({
-      ...options,
-      skip: (page - 1) * limit,
-      take: limit,
-    });
-    return new Paginated(items, total, { page, limit });
+    return findPage(this.repo, options, pagination);
   }
 
   async count(options?: FindManyOptions<T>): Promise<number> {

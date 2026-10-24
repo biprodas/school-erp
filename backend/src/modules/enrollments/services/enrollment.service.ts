@@ -199,6 +199,13 @@ export class EnrollmentService {
     ]);
   }
 
+  /** Active students per class in a session (dashboards). */
+  countActiveByClass(
+    academicYearId: string,
+  ): Promise<{ classId: string; students: number }[]> {
+    return this.enrollmentRepo.countActiveByClass(academicYearId);
+  }
+
   /** Enrollments by id with student, class and section (reports). */
   findByIds(ids: string[]): Promise<StudentEnrollment[]> {
     return this.enrollmentRepo.findByIds(ids);

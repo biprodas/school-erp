@@ -372,6 +372,43 @@ export class AttendanceReportService {
     return { ...range, ...withPercentage(tallyOf(counts, statuses)) };
   }
 
+  /**
+   * `enrollmentSummary` for many enrollments of one session, in one query
+   * (a section's report cards). Enrollments with no records get zeros.
+   */
+  async enrollmentSummaries(
+    academicYearId: string,
+    enrollmentIds: string[],
+  ): Promise<Map<string, TallyView & { from: string; to: string }>> {
+    const summaries = new Map<
+      string,
+      TallyView & { from: string; to: string }
+    >();
+    if (!enrollmentIds.length) return summaries;
+    const year = await this.academicYears.findById(academicYearId);
+    if (!year.startDate) return summaries;
+    const range = clampRange(
+      year,
+      undefined,
+      undefined,
+      await this.settings.today(),
+    );
+    const statuses = await this.statuses.byCode();
+    const counts = await this.recordRepo.countDaysByEnrollment({
+      ...range,
+      sectionIds: null,
+      enrollmentIds,
+    });
+    const byEnrollment = groupCounts(counts);
+    for (const id of enrollmentIds) {
+      summaries.set(id, {
+        ...range,
+        ...withPercentage(tallyOf(byEnrollment.get(id) ?? [], statuses)),
+      });
+    }
+    return summaries;
+  }
+
   /** One enrollment's day statuses over a range (the portal's history). */
   async enrollmentDays(enrollmentId: string, from: string, to: string) {
     const statuses = await this.statuses.byCode();

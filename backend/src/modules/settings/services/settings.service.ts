@@ -22,7 +22,11 @@ import {
   mergeSettings,
   withDefaults,
 } from '../settings.defaults';
-import type { OrgSettingsValues, SettingsSection } from '../settings.types';
+import type {
+  OrgSettingsValues,
+  SettingsSection,
+  SignerRole,
+} from '../settings.types';
 import { UpdateOrganizationSettingsDto } from '../dto/update-organization-settings.dto';
 import { localDate } from '~/shared/dates/local-date';
 
@@ -43,8 +47,18 @@ export interface OrganizationSettingsView {
 export interface SettingsView extends OrgSettingsValues {
   organization: OrganizationSettingsView;
   /** Signed, short-lived download URLs of the branding files. */
-  files: { logoUrl: string | null; principalSignatureUrl: string | null };
+  files: {
+    logoUrl: string | null;
+    principalSignatureUrl: string | null;
+    examControllerSignatureUrl: string | null;
+  };
 }
+
+/** The profile field holding each signer's uploaded signature. */
+const SIGNATURE_FIELD = {
+  principal: 'principalSignatureFileId',
+  exam_controller: 'examControllerSignatureFileId',
+} as const satisfies Record<SignerRole, keyof OrgSettingsValues['profile']>;
 
 /** What every signed-in member may read: enough to brand and format pages. */
 export interface DisplaySettings {
@@ -133,6 +147,9 @@ export class SettingsService {
         principalSignatureUrl: await this.downloadUrl(
           values.profile.principalSignatureFileId,
         ),
+        examControllerSignatureUrl: await this.downloadUrl(
+          values.profile.examControllerSignatureFileId,
+        ),
       },
     };
   }
@@ -197,17 +214,25 @@ export class SettingsService {
   }
 
   /** Stores the principal's signature (used on report cards, certificates). */
-  async setPrincipalSignature(
+  setPrincipalSignature(
     file: IncomingFile,
   ): Promise<{ fileId: string; url: string }> {
+    return this.setSignature('principal', file);
+  }
+
+  /** Stores a signer's signature image; the old file goes. */
+  async setSignature(
+    role: SignerRole,
+    file: IncomingFile,
+  ): Promise<{ fileId: string; url: string }> {
+    const field = SIGNATURE_FIELD[role];
     const stored = await this.files.upload(file, 'signature');
     let previous: string | null;
     try {
-      ({
-        before: { principalSignatureFileId: previous },
-      } = await this.writeSection('profile', {
-        principalSignatureFileId: stored.id,
-      }));
+      const { before } = await this.writeSection('profile', {
+        [field]: stored.id,
+      });
+      previous = before[field];
     } catch (err) {
       await this.removeQuietly(stored.id);
       throw err;
@@ -286,21 +311,45 @@ export class SettingsService {
     });
   }
 
+  /**
+   * The signers' signature images as data URIs, for PDF templates; a
+   * signer without an upload (or whose file is gone) is left out.
+   */
+  async signatureImages(
+    roles: readonly (SignerRole | null)[],
+  ): Promise<Map<SignerRole, string>> {
+    const profile = await this.getSection('profile');
+    const images = new Map<SignerRole, string>();
+    for (const role of new Set(roles)) {
+      const fileId = role ? profile[SIGNATURE_FIELD[role]] : null;
+      if (!role || !fileId) continue;
+      const read = await this.files.read(fileId).catch(() => null);
+      if (read) {
+        images.set(
+          role,
+          `data:${read.mime};base64,${read.buffer.toString('base64')}`,
+        );
+      }
+    }
+    return images;
+  }
+
   /** Ids inside a section must point at this school's own records. */
   private async assertReferences(
     section: SettingsSection,
     value: unknown,
   ): Promise<void> {
     if (section !== 'profile') return;
-    const fileId = (value as OrgSettingsValues['profile'])
-      .principalSignatureFileId;
-    if (!fileId) return;
-    const file = await this.files.findById(fileId).catch(() => null);
-    if (file?.purpose !== 'signature') {
-      throw new BadRequestException({
-        message: 'principalSignatureFileId must be an uploaded signature',
-        code: 'INVALID_SIGNATURE_FILE',
-      });
+    for (const field of Object.values(SIGNATURE_FIELD)) {
+      const fileId = (value as OrgSettingsValues['profile'])[field];
+      if (!fileId) continue;
+      const file = await this.files.findById(fileId).catch(() => null);
+      if (file?.purpose !== 'signature') {
+        throw new BadRequestException({
+          message: `${field} must be an uploaded signature`,
+          code: 'INVALID_SIGNATURE_FILE',
+        });
+      }
     }
   }
 

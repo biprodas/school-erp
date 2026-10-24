@@ -1,4 +1,5 @@
-import { PaginationQueryDto } from './pagination-query.dto';
+import type { FindManyOptions, ObjectLiteral, Repository } from 'typeorm';
+import { DEFAULT_PAGE_SIZE, PaginationQueryDto } from './pagination-query.dto';
 
 export interface PaginationMeta {
   page: number;
@@ -27,4 +28,22 @@ export class Paginated<T> {
       totalPages: Math.ceil(total / limit),
     };
   }
+}
+
+/**
+ * One page of `repo.find(options)` with the total count. Tenant
+ * repositories use it through `BaseTenantRepository.findPage`; platform
+ * services call it on their root-connection repositories.
+ */
+export async function findPage<T extends ObjectLiteral>(
+  repo: Pick<Repository<T>, 'findAndCount'>,
+  options: FindManyOptions<T>,
+  { page = 1, limit = DEFAULT_PAGE_SIZE }: PaginationQueryDto = {},
+): Promise<Paginated<T>> {
+  const [items, total] = await repo.findAndCount({
+    ...options,
+    skip: (page - 1) * limit,
+    take: limit,
+  });
+  return new Paginated(items, total, { page, limit });
 }

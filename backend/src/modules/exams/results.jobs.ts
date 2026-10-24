@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { JobHandler, QUEUES } from '~/shared/queue';
 import type { JobContext, JobPayload } from '~/shared/queue';
 import { formatNumber, type Numerals } from '~/shared/locale/format';
+import { mergePdfs } from '~/shared/pdf/pdf-merge';
 import { PdfService } from '~/shared/pdf/pdf.service';
 import { writeSheet } from '~/shared/spreadsheet/spreadsheet';
 import { AttendanceReportService } from '~/modules/attendance/services/attendance-report.service';
@@ -94,8 +95,9 @@ body{font-size:10pt}
 .summary{margin-top:3mm}
 .summary td{padding:1.5mm;border:1px solid #ccc}
 .remarks{margin-top:3mm;border:1px solid #ccc;padding:2mm;min-height:10mm}
-.signs{margin-top:18mm}
-.signs td{text-align:center}
+.signs{margin-top:4mm}
+.signs td{text-align:center;vertical-align:bottom;height:16mm}
+.sig{display:block;max-height:12mm;max-width:40mm;margin:0 auto}
 .line{border-top:1px solid #000;width:45mm;margin:0 auto 1mm}
 `;
 
@@ -133,8 +135,9 @@ export class ResultJobs {
   }
 
   /**
-   * One PDF per student (kept on the result) and one for the section.
-   * Renders run in parallel up to `PDF_CONCURRENCY`.
+   * One PDF per student (kept on the result) and one for the section,
+   * merged from those without rendering again. Renders run in parallel up
+   * to `PDF_CONCURRENCY`.
    */
   @JobHandler(QUEUES.pdf, REPORT_CARDS_JOB)
   reportCards(payload: JobPayload<ReportCardsJobData>, context: JobContext) {
@@ -153,24 +156,26 @@ export class ResultJobs {
         await results.rows(resultDefinitionId, sectionId, null)
       ).sort((a, b) => (a.positionSection ?? 1e9) - (b.positionSection ?? 1e9));
       const l = LABELS[language];
-      const cards: ReturnType<typeof card>[] = [];
-      for (const r of rows) {
-        const summary = options.showAttendance
-          ? await attendance.enrollmentSummary(r.enrollmentId)
-          : null;
-        cards.push(
-          card(
-            r,
-            l,
-            {
-              ...options,
-              // Bangla cards use Bangla digits; English ones the school's choice.
-              numerals: language === 'bn' ? 'bn' : school.locale.numerals,
-            },
-            summary,
-          ),
-        );
-      }
+      // One query for the whole section's attendance, not one per student.
+      const summaries = options.showAttendance
+        ? await attendance.enrollmentSummaries(
+            definition.academicYearId,
+            rows.map((r) => r.enrollmentId),
+          )
+        : null;
+      const cards = rows.map((r) =>
+        card(
+          r,
+          l,
+          {
+            ...options,
+            // Bangla cards use Bangla digits; English ones the school's choice.
+            numerals: language === 'bn' ? 'bn' : school.locale.numerals,
+          },
+          summaries?.get(r.enrollmentId) ?? null,
+        ),
+      );
+      const images = await settings.signatureImages(options.signatureSigners);
       const page = {
         l,
         schoolName: school.name,
@@ -180,7 +185,10 @@ export class ResultJobs {
         session: definition.academicYear?.name ?? '',
         className: definition.schoolClass?.name ?? '',
         showPoint: rows.some((r) => r.gpa !== null),
-        signatures: options.signatures,
+        signatures: options.signatures.map((label, i) => {
+          const signer = options.signatureSigners[i] ?? null;
+          return { label, image: signer ? images.get(signer) : undefined };
+        }),
       };
       const render = (list: typeof cards) =>
         this.pdf.render(
@@ -189,20 +197,23 @@ export class ResultJobs {
           { paper: 'A4', css: CARD_CSS },
         );
 
+      // Each card renders once; the section's PDF joins those pages.
       let done = 0;
-      await Promise.all(
+      const pdfs = await Promise.all(
         rows.map(async (r, i) => {
+          const buffer = await render([cards[i]]);
           const stored = await files.storeGenerated({
-            buffer: await render([cards[i]]),
+            buffer,
             originalName: `report-card-${r.admissionNumber || r.enrollmentId}.pdf`,
           });
           await results.setReportCard(r.id, stored.id);
           done++;
           await scope.progress((done / Math.max(rows.length, 1)) * 90);
+          return buffer;
         }),
       );
       const merged = await files.storeGenerated({
-        buffer: await render(cards),
+        buffer: pdfs.length ? await mergePdfs(pdfs) : await render([]),
         originalName: `report-cards-${page.className}-${rows[0]?.sectionName ?? ''}.pdf`,
       });
       return { fileId: merged.id, result: { cards: rows.length } };

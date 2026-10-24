@@ -10,8 +10,9 @@ import { SettingsService } from '~/modules/settings/services/settings.service';
 import { NoticeService } from '../services/notice.service';
 
 /**
- * The school's public home page data (PRD 6.13 public notices): name,
- * branding and public notices. Read as the school (RLS applies) though the
+ * The school's public home page data (PRD 6.13 public notices, 6.24): name
+ * and branding always; about text, contact, address and public notices as
+ * `profile.homePage` says. Read as the school (RLS applies) though the
  * route itself is outside the tenant middleware.
  */
 @ApiTags('Public')
@@ -34,19 +35,31 @@ export class PublicHomeController {
       const settings = await resolve(SettingsService);
       const display = await settings.getDisplay();
       const profile = await settings.getSection('profile');
-      const notices = await (await resolve(NoticeService)).publicNotices();
-      return {
+      const page = profile.homePage;
+      const brand = {
         slug: org.slug,
         name: display.name,
         nameBn: display.nameBn,
         logoUrl: display.logoUrl,
         colors: display.colors,
-        contact: {
-          phone: profile.phone,
-          email: profile.email,
-          website: profile.website,
-          address: profile.address,
-        },
+        enabled: page.enabled,
+      };
+      if (!page.enabled) return brand;
+      const notices = page.showNotices
+        ? await (await resolve(NoticeService)).publicNotices(page.noticeLimit)
+        : [];
+      return {
+        ...brand,
+        about: page.about,
+        aboutBn: page.aboutBn,
+        contact: page.showContact
+          ? {
+              phone: profile.phone,
+              email: profile.email,
+              website: profile.website,
+            }
+          : null,
+        address: page.showAddress ? profile.address : null,
         notices: notices.map((n) => ({
           id: n.id,
           title: n.title,

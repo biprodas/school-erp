@@ -46,7 +46,7 @@
         </tr>{{/if}}</table>
     {{#if this.remarks}}<div class='remarks'>{{../l.remarks}}: {{this.remarks}}</div>{{/if}}
     <table class='signs'><tr>
-        {{#each ../signatures}}<td><div class='line'></div>{{this}}</td>{{/each}}
+        {{#each ../signatures}}<td>{{#if this.image}}<img class='sig' src='{{this.image}}'>{{/if}}<div class='line'></div>{{this.label}}</td>{{/each}}
       </tr></table>
   </div>
 {{/each}}

@@ -223,7 +223,7 @@ export class NoticeService {
   }
 
   /** Public notices for the school's home page. */
-  async publicNotices(): Promise<Notice[]> {
+  async publicNotices(limit = 20): Promise<Notice[]> {
     const now = new Date();
     return (
       await this.noticeRepo.find({
@@ -233,7 +233,7 @@ export class NoticeService {
       })
     )
       .filter((n) => isLive(n, now))
-      .slice(0, 20);
+      .slice(0, limit);
   }
 
   /** Notifies the audience of every notice that is due and not yet notified. */

@@ -55,15 +55,11 @@ export class DashboardService {
       async () => {
         const today = await this.settings.today();
         const year = await this.academicYears.findCurrent();
-        const active = year
-          ? await this.enrollments.findActiveInYear(year.id)
+        const counts = year
+          ? await this.enrollments.countActiveByClass(year.id)
           : [];
-        const classNames = new Map(
-          (await this.classes.findAllOrdered()).map((c) => [c.id, c.name]),
-        );
-        const byClass = new Map<string, number>();
-        for (const e of active)
-          byClass.set(e.classId, (byClass.get(e.classId) ?? 0) + 1);
+        const byClass = new Map(counts.map((c) => [c.classId, c.students]));
+        const classes = await this.classes.findAllOrdered();
         const daily = year
           ? await this.attendance.daily({ date: today }, null)
           : null;
@@ -75,12 +71,15 @@ export class DashboardService {
         return {
           date: today,
           enrollment: {
-            total: active.length,
-            byClass: [...byClass].map(([classId, students]) => ({
-              classId,
-              className: classNames.get(classId) ?? '',
-              students,
-            })),
+            total: counts.reduce((n, c) => n + c.students, 0),
+            // In class order, classes without students left out.
+            byClass: classes
+              .filter((c) => byClass.has(c.id))
+              .map((c) => ({
+                classId: c.id,
+                className: c.name,
+                students: byClass.get(c.id)!,
+              })),
           },
           attendanceToday: daily
             ? {

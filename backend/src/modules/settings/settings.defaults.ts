@@ -22,6 +22,8 @@ export const DEFAULT_SETTINGS: OrgSettingsValues = {
     establishedYear: null,
     principalName: null,
     principalSignatureFileId: null,
+    examControllerName: null,
+    examControllerSignatureFileId: null,
     colors: { primary: null, secondary: null },
     letterhead: {
       showLogo: true,
@@ -30,6 +32,15 @@ export const DEFAULT_SETTINGS: OrgSettingsValues = {
       showEiin: true,
       tagline: null,
       footerText: null,
+    },
+    homePage: {
+      enabled: true,
+      about: null,
+      aboutBn: null,
+      showContact: true,
+      showAddress: true,
+      showNotices: true,
+      noticeLimit: 10,
     },
   },
   locale: {
@@ -65,6 +76,7 @@ export const DEFAULT_SETTINGS: OrgSettingsValues = {
       showAttendance: true,
       showRemarks: true,
       signatures: ['Class teacher', 'Guardian', 'Head teacher'],
+      signatureSigners: [null, null, 'principal'],
     },
   },
   attendance: { mode: 'day', lockAfterDays: 7, cutoffTime: null },

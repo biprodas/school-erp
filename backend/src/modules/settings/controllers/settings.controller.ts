@@ -5,6 +5,8 @@ import {
   Body,
   Controller,
   Get,
+  Param,
+  ParseEnumPipe,
   Patch,
   Post,
   UploadedFile,
@@ -38,6 +40,10 @@ import {
   UpdateSecuritySettingsDto,
 } from '../dto/update-workflow-settings.dto';
 import { SettingsService } from '../services/settings.service';
+import { SIGNER_ROLES, type SignerRole } from '../settings.types';
+
+/** `ParseEnumPipe` wants an enum-like object. */
+const SIGNER_ROLE_ENUM = Object.fromEntries(SIGNER_ROLES.map((r) => [r, r]));
 
 const UPLOAD_BODY = {
   schema: {
@@ -178,5 +184,20 @@ export class SettingsController {
   @ResponseMessage('Principal signature updated')
   uploadSignature(@UploadedFile() file?: Express.Multer.File) {
     return this.settings.setPrincipalSignature(incoming(file));
+  }
+
+  /** A signer's signature image (`principal` or `exam_controller`). */
+  @Post('files/signature/:role')
+  @RequirePermissions(PERMISSIONS.SETTINGS_UPDATE)
+  @Throttle(UPLOAD_THROTTLE)
+  @UseInterceptors(FileUpload('signature'))
+  @ApiConsumes('multipart/form-data')
+  @ApiBody(UPLOAD_BODY)
+  @ResponseMessage('Signature updated')
+  uploadSignerSignature(
+    @Param('role', new ParseEnumPipe(SIGNER_ROLE_ENUM)) role: SignerRole,
+    @UploadedFile() file?: Express.Multer.File,
+  ) {
+    return this.settings.setSignature(role, incoming(file));
   }
 }

@@ -222,6 +222,11 @@ export class GuardianService {
     return new Map([...family].map(([id, users]) => [id, [...users]]));
   }
 
+  /** The guardian links of many students, with the guardians. */
+  linksForStudents(studentIds: string[]): Promise<StudentGuardian[]> {
+    return this.linkRepo.findByStudents(studentIds);
+  }
+
   /** Every guardian's portal account. */
   async allUserIds(): Promise<string[]> {
     return this.guardianRepo.userIds();

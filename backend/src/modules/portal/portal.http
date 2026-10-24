@@ -1,0 +1,48 @@
+@base = http://localhost:3900/api
+@tenant = acme
+# A guardian's or student's access token
+@token = paste-portal-access-token
+@child = paste-student-id
+
+### The signed-in family's children here
+GET {{base}}/portal/children
+X-Tenant-ID: {{tenant}}
+Authorization: Bearer {{token}}
+
+### Other schools with this account (switch through a handoff)
+GET {{base}}/portal/schools
+X-Tenant-ID: {{tenant}}
+Authorization: Bearer {{token}}
+
+### A child's dashboard: attendance, results, dues, notices
+GET {{base}}/portal/children/{{child}}/dashboard
+X-Tenant-ID: {{tenant}}
+Authorization: Bearer {{token}}
+
+###
+GET {{base}}/portal/children/{{child}}/attendance?month=2026-10
+X-Tenant-ID: {{tenant}}
+Authorization: Bearer {{token}}
+
+### Published results (held back while fees are due, if the school says so)
+GET {{base}}/portal/children/{{child}}/results
+X-Tenant-ID: {{tenant}}
+Authorization: Bearer {{token}}
+
+###
+GET {{base}}/portal/children/{{child}}/fees
+X-Tenant-ID: {{tenant}}
+Authorization: Bearer {{token}}
+
+### Apply for leave for a child
+POST {{base}}/portal/children/{{child}}/leave
+X-Tenant-ID: {{tenant}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "fromDate": "2026-10-26", "reason": "Family wedding" }
+
+### Notices for this family
+GET {{base}}/portal/notices
+X-Tenant-ID: {{tenant}}
+Authorization: Bearer {{token}}

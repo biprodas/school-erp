@@ -39,6 +39,16 @@ export class LetterheadSettingsDto {
   @IsOptional() @IsString() @MaxLength(300) footerText?: string | null;
 }
 
+export class HomePageSettingsDto {
+  @IsBoolean() enabled?: boolean;
+  @IsOptional() @IsString() @MaxLength(2000) about?: string | null;
+  @IsOptional() @IsString() @MaxLength(2000) aboutBn?: string | null;
+  @IsBoolean() showContact?: boolean;
+  @IsBoolean() showAddress?: boolean;
+  @IsBoolean() showNotices?: boolean;
+  @IsInt() @Min(1) @Max(50) noticeLimit?: number;
+}
+
 /** `PATCH /settings/profile`: any subset; nested objects merge. */
 export class UpdateProfileSettingsDto {
   @IsOptional() @IsString() @MaxLength(150) nameBn?: string | null;
@@ -67,6 +77,11 @@ export class UpdateProfileSettingsDto {
   /** A file uploaded through `POST /settings/files/signature`, or null. */
   @IsOptional() @IsUUID() principalSignatureFileId?: string | null;
 
+  @IsOptional() @IsString() @MaxLength(100) examControllerName?: string | null;
+
+  /** A file from `POST /settings/files/signature/exam_controller`, or null. */
+  @IsOptional() @IsUUID() examControllerSignatureFileId?: string | null;
+
   @IsObject()
   @ValidateNested()
   @Type(() => ColorSettingsDto)
@@ -76,4 +91,10 @@ export class UpdateProfileSettingsDto {
   @ValidateNested()
   @Type(() => LetterheadSettingsDto)
   letterhead?: LetterheadSettingsDto;
+
+  /** The public home page (PRD 6.24). */
+  @IsObject()
+  @ValidateNested()
+  @Type(() => HomePageSettingsDto)
+  homePage?: HomePageSettingsDto;
 }

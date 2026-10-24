@@ -49,6 +49,24 @@ export class EnrollmentRepository extends BaseTenantRepository<StudentEnrollment
     });
   }
 
+  /** Active enrollments per class in a session, counted in the database. */
+  async countActiveByClass(
+    academicYearId: string,
+  ): Promise<{ classId: string; students: number }[]> {
+    const rows = await this.repo
+      .createQueryBuilder('e')
+      .select('e.classId', 'classId')
+      .addSelect('count(*)::int', 'students')
+      .where('e.orgId = :orgId', { orgId: this.orgId })
+      .andWhere('e.academicYearId = :academicYearId', { academicYearId })
+      .andWhere('e.status = :status', {
+        status: StudentEnrollmentStatus.ACTIVE,
+      })
+      .groupBy('e.classId')
+      .getRawMany<{ classId: string; students: number }>();
+    return rows;
+  }
+
   findActiveInSection(sectionId: string): Promise<StudentEnrollment[]> {
     return this.repo.find({
       where: { sectionId, status: StudentEnrollmentStatus.ACTIVE },

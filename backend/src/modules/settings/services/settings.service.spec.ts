@@ -26,6 +26,7 @@ describe('SettingsService', () => {
     upload: jest.Mock;
     getDownloadUrl: jest.Mock;
     remove: jest.Mock;
+    read: jest.Mock;
   };
   let rootManager: { findOne: jest.Mock; save: jest.Mock };
   let organizations: {
@@ -60,6 +61,7 @@ describe('SettingsService', () => {
         Promise.resolve(`https://s3/${id}`),
       ),
       remove: jest.fn().mockResolvedValue(undefined),
+      read: jest.fn(),
     };
     org = {
       id: ORG_ID,
@@ -284,6 +286,63 @@ describe('SettingsService', () => {
         }),
       ).rejects.toThrow('db down');
       expect(files.remove).toHaveBeenCalledWith('sig-new');
+    });
+  });
+
+  describe('other signers', () => {
+    beforeEach(() => {
+      files.upload.mockResolvedValue({ id: 'sig-exam' });
+      files.findById.mockResolvedValue({
+        id: 'sig-exam',
+        purpose: 'signature',
+      });
+    });
+
+    it("stores the exam controller's signature in its own field", async () => {
+      repo.findCurrentForUpdate.mockResolvedValue({
+        id: 's-1',
+        profile: { principalSignatureFileId: 'sig-principal' },
+      });
+
+      await service.setSignature('exam_controller', {
+        buffer: Buffer.from(''),
+        originalName: 'sig.png',
+      });
+
+      const [[saved]] = repo.save.mock.calls as [
+        [{ profile: Record<string, unknown> }],
+      ];
+      expect(saved.profile).toEqual({
+        principalSignatureFileId: 'sig-principal',
+        examControllerSignatureFileId: 'sig-exam',
+      });
+      expect(files.remove).not.toHaveBeenCalled();
+    });
+
+    it('gives PDFs data URIs, skipping signers without an upload', async () => {
+      repo.findCurrent.mockResolvedValue({
+        id: 's-1',
+        profile: { principalSignatureFileId: 'sig-principal' },
+      });
+      files.read.mockResolvedValue({
+        buffer: Buffer.from('png'),
+        mime: 'image/png',
+      });
+
+      const images = await service.signatureImages([
+        null,
+        'principal',
+        'exam_controller',
+        'principal',
+      ]);
+
+      expect([...images]).toEqual([
+        [
+          'principal',
+          `data:image/png;base64,${Buffer.from('png').toString('base64')}`,
+        ],
+      ]);
+      expect(files.read).toHaveBeenCalledTimes(1);
     });
   });
 

@@ -70,6 +70,7 @@
     "nodemailer": "^10.1.6",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
+    "pdf-lib": "^1.17.1",
     "pg": "^8.20.0",
     "pino": "^10.4.0",
     "pino-http": "^11.0.0",

@@ -1,0 +1,92 @@
+@base = http://localhost:3900/api
+@tenant = acme
+# A staff access token (auth.http → login)
+@token = paste-tenant-access-token
+@year = paste-academic-year-id
+@class = paste-class-id
+@exam = paste-exam-id
+@sheet = paste-mark-sheet-id
+@definition = paste-result-definition-id
+@section = paste-section-id
+
+### Create an exam in a session
+POST {{base}}/exams
+X-Tenant-ID: {{tenant}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "academicYearId": "{{year}}", "name": "Half-yearly", "weight": 40 }
+
+### Copy the class subjects into the exam
+POST {{base}}/exams/{{exam}}/subjects
+X-Tenant-ID: {{tenant}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "classIds": ["{{class}}"] }
+
+### Open it: one mark sheet per exam subject and section
+POST {{base}}/exams/{{exam}}/open
+X-Tenant-ID: {{tenant}}
+Authorization: Bearer {{token}}
+
+### The exam's mark sheets (scope applies)
+GET {{base}}/exams/{{exam}}/mark-sheets
+X-Tenant-ID: {{tenant}}
+Authorization: Bearer {{token}}
+
+### A sheet's marks grid
+GET {{base}}/mark-sheets/{{sheet}}/marks
+X-Tenant-ID: {{tenant}}
+Authorization: Bearer {{token}}
+
+### Enter marks (results:enter; subject teachers for their own subjects)
+PUT {{base}}/mark-sheets/{{sheet}}/marks
+X-Tenant-ID: {{tenant}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "entries": [
+    { "enrollmentId": "paste-enrollment-id", "componentId": "paste-component-id", "value": 78 },
+    { "enrollmentId": "paste-enrollment-id-2", "componentId": "paste-component-id", "absent": true }
+  ]
+}
+
+### Draft → Submitted → (Verified) → Approved
+POST {{base}}/mark-sheets/{{sheet}}/submit
+X-Tenant-ID: {{tenant}}
+Authorization: Bearer {{token}}
+
+###
+POST {{base}}/mark-sheets/{{sheet}}/approve
+X-Tenant-ID: {{tenant}}
+Authorization: Bearer {{token}}
+
+### Tabulate once every sheet is approved (job)
+POST {{base}}/result-definitions/{{definition}}/tabulate
+X-Tenant-ID: {{tenant}}
+Authorization: Bearer {{token}}
+
+### Publish (families are notified)
+POST {{base}}/result-definitions/{{definition}}/publish
+X-Tenant-ID: {{tenant}}
+Authorization: Bearer {{token}}
+
+### Results, merit list and analysis
+GET {{base}}/result-definitions/{{definition}}/results?sectionId={{section}}
+X-Tenant-ID: {{tenant}}
+Authorization: Bearer {{token}}
+
+###
+GET {{base}}/result-definitions/{{definition}}/merit-list
+X-Tenant-ID: {{tenant}}
+Authorization: Bearer {{token}}
+
+### Report cards for a section (job; one PDF per student plus the section)
+POST {{base}}/result-definitions/{{definition}}/report-cards
+X-Tenant-ID: {{tenant}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "sectionId": "{{section}}", "language": "bn" }

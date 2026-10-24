@@ -31,8 +31,13 @@ export class CertificatePdfJob {
     return this.tracker.run(payload, context, async ({ resolve }) => {
       const certificates = await resolve(CertificateService);
       const files = await resolve(FileService);
+      const settings = await resolve(SettingsService);
       const c = await certificates.findById(payload.data.certificateId);
+      const signature =
+        (await settings.signatureImages(['principal'])).get('principal') ??
+        null;
       const buffer = await this.pdf.render(`certificates/${c.type}`, {
+        signature,
         d: c.data,
         serial: c.serial,
         issuedOn: c.issuedAt.toISOString().slice(0, 10),

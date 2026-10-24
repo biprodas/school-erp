@@ -314,7 +314,7 @@ Every error response is `{ success: false, statusCode, message, code?, … }`. T
 
 | Code | Message (English) |
 | ---- | ----------------- |
-| `INVALID_SIGNATURE_FILE` | principalSignatureFileId must be an uploaded signature |
+| `INVALID_SIGNATURE_FILE` | ${field} must be an uploaded signature |
 
 ## shared
 

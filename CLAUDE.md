@@ -122,6 +122,7 @@ Local env: the backend reads `.env` and then `.env.${NODE_ENV}` (`.env.developme
   - Observability (`~/shared/observability`): `reportError(err, { orgId, where })` sends to Sentry when `SENTRY_DSN` is set (5xx and final job failures already do; ids only, never personal data). `GET /api/metrics` is Prometheus text behind `METRICS_TOKEN`. `/api/health` checks the database, Redis (`JobQueue.ping`) and S3 (`StorageService.ping`).
   - Money and numbers shown to people (PDFs, notifications) go through `formatMoney`/`formatNumber` (`~/shared/locale/format`): Bangla digits and lakh grouping follow `locale.numerals`.
   - Uploads: every handler with `FileUpload(...)` also has `@Throttle(UPLOAD_THROTTLE)` (a spec checks it). `helmet()` and `Cache-Control: no-store` are set in `configureApp`.
+  - Sign-in slips: `POST /sections/:sectionId/credential-slips` (`modules/credential-slips/`) prints a section's guardian/student slips through `InviteService.issueSlips`, which never touches an account whose owner chose a password. PDFs that need a signature get it from `SettingsService.signatureImages(roles)` (`principal`, `exam_controller`), as data URIs.
   - Data export (`modules/data-export/`, `POST /settings/export`, school admins only): one CSV per table under RLS, so a new tenanted table is exported automatically; columns named like hash/token/secret/password are left out.
 - **`.http` files** (e.g. `organization.http`, `auth.http`) next to modules are manual REST-client request samples.
 

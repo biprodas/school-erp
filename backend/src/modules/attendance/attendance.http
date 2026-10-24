@@ -1,0 +1,67 @@
+@base = http://localhost:3900/api
+@tenant = acme
+# A staff access token (auth.http → login)
+@token = paste-tenant-access-token
+@section = paste-section-id
+@enrollment = paste-enrollment-id
+
+### A section's register for a day (the roster with today's statuses)
+GET {{base}}/attendance/sections/{{section}}?date=2026-10-24
+X-Tenant-ID: {{tenant}}
+Authorization: Bearer {{token}}
+
+### Take or correct attendance (attendance:take). Students left out are present.
+### Changing a recorded status needs a reason; days past lockAfterDays need attendance:edit_locked.
+PUT {{base}}/attendance/sections/{{section}}?date=2026-10-24
+X-Tenant-ID: {{tenant}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+Idempotency-Key: 6f1c2e9a-attendance-1
+
+{
+  "records": [
+    { "enrollmentId": "{{enrollment}}", "status": "absent" }
+  ],
+  "reason": "Arrived after the register was taken"
+}
+
+### Corrections made to a day's register
+GET {{base}}/attendance/sections/{{section}}/corrections?date=2026-10-24
+X-Tenant-ID: {{tenant}}
+Authorization: Bearer {{token}}
+
+### Sections not yet submitted for a day
+GET {{base}}/attendance/submission-status?date=2026-10-24
+X-Tenant-ID: {{tenant}}
+Authorization: Bearer {{token}}
+
+### Daily school, class and section totals
+GET {{base}}/attendance/reports/daily?date=2026-10-24
+X-Tenant-ID: {{tenant}}
+Authorization: Bearer {{token}}
+
+### Monthly register PDF (job; poll GET /jobs/:id for the link)
+POST {{base}}/attendance/reports/monthly-register
+X-Tenant-ID: {{tenant}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "sectionId": "{{section}}", "month": "2026-10" }
+
+### Students under a percentage over a range
+GET {{base}}/attendance/reports/defaulters?from=2026-10-01&to=2026-10-24&threshold=75
+X-Tenant-ID: {{tenant}}
+Authorization: Bearer {{token}}
+
+### Student leave: apply (class teacher decides)
+POST {{base}}/student-leaves
+X-Tenant-ID: {{tenant}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "enrollmentId": "{{enrollment}}", "fromDate": "2026-10-26", "toDate": "2026-10-27", "reason": "Fever" }
+
+### Approve a leave (sets Leave in registers already taken)
+POST {{base}}/student-leaves/paste-leave-id/approve
+X-Tenant-ID: {{tenant}}
+Authorization: Bearer {{token}}

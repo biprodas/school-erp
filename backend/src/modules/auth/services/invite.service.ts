@@ -90,6 +90,11 @@ export interface ProvisionResult {
 
 const noMail = () => Promise.resolve();
 
+/** What `issueSlips` did for one account. */
+export type SlipOutcome =
+  | { status: 'issued'; identifier: string; temporaryPassword: string }
+  | { status: 'own_password' | 'has_email'; identifier: string };
+
 /**
  * Gives people a sign-in at this school without anyone choosing their
  * password (PRD 6.3): new accounts with an email get an activation link,
@@ -251,6 +256,38 @@ export class InviteService {
     // Whoever held an older slip is out.
     await this.sessions.revokeAllForUser(userId);
     return { temporaryPassword: password };
+  }
+
+  /**
+   * `issueSlip` for many accounts (a section's printed slips). Accounts with
+   * their own password are skipped, and so are accounts with an email
+   * unless `includeEmailAccounts` (they can use their activation link).
+   * One account at a time, each in its own transaction, as for one slip.
+   */
+  async issueSlips(
+    userIds: string[],
+    { includeEmailAccounts = false } = {},
+  ): Promise<Map<string, SlipOutcome>> {
+    const outcomes = new Map<string, SlipOutcome>();
+    const accounts = await this.accounts.findByIds([...new Set(userIds)]);
+    for (const account of accounts) {
+      const identifier = account.phone ?? account.email ?? '';
+      if (account.email && !includeEmailAccounts) {
+        outcomes.set(account.id, { status: 'has_email', identifier });
+        continue;
+      }
+      if (await this.credentials.hasOwnPassword(account.id)) {
+        outcomes.set(account.id, { status: 'own_password', identifier });
+        continue;
+      }
+      const { temporaryPassword } = await this.issueSlip(account.id);
+      outcomes.set(account.id, {
+        status: 'issued',
+        identifier,
+        temporaryPassword,
+      });
+    }
+    return outcomes;
   }
 
   /** The id of this school's member with the email or phone, if any. */

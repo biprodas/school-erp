@@ -33,6 +33,23 @@ export const DATE_FORMATS = [
 ] as const;
 export type DateFormat = (typeof DATE_FORMATS)[number];
 
+/** People whose signature image the school uploads for its PDFs. */
+export const SIGNER_ROLES = ['principal', 'exam_controller'] as const;
+export type SignerRole = (typeof SIGNER_ROLES)[number];
+
+/** What the public home page (`/` on the school's host) shows (PRD 6.24). */
+export interface HomePageSettings {
+  /** Off: the page shows only the name, logo and the sign-in link. */
+  enabled: boolean;
+  about: string | null;
+  aboutBn: string | null;
+  showContact: boolean;
+  showAddress: boolean;
+  showNotices: boolean;
+  /** How many public notices, newest (pinned) first. */
+  noticeLimit: number;
+}
+
 export interface ProfileSettings {
   /** The school's name in Bangla (the English name is `organizations.name`). */
   nameBn: string | null;
@@ -50,6 +67,9 @@ export interface ProfileSettings {
   principalName: string | null;
   /** Uploaded through `POST /settings/files/signature`. */
   principalSignatureFileId: string | null;
+  examControllerName: string | null;
+  /** Uploaded through `POST /settings/files/signature/exam_controller`. */
+  examControllerSignatureFileId: string | null;
   /** Brand colors as `#rrggbb`. */
   colors: { primary: string | null; secondary: string | null };
   /** What the letterhead on every PDF shows. */
@@ -61,6 +81,7 @@ export interface ProfileSettings {
     tagline: string | null;
     footerText: string | null;
   };
+  homePage: HomePageSettings;
 }
 
 export interface LocaleSettings {
@@ -106,6 +127,11 @@ export interface ReportCardSettings {
   showRemarks: boolean;
   /** Signature lines at the bottom, left to right. */
   signatures: string[];
+  /**
+   * Whose uploaded signature prints above each line, by position (null or
+   * missing: a blank line to sign by hand).
+   */
+  signatureSigners: (SignerRole | null)[];
 }
 
 export interface ResultsSettings {

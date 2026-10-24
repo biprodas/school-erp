@@ -2,8 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
 import { RequestContext } from '~/shared/request-context/request-context.service';
-import { DEFAULT_PAGE_SIZE } from '~/common/dto/pagination-query.dto';
-import { Paginated } from '~/common/dto/paginated.dto';
+import { findPage, type Paginated } from '~/common/dto/paginated.dto';
 import { PlatformAuditLog } from '../entities/platform-audit-log.entity';
 import { AuditActorType } from '../enums/audit-actor-type.enum';
 import { FilterPlatformAuditLogDto } from '../dto/filter-audit-log.dto';
@@ -46,20 +45,19 @@ export class PlatformAuditService {
     await repo.save(repo.create({ ...row, orgId: orgId ?? null }));
   }
 
-  async findFiltered(
+  findFiltered(
     filter: FilterPlatformAuditLogDto,
   ): Promise<Paginated<PlatformAuditLog>> {
     const where = auditLogWhere<PlatformAuditLog>(filter);
     if (filter.orgId) where.orgId = filter.orgId;
-    const page = filter.page ?? 1;
-    const limit = filter.limit ?? DEFAULT_PAGE_SIZE;
-    const [items, total] = await this.repo.findAndCount({
-      where,
-      // `seq` breaks ties between rows written at the same instant.
-      order: { createdAt: 'DESC', seq: 'DESC' },
-      skip: (page - 1) * limit,
-      take: limit,
-    });
-    return new Paginated(items, total, { page, limit });
+    return findPage(
+      this.repo,
+      {
+        where,
+        // `seq` breaks ties between rows written at the same instant.
+        order: { createdAt: 'DESC', seq: 'DESC' },
+      },
+      filter,
+    );
   }
 }

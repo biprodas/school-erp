@@ -1,0 +1,65 @@
+@base = http://localhost:3900/api
+@tenant = acme
+# A staff access token (auth.http → login)
+@token = paste-tenant-access-token
+@student = paste-student-id
+@guardian = paste-guardian-id
+@payment = paste-payment-id
+
+### Generate a month's invoices (job; idempotent per period)
+POST {{base}}/invoices/generate
+X-Tenant-ID: {{tenant}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "period": "2026-11" }
+
+### A student's statement: invoices, lines, payments and balance
+GET {{base}}/invoices/statement/{{student}}
+X-Tenant-ID: {{tenant}}
+Authorization: Bearer {{token}}
+
+### Counter collection (fees:collect). Without allocations, oldest dues are paid first.
+POST {{base}}/payments
+X-Tenant-ID: {{tenant}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+Idempotency-Key: 2b7d-payment-1
+
+{ "studentId": "{{student}}", "channel": "cash", "amount": 150000 }
+
+### One payment for a guardian's children
+POST {{base}}/payments
+X-Tenant-ID: {{tenant}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "guardianId": "{{guardian}}", "channel": "bank_slip", "amount": 300000, "reference": "DBBL-123" }
+
+### The receipt as data, then as a PDF (job)
+GET {{base}}/payments/{{payment}}/receipt
+X-Tenant-ID: {{tenant}}
+Authorization: Bearer {{token}}
+
+###
+POST {{base}}/payments/{{payment}}/pdf
+X-Tenant-ID: {{tenant}}
+Authorization: Bearer {{token}}
+
+### Cancel a receipt (fees:cancel_receipt; reverses the allocation)
+POST {{base}}/payments/{{payment}}/cancel
+X-Tenant-ID: {{tenant}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "reason": "Entered twice" }
+
+### Dues by class and section with aging buckets
+GET {{base}}/fees/dues
+X-Tenant-ID: {{tenant}}
+Authorization: Bearer {{token}}
+
+### Daily collection report
+GET {{base}}/fees/reports/daily-collection?date=2026-10-24
+X-Tenant-ID: {{tenant}}
+Authorization: Bearer {{token}}

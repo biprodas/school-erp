@@ -821,6 +821,121 @@ describe('Student information system (e2e)', () => {
     expect(printed.result).toEqual({ cards: 251 });
   });
 
+  it('prints sign-in slips for a section, leaving chosen passwords alone', async () => {
+    const sectionId = await created(
+      admin()
+        .post('/api/sections', {
+          academicYearId: ids.y1,
+          classId: ids['Class 7'],
+          name: 'Slips',
+        })
+        .expect(201),
+    );
+    const enrol = async (first: string, roll: string) => {
+      const studentId = await created(
+        admin()
+          .post('/api/students', {
+            classId: ids['Class 7'],
+            firstName: first,
+            lastName: `Slip${runId}`,
+          })
+          .expect(201),
+      );
+      await admin()
+        .post('/api/enrollments', {
+          studentId,
+          academicYearId: ids.y1,
+          classId: ids['Class 7'],
+          sectionId,
+          rollNo: roll,
+        })
+        .expect(201);
+      return studentId;
+    };
+    const guardian = async (studentId: string, g: object) =>
+      data<{ guardianId: string }>(
+        await admin()
+          .post(`/api/students/${studentId}/guardians`, {
+            ...g,
+            relation: 'father',
+            isPrimary: true,
+          })
+          .expect(201),
+      ).guardianId;
+    const first = await enrol('Rina', '1');
+    const second = await enrol('Raju', '2');
+    const third = await enrol('Mina', '3');
+    // Siblings share one father: one slip naming both.
+    const father = await guardian(first, {
+      createGuardian: { name: `Karim Slip${runId}`, phone: phone(970) },
+    });
+    await guardian(second, { guardianId: father });
+    await guardian(third, {
+      createGuardian: {
+        name: `Emailed Slip${runId}`,
+        email: `m3-slip-${runId}@e2e.test`,
+      },
+    });
+    const userOf = async (guardianId: string) =>
+      (
+        await e.rootDs.query<
+          { id: string; must_change_password: boolean; password: string }[]
+        >(
+          `SELECT u.id, u.must_change_password, u.password FROM users u
+           JOIN guardians g ON g.user_id = u.id WHERE g.id = $1`,
+          [guardianId],
+        )
+      )[0];
+    const before = await userOf(father);
+
+    const print = async (body: object) => {
+      const started = data<Row>(
+        await admin()
+          .post(`/api/sections/${sectionId}/credential-slips`, body)
+          .expect(202),
+      );
+      return job(started.id);
+    };
+    const done = await print({ audience: 'all' });
+    expect(done.status).toBe('succeeded');
+    expect(done.downloadUrl).toMatch(/^https:\/\/storage\.test\//);
+    expect(done.result).toMatchObject({ issued: 1 });
+    const skipped = (
+      done.result as { skipped: { name: string; reason: string }[] }
+    ).skipped;
+    expect(skipped).toEqual(
+      expect.arrayContaining([
+        { kind: 'guardian', name: `Emailed Slip${runId}`, reason: 'has_email' },
+        { kind: 'student', name: `Rina Slip${runId}`, reason: 'no_account' },
+      ]),
+    );
+    const after = await userOf(father);
+    expect(after.must_change_password).toBe(true);
+    expect(after.password).not.toBe(before.password);
+
+    // Once they choose their own password, a reprint leaves it alone.
+    await e.rootDs.query(
+      `UPDATE users SET must_change_password = false, password_set = true, status = 'active', email_verified_at = now() WHERE id = $1`,
+      [after.id],
+    );
+    const again = await print({
+      audience: 'guardians',
+      includeEmailAccounts: true,
+    });
+    expect(again.result).toMatchObject({ issued: 1 });
+    expect(
+      (again.result as { skipped: { reason: string }[] }).skipped.map(
+        (x) => x.reason,
+      ),
+    ).toEqual(['own_password']);
+    expect((await userOf(father)).password).toBe(after.password);
+
+    // A teacher without guardians:update can't print them.
+    await teacher()
+      .post(`/api/sections/${sectionId}/credential-slips`, {})
+      .expect(403);
+  });
+
   it('serves the address pickers and keeps addresses consistent', async () => {
     const divisions = data<{ id: number; name: string }[]>(
       await e.http().get('/api/public/geo/divisions').expect(200),

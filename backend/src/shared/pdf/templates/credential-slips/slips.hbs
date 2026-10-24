@@ -1,0 +1,17 @@
+<div style="display:flex;flex-wrap:wrap;gap:4mm">
+  {{#each slips}}
+    <div style="width:92mm;height:62mm;border:1px dashed #888;padding:4mm;box-sizing:border-box;page-break-inside:avoid;font-size:9pt">
+      <div style="font-weight:bold">{{../schoolName}}</div>
+      {{#if ../schoolNameBn}}<div class="serif" style="font-size:8pt">{{../schoolNameBn}}</div>{{/if}}
+      <div style="margin-top:2mm;font-size:8pt">Portal sign-in · পোর্টাল লগইন — {{../className}} {{../sectionName}}{{#if this.rollNo}} · Roll {{this.rollNo}}{{/if}}</div>
+      <div style="margin-top:2mm;font-weight:bold">{{this.name}}</div>
+      {{#if this.students.length}}<div style="font-size:8pt">Guardian of · অভিভাবক: {{#each this.students}}{{#unless @first}}, {{/unless}}{{this}}{{/each}}</div>{{/if}}
+      <table style="margin-top:2mm;font-size:9pt">
+        <tr><td>Login · লগইন</td><td style="padding-left:3mm;font-family:monospace">{{this.identifier}}</td></tr>
+        <tr><td>Password · পাসওয়ার্ড</td><td style="padding-left:3mm;font-family:monospace;font-weight:bold">{{this.password}}</td></tr>
+      </table>
+      <div style="margin-top:2mm;font-size:8pt">{{../signInUrl}}</div>
+      <div style="margin-top:1mm;font-size:7pt">Change this password when you first sign in. · প্রথমবার লগইনের পর পাসওয়ার্ড বদলে নিন।</div>
+    </div>
+  {{/each}}
+</div>

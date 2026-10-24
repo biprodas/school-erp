@@ -1,6 +1,6 @@
 # School ERP: Backend implementation plan (Phase 1a)
 
-> **Status:** Draft v0.2 · **Owner:** Biprodas Roy · **Last updated:** 2026-10-18
+> **Status:** v0.3 · **Owner:** Biprodas Roy · **Last updated:** 2026-10-24
 > This doc covers build order and acceptance criteria for `backend/` (NestJS 11, TypeORM 1.x, PostgreSQL) in Phase 1a.
 > It does not specify the product. The specs are in [`prd.md`](./prd.md) (v1.3) and [`domains-and-routing.md`](./domains-and-routing.md); code conventions are in [`../CLAUDE.md`](../CLAUDE.md).
 
@@ -8,18 +8,24 @@
 
 ## 0. How to use this plan
 
-- **Milestones are in dependency order** (section 3). M0–M8 together are Phase 1a of PRD section 12.
+- **Milestones are in dependency order** (section 3). M0–M8 built Phase 1a of PRD section 12; M9 gets it ready for the pilot.
 - Each milestone has the same parts: **Scope · Tasks (tables, endpoints, rules) · Done when**.
 - **Tick the checkboxes as work lands**, so the doc also works as a tracker. Tick a parent item only when all its children are ticked.
-- A milestone is **done** only when every "Done when" box is ticked and each module meets the [Definition of done](#13-definition-of-done-every-module).
+- A milestone is **done** only when every "Done when" box is ticked and each module meets the [Definition of done](#14-definition-of-done-every-module).
 - This is a starting plan, not a fixed spec. When implementation shows a better way, change the code and update this doc to match.
-- Items marked **(1b)** are listed only so Phase 1a leaves room for them; they are tracked in section 14.
+- Items marked **(1b)** are listed only so Phase 1a leaves room for them; they are tracked in section 15.
 
-**Current state:** M0 in progress (4.1–4.7 done; DB-backed checks wait for the local database or the first CI run). M1 implemented (2026-10-23) except the sample-data mode and the grading, holiday and fee-head template "apply" steps, which wait for M5, M4 and M6; its e2e specs pass against Postgres 18. M2–M7 implemented (2026-10-24; what is left is a check of the register PDF against a paper one). M8 implemented (2026-10-24). What is left are operator tasks: a restore drill on the pilot environment and creating the pilot schools (`doc/operations.md`). Section 1 lists what already exists and can be reused.
+**Current state (2026-10-24):** M0–M8 are built. 813 unit tests and 190 e2e tests (25 suites) pass against Postgres 18 with RLS on, and the performance seed meets every target. Still open:
+- M0: CI has not yet run on GitHub, and there is no storage smoke test against a real S3/MinIO.
+- M4: the register PDF has not been compared with a paper register.
+- M8: operator tasks (a restore drill on the pilot environment, creating the pilot schools).
+- **M9 (pilot readiness, section 13) is next.** Its backend gaps (13.2) are done; deployment, checks by school staff, and security and operations remain. The frontend is being rebuilt from scratch and is planned separately, outside this document.
 
 ---
 
-## 1. Where the backend stands today
+## 1. Where the backend stood at the start (2026-10-18)
+
+*Kept as history. Every gap in the table below was closed by M0–M8; what exists now is in `CLAUDE.md`.*
 
 **Solid and reusable**
 
@@ -81,19 +87,21 @@ flowchart LR
   M6 --> M7
   M7 --> M8[M8 Pilot hardening]
   M1 --> M8
+  M8 --> M9[M9 Pilot readiness]
 ```
 
 | # | Milestone | Estimate (PRD 12.2) | Depends on | Status |
 | - | --------- | ------------------- | ---------- | ------ |
-| M0 | Foundation hardening | 1–2 weeks | — | ☐ |
-| M1 | Platform admin, onboarding and Google sign-in | ~1.5–2 weeks (overlaps M0) | M0 | ☐ |
-| M2 | Academic structure and staff directory | 1.5–2 weeks | M0 | ☐ |
-| M3 | Student information system | 1.5–2 weeks | M2 | ☐ |
-| M4 | Attendance and student leave | 2 weeks | M2, M3 | ☐ |
-| M5 | Exams and results | 3 weeks | M2, M3 | ☐ |
-| M6 | Fees | 3 weeks | M3 | ☐ |
-| M7 | Notices, notifications, portal, dashboards | 2–3 weeks | M4, M5, M6 | ☐ |
-| M8 | Settings completion and pilot hardening | 2 weeks | all | ☐ |
+| M0 | Foundation hardening | 1–2 weeks | — | ☐ built; CI and the storage smoke test are open |
+| M1 | Platform admin, onboarding and Google sign-in | ~1.5–2 weeks (overlaps M0) | M0 | ☑ |
+| M2 | Academic structure and staff directory | 1.5–2 weeks | M0 | ☑ |
+| M3 | Student information system | 1.5–2 weeks | M2 | ☑ |
+| M4 | Attendance and student leave | 2 weeks | M2, M3 | ☐ built; the register layout check is open |
+| M5 | Exams and results | 3 weeks | M2, M3 | ☑ |
+| M6 | Fees | 3 weeks | M3 | ☑ |
+| M7 | Notices, notifications, portal, dashboards | 2–3 weeks | M4, M5, M6 | ☑ |
+| M8 | Settings completion and pilot hardening | 2 weeks | all | ☐ built; the open items are operator tasks |
+| M9 | Pilot readiness | 2–3 weeks | M8 | ☐ |
 
 M4, M5 and M6 don't depend on one another, so they can be reordered (fees first if a pilot school needs billing early). The total is roughly 17–20 weeks for one developer.
 
@@ -126,7 +134,7 @@ M4, M5 and M6 don't depend on one another, so they can be reordered (fees first 
 - [x] **Tenant context for workers** (`src/tenancy/tenant-job.runner.ts`, `TenantJobRunner`):
   - [x] `run(orgId, work, actor?)` registers a synthetic request for a fresh DI context, so `TENANT_DATASOURCE` and every tenant repository resolve exactly as in a request.
   - [x] Releases the QueryRunner when `work` settles (also on error).
-  - [ ] Spec: a job for org A can't see org B's rows. *Unit spec covers separate connections per org; the RLS check needs the e2e database.*
+  - [x] Spec: a job for org A can't see org B's rows. *`test/tenant-job-runner.e2e-spec.ts`, with RLS on.*
 - [x] **`jobs` module** (`src/modules/jobs/`): org-scoped `jobs (type, status queued|running|succeeded|failed, progress, result jsonb, error, attempts, created_by, file_id, started_at, finished_at)`; `JobService.start()` creates the row and enqueues; `JobTracker.run()` wraps a handler and keeps the row current; `GET /jobs/:id` (creator or school admin, else 404).
 - [x] **`StorageModule`** (`src/shared/storage/`): `put`, `getSignedUrl(key, ttl = S3_SIGNED_URL_TTL)`, `getBuffer`, `delete`; keys are `orgs/<orgId>/<kind>/<uuid>`.
 - [x] **`files` module** (`src/modules/files/`):
@@ -139,14 +147,14 @@ M4, M5 and M6 don't depend on one another, so they can be reordered (fees first 
   - [x] One shared headless Chrome, at most `PDF_CONCURRENCY` pages at once; Handlebars templates in `src/shared/pdf/templates/` (copied by `nest-cli.json`).
   - [x] Bundled Noto Sans/Serif Bengali inlined as data URIs; the smoke test checks both fonts are embedded in a Bangla PDF.
   - [x] `render(template, data, { paper: 'A4' | 'A4-landscape' | 'Legal' | 'Legal-landscape' | '80mm' })` and `renderHtml(...)` return a Buffer; 80 mm height follows the content.
-  - [ ] Production image includes Chromium. *No production Dockerfile yet; note for deployment: Ubuntu 24+ hosts block Chrome's sandbox for downloaded builds, so run as a non-root user with a system Chromium (`PDF_CHROME_PATH`) or set `PDF_NO_SANDBOX=true` only inside a locked-down container.*
+  - [ ] Production image includes Chromium. *Moved to M9 (13.1). No production Dockerfile yet; note for deployment: Ubuntu 24+ hosts block Chrome's sandbox for downloaded builds, so run as a non-root user with a system Chromium (`PDF_CHROME_PATH`) or set `PDF_NO_SANDBOX=true` only inside a locked-down container.*
 - [x] **Spreadsheet helpers** (`src/shared/spreadsheet/spreadsheet.ts`): `buildTemplate` (headers, example row, dropdowns), `parseSheet` (XLSX/CSV, loose header matching, typed values, all row errors collected), `writeSheet`.
 - [x] **`NumberingService`** (`src/modules/numbering/`):
   - [x] Org-scoped `numbering_sequences (org_id, key, scope, next_value)`.
   - [x] `next(key, scope)` is one atomic upsert that row-locks the counter inside the caller's transaction, so a rollback never burns a number.
   - [x] `formatNumber(pattern, seq, ctx)` supports `{YYYY}`, `{YY}`, `{MM}`, `{CLASS}`, `{SEQ}` / `{SEQ:n}`; `assertValidPattern` requires one `{SEQ}`.
   - [x] Unit suite.
-  - [ ] Concurrency e2e (parallel `next()` calls give distinct, gap-free numbers). *Needs the e2e database.*
+  - [x] Concurrency e2e (parallel `next()` calls give distinct, gap-free numbers). *`test/numbering.e2e-spec.ts`.*
 - [x] **Field encryption** (`src/shared/crypto/field-encryption.ts`): `EncryptedColumn` transformer, AES-256-GCM, `v1:<keyId>:<iv>:<tag>:<data>`, old keys stay readable via `FIELD_ENCRYPTION_OLD_KEYS`, `needsReencryption()` for rotation.
 - [x] **`@Idempotent()`** (`src/modules/idempotency/`): org-scoped `idempotency_keys`, atomic claim (`INSERT … ON CONFLICT`, expired keys reclaimed), replay with the stored status, 422 for a reused key with a different body, 409 while in progress, key freed on failure; hourly cleanup of expired keys.
 - [x] **Error `code`** in `GlobalExceptionFilter`: explicit `code` from the exception body, else derived from the status (`NOT_FOUND`, …), `VALIDATION_FAILED`, `UNIQUE_VIOLATION`/`FOREIGN_KEY_VIOLATION`, `INTERNAL_ERROR`.
@@ -175,8 +183,7 @@ M4, M5 and M6 don't depend on one another, so they can be reordered (fees first 
   - [x] `POST /users` keeps working: the admin-chosen password is temporary (`must_change_password`), and email or phone is accepted.
   - [x] `OwnerProvisioningService` keeps its activation path; it now skips the email for owners without one.
   - [x] While `must_change_password` is set, both JWT guards answer 403 `PASSWORD_CHANGE_REQUIRED` except on routes marked `@AllowPendingPasswordChange()` (me, change-password, logout, logout-all).
-- [ ] **Bulk credential slips** (`POST /users/credential-slips`). *Moved to M3: it needs per-session sections and guardian/student portal accounts.*
-- [ ] Frontend follow-up: "Continue with Google" on every login page (M1 5.5); NextAuth stores the refresh token, refreshes before expiry, sends `identifier`, handles `PASSWORD_CHANGE_REQUIRED`; then set `JWT_EXPIRES_IN=15m`.
+- [x] **Bulk credential slips** (`POST /users/credential-slips`). *Moved to M9 and built there as `POST /sections/:sectionId/credential-slips` (13.2).*
 - [x] Tests: identifier, lockout, session rotation/reuse/binding, strategies, forced-change guard, invites, `addMember` (unit); `test/auth-sessions.e2e-spec.ts` (DB) for the PRD 6.3 acceptance flows. *The DB e2e specs haven't run yet (no local database).*
 - [x] Fixed on the way: `UserService.findAll` (platform users) passed unset filters as `undefined`, which TypeORM 1.x rejects on unscoped repositories.
 
@@ -204,7 +211,7 @@ M4, M5 and M6 don't depend on one another, so they can be reordered (fees first 
   - *A failed sign-in names the actor only if they're a member of that school; anyone else is logged anonymously (`unknown_account`), so a school's log never reveals accounts elsewhere. Credential and session changes live on the root connection, so their audit rows follow the change rather than sharing its transaction.*
   - *Not audited yet: token refresh (too frequent) and refresh-token reuse; attempts on an already-locked account.*
 - [x] `GET /audit-logs` with filters (`action`, or a prefix like `role.`; `entityType`, `entityId`, `actorUserId`, `from`, `to`; paginated) behind `audit:read` (admin role; existing orgs' admin roles get it in the migration). Also `GET /platform/audit-logs` (`orgId` filter) for super-admins.
-- [x] Tests: `audit-entry`, `audit.service`, `platform-audit.service`, `request-context`, `auth-audit` (sign-in events), role and member audit cases (unit); `test/audit-log.e2e-spec.ts` (DB: rows written, isolation, app role can't UPDATE/DELETE). *The e2e spec hasn't run yet (no local database).*
+- [x] Tests: `audit-entry`, `audit.service`, `platform-audit.service`, `request-context`, `auth-audit` (sign-in events), role and member audit cases (unit); `test/audit-log.e2e-spec.ts` (DB: rows written, isolation, app role can't UPDATE/DELETE). *The e2e spec passes.*
 
 ### 4.6 Settings (PRD 6.24)
 
@@ -225,11 +232,11 @@ M4, M5 and M6 don't depend on one another, so they can be reordered (fees first 
   - [x] `GET /settings/display` (any signed-in member): name, logo URL, colors, locale, for branding and formatting pages.
   - [x] Seeds and migration: `admin` gets `settings:read`/`settings:update`; `principal` and `committee_member` get `settings:read`.
 - [x] `SettingsService.get()` memoized per request and cached in memory per school (60 s TTL, `settingsCache`), invalidated on write; `OrgSettingsReader.get(orgId)` for singletons, through a tenant-pool connection scoped to the school. *Other processes see a change within the TTL.*
-- [x] Tests: defaults and merge, DTO validation, `SettingsService`, `OrgSettingsReader`, session idle timeout (unit); `test/settings.e2e-spec.ts` (DB: defaults, merge, isolation, validation, organization fields, audit). *The e2e spec hasn't run yet (no local database).*
+- [x] Tests: defaults and merge, DTO validation, `SettingsService`, `OrgSettingsReader`, session idle timeout (unit); `test/settings.e2e-spec.ts` (DB: defaults, merge, isolation, validation, organization fields, audit). *The e2e spec passes.*
 
 ### 4.6a Review fixes (2026-10-20)
 
-A review of 4.1–4.7 found these security gaps; all are fixed with unit tests (DB e2e still pending):
+A review of 4.1–4.7 found these security gaps; all are fixed, with unit tests and e2e tests that pass against the database:
 
 - [x] **No role escalation:** outside school admins, `RoleService` refuses to create, edit, clone, assign or unassign a role with keys the caller doesn't hold (or school-wide when they only hold it `assigned`). This covers `POST /employees` `createUser.roleIds` and `POST /users`/invite `roleIds` (`findAssignable`). Only school admins change or remove a school admin. System roles: scope locked, `admin` permissions locked, guardian/student portal-only, no role mixes portal and staff keys.
 - [x] **Pre-registered accounts:** an invite or `POST /users` for a PENDING (registered, never verified) account resets its password instead of linking it; tenant sign-in refuses PENDING accounts (`ACCOUNT_PENDING`).
@@ -242,24 +249,24 @@ A review of 4.1–4.7 found these security gaps; all are fixed with unit tests (
 - [x] **Audit:** `clock_timestamp()` plus a `seq` identity tie-breaker; secret filter by exact keys and suffixes (`passMark` survives); platform email verification records `auth.account_activated`; platform actor type is `platform`/`user`/`system`; strict ISO dates in filters; no-op role updates aren't recorded; migration 0005 resolves the app role like `AppRoleGrants`; the isolation e2e now has rows in both schools; the `RequestContext` param decorator is renamed `ReqContext`; sensitive reads are audited (medical record, health notes).
 - [x] **Identity and infra:** BD phone normalization handles `+880 01…`; idempotency replay status verified with an HTTP test; session cache prunes expired entries; job errors shown to users are safe and a failed enqueue marks the job failed; `hashPassword` moved to `common/identity/password.ts`; dead code removed; `FIELD_ENCRYPTION_KEY` required in staging too.
 - [x] **RBAC and teaching:** `PATCH /subject-teachers/:id` and `PATCH /class-subject-groups/:id`; the medical upsert accepts `student_medical:create` or `:update`; unused `promotions:update` and `student_subjects:update` removed; migration 0004's `(custom)` rename can't collide and its `down()` is minimal (no broad grants); `TeachingService` returns fresh empty results; unused `AccessScope.can()` removed.
-- [x] **Tests and CI:** e2e specs for numbering concurrency, `TenantJobRunner` isolation and the queue/jobs flow (not run yet: no database); `test:release:e2e` runs in band; CI drops the unused Redis service and runs frontend lint (its four React Compiler errors fixed). The Bangla PDF check stays in `pdf.service.spec.ts` (real Chrome in the unit job).
-- [ ] **Still open:** storage smoke e2e (CI needs a MinIO container); paging reuse in `PlatformAuditService.findFiltered`; whether disciplinary notes count as sensitive (today only health notes); public home page settings and other signatures (PRD 6.24); TOTP (PRD 6.3, not scheduled); branch protection (repository setting).
+- [x] **Tests and CI:** e2e specs for numbering concurrency, `TenantJobRunner` isolation and the queue/jobs flow (they pass); `test:release:e2e` runs in band; CI drops the unused Redis service and runs frontend lint (its four React Compiler errors fixed). The Bangla PDF check stays in `pdf.service.spec.ts` (real Chrome in the unit job).
+- [ ] **Still open:** the storage smoke e2e and branch protection (M9 13.1). TOTP (PRD 6.3) is not scheduled. *Paging reuse, home page settings and extra signatures were done in M9 13.2.* *Disciplinary and counselling notes are sensitive, like health notes (`SENSITIVE_NOTE_TYPES`, M3).*
 
 ### 4.7 CI
 
 - [x] GitHub Actions (`.github/workflows/ci.yml`, on every PR and push to `main`): backend `format:check`, `lint:check` (no `--fix`, no warnings), `typecheck`, `npm test`, `npm run build`; `npm run test:e2e --runInBand` with Postgres 17 and Redis 7 service containers (the run creates `school_erp_e2e` and the restricted app role itself); frontend `next build`.
   - [ ] Required on every PR: mark the three jobs as required status checks in `main`'s branch protection (a repository setting, not code).
-  - [ ] Frontend lint in CI, after fixing its four React Compiler `set-state-in-effect` errors (theme toggles, carousel, `use-mobile`).
+  - [x] Frontend lint in CI, after fixing its four React Compiler `set-state-in-effect` errors (theme toggles, carousel, `use-mobile`). *The workflow runs `npm run lint` before the frontend build.*
 - [x] Tenant-isolation, grading and fee suites named so the PRD 11.5 release criteria can point at them: tests carry `[tenant-isolation]`, `[gpa-regression]` or `[fee-regression]` in their names, and `npm run test:release` runs exactly those (unit and e2e). Tagged so far: the tenant-isolation e2e and repository-scoping suites plus single cross-school cases; the grading and fee tags arrive with M5 and M6. Listed in `backend/README.md` ("Release suites").
 
 ### Done when
 
-- [ ] Stakeholders are gone and the app boots with no reference to them.
-- [ ] Email-or-phone login, lockout, refresh/session revoke and invites work end to end (e2e).
+- [x] Stakeholders are gone and the app boots with no reference to them.
+- [x] Email-or-phone login, lockout, refresh/session revoke and invites work end to end (e2e). *`test/auth-sessions.e2e-spec.ts`.*
 - [x] Scope rules are covered by the unit suite.
-- [ ] Audit rows are written for auth and role changes, and the app role can't update or delete them. *Implemented; checked by `test/audit-log.e2e-spec.ts` once it runs against a database.*
-- [ ] Queue, storage, PDF (with Bangla text) and numbering have passing smoke e2e tests.
-- [ ] CI is green on a PR. *Workflow in place; not yet run on GitHub.*
+- [x] Audit rows are written for auth and role changes, and the app role can't update or delete them. *`test/audit-log.e2e-spec.ts`.*
+- [ ] Queue, storage, PDF (with Bangla text) and numbering have passing smoke e2e tests. *Queue, numbering and PDF (`pdf.service.spec.ts` drives a real Chrome) pass. Storage is tested only in memory; the smoke test against MinIO is in M9.*
+- [ ] CI is green on a PR. *Every step passes locally; the workflow has not yet run on GitHub (M9 13.1).*
 
 ---
 
@@ -315,7 +322,7 @@ Migration `1792340000000-PlatformAndOnboarding` holds every schema change below 
   - [x] Default fee heads. *M6: `POST /onboarding/templates/fee-heads/apply`.*
   - *The subject lists were written from the published syllabi and should be reviewed by someone who runs a school before the pilot.*
 - [x] `POST /public/find-school { email }`: always 202; enqueues a `mail` job that lists every operational school with an ACTIVE membership, each linking to `https://<host>/login?identifier=…` (the primary verified custom domain, else the subdomain); nothing is sent to unknown addresses; rate-limited per IP (10/min) and per recipient (3/hour, in memory per process). Phone input **(1b)**.
-- [ ] Sample data: `POST /onboarding/sample-data` (job) fills a demo session; `DELETE` removes everything it created (`sample_batch_id`). Lowest priority. *Not started.*
+- *Sample data (`POST /onboarding/sample-data`) moved to Phase 2 (section 15). Pilot schools start empty, and the performance seed covers demos.*
 
 ### 5.5 Google sign-in (PRD 6.3, `domains-and-routing.md` 5a)
 
@@ -738,22 +745,81 @@ Migration `1792340000000-PlatformAndOnboarding` holds every schema change below 
 
 ---
 
-## 13. Definition of done (every module)
+## 13. M9: Pilot readiness
 
-- [ ] Entities extend `OrgScopedEntity` (tenant data) with per-org unique keys; the migration enables RLS, creates the policy and grants the app role.
-- [ ] Every endpoint has `@RequirePermissions` with catalog keys, and system-role seeds are updated.
-- [ ] Section or subject data is filtered through `AccessScope`; query builders filter by `orgId`.
-- [ ] Audited actions call `AuditService.record` inside the transaction.
-- [ ] DTOs validate every input; list endpoints paginate with `findPage`.
-- [ ] Swagger decorators (`@ApiBearerAuth('tenant-jwt')`, `@ApiHeader({ name: 'x-tenant-id' })`) and response messages are in place.
-- [ ] Unit specs cover the service rules; e2e specs cover the PRD acceptance criteria plus a cross-tenant case.
-- [ ] The module is imported in `app.module.ts`, and `app.module.spec.ts` passes.
-- [ ] A `.http` sample file sits next to the controller.
-- [ ] This plan is ticked and updated to match what was built.
+**Scope:** everything between "Phase 1a is built" and "3–5 pilot schools use it every day" (PRD 12.2, 12.3): deployment, the backend gaps found in the 2026-10-24 review, checks only a school can do, and security and operations. The frontend is being rebuilt from scratch and is planned separately; it is not tracked here.
+
+### 13.1 Deployment and CI
+
+- [ ] Push and run CI on GitHub; then mark the three jobs as required status checks in `main`'s branch protection.
+- [ ] Production `Dockerfile` for the backend:
+  - multi-stage, `npm ci --omit=dev`, `node dist/main`, non-root user;
+  - a system Chromium (`PDF_CHROME_PATH`) with the Bengali fonts, so PDFs render with Chrome's sandbox on.
+- [ ] Separate worker process. Today every BullMQ queue runs inside the API process. Add a worker entry point (or `QUEUE_ROLE=api|worker`) so PDF and import jobs can't slow requests, and scale the two apart.
+- [ ] Deploy pipeline:
+  - `npm run db:migrate:prod` before the new version takes traffic;
+  - the app role created out of band (LOGIN NOSUPERUSER NOBYPASSRLS);
+  - secrets: `FIELD_ENCRYPTION_KEY`, JWT, S3, `SENTRY_DSN`, `METRICS_TOKEN`;
+  - health-checked rollout (`doc/operations.md` §5).
+- [ ] Storage smoke e2e against a MinIO service container in CI: put, sign, get and delete. Every spec today uses `MemoryStorage`.
+- [ ] Staging environment with the performance seed, used for the restore drill and the release-candidate e2e run.
+
+### 13.2 Backend gaps from the review
+
+- [x] Report-card rendering. Each card now renders once, and the section PDF joins those pages with `pdf-lib` (`~/shared/pdf/pdf-merge`), which halves the Chrome work. The section's attendance comes from one query (`AttendanceReportService.enrollmentSummaries`) instead of one per student. *Re-measuring on the production instance size is in 13.4.*
+- [x] Bulk credential slips. `POST /sections/:sectionId/credential-slips { audience: guardians|students|all, includeEmailAccounts? }` runs a `pdf` job (one attempt, since a retry would void the printed passwords) and makes one A4 PDF of cut-out slips: login, temporary password and sign-in link, in Bangla and English. *`modules/credential-slips/`.*
+  - *A guardian of siblings gets one slip naming them all.*
+  - *Accounts whose owner chose a password are skipped, and so are accounts with an email unless asked. The job result lists who was skipped and why.*
+  - *Needs `guardians:update` or `students:update` for the audience, within the section's scope.*
+  - *`InviteService.issueSlips` is the batch form of `issueSlip`: audited, and older slips stop working.*
+- [x] Admin dashboard: students per class are counted with a `GROUP BY` (`EnrollmentService.countActiveByClass`) instead of loading every enrollment.
+- [x] Paging reuse. `findPage(repo, options, pagination)` lives in `~/common/dto/paginated.dto`; `BaseTenantRepository.findPage` and `PlatformAuditService.findFiltered` both use it.
+- [x] PRD 6.24 leftovers:
+  - *Public home page settings: `profile.homePage` (`enabled`, `about`/`aboutBn`, `showContact`, `showAddress`, `showNotices`, `noticeLimit`), applied by `GET /public/organizations/:slug/home`. With the page off it returns only the name, logo, colors and `enabled: false`; the address moved out of `contact` into its own field.*
+  - *Signatures: the exam controller joins the principal (`profile.examControllerName`, `POST /settings/files/signature/:role`; `GET /settings` signs both URLs). `results.reportCard.signatureSigners` says, by position, whose signature image prints above each report-card line (default: the principal above "Head teacher"). Certificates print the principal's signature.*
+  - *The class teacher has no uploaded signature: it differs per section and is signed by hand.*
+- [x] `.http` samples for the Phase 1a flows: `attendance.http`, `exams.http`, `fees.http`, `portal.http`, `credential-slips.http` (plus the existing auth, organization, role, settings, audit and membership files). *The Definition of Done rule stays for new modules.*
+
+### 13.3 Checks by school staff
+
+- [ ] The monthly attendance register PDF compared with a school's paper register (M4).
+- [ ] Curriculum templates (NCTB, Cambridge, Alia madrasa) and grading templates reviewed by someone who runs a school (M1 5.4, M5).
+- [ ] Bangla copy in mail, notification and PDF templates proofread by a native speaker.
+
+### 13.4 Security and operations
+
+- [ ] External penetration test, with findings resolved (PRD 12.3).
+- [ ] Restore drill and migration rehearsal on staging with production-sized data (`doc/operations.md` §3).
+- [ ] Alerts wired to on-call: Sentry rules, Prometheus alerts and the WAL-archive lag alert (`doc/operations.md` §1–2).
+- [ ] Re-run `npm run perf:seed` on the production instance size.
+
+### Done when
+
+- [ ] CI is green on GitHub and required on `main`, and a tagged release deploys to staging and production through the pipeline.
+- [ ] Report cards meet the 2-minute target on the production instance size.
+- [ ] The pen test has no open critical or high findings.
+- [ ] 3–5 pilot schools run daily attendance, one exam cycle and one month of fees (PRD 12.3 starts with these; 10 schools by the end of 1b).
 
 ---
 
-## 14. Phase 1b outline
+## 14. Definition of done (every module)
+
+A per-module checklist for reviews, not a tracker, so it has no boxes.
+
+- Entities extend `OrgScopedEntity` (tenant data) with per-org unique keys; the migration enables RLS, creates the policy and grants the app role.
+- Every endpoint has `@RequirePermissions` with catalog keys, and system-role seeds are updated.
+- Section or subject data is filtered through `AccessScope`; query builders filter by `orgId`.
+- Audited actions call `AuditService.record` inside the transaction.
+- DTOs validate every input; list endpoints paginate with `findPage`.
+- Swagger decorators (`@ApiBearerAuth('tenant-jwt')`, `@ApiHeader({ name: 'x-tenant-id' })`) and response messages are in place.
+- Unit specs cover the service rules; e2e specs cover the PRD acceptance criteria plus a cross-tenant case.
+- The module is imported in `app.module.ts`, and `app.module.spec.ts` passes.
+- A `.http` sample file sits next to the controller.
+- This plan is ticked and updated to match what was built.
+
+---
+
+## 15. Phase 1b outline
 
 Tracked here so Phase 1a leaves room for it. Each becomes a full milestone when 1b planning starts.
 
@@ -766,11 +832,17 @@ Tracked here so Phase 1a leaves room for it. Each becomes a full milestone when 
 - [ ] **Staff attendance and leave:** staff registers on the attendance model; leave types with quotas and multi-level approval.
 - [ ] **File virus scanning** for uploads.
 
+### Deferred past Phase 1b
+
+- **Sample data** (`POST /onboarding/sample-data`, removed by `sample_batch_id`), moved from M1. Phase 2, for sales demos. Until then the performance seed covers demos.
+- **Timetable.** The `timetable` module is still in the code but dormant: only `admin` holds its keys, and it has no menu entry. The PRD puts the timetable builder in Phase 2. Either build on it then, or drop it with a migration when Phase 2 planning starts.
+- **TOTP two-factor sign-in** (PRD 6.3). Not scheduled.
+
 ---
 
-## 15. Open points to confirm during M0
+## 16. Open points to confirm during M0
 
-- [ ] **Existing data:** is there production or pilot data yet? If not, the M2 section refactor, the M3 promotion replacement and the M0 identity change can skip their data back-fill steps.
-- [ ] **Certificates and ID cards** (7.6) are P0 in PRD 6.6 but not in the PRD 12.2 timeline. Kept in M3 with fixed layouts; could move to 1b if the pilot doesn't need them.
-- [ ] **Expenses and ledger** (10.5) may slip to the start of Phase 1b.
+- [x] **Existing data:** is there production or pilot data yet? If not, the M2 section refactor, the M3 promotion replacement and the M0 identity change can skip their data back-fill steps. *No: only dev and test data until the pilot. The migrations kept simple back-fills anyway.*
+- [x] **Certificates and ID cards** (7.6) are P0 in PRD 6.6 but not in the PRD 12.2 timeline. Kept in M3 with fixed layouts; could move to 1b if the pilot doesn't need them. *Kept and built in M3 (`modules/certificates/`).*
+- [x] **Expenses and ledger** (10.5) may slip to the start of Phase 1b. *Built in M6.*
 - [x] **Request context library:** `nestjs-cls` (`RequestContext`), since `PlatformAuditService` and job handlers aren't request-scoped and pino's context isn't readable from app code.

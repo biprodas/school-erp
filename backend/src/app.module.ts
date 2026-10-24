@@ -48,6 +48,7 @@ import { PortalModule } from '~/modules/portal/portal.module';
 import { ReportsModule } from '~/modules/reports/reports.module';
 import { DataExportModule } from '~/modules/data-export/data-export.module';
 import { CacheModule } from '~/shared/cache';
+import { CredentialSlipModule } from '~/modules/credential-slips/credential-slip.module';
 import { ObservabilityModule } from '~/shared/observability/observability.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -110,6 +111,7 @@ const envFilePath = ['.env', `.env.${nodeEnv}`];
     QueueModule,
     CacheModule,
     ObservabilityModule,
+    CredentialSlipModule,
     StorageModule,
     PdfModule,
     TenancyModule,
