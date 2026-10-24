@@ -12,7 +12,7 @@ import { Role } from '../entities/role.entity';
 import { UserRole } from '../entities/user-role.entity';
 import { RoleRepository } from '../repositories/role.repository';
 import { UserRoleRepository } from '../repositories/user-role.repository';
-import { PERMISSION_SET } from '../permissions.catalog';
+import { ALL_PERMISSIONS, PERMISSION_SET } from '../permissions.catalog';
 import {
   ADMIN_ROLE_NAME,
   GUARDIAN_ROLE_NAME,
@@ -227,6 +227,20 @@ export class RoleService {
           .map((assignment) => assignment.role)
           .filter((role): role is Role => !!role),
       );
+  }
+
+  /**
+   * The permission keys a member holds, sorted, for UI gating (`GET /auth/me`).
+   * School admins pass every check, so they get the whole catalog. Retired
+   * keys still stored on a role grant nothing and are left out.
+   */
+  async effectivePermissions(
+    userId: string,
+    isAdmin: boolean,
+  ): Promise<string[]> {
+    if (isAdmin) return [...ALL_PERMISSIONS].sort();
+    const held = await this.resolver.getEffectivePermissions(userId);
+    return [...held].filter((key) => PERMISSION_SET.has(key)).sort();
   }
 
   /** Role assignments (with their roles) of the given users. */

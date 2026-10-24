@@ -13,6 +13,7 @@ import { MembershipRole } from '~/modules/memberships/enums/membership-role.enum
 import { MembershipStatus } from '~/modules/memberships/enums/membership-status.enum';
 import { Organization } from '~/modules/organizations/entities/organization.entity';
 import { OrganizationStatus } from '~/modules/organizations/enums/organization-status.enum';
+import { ALL_PERMISSIONS } from '~/modules/rbac/permissions.catalog';
 import { User } from '~/modules/users/entities/user.entity';
 import { UserStatus } from '~/modules/users/enums/user-status.enum';
 
@@ -131,6 +132,15 @@ describe('Auth sessions (e2e)', () => {
     }
   });
 
+  it('me lists the permissions for UI gating (a school admin holds all)', async () => {
+    const { data } = (await login(orgA, admin.email!).expect(201))
+      .body as TokenBody;
+    const body = (await me(orgA, data.access_token).expect(200)).body as {
+      data: { permissions: string[] };
+    };
+    expect(body.data.permissions).toEqual([...ALL_PERMISSIONS].sort());
+  });
+
   it("is not a member of school B, and A's token is refused there", async () => {
     await login(orgB, admin.email!).expect(401);
     const { data } = (await login(orgA, admin.email!).expect(201))
@@ -240,7 +250,9 @@ describe('Auth sessions (e2e)', () => {
     expect((blocked.body as { code: string }).code).toBe(
       'PASSWORD_CHANGE_REQUIRED',
     );
-    await me(orgA, signedIn.access_token).expect(200);
+    const invitedMe = (await me(orgA, signedIn.access_token).expect(200))
+      .body as { data: { permissions: string[] } };
+    expect(invitedMe.data.permissions).toEqual([]); // no roles yet
 
     const changed = await http()
       .post('/api/auth/change-password')

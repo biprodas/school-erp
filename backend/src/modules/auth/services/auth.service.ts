@@ -384,8 +384,12 @@ export class AuthService {
     }
 
     const { password: _password, ...account } = membership.user;
-    const [roles, identities, org] = await Promise.all([
+    const [roles, permissions, identities, org] = await Promise.all([
       this.getRoleNames(userId),
+      this.roleService.effectivePermissions(
+        userId,
+        membership.isAdmin === true,
+      ),
       this.identities.list(userId),
       this.organizations.findOne({
         where: { id: membership.orgId },
@@ -403,6 +407,8 @@ export class AuthService {
       isAdmin: membership.isAdmin,
       membershipId: membership.id,
       roles,
+      // For UI gating only; every endpoint still checks its own permission.
+      permissions,
       identities,
       // The frontend's onboarding gate (doc/domains-and-routing.md 4.5).
       organization: {

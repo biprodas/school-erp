@@ -8,7 +8,7 @@ import { RoleService } from './role.service';
 import { RoleRepository } from '../repositories/role.repository';
 import { UserRoleRepository } from '../repositories/user-role.repository';
 import { Role } from '../entities/role.entity';
-import { PERMISSIONS } from '../permissions.catalog';
+import { ALL_PERMISSIONS, PERMISSIONS } from '../permissions.catalog';
 import { ADMIN_ROLE_NAME } from '../system-roles.seed';
 import { RoleScope } from '../enums/role-scope.enum';
 import { AuditService } from '~/modules/audit/services/audit.service';
@@ -70,6 +70,7 @@ describe('RoleService', () => {
       audit as unknown as AuditService,
       {
         getPermissionScopes: () => Promise.resolve(held),
+        getEffectivePermissions: () => Promise.resolve(new Set(held.keys())),
       } as unknown as PermissionResolverService,
       { current: () => actor } as unknown as RequestContext,
       fakeTenantDataSource(),
@@ -358,6 +359,26 @@ describe('RoleService', () => {
         NotFoundException,
       );
       expect(userRoleRepo.assign).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('effectivePermissions', () => {
+    it("lists the member's keys, sorted, without retired ones", async () => {
+      held = new Map([
+        [PERMISSIONS.STUDENTS_READ, RoleScope.SCHOOL],
+        ['retired:key', RoleScope.SCHOOL],
+        [PERMISSIONS.ATTENDANCE_TAKE, RoleScope.ASSIGNED],
+      ]);
+
+      await expect(service.effectivePermissions('u-1', false)).resolves.toEqual(
+        [PERMISSIONS.ATTENDANCE_TAKE, PERMISSIONS.STUDENTS_READ].sort(),
+      );
+    });
+
+    it('gives a school admin the whole catalog', async () => {
+      const keys = await service.effectivePermissions('u-1', true);
+
+      expect(keys).toEqual([...ALL_PERMISSIONS].sort());
     });
   });
 
