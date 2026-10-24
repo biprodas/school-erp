@@ -11,6 +11,10 @@ export const DOMAIN_EVENTS = {
    * `academicYearId`, `classId`, `enrollmentIds`. M7 notifies guardians.
    */
   RESULTS_PUBLISHED: 'results.published',
+  /** A fee payment was recorded (M7 confirms it to the guardian). */
+  PAYMENT_RECEIVED: 'payment.received',
+  /** An invoice reached a `fees.reminderDays` offset unpaid (M7 sends it). */
+  FEES_DUE_REMINDER: 'fees.due_reminder',
 } as const;
 
 export type DomainEventType =

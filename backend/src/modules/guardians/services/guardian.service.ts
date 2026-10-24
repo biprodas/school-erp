@@ -186,6 +186,12 @@ export class GuardianService {
     return this.linkRepo.findByStudent(studentId);
   }
 
+  /** Ids of a guardian's children (fee payments for several children). */
+  async childIds(guardianId: string): Promise<string[]> {
+    await this.findById(guardianId);
+    return this.linkRepo.studentIdsOf(guardianId);
+  }
+
   async attach(
     studentId: string,
     dto: AttachGuardianDto,

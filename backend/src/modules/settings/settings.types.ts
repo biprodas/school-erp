@@ -83,6 +83,8 @@ export interface NumberingSettings {
   receipt: string;
   invoice: string;
   certificate: string;
+  /** Expense vouchers (M6). */
+  voucher: string;
   /** Lets staff type a student ID instead of generating it (M3). */
   allowManualStudentId: boolean;
 }
@@ -125,6 +127,10 @@ export interface AttendanceSettings {
 export interface FeesSettings {
   /** Day of the month monthly invoices are generated (1–28). */
   billingDay: number;
+  /** Day of the month invoices fall due, unless a structure item says (1–28). */
+  dueDay: number;
+  /** Due reminders go out this many days after the due date (M7 sends them). */
+  reminderDays: number[];
   /** Days after the due date before late fines apply. */
   graceDays: number;
   /** Hide published results on the portal while fees are due. */

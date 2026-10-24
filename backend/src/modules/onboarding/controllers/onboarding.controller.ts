@@ -13,6 +13,7 @@ import { JwtAuthGuard } from '~/modules/auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '~/modules/rbac/guards/permissions.guard';
 import { RequirePermissions } from '~/modules/rbac/decorators/require-permissions.decorator';
 import { PERMISSIONS } from '~/modules/rbac/permissions.catalog';
+import { FeeSetupService } from '~/modules/fees/services/fee-setup.service';
 import { GradingService } from '~/modules/grading/services/grading.service';
 import { HolidayService } from '~/modules/holidays/holiday.service';
 import { ApplyHolidayTemplateDto } from '~/modules/holidays/dto/apply-holiday-template.dto';
@@ -32,6 +33,7 @@ export class OnboardingController {
     private readonly templates: CurriculumTemplateService,
     private readonly holidays: HolidayService,
     private readonly grading: GradingService,
+    private readonly fees: FeeSetupService,
   ) {}
 
   @Get('checklist')
@@ -71,6 +73,15 @@ export class OnboardingController {
   @ResponseMessage('Template applied')
   applyCurriculum(@Param('code') code: string, @Body() dto: ApplyTemplateDto) {
     return this.templates.applyCurriculum(code, dto.academicYearId);
+  }
+
+  /** Adds the default fee heads the school doesn't have yet (idempotent). */
+  @Post('templates/fee-heads/apply')
+  @HttpCode(200)
+  @RequirePermissions(PERMISSIONS.ONBOARDING_MANAGE)
+  @ResponseMessage('Template applied')
+  applyFeeHeads() {
+    return this.fees.applyDefaultHeads();
   }
 
   /**

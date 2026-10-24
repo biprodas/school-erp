@@ -1,5 +1,6 @@
 import { Type } from 'class-transformer';
 import {
+  IsDefined,
   IsIn,
   IsInt,
   IsNumber,
@@ -26,10 +27,12 @@ export class DailySummaryQueryDto {
 }
 
 export class MonthlyRegisterQueryDto {
+  @IsDefined()
   @IsUUID('4')
   sectionId: string;
 
   /** `YYYY-MM`. */
+  @IsDefined()
   @Matches(MONTH, { message: 'month must be YYYY-MM' })
   month: string;
 }

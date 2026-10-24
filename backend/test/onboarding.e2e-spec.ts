@@ -111,9 +111,7 @@ describe('Onboarding (e2e)', () => {
     expect(done(first)).toEqual([]);
     expect(first.percentage).toBe(0);
     expect(first.canComplete).toBe(false);
-    expect(first.steps.filter((s) => !s.available).map((s) => s.key)).toEqual([
-      'fees',
-    ]);
+    expect(first.steps.filter((s) => !s.available)).toEqual([]);
 
     const refused = await school().post('/api/onboarding/complete').expect(409);
     expect(error(refused)).toMatchObject({
@@ -189,7 +187,7 @@ describe('Onboarding (e2e)', () => {
 
     list = await checklist();
     expect(done(list)).toEqual(['profile', 'session', 'classes', 'curriculum']);
-    expect(list.percentage).toBe(57); // 4 of the 7 available steps
+    expect(list.percentage).toBe(50); // 4 of the 8 steps
     expect(list.canComplete).toBe(true);
 
     const completed = data<Checklist>(

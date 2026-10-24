@@ -237,6 +237,25 @@ export const PERMISSIONS = {
   /** Bulk report-card PDFs. */
   REPORT_CARDS_PRINT: 'report_cards:print',
 
+  // Fees and finance (PRD 6.10)
+  /** Invoices, dues and fee reports (scope applies to student lists). */
+  FEES_READ: 'fees:read',
+  /** Fee heads, structures, discount types, late-fine rules. */
+  FEES_SETUP: 'fees:setup',
+  /** Generate, add and cancel invoices. */
+  FEES_BILL: 'fees:bill',
+  /** Record payments at the counter. */
+  FEES_COLLECT: 'fees:collect',
+  FEES_CANCEL_RECEIPT: 'fees:cancel_receipt',
+  /** Request student discounts, refunds, waivers and corrections. */
+  FEES_ADJUST: 'fees:adjust',
+  /** Approve or reject discounts and adjustments. */
+  FEES_APPROVE_WAIVER: 'fees:approve_waiver',
+  /** Expense vouchers and categories. */
+  EXPENSES_MANAGE: 'expenses:manage',
+  /** Cash book, bank book, payments and receipts. */
+  LEDGER_READ: 'ledger:read',
+
   // Custom domains (Settings → Domain)
   DOMAINS_READ: 'domains:read',
   DOMAINS_MANAGE: 'domains:manage',

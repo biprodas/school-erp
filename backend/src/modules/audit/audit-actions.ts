@@ -72,6 +72,16 @@ export const AUDIT_ACTIONS = {
   RESULTS_PUBLISHED: 'results.published',
   RESULT_REMARKS_UPDATED: 'result.remarks_updated',
 
+  // Fees and finance (PRD 6.10)
+  INVOICES_GENERATED: 'invoice.generated',
+  INVOICE_CANCELLED: 'invoice.cancelled',
+  FEE_PAYMENT_RECORDED: 'payment.recorded',
+  RECEIPT_CANCELLED: 'receipt.cancelled',
+  FEE_DISCOUNT_DECIDED: 'student_discount.decided',
+  FEE_ADJUSTMENT_DECIDED: 'adjustment.decided',
+  EXPENSE_RECORDED: 'expense.recorded',
+  EXPENSE_VOIDED: 'expense.voided',
+
   // Sensitive data access (PRD 6.3). Recorded without the data itself.
   STUDENT_MEDICAL_VIEWED: 'student_medical.viewed',
   STUDENT_NOTE_SENSITIVE_VIEWED: 'student_note.sensitive_viewed',

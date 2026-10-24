@@ -48,6 +48,7 @@ export const DEFAULT_SETTINGS: OrgSettingsValues = {
     receipt: 'RCP-{YYYY}-{SEQ:6}',
     invoice: 'INV-{YYYY}{MM}-{SEQ:5}',
     certificate: 'CERT-{YYYY}-{SEQ:4}',
+    voucher: 'EXP-{YYYY}-{SEQ:5}',
     allowManualStudentId: false,
   },
   portal: {
@@ -67,7 +68,13 @@ export const DEFAULT_SETTINGS: OrgSettingsValues = {
     },
   },
   attendance: { mode: 'day', lockAfterDays: 7, cutoffTime: null },
-  fees: { billingDay: 1, graceDays: 10, blockResultsOnDues: false },
+  fees: {
+    billingDay: 1,
+    dueDay: 10,
+    graceDays: 10,
+    reminderDays: [3, 15],
+    blockResultsOnDues: false,
+  },
   notifications: {
     events: Object.fromEntries(
       NOTIFICATION_EVENTS.map((event) => [event, channels()]),

@@ -183,6 +183,8 @@ export const SYSTEM_ROLES: SystemRoleSeed[] = [
       P.RESULTS_PUBLISH,
       P.RESULTS_REOPEN,
       P.REPORT_CARDS_PRINT,
+      P.FEES_READ,
+      P.LEDGER_READ,
       ...HR_READ,
     ],
   },
@@ -195,6 +197,15 @@ export const SYSTEM_ROLES: SystemRoleSeed[] = [
       ...STUDENTS_READ,
       P.GUARDIANS_READ,
       ...HR_READ,
+      P.FEES_READ,
+      P.FEES_SETUP,
+      P.FEES_BILL,
+      P.FEES_COLLECT,
+      P.FEES_CANCEL_RECEIPT,
+      P.FEES_ADJUST,
+      P.FEES_APPROVE_WAIVER,
+      P.EXPENSES_MANAGE,
+      P.LEDGER_READ,
     ],
   },
   {
@@ -236,6 +247,8 @@ export const SYSTEM_ROLES: SystemRoleSeed[] = [
       P.RESULTS_ENTER,
       P.RESULTS_REMARKS,
       P.REPORT_CARDS_PRINT,
+      // Their own section's dues (fees: R own section).
+      P.FEES_READ,
     ],
   },
   {
@@ -256,6 +269,8 @@ export const SYSTEM_ROLES: SystemRoleSeed[] = [
       P.ID_CARDS_PRINT,
       P.CERTIFICATES_READ,
       P.CERTIFICATES_ISSUE,
+      P.FEES_READ,
+      P.FEES_COLLECT,
     ],
   },
   {
@@ -278,6 +293,9 @@ export const SYSTEM_ROLES: SystemRoleSeed[] = [
       ...ACADEMIC_SETUP_READ,
       P.HOLIDAYS_READ,
       P.EXAMS_READ,
+      // Finance reports: collection, dues.
+      P.FEES_READ,
+      P.LEDGER_READ,
     ],
   },
   {

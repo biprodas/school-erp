@@ -41,6 +41,7 @@ import { DomainEventModule } from '~/modules/domain-events/domain-event.module';
 import { AttendanceModule } from '~/modules/attendance/attendance.module';
 import { GradingModule } from '~/modules/grading/grading.module';
 import { ExamModule } from '~/modules/exams/exam.module';
+import { FeeModule } from '~/modules/fees/fee.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { configLoaders, envValidationSchema, ThrottleConfig } from '~/config';
@@ -138,6 +139,7 @@ const envFilePath = ['.env', `.env.${nodeEnv}`];
     AttendanceModule,
     GradingModule,
     ExamModule,
+    FeeModule,
     FileModule,
     NumberingModule,
     IdempotencyModule,

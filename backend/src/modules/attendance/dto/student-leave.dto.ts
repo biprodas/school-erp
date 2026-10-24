@@ -1,4 +1,5 @@
 import {
+  IsDefined,
   IsEnum,
   IsNotEmpty,
   IsOptional,
@@ -11,10 +12,12 @@ import { PaginationQueryDto } from '~/common/dto/pagination-query.dto';
 import { StudentLeaveStatus } from '../enums/attendance.enum';
 
 export class CreateStudentLeaveDto {
+  @IsDefined()
   /** An active enrollment (the student's section in the session). */
   @IsUUID('4')
   enrollmentId: string;
 
+  @IsDefined()
   @IsDateOnly()
   fromDate: string;
 
@@ -23,6 +26,7 @@ export class CreateStudentLeaveDto {
   @IsDateOnly()
   toDate?: string;
 
+  @IsDefined()
   @IsString()
   @IsNotEmpty()
   @MaxLength(1000)

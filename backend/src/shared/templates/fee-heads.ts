@@ -1,6 +1,6 @@
 /**
- * Default fee heads (PRD 6.2 step 6). Data only until fees exist (M6),
- * which adds the "apply" step.
+ * Default fee heads (PRD 6.2 step 6), added by
+ * `POST /onboarding/templates/fee-heads/apply`.
  */
 export interface FeeHeadTemplate {
   name: string;

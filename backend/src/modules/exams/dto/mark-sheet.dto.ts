@@ -4,6 +4,7 @@ import {
   ArrayMinSize,
   IsArray,
   IsBoolean,
+  IsDefined,
   IsNotEmpty,
   IsNumber,
   IsOptional,
@@ -26,9 +27,11 @@ export class FilterMarkSheetDto {
 
 /** One cell of the grid. `value` is cleared when absent or exempt. */
 export class MarkEntryDto {
+  @IsDefined()
   @IsUUID('4')
   enrollmentId: string;
 
+  @IsDefined()
   @IsUUID('4')
   componentId: string;
 
@@ -47,6 +50,7 @@ export class MarkEntryDto {
 }
 
 export class SaveMarksDto {
+  @IsDefined()
   @IsArray()
   @ArrayMaxSize(2000)
   @ValidateNested({ each: true })
@@ -55,6 +59,7 @@ export class SaveMarksDto {
 }
 
 export class ReopenMarkSheetDto {
+  @IsDefined()
   @IsString()
   @IsNotEmpty()
   @MaxLength(500)
@@ -62,6 +67,7 @@ export class ReopenMarkSheetDto {
 }
 
 export class BulkApproveDto {
+  @IsDefined()
   @IsArray()
   @ArrayMinSize(1)
   @ArrayMaxSize(500)

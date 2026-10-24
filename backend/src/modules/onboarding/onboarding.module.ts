@@ -17,6 +17,7 @@ import { EmployeeModule } from '~/modules/employees/employee.module';
 import { StudentModule } from '~/modules/students/student.module';
 import { HolidayModule } from '~/modules/holidays/holiday.module';
 import { GradingModule } from '~/modules/grading/grading.module';
+import { FeeModule } from '~/modules/fees/fee.module';
 import { OnboardingController } from './controllers/onboarding.controller';
 import { PublicFindSchoolController } from './controllers/public-find-school.controller';
 import { OnboardingService } from './services/onboarding.service';
@@ -44,6 +45,7 @@ import { FindSchoolService } from './services/find-school.service';
     StudentModule,
     HolidayModule,
     GradingModule,
+    FeeModule,
   ],
   controllers: [OnboardingController, PublicFindSchoolController],
   providers: [OnboardingService, CurriculumTemplateService, FindSchoolService],

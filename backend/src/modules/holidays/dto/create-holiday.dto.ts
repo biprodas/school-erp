@@ -1,6 +1,7 @@
 import {
   ArrayMaxSize,
   IsArray,
+  IsDefined,
   IsEnum,
   IsNotEmpty,
   IsOptional,
@@ -12,6 +13,7 @@ import { IsDateOnly } from '~/common/decorators/is-date-only.decorator';
 import { HolidayType } from '../enums/holiday-type.enum';
 
 export class CreateHolidayDto {
+  @IsDefined()
   @IsString()
   @IsNotEmpty()
   @MaxLength(120)
@@ -22,9 +24,11 @@ export class CreateHolidayDto {
   @MaxLength(120)
   nameBn?: string | null;
 
+  @IsDefined()
   @IsEnum(HolidayType)
   type: HolidayType;
 
+  @IsDefined()
   @IsDateOnly()
   dateFrom: string;
 

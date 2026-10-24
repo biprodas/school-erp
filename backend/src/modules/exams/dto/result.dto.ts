@@ -3,6 +3,7 @@ import {
   ArrayMaxSize,
   ArrayMinSize,
   IsArray,
+  IsDefined,
   IsEnum,
   IsIn,
   IsInt,
@@ -19,9 +20,11 @@ import {
 import { ResultSheetType } from '../enums/exam.enum';
 
 export class ResultItemDto {
+  @IsDefined()
   @IsUUID('4')
   examId: string;
 
+  @IsDefined()
   @IsNumber()
   @Min(0.01)
   @Max(100)
@@ -30,17 +33,21 @@ export class ResultItemDto {
 
 /** A combined result, e.g. 30% half-yearly + 70% annual. */
 export class CreateResultDefinitionDto {
+  @IsDefined()
   @IsUUID('4')
   academicYearId: string;
 
+  @IsDefined()
   @IsUUID('4')
   classId: string;
 
+  @IsDefined()
   @IsString()
   @IsNotEmpty()
   @MaxLength(120)
   name: string;
 
+  @IsDefined()
   @IsArray()
   @ArrayMinSize(1)
   @ArrayMaxSize(12)
@@ -80,12 +87,14 @@ export class MeritQueryDto extends ResultsQueryDto {
 }
 
 export class RemarksDto {
+  @IsDefined()
   @IsString()
   @MaxLength(1000)
   remarks: string;
 }
 
 export class ReportCardsDto {
+  @IsDefined()
   @IsUUID('4')
   sectionId: string;
 
@@ -96,9 +105,11 @@ export class ReportCardsDto {
 }
 
 export class ResultExportDto {
+  @IsDefined()
   @IsEnum(ResultSheetType)
   type: ResultSheetType;
 
+  @IsDefined()
   @IsIn(['xlsx', 'pdf'])
   format: 'xlsx' | 'pdf';
 

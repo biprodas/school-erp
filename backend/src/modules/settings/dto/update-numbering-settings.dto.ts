@@ -13,5 +13,6 @@ export class UpdateNumberingSettingsDto {
   @IsNumberingPattern() receipt?: string;
   @IsNumberingPattern() invoice?: string;
   @IsNumberingPattern() certificate?: string;
+  @IsNumberingPattern() voucher?: string;
   @IsBoolean() allowManualStudentId?: boolean;
 }

@@ -15,7 +15,7 @@
 - This is a starting plan, not a fixed spec. When implementation shows a better way, change the code and update this doc to match.
 - Items marked **(1b)** are listed only so Phase 1a leaves room for them; they are tracked in section 14.
 
-**Current state:** M0 in progress (4.1–4.7 done; DB-backed checks wait for the local database or the first CI run). M1 implemented (2026-10-23) except the sample-data mode and the grading, holiday and fee-head template "apply" steps, which wait for M5, M4 and M6; its e2e specs pass against Postgres 18. M2–M5 implemented (2026-10-24; M4 waits on the portal leave endpoint from M7 and a check of the register PDF against a paper one, M5 on the portal and notifications from M7 and the report-card timing on the M8 performance seed). Section 1 lists what already exists and can be reused.
+**Current state:** M0 in progress (4.1–4.7 done; DB-backed checks wait for the local database or the first CI run). M1 implemented (2026-10-23) except the sample-data mode and the grading, holiday and fee-head template "apply" steps, which wait for M5, M4 and M6; its e2e specs pass against Postgres 18. M2–M6 implemented (2026-10-24; what is left of M4–M6 waits on M7 (portal, notifications, guardian confirmations and reminders) or the M8 performance seed, plus a check of the register PDF against a paper one). Section 1 lists what already exists and can be reused.
 
 ---
 
@@ -312,7 +312,7 @@ Migration `1792340000000-PlatformAndOnboarding` holds every schema change below 
   - [x] Alia madrasa (Ebtedayee and Dakhil, Science/General groups)
   - [x] Grading templates (BD GPA 5.0 and the others in M5). *M5: BD GPA 5.0, GPA 4.0, Cambridge, percentage/division, Alia madrasa; `POST /onboarding/templates/grading/:code/apply`.*
   - [x] BD government holidays for the year. *M4: the six fixed-date ones (`POST /onboarding/templates/holidays/bd/apply`); the lunar-calendar ones are listed for the school to date each year.*
-  - [ ] Default fee heads. *Defined and listed; applying them arrives with fees in M6.*
+  - [x] Default fee heads. *M6: `POST /onboarding/templates/fee-heads/apply`.*
   - *The subject lists were written from the published syllabi and should be reviewed by someone who runs a school before the pilot.*
 - [x] `POST /public/find-school { email }`: always 202; enqueues a `mail` job that lists every operational school with an ACTIVE membership, each linking to `https://<host>/login?identifier=…` (the primary verified custom domain, else the subdomain); nothing is sent to unknown addresses; rate-limited per IP (10/min) and per recipient (3/hour, in memory per process). Phone input **(1b)**.
 - [ ] Sample data: `POST /onboarding/sample-data` (job) fills a demo session; `DELETE` removes everything it created (`sample_batch_id`). Lowest priority. *Not started.*
@@ -598,59 +598,60 @@ Migration `1792340000000-PlatformAndOnboarding` holds every schema change below 
 
 **Scope:** PRD 6.10 with counter collection (online payments and reconciliation are 1b).
 
+*Implemented 2026-10-24. Migration `1792390000000-Fees` ran (up, down, up) on the migrated M5 schema, and `db:generate` finds no drift. Unit suites (the `[fee-regression]` suite included) and `test/fees.e2e-spec.ts` pass against Postgres 18 with RLS on. Money is `bigint` minor units (poisha) in the database and the API. Everything is behind the `fees` plan module.*
+
 ### 10.1 Setup
 
-- [ ] `fee_heads (name, name_bn, frequency monthly|quarterly|yearly|one_time, is_active)`.
-- [ ] `fee_structures (academic_year_id, class_id, subject_group_id nullable, shift_id nullable, effective_from, effective_to)` and `fee_structure_items (fee_structure_id, fee_head_id, amount, due_day, months int[] nullable)`.
-- [ ] `discount_types (name, kind percent|fixed, value, applies_to_head_ids, code sibling|merit|staff_child|freedom_fighter|custom)`.
-- [ ] `student_discounts (student_id, discount_type_id, value_override, from_period, to_period, status pending|approved|rejected, requested_by, decided_by)`; only approved discounts apply (`fees:approve_waiver`).
-- [ ] `late_fine_rules (fee_head_id nullable, kind fixed|per_day, amount, grace_days, max_amount)`.
+- [x] `fee_heads (name, name_bn, frequency monthly|quarterly|yearly|one_time, is_active)`. *`POST /onboarding/templates/fee-heads/apply` adds the default heads (idempotent); the checklist's fee step is live.*
+- [x] `fee_structures (academic_year_id, class_id, subject_group_id nullable, shift_id nullable, effective_from, effective_to)` and `fee_structure_items (fee_structure_id, fee_head_id, amount, due_day, months int[] nullable)`. *Per head, the most specific structure in effect wins (group and shift, then either, then neither). Without `months`: monthly bills every month of the session, quarterly every third month from its start, yearly and one-time in its first month.*
+- [x] `discount_types (name, kind percent|fixed, value, applies_to_head_ids, code sibling|merit|staff_child|freedom_fighter|custom)`. *Percent `value` is basis points (1000 = 10%), fixed is minor units per fee line; discounts add on the full amount (no compounding), capped at it, rounded down.*
+- [x] `student_discounts (student_id, discount_type_id, value_override, from_period, to_period, status pending|approved|rejected, requested_by, decided_by)`; only approved discounts apply (`fees:approve_waiver`). *They apply to invoices generated afterwards; existing bills change through adjustments.*
+- [x] `late_fine_rules (fee_head_id nullable, kind fixed|per_day, amount, grace_days, max_amount)`. *`grace_days` null = `fees.graceDays`.*
 
 ### 10.2 Invoices
 
-- [ ] `invoices (number, student_id, enrollment_id, period, issue_date, due_date, status open|partially_paid|paid|cancelled, total, discount_total, fine_total, net_total, allocated_total, bank_reference)`.
-- [ ] `invoice_lines (invoice_id, fee_head_id, period, description, amount, discount, fine, net, allocated)`, unique `(org_id, student_id, fee_head_id, period)`.
-- [ ] Monthly generation: scheduled per org on the billing day, plus `POST /invoices/generate { period, classIds? }` (job with progress), applying structures and approved discounts.
-- [ ] Ad-hoc invoices (fines, events): `POST /invoices`.
-- [ ] Daily late-fine job adds fine lines once per rule and invoice.
-- [ ] Cached totals updated only inside the allocation transaction; a nightly job recomputes them from allocations and alerts on drift.
+- [x] `invoices (number, student_id, enrollment_id, period, issue_date, due_date, status open|partially_paid|paid|cancelled, total, discount_total, fine_total, net_total, allocated_total, bank_reference)`. *Plus `kind` (generated|adhoc), `adjusted_total`, `refunded_total`, reminder count and cancellation fields. The bank reference is a sequence with a Luhn check digit. One generated invoice per enrollment and period.*
+- [x] `invoice_lines (invoice_id, fee_head_id, period, description, amount, discount, fine, net, allocated)`, unique `(org_id, student_id, fee_head_id, period)`. *Fines are their own lines (`kind` fine, one per rule and invoice) instead of a `fine` column; lines also carry the discount breakdown (`discounts` jsonb), `adjusted` and `refunded`. Outstanding = net − adjusted − allocated + refunded.*
+- [x] Monthly generation: scheduled per org on the billing day, plus `POST /invoices/generate { period, classIds? }` (job with progress), applying structures and approved discounts. *`FeeScheduler` (hourly) bills the current month once the billing day has come (one automatic `billing_runs` row per period). Generation is idempotent: re-running bills only what is new. Due date: the items' `due_day`, else `fees.dueDay` (new setting, default 10).*
+- [x] Ad-hoc invoices (fines, events): `POST /invoices`. *Cancelling an invoice needs no live allocations (`INVOICE_HAS_PAYMENTS`).*
+- [x] Daily late-fine job adds fine lines once per rule and invoice. *Per-day fines grow to today's amount, up to the cap, while the fees are unpaid.*
+- [x] Cached totals updated only inside the allocation transaction; a nightly job recomputes them from allocations and alerts on drift. *`InvoiceTotalsService.refresh` runs in every transaction that changes lines; `FeeIntegrityService` runs at 02:00 school time (and `POST /fees/integrity-check`), logs drift as an error and corrects it.*
 
 ### 10.3 Collection, allocation, receipts
 
-- [ ] `payments (number, student_id nullable, payer_guardian_id nullable, channel cash|cheque|card|bank_slip, amount, reference, received_by, received_at, status completed|reversed, idempotency_key)`.
-- [ ] `payment_allocations (payment_id, invoice_line_id, amount)`.
-- [ ] `POST /payments { amount, allocations? }` (`fees:collect`):
-  - [ ] Locks target lines with `SELECT … FOR UPDATE`.
-  - [ ] Allocates oldest-due first by default, or as given.
-  - [ ] Rejects over-allocation of the payment or of a line.
-  - [ ] Can span several invoices and several children of one guardian.
-- [ ] `receipts (number, payment_id, issued_at, issued_by, status valid|cancelled, cancel_reason, cancelled_by)`; number from `NumberingService` in the payment transaction (gap-free).
-- [ ] Receipt cancellation (`fees:cancel_receipt`) needs a reason and creates `payment_reversals`, which releases the allocations; the original stays visible.
-- [ ] Receipt PDF in thermal 80 mm and A4; in-app/email confirmation to the guardian.
-- [ ] `adjustments (type refund|waiver|correction, invoice_line_id, amount, reason, status pending|approved|rejected, requested_by, decided_by)`; only approved adjustments change balances.
+- [x] `payments (number, student_id nullable, payer_guardian_id nullable, channel cash|cheque|card|bank_slip, amount, reference, received_by, received_at, status completed|reversed, idempotency_key)`. *No payment number: the receipt number is the one people see. Idempotency is the `Idempotency-Key` header (`@Idempotent`), not a column. Plus `received_on` (school day) for the collector report.*
+- [x] `payment_allocations (payment_id, invoice_line_id, amount)`. *Plus `invoice_id` and `reversed_at`.*
+- [x] `POST /payments { amount, allocations? }` (`fees:collect`):
+  - [x] Locks target lines with `SELECT … FOR UPDATE`. *In id order, so concurrent collections can't deadlock.*
+  - [x] Allocates oldest-due first by default, or as given.
+  - [x] Rejects over-allocation of the payment or of a line. *`ALLOCATION_EXCEEDS_LINE`, `ALLOCATION_EXCEEDS_PAYMENT`, `PAYMENT_NOT_ALLOCATED`; a payment above what is due is refused (`PAYMENT_EXCEEDS_DUE`), so there is no unallocated credit.*
+  - [x] Can span several invoices and several children of one guardian. *`guardianId` instead of `studentId`.*
+- [x] `receipts (number, payment_id, issued_at, issued_by, status valid|cancelled, cancel_reason, cancelled_by)`; number from `NumberingService` in the payment transaction (gap-free).
+- [x] Receipt cancellation (`fees:cancel_receipt`) needs a reason and creates `payment_reversals`, which releases the allocations; the original stays visible. *Refused once part of the payment was refunded (`PAYMENT_REFUNDED`).*
+- [ ] Receipt PDF in thermal 80 mm and A4; in-app/email confirmation to the guardian. *PDFs done (`POST /receipts/:id/pdf { paper }`). Each payment records `payment.received` in `domain_events`; M7 sends the confirmation.*
+- [x] `adjustments (type refund|waiver|correction, invoice_line_id, amount, reason, status pending|approved|rejected, requested_by, decided_by)`; only approved adjustments change balances. *A refund lowers both what the line owes and what was collected (its balance stays) and writes a ledger expense; a correction is signed.*
 
 ### 10.4 Dues and reports
 
-- [ ] Due list by class and section with aging buckets (0–30, 31–60, 61–90, 90+ days).
-- [ ] Email/in-app due reminders on a configurable schedule (SMS **(1b)**).
-- [ ] `blockResultsOnDues` setting hides published results on the portal until dues are cleared.
-- [ ] Reports: collection vs. demand, head-wise collection, discount report, defaulters, daily collection per collector.
-- [ ] **Fee regression suite** (PRD 11.5): discounts, fines, generation, allocation, plus property-based tests of "billed − discounts − collected = outstanding" and "line outstanding = net − allocations" over random payment sequences.
+- [x] Due list by class and section with aging buckets (0–30, 31–60, 61–90, 90+ days). *`GET /fees/dues` (plus `current`, not yet due); class teachers see their sections.*
+- [ ] Email/in-app due reminders on a configurable schedule (SMS **(1b)**). *`fees.reminderDays` (default 3 and 15 days after the due date): the scheduler records one `fees.due_reminder` event per invoice and offset; M7 delivers them.*
+- [ ] `blockResultsOnDues` setting hides published results on the portal until dues are cleared. *`FeeReportService.hasDues(studentIds)` is ready for the portal (M7).*
+- [x] Reports: collection vs. demand, head-wise collection, discount report, defaulters, daily collection per collector. *`/fees/reports/*`; finance totals need `fees:read` school-wide.*
+- [x] **Fee regression suite** (PRD 11.5): discounts, fines, generation, allocation, plus property-based tests of "billed − discounts − collected = outstanding" and "line outstanding = net − allocations" over random payment sequences. *`domain/fee-math.spec.ts`, tagged `[fee-regression]`: seeded random histories of billing, payments, reversals, waivers and refunds (adjustments and refunds included in the identities).*
 
 ### 10.5 Expenses and ledger
 
-- [ ] `expense_categories` and `expenses (voucher_no, category_id, amount, paid_from cash|bank, date, note, attachment_file_ids)`.
-- [ ] Single-entry `ledger_entries (date, direction income|expense, account cash|bank, amount, source_type, source_id)` written by payments, reversals, refunds and expenses.
-- [ ] Cash book and bank book reports.
-- [ ] If M6 runs long, this section moves to the start of Phase 1b (open point 3).
+- [x] `expense_categories` and `expenses (voucher_no, category_id, amount, paid_from cash|bank, date, note, attachment_file_ids)`. *Voucher numbers from the new `numbering.voucher` pattern; vouchers are voided with a reason, never edited.*
+- [x] Single-entry `ledger_entries (date, direction income|expense, account cash|bank, amount, source_type, source_id)` written by payments, reversals, refunds and expenses. *Cash payments go to cash, cheques/cards/bank slips to bank.*
+- [x] Cash book and bank book reports. *`GET /ledger/book?account&from&to` with opening, running and closing balances.*
 
 ### Done when
 
-- [ ] Receipts are gap-free under concurrent collection (e2e).
-- [ ] Cancellation needs a reason and permission, and the cancelled receipt stays visible.
-- [ ] Each collector's daily report reconciles to their receipts.
-- [ ] The outstanding invariants hold, and completed payments can't be edited or deleted.
-- [ ] The fee regression suite passes 100%.
+- [x] Receipts are gap-free under concurrent collection (e2e).
+- [x] Cancellation needs a reason and permission, and the cancelled receipt stays visible.
+- [x] Each collector's daily report reconciles to their receipts.
+- [x] The outstanding invariants hold, and completed payments can't be edited or deleted. *Checked after every e2e step against the collection-vs-demand report and the student statements; there are no edit or delete routes for payments.*
+- [x] The fee regression suite passes 100%.
 
 ---
 

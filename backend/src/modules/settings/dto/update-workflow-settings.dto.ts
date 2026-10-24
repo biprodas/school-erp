@@ -64,7 +64,17 @@ export class UpdateAttendanceSettingsDto {
 export class UpdateFeesSettingsDto {
   /** 1–28, so every month has the day. */
   @IsInt() @Min(1) @Max(28) billingDay?: number;
+  @IsInt() @Min(1) @Max(28) dueDay?: number;
   @IsInt() @Min(0) @Max(90) graceDays?: number;
+
+  /** Days after the due date, ascending, e.g. `[3, 15]`. */
+  @IsArray()
+  @ArrayMaxSize(5)
+  @IsInt({ each: true })
+  @Min(0, { each: true })
+  @Max(365, { each: true })
+  reminderDays?: number[];
+
   @IsBoolean() blockResultsOnDues?: boolean;
 }
 

@@ -3,6 +3,7 @@ import type { Paginated } from '~/common/dto/paginated.dto';
 import { TENANT_DATASOURCE } from '~/tenancy/tenancy.constants';
 import { TenantDataSourceProxy } from '~/tenancy/tenant-datasource.proxy';
 import { AuditService } from '~/modules/audit/services/audit.service';
+import { FeeSetupService } from '~/modules/fees/services/fee-setup.service';
 import { GradingService } from '~/modules/grading/services/grading.service';
 import { AUDIT_ACTIONS } from '~/modules/audit/audit-actions';
 import { SettingsService } from '~/modules/settings/services/settings.service';
@@ -32,7 +33,7 @@ export interface OnboardingStep {
   link: string;
   /** Needed before `POST /onboarding/complete`. */
   required: boolean;
-  /** False until the feature behind the step exists (fees M6). */
+  /** False until the feature behind the step exists. */
   available: boolean;
   done: boolean;
 }
@@ -90,7 +91,7 @@ const STEPS: StepDefinition[] = [
     title: 'Fee heads',
     link: '/fees/heads',
     required: false,
-    available: false,
+    available: true,
   },
   {
     key: 'staff',
@@ -132,6 +133,7 @@ export class OnboardingService {
     private readonly members: OrgUserService,
     private readonly organizations: OrganizationService,
     private readonly grading: GradingService,
+    private readonly fees: FeeSetupService,
     private readonly audit: AuditService,
     @Inject(TENANT_DATASOURCE) private readonly ds: TenantDataSourceProxy,
   ) {}
@@ -241,6 +243,7 @@ export class OnboardingService {
       done.add('students');
     }
     if ((await this.grading.findAll()).length > 0) done.add('grading');
+    if ((await this.fees.listHeads()).length > 0) done.add('fees');
     return done;
   }
 }

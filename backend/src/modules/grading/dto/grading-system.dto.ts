@@ -4,6 +4,7 @@ import {
   ArrayMinSize,
   IsArray,
   IsBoolean,
+  IsDefined,
   IsIn,
   IsNotEmpty,
   IsNumber,
@@ -25,21 +26,25 @@ export const GRADING_KINDS: readonly GradingKind[] = [
 ];
 
 export class GradeBandDto {
+  @IsDefined()
   @IsString()
   @IsNotEmpty()
   @MaxLength(24)
   letter: string;
 
+  @IsDefined()
   @IsNumber()
   @Min(0)
   @Max(100)
   minPercent: number;
 
+  @IsDefined()
   @IsNumber()
   @Min(0)
   @Max(100)
   maxPercent: number;
 
+  @IsDefined()
   @IsNumber()
   @Min(0)
   @Max(99)
@@ -135,11 +140,13 @@ export class GradingRulesDto {
 }
 
 export class CreateGradingSystemDto {
+  @IsDefined()
   @IsString()
   @IsNotEmpty()
   @MaxLength(80)
   name: string;
 
+  @IsDefined()
   @IsIn(GRADING_KINDS)
   kind: GradingKind;
 
@@ -149,6 +156,7 @@ export class CreateGradingSystemDto {
   @Type(() => GradingRulesDto)
   rules?: GradingRulesDto;
 
+  @IsDefined()
   @IsArray()
   @ArrayMinSize(2)
   @ArrayMaxSize(20)
@@ -181,6 +189,7 @@ export class UpdateGradingSystemDto {
 }
 
 export class ReplaceScaleDto {
+  @IsDefined()
   @IsArray()
   @ArrayMinSize(2)
   @ArrayMaxSize(20)
@@ -203,12 +212,15 @@ export class CreateFromTemplateDto {
 }
 
 export class SetClassGradingDto {
+  @IsDefined()
   @IsUUID('4')
   academicYearId: string;
 
+  @IsDefined()
   @IsUUID('4')
   classId: string;
 
+  @IsDefined()
   @IsUUID('4')
   gradingSystemId: string;
 }

@@ -9,3 +9,12 @@ export const NumericColumn: ValueTransformer = {
   to: (value: number | null | undefined) => value,
   from: (value: string | null) => (value === null ? null : Number(value)),
 };
+
+/**
+ * Money is `bigint` minor units (poisha) in the database; Postgres returns
+ * it as a string. Amounts stay far below 2^53, so read them as numbers.
+ */
+export const MoneyColumn: ValueTransformer = {
+  to: (value: number | null | undefined) => value,
+  from: (value: string | null) => (value === null ? null : Number(value)),
+};

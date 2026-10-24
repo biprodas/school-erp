@@ -2,6 +2,7 @@ import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
   IsArray,
+  IsDefined,
   IsOptional,
   IsString,
   IsUUID,
@@ -31,10 +32,12 @@ export class SubmissionStatusQueryDto extends RegisterQueryDto {
 }
 
 export class AttendanceEntryDto {
+  @IsDefined()
   @IsUUID('4')
   enrollmentId: string;
 
   /** A status code from `GET /attendance/statuses`. */
+  @IsDefined()
   @Matches(/^[a-z][a-z0-9_]{1,15}$/, { message: 'status must be a code' })
   status: string;
 
@@ -49,6 +52,7 @@ export class AttendanceEntryDto {
  * (Leave when on approved leave) and keep their status on a taken one.
  */
 export class SubmitAttendanceDto {
+  @IsDefined()
   @IsArray()
   @ArrayMaxSize(500)
   @ValidateNested({ each: true })

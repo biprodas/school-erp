@@ -18,6 +18,15 @@ export class StudentGuardianRepository extends BaseTenantRepository<StudentGuard
     });
   }
 
+  /** The students a guardian is linked to. */
+  async studentIdsOf(guardianId: string): Promise<string[]> {
+    const links = await this.repo.find({
+      where: { guardianId },
+      select: { id: true, studentId: true },
+    });
+    return links.map((l) => l.studentId);
+  }
+
   findLink(
     studentId: string,
     guardianId: string,

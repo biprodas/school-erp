@@ -1,0 +1,28 @@
+<div class='receipt'>
+  <div class='head'>
+    <div class='school'>{{schoolName}}</div>
+    {{#if schoolNameBn}}<div class='serif'>{{schoolNameBn}}</div>{{/if}}
+    <div class='title'>Money Receipt · টাকা প্রাপ্তির রসিদ</div>
+  </div>
+  {{#if cancelled}}<div class='stamp'>CANCELLED</div>{{/if}}
+  <table class='meta'>
+    <tr><td>Receipt no</td><td><b>{{number}}</b></td></tr>
+    <tr><td>Date</td><td>{{issuedOn}}</td></tr>
+    <tr><td>Received from</td><td>{{payer}}</td></tr>
+    <tr><td>Paid by</td><td>{{channel}}{{#if reference}} ({{reference}}){{/if}}</td></tr>
+  </table>
+  <table class='lines'>
+    <thead><tr><th class='l'>Description</th><th>Amount</th></tr></thead>
+    <tbody>
+      {{#each lines}}
+        <tr>
+          <td class='l'>{{this.student}} · {{this.description}} {{this.period}}</td>
+          <td>{{this.amount}}</td>
+        </tr>
+      {{/each}}
+    </tbody>
+    <tfoot><tr><td class='l'><b>Total ({{currency}})</b></td><td><b>{{total}}</b></td></tr></tfoot>
+  </table>
+  {{#if cancelled}}<div class='note'>Cancelled: {{cancelReason}}</div>{{/if}}
+  <div class='sign'><div class='line'></div>Received by</div>
+</div>

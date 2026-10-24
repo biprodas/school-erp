@@ -4,6 +4,7 @@ import {
   ArrayMaxSize,
   ArrayMinSize,
   IsArray,
+  IsDefined,
   IsEnum,
   IsIn,
   IsInt,
@@ -23,6 +24,7 @@ import { SubjectComponent } from '~/modules/class-curriculum/enums/subject-compo
 import { ExamStatus } from '../enums/exam.enum';
 
 export class CreateExamTypeDto {
+  @IsDefined()
   @IsString()
   @IsNotEmpty()
   @MaxLength(80)
@@ -43,9 +45,11 @@ export class CreateExamTypeDto {
 export class UpdateExamTypeDto extends PartialType(CreateExamTypeDto) {}
 
 export class CreateExamDto {
+  @IsDefined()
   @IsUUID('4')
   academicYearId: string;
 
+  @IsDefined()
   @IsString()
   @IsNotEmpty()
   @MaxLength(120)
@@ -109,9 +113,11 @@ export class AddExamSubjectsDto {
 }
 
 export class ExamComponentDto {
+  @IsDefined()
   @IsIn(Object.values(SubjectComponent))
   component: SubjectComponent;
 
+  @IsDefined()
   @IsInt()
   @Min(1)
   @Max(1000)
