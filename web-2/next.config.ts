@@ -8,8 +8,13 @@ import type { NextConfig } from "next"
 // to be imported, so the alias is set here instead.
 const I18N_REQUEST_CONFIG = "./src/i18n/request.ts"
 
+const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "lvh.me"
+
 const nextConfig: NextConfig = {
   reactCompiler: true,
+  // `next dev` only serves its scripts and HMR to localhost by default;
+  // school and admin hosts are subdomains of the root domain.
+  allowedDevOrigins: [ROOT_DOMAIN, `*.${ROOT_DOMAIN}`],
   turbopack: {
     resolveAlias: {
       // Turbopack aliases must be relative.

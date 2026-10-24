@@ -145,13 +145,13 @@ Steps, in order:
    - `<slug>.` → `school` with that slug; a reserved slug → 404;
    - anything else → custom domain: `GET /public/organizations/resolve?host=` (in-memory cache, 60 s, negative results cached too). Unknown → 404 page.
 3. **Old slugs**: if `by-slug` reports `movedFrom`, or the backend answered 410 `TENANT_MOVED`, 301 to the current slug on the same path.
-4. **Block internal segments**: a request whose path starts with `/site`, `/admin` or `/school` gets 404.
+4. **Internal segments stay unreachable**: every path gets its tree's prefix, so `/school/login` typed on any host becomes `/<tree>/school/login` and 404s.
 5. **Gates** (school and admin trees only), read from the session cookie without calling the backend:
    - no session on a protected path (`/dashboard`, `/student`, `/onboarding`, `/change-password`, `/setting-up`) → `/login?next=<path>`;
    - `mustChangePassword` → only `/change-password` and `/auth/*` are allowed;
    - signed in and on `/login` → home for the user (section 4.5).
    - The onboarding gate needs `onboardingCompletedAt`, which is in the session snapshot (set at sign-in, updated by `POST /onboarding/complete|skip`). Admins with it null → `/onboarding`; other staff → `/setting-up`.
-6. **Rewrite** to `/<tree><path>` and pass `x-host-kind`, `x-tenant-slug` and `x-forwarded-host` as request headers, which server code reads through `headers()`.
+6. **Rewrite** to `/<tree><path>` and pass `x-host-kind`, `x-tenant-slug` and `x-request-origin` as request headers (client copies dropped), which server code reads through `headers()` (`lib/request-host.ts`).
 
 Primary-domain redirect (subdomain → custom domain) is left for the Settings → Domain work; the proxy gets a hook for it.
 
@@ -293,7 +293,7 @@ Tick a box when the item is implemented and verified locally (against the docker
 | - | --------- | ---------- | ------ |
 | MB | Backend prerequisites | — | Implemented; B1 committed, the rest not yet (B3 moved to M2) |
 | M0 | Foundations | — | Implemented, not committed (CI not yet run) |
-| M1 | Host routing | M0 | Not started |
+| M1 | Host routing | M0 | Implemented, not committed |
 | M2 | Session layer and BFF | M1 | Not started |
 | M3 | School sign-in | M2 | Not started |
 | M4 | Signup and find school | M3 | Not started |
@@ -376,23 +376,35 @@ Deviations from the plan, found while building:
 
 ### M1. Host routing
 
-- [ ] Read `node_modules/next/dist/docs/01-app/01-getting-started/16-proxy.md` and the `proxy` file-convention reference.
-- [ ] `lib/hosts.ts`: `classifyHost(host)` → `{ kind: 'site' | 'admin' | 'school' | 'custom', slug?, hostname }`; strips the port, lower-cases, handles `localhost`, `www.`, `admin.` and reserved slugs.
-- [ ] Reserved-slug list kept in sync with `backend/src/shared/slug/reserved-slugs.ts` (copied with a pointer comment, or read from `GET /public/slugs/reserved`).
-- [ ] `lib/tenant.ts`: `resolveCustomDomain(host)` through `GET /public/organizations/resolve?host=`, 60 s in-memory cache, negative results cached.
-- [ ] Old slugs: `by-slug` `movedFrom` or 410 `TENANT_MOVED` → 301 to the current slug, same path and query.
-- [ ] `src/proxy.ts` matcher skips `/_next`, static files, `/api/*` and metadata images.
-- [ ] `src/proxy.ts` rewrites to `/site`, `/admin` or `/school` + path and sets `x-host-kind`, `x-tenant-slug`, `x-forwarded-host` request headers.
-- [ ] `src/proxy.ts` answers 404 for `/site/*`, `/admin/*`, `/school/*` requested directly.
-- [ ] Unknown school or custom host → a "School not found" page linking to `/find-school` on the apex.
-- [ ] `lib/request-tenant.ts`: server helper reading `x-host-kind` / `x-tenant-slug` through `headers()`.
-- [ ] Move `app/page.tsx` and `app/_landing/` to `app/site/`, and `app/design-system/` to `app/site/design-system/`.
-- [ ] Placeholder `app/admin/page.tsx` and `app/school/page.tsx` (school name from `GET /public/organizations/:slug/home`).
-- [ ] Hook in the proxy for the primary-domain redirect (no-op for now).
+- [x] Read `node_modules/next/dist/docs/01-app/01-getting-started/16-proxy.md` and the `proxy` file-convention reference (proxy runs on Node by default, so an in-memory cache works).
+- [x] `lib/hosts.ts`: `classifyHost(host, config)` → `site | admin | school (slug) | custom | unknown`; strips the port and trailing dot, lower-cases, handles `localhost`/`127.0.0.1`/`[::1]`, `www.`, `admin.`. Reserved, malformed and deeper (`x.acme.lvh.me`) subdomains are `unknown` and never reach the backend. `urlOnHost()` builds links that keep the request's protocol and port.
+- [x] `lib/slugs.ts`: reserved slugs and the slug pattern, copied from `backend/src/shared/slug/reserved-slugs.ts`; `slugs.test.ts` reads the backend file and fails when they drift.
+- [x] `lib/tenant.ts`: `lookupTenant()` for subdomains (`GET /public/organizations/by-slug`) and custom domains (`GET /public/organizations/resolve`); 60 s in-memory cache with "not found" cached too, concurrent lookups share one request, 3 s timeout; backend failures throw and aren't cached.
+- [x] Old slugs: `by-slug` `movedFrom` → 301 to the current slug, same path and query (protocol from `X-Forwarded-Proto` behind TLS).
+- [x] `src/proxy.ts` matcher skips `/api/*`, `/_next/*`, `/apple-icon` and any path with a dot (files).
+- [x] `src/proxy.ts` rewrites into `/site`, `/admin` or `/school` + path and sets `x-host-kind`, `x-tenant-slug` and `x-request-origin` (header names in `lib/host-headers.ts`). Copies of these headers sent by the client are dropped first. The host comes from `Host`, never `X-Forwarded-Host`, which a client can set.
+- [x] Internal trees unreachable directly: every path gets its tree's prefix, so `/school/login` on any host becomes `/<tree>/school/login` and 404s (no separate block needed).
+- [x] Unknown host, or a school the backend doesn't know → `x-host-kind: unknown` and a 404 whose page says "We couldn't find this school" with a link to `/find-school` on the apex (`app/not-found.tsx` reads the host kind). Other 404s say "Page not found".
+- [x] Backend unreachable → `app/unavailable` ("We can't reach the school right now", retry link; lookup not cached, so a reload retries).
+- [x] `lib/request-host.ts`: `getRequestHost()`, `requireSchoolSlug()` (404 off school hosts), `siteUrl(path)`.
+- [x] Moved `app/page.tsx`, `app/_landing/` and `app/design-system/` into `app/site/` (`git mv`).
+- [x] `app/admin/page.tsx` placeholder; `app/school/page.tsx` with the school's name (Bangla name in `bn`), logo or initials, and a "Sign in" link (`/login`, built in M3). Data from `GET /public/organizations/:slug/home` through `api/public/school-home.ts` (deduped per request; 404 when the school is gone). Server-side public calls use `lib/api/public.ts`.
+- [x] Place for the primary-domain redirect marked in the proxy (comment where it goes; nothing to call until Settings → Domain).
+- [x] `allowedDevOrigins` in `next.config.ts` for the root domain and its subdomains: without it `next dev` withholds its scripts and HMR from `*.lvh.me`, and client rendering breaks.
+- [x] Strings for the new pages in `messages/en.json` and `messages/bn.json`.
+- [x] `web-2/.env.local` created from `.env.example` with a random `SESSION_SECRET` (not committed).
 
 Tests:
 
-- [ ] Vitest: `classifyHost` for apex, `www`, `localhost`, `admin`, slug, reserved slug, custom domain, host with port, upper case.
+- [x] Vitest: `classifyHost` (apex, `www`, localhost forms, admin, slug, reserved, too short, deeper subdomain, look-alike domains, custom domain, ports, case, configured root), `urlOnHost`, slug rules and backend parity, `lookupTenant` (both endpoints, moved, caching incl. not-found, shared in-flight request, errors not cached), proxy (every host kind, rewrites and forwarded headers, 301 for old slugs, unknown and unavailable pages, client header spoofing, `X-Forwarded-Proto`, matcher). 107 tests in all.
+- [x] Playwright (`e2e/hosts.spec.ts`, 360 px and desktop): admin host, reserved subdomain → "school not found" 404 with the apex link, `/school` typed directly → 404, school host (with `E2E_SCHOOL_SLUG=acme` against the running backend).
+
+Notes:
+
+- `next/experimental/testing/server` in 16.4 exports `unstable_doesMiddlewareMatch`; the docs already call it `unstable_doesProxyMatch`.
+- A segment's own `not-found.tsx` did not catch `notFound()` from its page here (the root one rendered), so the "school not found" message lives in the root `not-found.tsx`, keyed on the host kind. 404 pages keep the root `<title>`.
+- `NextIntlClientProvider` sends the whole message catalog with every page. Small today; pass only the namespaces a page's client components need before the catalogs grow (performance budget, section 7).
+- Not covered yet: a real custom domain end to end (needs a verified `organization_domains` row and DNS), and an old slug against the backend (unit-tested only).
 
 **Done when:** `lvh.me:3000` shows the landing, `acme.lvh.me:3000` the school placeholder with the school's name, `admin.lvh.me:3000` the admin placeholder, an unknown slug the "School not found" page, and `/school/login` typed directly gives 404.
 

@@ -5,6 +5,32 @@
     "languages": {
       "bn": "বাংলা",
       "en": "English"
-    }
+    },
+    "poweredBy": "School management by Kampasy"
+  },
+  "schoolHome": {
+    "signIn": "Sign in",
+    "signInHint": "Staff, students and guardians sign in here.",
+    "logoAlt": "{school} logo"
+  },
+  "admin": {
+    "title": "Kampasy admin",
+    "body": "The admin console for the Kampasy team is on its way."
+  },
+  "unknownSchool": {
+    "title": "We couldn't find this school",
+    "body": "Check the address, or look up your school with your email.",
+    "findSchool": "Find your school"
+  },
+  "unavailable": {
+    "metaTitle": "Temporarily unavailable",
+    "title": "We can't reach the school right now",
+    "body": "This is on our side. Please try again in a minute.",
+    "retry": "Try again"
+  },
+  "notFound": {
+    "title": "Page not found",
+    "body": "The link may be old, or the page has moved.",
+    "home": "Go to the home page"
   }
 }
