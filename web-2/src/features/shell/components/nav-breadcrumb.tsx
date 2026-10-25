@@ -13,7 +13,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "~/components/ui/breadcrumb"
-import { navTrail, type Crumb } from "~/lib/nav"
+import { navTrail, type Crumb } from "~/features/shell/nav/nav"
 
 /**
  * Where the page sits: Dashboard › menu › page, from the nav labels. On

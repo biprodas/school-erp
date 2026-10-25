@@ -4,16 +4,16 @@ import { fileURLToPath } from "node:url"
 
 import { describe, expect, it } from "vitest"
 
-import { NAV, type NavCategory } from "~/config/nav"
+import { NAV, type NavCategory } from "~/features/shell/nav/config"
 
-import en from "../../messages/en.json"
+import en from "../../../../messages/en.json"
 
 import { activeHref, navTrail, pageLabel, searchNav, visibleNav } from "./nav"
-import { NO_PERMISSIONS, toPermissions } from "./permissions"
+import { NO_PERMISSIONS, toPermissions } from "~/features/access/permissions"
 
 const BACKEND_CATALOG = fileURLToPath(
   new URL(
-    "../../../backend/src/modules/rbac/permissions.catalog.ts",
+    "../../../../../backend/src/modules/rbac/permissions.catalog.ts",
     import.meta.url
   )
 )

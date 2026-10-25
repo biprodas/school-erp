@@ -8,7 +8,7 @@ import { useState } from "react"
 
 import { meQuery } from "~/api/auth"
 import { portalHandoff, portalSchoolsQuery } from "~/api/portal"
-import { InitialsAvatar } from "~/components/initials-avatar"
+import { InitialsAvatar } from "~/components/common/initials-avatar"
 import { Button } from "~/components/ui/button"
 import {
   DropdownMenu,

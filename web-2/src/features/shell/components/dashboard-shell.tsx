@@ -3,8 +3,8 @@
 import { useQuery } from "@tanstack/react-query"
 
 import { displaySettingsQuery } from "~/api/settings"
-import { LanguageSwitch } from "~/components/language-switch"
-import { ThemeToggle } from "~/components/theme-toggle"
+import { LanguageSwitch } from "~/components/common/language-switch"
+import { ThemeToggle } from "~/components/common/theme-toggle"
 import { Separator } from "~/components/ui/separator"
 import {
   SidebarInset,

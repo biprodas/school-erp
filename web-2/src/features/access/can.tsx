@@ -1,7 +1,7 @@
 "use client"
 
-import { usePermissions } from "~/hooks/use-permissions"
-import { allows, type Requirement } from "~/lib/permissions"
+import { usePermissions } from "~/features/access/use-permissions"
+import { allows, type Requirement } from "~/features/access/permissions"
 
 /**
  * Renders `children` only for members who hold `permission` (one key, or

@@ -3,8 +3,8 @@
 import { useTranslations } from "next-intl"
 import { useActionState, useState } from "react"
 
-import { ariaFor, FormField } from "~/components/form/form-field"
-import { SubmitButton } from "~/components/form/submit-button"
+import { ariaFor, FormField } from "~/components/forms/form-field"
+import { SubmitButton } from "~/components/forms/submit-button"
 import {
   InputGroup,
   InputGroupAddon,

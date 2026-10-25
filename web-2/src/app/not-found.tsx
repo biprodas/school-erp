@@ -1,7 +1,7 @@
 import { FileQuestionIcon, SchoolIcon } from "lucide-react"
 import { getTranslations } from "next-intl/server"
 
-import { StatusPage } from "~/components/status-page"
+import { StatusPage } from "~/components/layouts/status-page"
 import { buttonVariants } from "~/components/ui/button"
 import { getRequestHost, siteUrl } from "~/lib/tenancy/request-host"
 

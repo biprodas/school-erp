@@ -4,8 +4,8 @@ import { ChevronRightIcon } from "lucide-react"
 import Link from "next/link"
 import { useTranslations } from "next-intl"
 
-import { visibleNav } from "~/lib/nav"
-import type { Permissions } from "~/lib/permissions"
+import { visibleNav } from "~/features/shell/nav/nav"
+import type { Permissions } from "~/features/access/permissions"
 
 /**
  * A tile for every menu the member can open: the home page for members

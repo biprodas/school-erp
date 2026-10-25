@@ -4,9 +4,9 @@ import {
   type NavCategory,
   type NavLabel,
   type NavMenu,
-} from "~/config/nav"
+} from "~/features/shell/nav/config"
 
-import { allows, type Permissions } from "./permissions"
+import { allows, type Permissions } from "~/features/access/permissions"
 
 /**
  * The sidebar this member may see: items they hold the key for, menus

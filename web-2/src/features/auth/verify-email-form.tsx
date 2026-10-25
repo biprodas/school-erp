@@ -4,7 +4,7 @@ import { CircleCheckIcon } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { useActionState } from "react"
 
-import { SubmitButton } from "~/components/form/submit-button"
+import { SubmitButton } from "~/components/forms/submit-button"
 import { buttonVariants } from "~/components/ui/button"
 import { IDLE } from "~/lib/forms/form-state"
 

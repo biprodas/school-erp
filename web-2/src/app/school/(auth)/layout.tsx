@@ -2,9 +2,9 @@ import { getLocale, getTranslations } from "next-intl/server"
 
 import { getSchoolHome, schoolName } from "~/api/public/school-home"
 import { BrandMark } from "~/components/brand/brand-mark"
-import { LanguageSwitch } from "~/components/language-switch"
-import { SchoolLogo } from "~/components/school-logo"
-import { ThemeToggle } from "~/components/theme-toggle"
+import { LanguageSwitch } from "~/components/common/language-switch"
+import { SchoolLogo } from "~/components/common/school-logo"
+import { ThemeToggle } from "~/components/common/theme-toggle"
 import { BRAND } from "~/config/brand-config"
 import { requireSchoolSlug } from "~/lib/tenancy/request-host"
 

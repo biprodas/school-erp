@@ -3,9 +3,9 @@ import userEvent from "@testing-library/user-event"
 import { NextIntlClientProvider } from "next-intl"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import bn from "../../messages/bn.json"
-import en from "../../messages/en.json"
-import hi from "../../messages/hi.json"
+import bn from "../../../messages/bn.json"
+import en from "../../../messages/en.json"
+import hi from "../../../messages/hi.json"
 
 import { LanguageSwitch } from "./language-switch"
 

@@ -3,9 +3,9 @@
 import { MailCheckIcon } from "lucide-react"
 import { useTranslations } from "next-intl"
 
-import { ariaFor, FormField } from "~/components/form/form-field"
-import { SubmitButton } from "~/components/form/submit-button"
-import { useActionForm } from "~/components/form/use-action-form"
+import { ariaFor, FormField } from "~/components/forms/form-field"
+import { SubmitButton } from "~/components/forms/submit-button"
+import { useActionForm } from "~/components/forms/use-action-form"
 import { Input } from "~/components/ui/input"
 
 import { requestPasswordReset } from "./actions"

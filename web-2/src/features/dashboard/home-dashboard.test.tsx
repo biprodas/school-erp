@@ -13,7 +13,7 @@ import type {
   TeacherDashboard,
 } from "~/api/dashboards"
 import { settingsKeys, type DisplaySettings } from "~/api/settings"
-import { toPermissions } from "~/lib/permissions"
+import { toPermissions } from "~/features/access/permissions"
 
 import { HomeDashboard, homeGroups } from "./home-dashboard"
 

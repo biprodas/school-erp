@@ -1,7 +1,7 @@
 import { getTranslations } from "next-intl/server"
 
-import { LanguageSwitch } from "~/components/language-switch"
-import { ThemeToggle } from "~/components/theme-toggle"
+import { LanguageSwitch } from "~/components/common/language-switch"
+import { ThemeToggle } from "~/components/common/theme-toggle"
 import { BRAND } from "~/config/brand-config"
 
 import { Logo } from "../_landing/logo"

@@ -5,9 +5,9 @@ import { useTranslations } from "next-intl"
 import { useState } from "react"
 
 import { BrandMark } from "~/components/brand/brand-mark"
-import { LanguageSwitch } from "~/components/language-switch"
-import { ThemeToggle } from "~/components/theme-toggle"
-import { InitialsAvatar } from "~/components/initials-avatar"
+import { LanguageSwitch } from "~/components/common/language-switch"
+import { ThemeToggle } from "~/components/common/theme-toggle"
+import { InitialsAvatar } from "~/components/common/initials-avatar"
 import { Button } from "~/components/ui/button"
 import {
   DropdownMenu,

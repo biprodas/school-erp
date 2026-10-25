@@ -20,7 +20,7 @@ import {
   type AccountSession,
   type Me,
 } from "~/api/auth"
-import { useRoleLabel } from "~/components/layout/role-label"
+import { useRoleLabel } from "~/features/shell/role-label"
 import { Alert, AlertDescription } from "~/components/ui/alert"
 import { Badge } from "~/components/ui/badge"
 import { Button, buttonVariants } from "~/components/ui/button"

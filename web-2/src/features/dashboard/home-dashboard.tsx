@@ -4,9 +4,13 @@ import { useQuery } from "@tanstack/react-query"
 import { useTranslations } from "next-intl"
 
 import { meQuery } from "~/api/auth"
-import { PageHeader } from "~/components/layout/page-header"
+import { PageHeader } from "~/components/layouts/page-header"
 import { Skeleton } from "~/components/ui/skeleton"
-import { can, toPermissions, type Permissions } from "~/lib/permissions"
+import {
+  can,
+  toPermissions,
+  type Permissions,
+} from "~/features/access/permissions"
 
 import { Finance } from "./finance"
 import { MenuTiles } from "./menu-tiles"

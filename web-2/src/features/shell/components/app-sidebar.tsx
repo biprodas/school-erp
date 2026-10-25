@@ -9,7 +9,7 @@ import { useState } from "react"
 
 import { meQuery } from "~/api/auth"
 import { displayName, displaySettingsQuery } from "~/api/settings"
-import { SchoolLogo } from "~/components/school-logo"
+import { SchoolLogo } from "~/components/common/school-logo"
 import {
   Collapsible,
   CollapsibleContent,
@@ -33,9 +33,9 @@ import {
   SidebarRail,
   useSidebar,
 } from "~/components/ui/sidebar"
-import type { NavMenu } from "~/config/nav"
-import { activeHref, searchNav, visibleNav } from "~/lib/nav"
-import { toPermissions } from "~/lib/permissions"
+import type { NavMenu } from "~/features/shell/nav/config"
+import { activeHref, searchNav, visibleNav } from "~/features/shell/nav/nav"
+import { toPermissions } from "~/features/access/permissions"
 
 /**
  * The staff sidebar: the menus this member's permission keys open, with

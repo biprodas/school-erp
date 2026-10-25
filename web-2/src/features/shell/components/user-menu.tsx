@@ -15,7 +15,7 @@ import { useState } from "react"
 
 import { meQuery, otherSchoolsQuery, switchSchool } from "~/api/auth"
 import { Badge } from "~/components/ui/badge"
-import { InitialsAvatar } from "~/components/initials-avatar"
+import { InitialsAvatar } from "~/components/common/initials-avatar"
 import { Button } from "~/components/ui/button"
 import {
   DropdownMenu,
@@ -33,7 +33,7 @@ import { toast } from "~/components/ui/toast"
 import { signOut } from "~/features/auth/sign-out"
 import type { SessionUser } from "~/lib/auth/types"
 
-import { useRoleLabel } from "./role-label"
+import { useRoleLabel } from "../role-label"
 
 /**
  * The account menu: who is signed in and with which roles, the account

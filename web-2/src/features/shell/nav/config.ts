@@ -16,8 +16,8 @@ import {
   type LucideIcon,
 } from "lucide-react"
 
-import type messages from "../../messages/en.json"
-import type { Requirement } from "~/lib/permissions"
+import type messages from "../../../../messages/en.json"
+import type { Requirement } from "~/features/access/permissions"
 
 /** A label under `nav.labels` in the message catalogs. */
 export type NavLabel = keyof (typeof messages)["nav"]["labels"]

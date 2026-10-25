@@ -13,7 +13,7 @@ import {
 } from "~/api/academics"
 import { applyBdHolidays } from "~/api/onboarding"
 import { displaySettingsQuery } from "~/api/settings"
-import { ariaFor, FormField } from "~/components/form/form-field"
+import { ariaFor, FormField } from "~/components/forms/form-field"
 import { Button } from "~/components/ui/button"
 import { Input } from "~/components/ui/input"
 import { Skeleton } from "~/components/ui/skeleton"
