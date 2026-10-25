@@ -8,12 +8,15 @@ import {
   NONCE_HEADER,
   REQUEST_ORIGIN_HEADER,
   TENANT_SLUG_HEADER,
-} from "~/lib/host-headers"
-import { urlOnHost } from "~/lib/hosts"
-import { clientInfo } from "~/lib/client-ip"
-import { resolveHost, type ResolvedHost } from "~/lib/resolve-host"
-import { contentSecurityPolicy, createNonce } from "~/lib/security-headers"
-import { SESSION_COOKIES } from "~/lib/session/cookie"
+} from "~/lib/tenancy/host-headers"
+import { urlOnHost } from "~/lib/tenancy/hosts"
+import { clientInfo } from "~/lib/security/client-ip"
+import { resolveHost, type ResolvedHost } from "~/lib/tenancy/resolve-host"
+import {
+  contentSecurityPolicy,
+  createNonce,
+} from "~/lib/security/security-headers"
+import { SESSION_COOKIES } from "~/lib/auth/cookie"
 import {
   ensureFreshSession,
   readSession,
@@ -21,9 +24,9 @@ import {
   type CookieUpdate,
   type FreshSession,
   type SessionScope,
-} from "~/lib/session/fresh"
-import { adminGate, gate } from "~/lib/session/home"
-import { applyCookieUpdate } from "~/lib/session/response-cookie"
+} from "~/lib/auth/fresh"
+import { adminGate, gate } from "~/lib/auth/home"
+import { applyCookieUpdate } from "~/lib/auth/response-cookie"
 
 /**
  * One app serves every host (doc/domains-and-routing.md, section 1). The

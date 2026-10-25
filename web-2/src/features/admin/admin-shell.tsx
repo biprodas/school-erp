@@ -20,7 +20,7 @@ import {
 } from "~/components/ui/dropdown-menu"
 import { BRAND } from "~/config/brand-config"
 import { signOut } from "~/features/auth/sign-out"
-import type { SessionUser } from "~/lib/session/types"
+import type { SessionUser } from "~/lib/auth/types"
 
 /**
  * The platform console around every admin page. Only a header for now:

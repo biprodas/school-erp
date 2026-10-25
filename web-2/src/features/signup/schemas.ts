@@ -2,7 +2,7 @@ import { z } from "zod/mini"
 
 import type { FieldMessage } from "~/lib/forms/form-state"
 import { normalizePhone } from "~/lib/phone"
-import { isReservedSlug, isValidSlug } from "~/lib/slugs"
+import { isReservedSlug, isValidSlug } from "~/lib/tenancy/slugs"
 
 // Rules from `StartSignupDto` (backend/src/modules/signup/dto/signup.dto.ts)
 // and `FindSchoolDto`. Messages are keys under `validation`.

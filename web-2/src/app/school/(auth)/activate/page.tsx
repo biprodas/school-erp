@@ -7,7 +7,7 @@ import { AuthCard } from "~/features/auth/auth-card"
 import { checkToken } from "~/features/auth/check-token"
 import { LinkProblem } from "~/features/auth/link-problem"
 import { param, type SearchParams } from "~/features/auth/search-params"
-import { requireSchoolSlug } from "~/lib/request-host"
+import { requireSchoolSlug } from "~/lib/tenancy/request-host"
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("auth.activate")

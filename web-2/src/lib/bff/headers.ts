@@ -1,6 +1,6 @@
-import { clientInfo, setClientHeaders } from "~/lib/client-ip"
-import type { ResolvedHost } from "~/lib/resolve-host"
-import type { Session } from "~/lib/session/types"
+import { clientInfo, setClientHeaders } from "~/lib/security/client-ip"
+import type { ResolvedHost } from "~/lib/tenancy/resolve-host"
+import type { Session } from "~/lib/auth/types"
 
 /** Browser headers the backend may see; cookies and auth never pass. */
 const FORWARDED_REQUEST_HEADERS = [

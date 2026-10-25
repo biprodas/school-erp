@@ -1,8 +1,8 @@
 import "server-only"
 
 import { backendFetch } from "~/lib/api/server"
-import { setSession, type Session } from "~/lib/session"
-import { fromTokenResponse, type TokenResponse } from "~/lib/session/tokens"
+import { setSession, type Session } from "~/lib/auth"
+import { fromTokenResponse, type TokenResponse } from "~/lib/auth/tokens"
 
 /** `code` of the refusal for an account that isn't a platform admin. */
 export const PLATFORM_ADMIN_REQUIRED = "PLATFORM_ADMIN_REQUIRED"

@@ -1,8 +1,8 @@
 import "server-only"
 
 import { backendFetch } from "~/lib/api/server"
-import { setSession, type Session } from "~/lib/session"
-import { fromTokenResponse, type TokenResponse } from "~/lib/session/tokens"
+import { setSession, type Session } from "~/lib/auth"
+import { fromTokenResponse, type TokenResponse } from "~/lib/auth/tokens"
 
 interface Me {
   organization?: { onboardingCompletedAt?: string | null } | null

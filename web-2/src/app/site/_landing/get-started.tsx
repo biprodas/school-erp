@@ -6,7 +6,7 @@ import { Button } from "~/components/ui/button"
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
 import { brandDomain } from "~/config/brand-config"
-import { slugify } from "~/lib/slugs"
+import { slugify } from "~/lib/tenancy/slugs"
 import { DEMO_HREF, SIGNUP_HREF } from "./links"
 import { Container, DisplayHeading } from "./section"
 

@@ -24,7 +24,7 @@ import { FormAlert } from "~/features/auth/form-alert"
 import type { AuthErrorKey } from "~/features/auth/errors"
 import { GoogleIcon } from "~/features/auth/google-icon"
 import type { FormState } from "~/lib/forms/form-state"
-import { slugify } from "~/lib/slugs"
+import { slugify } from "~/lib/tenancy/slugs"
 
 import { startSignup } from "./actions"
 import { SCHOOL_TYPES, signupSchema, type SignupValues } from "./schemas"

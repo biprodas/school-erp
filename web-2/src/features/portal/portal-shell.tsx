@@ -13,7 +13,7 @@ import { ThemeToggle } from "~/components/theme-toggle"
 import { NativeSelect, NativeSelectOption } from "~/components/ui/native-select"
 import { Skeleton } from "~/components/ui/skeleton"
 import { brandStyle } from "~/lib/brand-colors"
-import type { SessionUser } from "~/lib/session/types"
+import type { SessionUser } from "~/lib/auth/types"
 import { cn } from "~/lib/utils"
 
 import { PortalMenu } from "./portal-menu"

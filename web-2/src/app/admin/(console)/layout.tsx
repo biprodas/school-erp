@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation"
 
 import { AdminShell } from "~/features/admin/admin-shell"
-import { getSession } from "~/lib/session"
+import { getSession } from "~/lib/auth"
 
 /**
  * The platform console. The proxy already sent visitors without a

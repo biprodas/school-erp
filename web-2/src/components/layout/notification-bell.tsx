@@ -25,7 +25,7 @@ import {
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu"
 import { Spinner } from "~/components/ui/spinner"
-import { safeNext } from "~/lib/safe-next"
+import { safeNext } from "~/lib/security/safe-next"
 import { cn } from "~/lib/utils"
 
 /** Badges stop counting here. */

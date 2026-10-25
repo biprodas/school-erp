@@ -1,5 +1,5 @@
 import { CSRF_HEADER, CSRF_VALUE } from "~/lib/api/client"
-import type { ResolvedHost } from "~/lib/resolve-host"
+import type { ResolvedHost } from "~/lib/tenancy/resolve-host"
 
 /**
  * Backend endpoints that answer with tokens, or that start, rotate or end

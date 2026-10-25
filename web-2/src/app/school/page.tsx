@@ -15,9 +15,9 @@ import { Badge } from "~/components/ui/badge"
 import { buttonVariants } from "~/components/ui/button"
 import { BRAND } from "~/config/brand-config"
 import { dateOptionsFor, formatDate } from "~/lib/format"
-import { requireSchoolSlug } from "~/lib/request-host"
-import { getSession } from "~/lib/session"
-import { homeFor } from "~/lib/session/home"
+import { requireSchoolSlug } from "~/lib/tenancy/request-host"
+import { getSession } from "~/lib/auth"
+import { homeFor } from "~/lib/auth/home"
 
 export async function generateMetadata(): Promise<Metadata> {
   const home = await getSchoolHome(await requireSchoolSlug())

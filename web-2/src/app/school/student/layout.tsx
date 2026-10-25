@@ -13,9 +13,9 @@ import { displayName, settingsKeys, type DisplaySettings } from "~/api/settings"
 import { PortalShell } from "~/features/portal/portal-shell"
 import { isApiError } from "~/lib/api/errors"
 import { backendFetch } from "~/lib/api/server"
-import { requireSchoolSlug } from "~/lib/request-host"
-import { getSession } from "~/lib/session"
-import { isPortalUser, sessionEndedPath } from "~/lib/session/home"
+import { requireSchoolSlug } from "~/lib/tenancy/request-host"
+import { getSession } from "~/lib/auth"
+import { isPortalUser, sessionEndedPath } from "~/lib/auth/home"
 
 /**
  * The guardian and student portal (doc/frontend-implementation-plan.md

@@ -8,7 +8,7 @@ import { slugCheckQuery } from "~/api/public/slugs"
 import { Button } from "~/components/ui/button"
 import { Spinner } from "~/components/ui/spinner"
 import { useDebouncedValue } from "~/hooks/use-debounced-value"
-import { isReservedSlug, isValidSlug } from "~/lib/slugs"
+import { isReservedSlug, isValidSlug } from "~/lib/tenancy/slugs"
 
 /**
  * Live availability of the address being typed, under the slug field:

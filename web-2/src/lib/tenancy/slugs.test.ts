@@ -12,7 +12,10 @@ import {
 } from "./slugs"
 
 const BACKEND_SLUGS = fileURLToPath(
-  new URL("../../../backend/src/shared/slug/reserved-slugs.ts", import.meta.url)
+  new URL(
+    "../../../../backend/src/shared/slug/reserved-slugs.ts",
+    import.meta.url
+  )
 )
 
 describe("slug rules", () => {

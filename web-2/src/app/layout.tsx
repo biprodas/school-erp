@@ -15,7 +15,7 @@ import { QueryProvider } from "~/components/query-provider"
 import { ThemeProvider } from "~/components/theme-provider"
 import { Toaster } from "~/components/ui/toast"
 import { siteConfig } from "~/config/site-config"
-import { NONCE_HEADER } from "~/lib/host-headers"
+import { NONCE_HEADER } from "~/lib/tenancy/host-headers"
 import { cn } from "~/lib/utils"
 
 // Fonts and slow connections: every subset gets an @font-face with its

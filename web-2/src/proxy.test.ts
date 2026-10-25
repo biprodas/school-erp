@@ -9,9 +9,9 @@ import {
 import { NextRequest } from "next/server"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-import { clearRefreshState } from "~/lib/session/refresh"
-import { unseal } from "~/lib/session/seal"
-import type { TenantLookup } from "~/lib/tenant"
+import { clearRefreshState } from "~/lib/auth/refresh"
+import { unseal } from "~/lib/auth/seal"
+import type { TenantLookup } from "~/lib/tenancy/tenant"
 import {
   failure,
   ok,
@@ -22,7 +22,7 @@ import {
 
 const lookupTenant = vi.fn<() => Promise<TenantLookup>>()
 
-vi.mock("~/lib/tenant", () => ({ lookupTenant }))
+vi.mock("~/lib/tenancy/tenant", () => ({ lookupTenant }))
 
 const { config, proxy } = await import("./proxy")
 

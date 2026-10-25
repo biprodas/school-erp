@@ -1,8 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server"
 
-import { getRequestHost } from "~/lib/request-host"
-import { safeNext } from "~/lib/safe-next"
-import { clearSession } from "~/lib/session"
+import { getRequestHost } from "~/lib/tenancy/request-host"
+import { safeNext } from "~/lib/security/safe-next"
+import { clearSession } from "~/lib/auth"
 
 /**
  * `/auth/session-ended?next=`: where a layout sends the user when the

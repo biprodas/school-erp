@@ -6,7 +6,7 @@ import { LanguageSwitch } from "~/components/language-switch"
 import { SchoolLogo } from "~/components/school-logo"
 import { ThemeToggle } from "~/components/theme-toggle"
 import { BRAND } from "~/config/brand-config"
-import { requireSchoolSlug } from "~/lib/request-host"
+import { requireSchoolSlug } from "~/lib/tenancy/request-host"
 
 /**
  * Sign-in, activation, password and setup pages on a school host: the

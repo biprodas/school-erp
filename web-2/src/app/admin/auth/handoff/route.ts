@@ -2,9 +2,9 @@ import { NextResponse, type NextRequest } from "next/server"
 
 import { startPlatformSession } from "~/features/admin/session"
 import { backendFetch } from "~/lib/api/server"
-import { getRequestHost } from "~/lib/request-host"
-import { adminDestination } from "~/lib/session/home"
-import type { TokenResponse } from "~/lib/session/tokens"
+import { getRequestHost } from "~/lib/tenancy/request-host"
+import { adminDestination } from "~/lib/auth/home"
+import type { TokenResponse } from "~/lib/auth/tokens"
 
 /**
  * `/auth/handoff?code=&next=` on the admin host: the end of Google

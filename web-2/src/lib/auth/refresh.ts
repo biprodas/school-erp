@@ -3,7 +3,7 @@ import { createHash } from "node:crypto"
 import { authConfig } from "~/config/auth-config"
 import { backendUrl, callBackend, readJson } from "~/lib/api/backend"
 import { unwrap } from "~/lib/api/envelope"
-import { setClientHeaders, type ClientInfo } from "~/lib/client-ip"
+import { setClientHeaders, type ClientInfo } from "~/lib/security/client-ip"
 
 import { fromTokenResponse, type TokenResponse } from "./tokens"
 import type { Realm, Session } from "./types"

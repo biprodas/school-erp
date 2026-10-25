@@ -9,9 +9,9 @@ import {
   invalidState,
   type FormState,
 } from "~/lib/forms/form-state"
-import { getRequestHost } from "~/lib/request-host"
-import { adminDestination } from "~/lib/session/home"
-import type { TokenResponse } from "~/lib/session/tokens"
+import { getRequestHost } from "~/lib/tenancy/request-host"
+import { adminDestination } from "~/lib/auth/home"
+import type { TokenResponse } from "~/lib/auth/tokens"
 
 import { PLATFORM_ADMIN_REQUIRED, startPlatformSession } from "./session"
 

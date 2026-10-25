@@ -4,8 +4,8 @@ import { NextResponse } from "next/server"
 
 import { authConfig } from "~/config/auth-config"
 import { backendUrl, callBackend, readJson } from "~/lib/api/backend"
-import { clientInfo, setClientHeaders } from "~/lib/client-ip"
-import { getRequestHost } from "~/lib/request-host"
+import { clientInfo, setClientHeaders } from "~/lib/security/client-ip"
+import { getRequestHost } from "~/lib/tenancy/request-host"
 
 // How long the answer is kept (Google is turned on or off by deployment),
 // and how soon to ask again after a failed check.

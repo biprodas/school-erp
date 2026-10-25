@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server"
 
-import { startGoogle } from "~/lib/google"
+import { startGoogle } from "~/lib/auth/google"
 
 /**
  * "Sign up with Google" on the apex. Google verifies the email and the

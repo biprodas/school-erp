@@ -3,7 +3,7 @@ import "server-only"
 import { cookies } from "next/headers"
 
 import { authConfig } from "~/config/auth-config"
-import { getRequestHost } from "~/lib/request-host"
+import { getRequestHost } from "~/lib/tenancy/request-host"
 
 import {
   expiredCookieOptions,

@@ -21,7 +21,7 @@ import {
 } from "~/components/ui/dropdown-menu"
 import { toast } from "~/components/ui/toast"
 import { signOut } from "~/features/auth/sign-out"
-import type { SessionUser } from "~/lib/session/types"
+import type { SessionUser } from "~/lib/auth/types"
 
 /**
  * The portal's account menu: who is signed in, their children at other

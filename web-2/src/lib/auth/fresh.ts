@@ -1,5 +1,5 @@
 import { authConfig } from "~/config/auth-config"
-import type { ClientInfo } from "~/lib/client-ip"
+import type { ClientInfo } from "~/lib/security/client-ip"
 
 import {
   needsRefresh,

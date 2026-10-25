@@ -2,8 +2,8 @@
 import { NextRequest } from "next/server"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-import { clearRefreshState } from "~/lib/session/refresh"
-import { unseal } from "~/lib/session/seal"
+import { clearRefreshState } from "~/lib/auth/refresh"
+import { unseal } from "~/lib/auth/seal"
 import {
   failure,
   json,
@@ -13,7 +13,7 @@ import {
   tokenResponse,
 } from "~/test/sessions"
 
-vi.mock("~/lib/tenant", () => ({
+vi.mock("~/lib/tenancy/tenant", () => ({
   lookupTenant: vi.fn(() =>
     Promise.resolve({ status: "found", slug: "acme", name: "Acme" })
   ),

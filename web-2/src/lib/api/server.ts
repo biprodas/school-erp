@@ -2,9 +2,9 @@ import "server-only"
 
 import { headers } from "next/headers"
 
-import { clientInfo, setClientHeaders } from "~/lib/client-ip"
-import { getRequestHost } from "~/lib/request-host"
-import { getSession, type Session } from "~/lib/session"
+import { clientInfo, setClientHeaders } from "~/lib/security/client-ip"
+import { getRequestHost } from "~/lib/tenancy/request-host"
+import { getSession, type Session } from "~/lib/auth"
 
 import { backendUrl, callBackend, readJson } from "./backend"
 import { toSearch, type ApiRequest } from "./client"

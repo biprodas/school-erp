@@ -5,7 +5,7 @@ import { getSchoolHome, schoolName } from "~/api/public/school-home"
 import { AuthCard } from "~/features/auth/auth-card"
 import { SettingUpActions } from "~/features/auth/setting-up-actions"
 import { BRAND } from "~/config/brand-config"
-import { requireSchoolSlug } from "~/lib/request-host"
+import { requireSchoolSlug } from "~/lib/tenancy/request-host"
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("auth.settingUp")

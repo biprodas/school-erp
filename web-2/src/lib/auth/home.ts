@@ -1,4 +1,4 @@
-import { safeNext } from "~/lib/safe-next"
+import { safeNext } from "~/lib/security/safe-next"
 
 import type { Session, SessionUser } from "./types"
 

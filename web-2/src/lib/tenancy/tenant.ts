@@ -1,6 +1,6 @@
 import { apiConfig } from "~/config/api-config"
 
-import { unwrap } from "./api/envelope"
+import { unwrap } from "../api/envelope"
 import type { HostInfo } from "./hosts"
 
 /** What a school host resolves to. */

@@ -1,5 +1,5 @@
 import { classifyHost } from "./hosts"
-import type { Realm } from "./session/types"
+import type { Realm } from "../auth/types"
 import { lookupTenant } from "./tenant"
 import { apiConfig } from "~/config/api-config"
 import { appConfig } from "~/config/app-config"

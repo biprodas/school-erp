@@ -11,8 +11,8 @@ import {
   type FieldMessage,
   type FormState,
 } from "~/lib/forms/form-state"
-import { urlOnHost } from "~/lib/hosts"
-import { getRequestHost } from "~/lib/request-host"
+import { urlOnHost } from "~/lib/tenancy/hosts"
+import { getRequestHost } from "~/lib/tenancy/request-host"
 
 import {
   findSchoolSchema,

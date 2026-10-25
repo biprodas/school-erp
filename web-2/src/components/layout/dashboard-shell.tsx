@@ -12,7 +12,7 @@ import {
   SidebarTrigger,
 } from "~/components/ui/sidebar"
 import { brandStyle } from "~/lib/brand-colors"
-import type { SessionUser } from "~/lib/session/types"
+import type { SessionUser } from "~/lib/auth/types"
 
 import { AppSidebar } from "./app-sidebar"
 import { NavBreadcrumb } from "./nav-breadcrumb"

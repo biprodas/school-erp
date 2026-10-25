@@ -7,7 +7,7 @@ import { queryErrorKey } from "~/features/auth/errors"
 import { param, type SearchParams } from "~/features/auth/search-params"
 import { readGoogleTicket } from "~/features/signup/google-ticket"
 import { SignupForm } from "~/features/signup/signup-form"
-import { isGoogleSignInEnabled } from "~/lib/google"
+import { isGoogleSignInEnabled } from "~/lib/auth/google"
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("signup")
