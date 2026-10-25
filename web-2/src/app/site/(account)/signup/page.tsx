@@ -2,11 +2,11 @@ import type { Metadata } from "next"
 import { getTranslations } from "next-intl/server"
 
 import { appConfig } from "~/config/app-config"
-import { AuthCard } from "~/features/auth/auth-card"
+import { AuthCard } from "~/features/auth/components/auth-card"
 import { queryErrorKey } from "~/features/auth/errors"
 import { param, type SearchParams } from "~/features/auth/search-params"
-import { readGoogleTicket } from "~/features/signup/google-ticket"
-import { SignupForm } from "~/features/signup/signup-form"
+import { readGoogleTicket } from "~/features/signup/server/google-ticket"
+import { SignupForm } from "~/features/signup/components/signup-form"
 import { isGoogleSignInEnabled } from "~/lib/auth/google"
 
 export async function generateMetadata(): Promise<Metadata> {

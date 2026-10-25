@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 
-import { childrenQuery, selectedChild } from "~/api/portal"
+import { childrenQuery, selectedChild } from "~/features/portal/api"
 
 /**
  * The children the user may see and the one the URL selects (`?child=`,

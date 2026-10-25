@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 import { getTranslations } from "next-intl/server"
 
 import { PageHeader } from "~/components/layouts/page-header"
-import { AccountView } from "~/features/account/account-view"
+import { AccountView } from "~/features/account/components/account-view"
 import { queryErrorKey } from "~/features/auth/errors"
 import { param, type SearchParams } from "~/features/auth/search-params"
 import { isGoogleSignInEnabled } from "~/lib/auth/google"

@@ -6,7 +6,7 @@ import {
   getSchoolHome,
   schoolName,
   type SchoolHome,
-} from "~/api/public/school-home"
+} from "~/features/school-site/api"
 import { BrandMark } from "~/components/brand/brand-mark"
 import { LanguageSwitch } from "~/components/common/language-switch"
 import { SchoolLogo } from "~/components/common/school-logo"

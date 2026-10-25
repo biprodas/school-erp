@@ -4,7 +4,7 @@ import type {
   OnboardingStep,
   OnboardingStepKey,
   SchoolType,
-} from "~/api/onboarding"
+} from "~/features/onboarding/api"
 
 /** Steps the wizard shows: the ones whose feature exists. */
 export const visibleSteps = (checklist: OnboardingChecklist) =>

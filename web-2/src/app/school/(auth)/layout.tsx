@@ -1,6 +1,6 @@
 import { getLocale, getTranslations } from "next-intl/server"
 
-import { getSchoolHome, schoolName } from "~/api/public/school-home"
+import { getSchoolHome, schoolName } from "~/features/school-site/api"
 import { BrandMark } from "~/components/brand/brand-mark"
 import { LanguageSwitch } from "~/components/common/language-switch"
 import { SchoolLogo } from "~/components/common/school-logo"

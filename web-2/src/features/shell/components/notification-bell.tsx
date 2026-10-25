@@ -13,7 +13,7 @@ import {
   notificationKeys,
   unreadCountQuery,
   type Notification,
-} from "~/api/notifications"
+} from "~/features/notifications/api"
 import { Button } from "~/components/ui/button"
 import {
   DropdownMenu,

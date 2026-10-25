@@ -1,10 +1,10 @@
 import type { Metadata } from "next"
 import { getTranslations } from "next-intl/server"
 
-import { AuthCard } from "~/features/auth/auth-card"
-import { checkToken } from "~/features/auth/check-token"
-import { LinkProblem } from "~/features/auth/link-problem"
-import { ResetPasswordForm } from "~/features/auth/reset-password-form"
+import { AuthCard } from "~/features/auth/components/auth-card"
+import { checkToken } from "~/features/auth/server/check-token"
+import { LinkProblem } from "~/features/auth/components/link-problem"
+import { ResetPasswordForm } from "~/features/auth/components/reset-password-form"
 import { param, type SearchParams } from "~/features/auth/search-params"
 import { requireSchoolSlug } from "~/lib/tenancy/request-host"
 

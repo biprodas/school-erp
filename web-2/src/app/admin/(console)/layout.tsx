@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation"
 
-import { AdminShell } from "~/features/admin/admin-shell"
+import { AdminShell } from "~/features/admin/components/admin-shell"
 import { getSession } from "~/lib/auth"
 
 /**

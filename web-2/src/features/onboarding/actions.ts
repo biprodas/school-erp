@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation"
 
-import type { OnboardingChecklist } from "~/api/onboarding"
+import type { OnboardingChecklist } from "~/features/onboarding/api"
 import { isApiError } from "~/lib/api/errors"
 import { backendFetch } from "~/lib/api/server"
 import { errorState, type FormState } from "~/lib/forms/form-state"

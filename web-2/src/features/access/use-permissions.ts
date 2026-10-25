@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query"
 
-import { meQuery } from "~/api/auth"
+import { meQuery } from "~/features/auth/api"
 import { toPermissions, type Permissions } from "~/features/access/permissions"
 
 /**

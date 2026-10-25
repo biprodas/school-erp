@@ -7,7 +7,7 @@ import {
 } from "@tanstack/react-query"
 import { useTranslations } from "next-intl"
 
-import { onboardingKeys } from "~/api/onboarding"
+import { onboardingKeys } from "~/features/onboarding/api"
 import { toast } from "~/components/ui/toast"
 import { isApiError, NETWORK_ERROR } from "~/lib/api/errors"
 

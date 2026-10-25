@@ -1,9 +1,9 @@
 import type { Metadata } from "next"
 import { getLocale, getTranslations } from "next-intl/server"
 
-import { getSchoolHome, schoolName } from "~/api/public/school-home"
-import { AuthCard } from "~/features/auth/auth-card"
-import { SettingUpActions } from "~/features/auth/setting-up-actions"
+import { getSchoolHome, schoolName } from "~/features/school-site/api"
+import { AuthCard } from "~/features/auth/components/auth-card"
+import { SettingUpActions } from "~/features/auth/components/setting-up-actions"
 import { BRAND } from "~/config/brand-config"
 import { requireSchoolSlug } from "~/lib/tenancy/request-host"
 

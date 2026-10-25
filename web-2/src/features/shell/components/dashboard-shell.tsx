@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query"
 
-import { displaySettingsQuery } from "~/api/settings"
+import { displaySettingsQuery } from "~/features/settings/api"
 import { LanguageSwitch } from "~/components/common/language-switch"
 import { ThemeToggle } from "~/components/common/theme-toggle"
 import { Separator } from "~/components/ui/separator"

@@ -6,11 +6,18 @@ import {
 import { redirect } from "next/navigation"
 import { getLocale } from "next-intl/server"
 
-import { authKeys, type Me } from "~/api/auth"
-import { onboardingKeys, type OnboardingChecklist } from "~/api/onboarding"
-import { getSchoolHome, schoolName } from "~/api/public/school-home"
-import { displayName, settingsKeys, type DisplaySettings } from "~/api/settings"
-import { OnboardingShell } from "~/features/onboarding/onboarding-shell"
+import { authKeys, type Me } from "~/features/auth/api"
+import {
+  onboardingKeys,
+  type OnboardingChecklist,
+} from "~/features/onboarding/api"
+import { getSchoolHome, schoolName } from "~/features/school-site/api"
+import {
+  displayName,
+  settingsKeys,
+  type DisplaySettings,
+} from "~/features/settings/api"
+import { OnboardingShell } from "~/features/onboarding/components/onboarding-shell"
 import { isApiError } from "~/lib/api/errors"
 import { backendFetch } from "~/lib/api/server"
 import { requireSchoolSlug } from "~/lib/tenancy/request-host"

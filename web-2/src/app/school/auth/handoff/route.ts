@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server"
 
-import { startSession } from "~/features/auth/session"
+import { startSession } from "~/features/auth/server/session"
 import { backendFetch } from "~/lib/api/server"
 import { getRequestHost } from "~/lib/tenancy/request-host"
 import { destinationAfterSignIn } from "~/lib/auth/home"

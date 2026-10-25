@@ -4,7 +4,7 @@ import { LanguageSwitch } from "~/components/common/language-switch"
 import { ThemeToggle } from "~/components/common/theme-toggle"
 import { BRAND } from "~/config/brand-config"
 
-import { Logo } from "../_landing/logo"
+import { Logo } from "~/features/marketing/components/logo"
 
 /** Signup and "Find your school": the brand, a narrow column, no marketing chrome. */
 export default async function AccountLayout({

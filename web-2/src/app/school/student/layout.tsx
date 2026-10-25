@@ -6,11 +6,15 @@ import {
 import { redirect } from "next/navigation"
 import { getLocale } from "next-intl/server"
 
-import { authKeys, type Me } from "~/api/auth"
-import { portalKeys, type PortalChild } from "~/api/portal"
-import { getSchoolHome, schoolName } from "~/api/public/school-home"
-import { displayName, settingsKeys, type DisplaySettings } from "~/api/settings"
-import { PortalShell } from "~/features/portal/portal-shell"
+import { authKeys, type Me } from "~/features/auth/api"
+import { portalKeys, type PortalChild } from "~/features/portal/api"
+import { getSchoolHome, schoolName } from "~/features/school-site/api"
+import {
+  displayName,
+  settingsKeys,
+  type DisplaySettings,
+} from "~/features/settings/api"
+import { PortalShell } from "~/features/portal/components/portal-shell"
 import { isApiError } from "~/lib/api/errors"
 import { backendFetch } from "~/lib/api/server"
 import { requireSchoolSlug } from "~/lib/tenancy/request-host"

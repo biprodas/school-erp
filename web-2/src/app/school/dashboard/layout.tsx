@@ -7,9 +7,13 @@ import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
 import { getLocale } from "next-intl/server"
 
-import { authKeys, type Me } from "~/api/auth"
-import { getSchoolHome, schoolName } from "~/api/public/school-home"
-import { displayName, settingsKeys, type DisplaySettings } from "~/api/settings"
+import { authKeys, type Me } from "~/features/auth/api"
+import { getSchoolHome, schoolName } from "~/features/school-site/api"
+import {
+  displayName,
+  settingsKeys,
+  type DisplaySettings,
+} from "~/features/settings/api"
 import { DashboardShell } from "~/features/shell/components/dashboard-shell"
 import { isApiError } from "~/lib/api/errors"
 import { backendFetch } from "~/lib/api/server"

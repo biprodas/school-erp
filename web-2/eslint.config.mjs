@@ -14,7 +14,7 @@ const eslintConfig = defineConfig([
   {
     files: ["src/**/*.tsx"],
     ignores: [
-      "src/app/site/_landing/**",
+      "src/features/marketing/**",
       "src/app/site/design-system/**",
       "src/**/*.test.tsx",
     ],

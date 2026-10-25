@@ -13,7 +13,7 @@ import { getRequestHost } from "~/lib/tenancy/request-host"
 import { adminDestination } from "~/lib/auth/home"
 import type { TokenResponse } from "~/lib/auth/tokens"
 
-import { PLATFORM_ADMIN_REQUIRED, startPlatformSession } from "./session"
+import { PLATFORM_ADMIN_REQUIRED, startPlatformSession } from "./server/session"
 
 const text = (formData: FormData, name: string) => {
   const value = formData.get(name)

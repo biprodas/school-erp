@@ -22,7 +22,7 @@ import {
   loginSchema,
   resetPasswordSchema,
 } from "./schemas"
-import { onboardingCompletedAt, startSession } from "./session"
+import { onboardingCompletedAt, startSession } from "./server/session"
 
 // Sign-in steps on a school host (doc/frontend-implementation-plan.md
 // 4.2). Tokens stay on the server: each action calls the backend, keeps

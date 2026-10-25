@@ -7,8 +7,8 @@ import { usePathname } from "next/navigation"
 import { useLocale, useTranslations } from "next-intl"
 import { useState } from "react"
 
-import { meQuery } from "~/api/auth"
-import { displayName, displaySettingsQuery } from "~/api/settings"
+import { meQuery } from "~/features/auth/api"
+import { displayName, displaySettingsQuery } from "~/features/settings/api"
 import { SchoolLogo } from "~/components/common/school-logo"
 import {
   Collapsible,

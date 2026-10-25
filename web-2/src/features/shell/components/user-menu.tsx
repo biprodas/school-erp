@@ -13,7 +13,7 @@ import Link from "next/link"
 import { useTranslations } from "next-intl"
 import { useState } from "react"
 
-import { meQuery, otherSchoolsQuery, switchSchool } from "~/api/auth"
+import { meQuery, otherSchoolsQuery, switchSchool } from "~/features/auth/api"
 import { Badge } from "~/components/ui/badge"
 import { InitialsAvatar } from "~/components/common/initials-avatar"
 import { Button } from "~/components/ui/button"
