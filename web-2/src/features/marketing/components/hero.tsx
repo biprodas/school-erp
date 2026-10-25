@@ -30,8 +30,16 @@ export function Hero() {
           <div className="flex flex-col items-start gap-6">
             <Badge variant="outline" className="h-7 bg-card px-3 text-sm">
               <span className="size-1.5 rounded-full bg-primary" />
-              Built for schools in Bangladesh,{" "}
-              <span className="font-bangla">বাংলা</span> and English
+              For schools in English, <span className="font-bangla">
+                বাংলা
+              </span>{" "}
+              and{" "}
+              <span
+                lang="hi"
+                className="font-[family-name:var(--font-devanagari)]"
+              >
+                हिन्दी
+              </span>
             </Badge>
             <h1 className="font-display text-6xl leading-[0.9] text-balance sm:text-7xl lg:text-8xl">
               One register for the whole school.

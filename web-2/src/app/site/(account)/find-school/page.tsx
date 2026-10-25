@@ -1,18 +1,8 @@
 import type { Metadata } from "next"
 import { getTranslations } from "next-intl/server"
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "~/components/ui/card"
 import { appConfig } from "~/config/app-config"
-import {
-  FindByAddressForm,
-  FindByEmailForm,
-} from "~/features/signup/components/find-school-forms"
+import { FindByAddressForm } from "~/features/signup/components/find-school-forms"
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("findSchool")
@@ -21,54 +11,41 @@ export async function generateMetadata(): Promise<Metadata> {
 
 /**
  * `/find-school` on the apex, where "Sign in" on the marketing site leads:
- * sign-in happens on each school's own address, so this finds it.
+ * sign-in happens on each school's own address, so this finds it. Someone
+ * who doesn't know the address goes on to `/find-school/email`.
  */
 export default async function FindSchoolPage() {
   const t = await getTranslations("findSchool")
 
   return (
     <>
-      <div className="flex flex-col gap-2">
-        <h1 className="font-display text-3xl font-semibold">{t("title")}</h1>
-        <p className="text-muted-foreground">{t("description")}</p>
+      <div className="flex flex-col gap-6 rounded-xl border p-6 sm:p-8">
+        <div className="flex flex-col gap-2">
+          <h1 className="font-display text-3xl font-semibold">{t("title")}</h1>
+          <p className="text-muted-foreground">{t("description")}</p>
+        </div>
+        <div className="flex flex-col gap-4">
+          <FindByAddressForm rootDomain={appConfig.rootDomain} />
+          <p className="text-center text-sm text-muted-foreground">
+            {t("emailTitle")}{" "}
+            <a
+              href="/find-school/email"
+              className="rounded-sm font-medium text-foreground underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/30"
+            >
+              {t("emailLink")}
+            </a>
+          </p>
+        </div>
       </div>
-      <Panel title={t("addressTitle")} description={t("addressDescription")}>
-        <FindByAddressForm rootDomain={appConfig.rootDomain} />
-      </Panel>
-      <Panel title={t("emailTitle")} description={t("emailDescription")}>
-        <FindByEmailForm />
-      </Panel>
-      <p className="text-sm text-muted-foreground">
+      <p className="text-center text-sm text-muted-foreground">
         {t("newSchool")}{" "}
         <a
           href="/signup"
-          className="font-medium text-foreground underline-offset-4 hover:underline"
+          className="rounded-sm font-medium text-foreground underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/30"
         >
           {t("signup")}
         </a>
       </p>
     </>
-  )
-}
-
-function Panel({
-  title,
-  description,
-  children,
-}: {
-  title: string
-  description: string
-  children: React.ReactNode
-}) {
-  return (
-    <Card className="[--card-spacing:--spacing(6)]">
-      <CardHeader>
-        <CardTitle>
-          <h2 className="font-display text-xl font-semibold">{title}</h2>
-        </CardTitle>
-        <CardDescription>{description}</CardDescription>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-4">{children}</CardContent>
-    </Card>
   )
 }

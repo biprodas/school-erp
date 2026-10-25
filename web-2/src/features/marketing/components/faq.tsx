@@ -47,12 +47,12 @@ const GROUPS = [
     title: "Bangla & grading",
     items: [
       {
-        q: "Is it available in Bangla?",
-        a: "Yes. Every screen, report card and receipt is available in Bangla and English, and each person chooses their own language.",
+        q: "Is it available in my language?",
+        a: "Yes. Every screen, report card and receipt is available in English, Bangla and Hindi, and each person chooses their own language.",
       },
       {
         q: "We follow Cambridge, or we are a madrasa. Will the grading fit?",
-        a: "Bangladesh board grading (GPA 5.0) is the default, and GPA 4.0, Cambridge and madrasa scales are available. You can also set up your own grade bands and pass marks.",
+        a: "Board-exam grading on the GPA 5.0 scale is the default, and GPA 4.0, Cambridge and madrasa scales are available. You can also set up your own grade bands and pass marks.",
       },
     ],
   },

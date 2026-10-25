@@ -9,23 +9,24 @@ import { BRAND } from "./brand-config"
 export const siteConfig = {
   name: BRAND.name,
   /** Home page title; other pages use `titleTemplate`. */
-  title: `${BRAND.name}, school management for Bangladesh`,
+  title: `${BRAND.name}, school management software`,
   titleTemplate: `%s | ${BRAND.name}`,
   description:
-    "Attendance, results, fees and notices on one mobile-first platform, in Bangla and English.",
+    "Attendance, results, fees and notices on one mobile-first platform, in English, Bangla and Hindi.",
   /** One line under the logo in the marketing footer. */
-  tagline: "School management for Bangladesh, in Bangla and English.",
+  tagline: "School management in English, Bangla and Hindi.",
   keywords: [
     "school management software",
     "school ERP",
-    "Bangladesh",
     "attendance",
     "exam results",
     "school fees",
     "student portal",
     "guardian app",
     "Bangla",
+    "Hindi",
     "স্কুল ম্যানেজমেন্ট সফটওয়্যার",
+    "स्कूल प्रबंधन सॉफ़्टवेयर",
   ],
   /**
    * The marketing site's address (`NEXT_PUBLIC_SITE_URL`), the base of

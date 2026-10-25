@@ -1,7 +1,7 @@
 import { Faq } from "~/features/marketing/components/faq"
 import { GetStarted } from "~/features/marketing/components/get-started"
 import { Hero } from "~/features/marketing/components/hero"
-import { MadeForBangladesh } from "~/features/marketing/components/made-for-bangladesh"
+import { MadeForYourSchool } from "~/features/marketing/components/made-for-your-school"
 import { Modules } from "~/features/marketing/components/modules"
 import { Pricing } from "~/features/marketing/components/pricing"
 import { Results } from "~/features/marketing/components/results"
@@ -23,7 +23,7 @@ export default function Page() {
         <Roles />
         <Modules />
         <Results />
-        <MadeForBangladesh />
+        <MadeForYourSchool />
         <Setup />
         <Pricing />
         <Faq />

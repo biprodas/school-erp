@@ -56,9 +56,9 @@ export function Results() {
             subjects are worked out for the whole class at once.
           </SectionIntro>
           <p className="max-w-2xl text-lg leading-relaxed text-muted-foreground">
-            Bangladesh board rules are the default: an F in a compulsory subject
-            makes the result F, and the 4th subject adds its points above 2.0.
-            Schools on another scale set up their own.
+            Board-exam rules are the default: an F in a compulsory subject makes
+            the result F, and the 4th subject adds its points above 2.0. Schools
+            on another scale set up their own.
           </p>
           <div>
             <ol className="border-t-2 border-foreground">

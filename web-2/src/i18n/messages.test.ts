@@ -55,6 +55,7 @@ describe("message catalogs", () => {
       const latinOnPurpose = new Set([
         "common.languages.en",
         "findSchool.addressPlaceholder",
+        "findSchool.emailPlaceholder",
         "signup.schoolNamePlaceholder",
         "signup.phonePlaceholder",
         "auth.login.emailPlaceholder",

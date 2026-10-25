@@ -14,7 +14,8 @@ export function FormField({
 }: {
   id: string
   label: string
-  error?: string
+  /** Usually text; can hold a link, e.g. to another way of finding it. */
+  error?: React.ReactNode
   /** Shown at the end of the label row, e.g. a "Forgot password?" link. */
   action?: React.ReactNode
   children: React.ReactNode

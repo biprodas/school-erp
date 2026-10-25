@@ -13,23 +13,26 @@ const POINTS = [
     icon: LanguagesIcon,
     title: (
       <>
-        <span className="font-bangla">বাংলা</span> and English
+        English, <span className="font-bangla">বাংলা</span> and{" "}
+        <span lang="hi" className="font-[family-name:var(--font-devanagari)]">
+          हिन्दी
+        </span>
       </>
     ),
     key: "language",
-    body: "Every screen, report card and receipt in both languages. Each person picks their own.",
+    body: "Every screen, report card and receipt in each language. Each person picks their own.",
   },
   {
     icon: FileCheckIcon,
     title: "Board rules, built in",
     key: "board",
-    body: "The GPA 5.0 scale, the 4th-subject bonus and per-component pass marks, with GPA 4.0, Cambridge and madrasa scales available.",
+    body: "Board-exam GPA scales, the optional-subject bonus and per-component pass marks, with Cambridge and madrasa scales available.",
   },
   {
     icon: BanknoteIcon,
-    title: "Taka, the way it's written",
-    key: "taka",
-    body: "Amounts in lakhs (৳১১,২০,০০০), Bangla numerals on Bangla screens, and the Dhaka time zone.",
+    title: "Money, the way it's written",
+    key: "money",
+    body: "Amounts grouped the local way (11,20,000), native digits on Bangla screens, and your school's own time zone.",
   },
   {
     icon: SignalIcon,
@@ -39,18 +42,18 @@ const POINTS = [
   },
 ]
 
-export function MadeForBangladesh() {
+export function MadeForYourSchool() {
   return (
     <Section className="bg-secondary/70">
       <Container className="grid items-center gap-12 lg:grid-cols-2">
         <div className="flex flex-col gap-10">
           <SectionIntro
-            eyebrow="Made for Bangladesh"
-            title="Built for how schools here actually work"
+            eyebrow="Made for your school"
+            title="Built for how schools actually work"
           >
-            Global ERPs weren&apos;t designed for board-exam grading, Bangla
-            report cards or taka in lakhs. This one was, and it&apos;s ready to
-            grow beyond Bangladesh too.
+            Generic ERPs weren&apos;t designed for board-exam grading, report
+            cards in your own language or fees in your own currency. This one
+            was.
           </SectionIntro>
           <p
             lang="bn"

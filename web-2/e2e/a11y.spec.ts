@@ -19,6 +19,7 @@ test("public pages", async ({ page }) => {
   const pages = [
     onHost(null, "/"),
     onHost(null, "/find-school"),
+    onHost(null, "/find-school/email"),
     onHost(null, "/signup/verify?token=not-a-token"),
     onHost("no-such-school-here", "/"),
     school.url("/"),
