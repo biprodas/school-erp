@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test"
+import { expect, test } from "./support/test"
 
 test("the landing page renders in the default language", async ({ page }) => {
   await page.goto("/")

@@ -34,6 +34,8 @@ type Translate = (key: AuthErrorKey, values?: { time: string }) => string
  */
 const QUERY_ERRORS: Record<string, AuthErrorKey> = {
   handoff: "handoff",
+  // A layout found the session refused (`/auth/session-ended`).
+  session_ended: "sessionEnded",
   google_no_account: "googleNoAccount",
   google_email_unverified: "googleEmailUnverified",
   google_expired: "googleExpired",

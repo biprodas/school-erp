@@ -1,7 +1,7 @@
 import "server-only"
 
-import { appConfig } from "./app-config"
 import { BRAND } from "./brand-config"
+import { securityConfig } from "./security-config"
 import { serverEnv } from "./env"
 
 /**
@@ -21,8 +21,8 @@ export const authConfig = {
     tenant: `${BRAND.cookiePrefix}_session`,
     platform: `${BRAND.cookiePrefix}_admin`,
   },
-  /** `Secure` cookies outside development. */
-  secureCookies: appConfig.isProduction,
+  /** `Secure` cookies wherever the app is served over HTTPS only. */
+  secureCookies: securityConfig.httpsOnly,
   /** Refresh the access token this long before it expires. */
   refreshMarginSeconds: 60,
   /**

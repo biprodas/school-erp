@@ -3,11 +3,34 @@
 import * as React from "react"
 import { cn } from "cn"
 
+/**
+ * A table that scrolls sideways when it doesn't fit (phones). While it
+ * overflows, its container takes keyboard focus, so it can be scrolled
+ * with the arrow keys (WCAG 2.1.1); a table that fits adds no tab stop.
+ */
 function Table({ className, ...props }: React.ComponentProps<"table">) {
+  const container = React.useRef<HTMLDivElement>(null)
+  const [scrollable, setScrollable] = React.useState(false)
+
+  React.useEffect(() => {
+    const element = container.current
+    if (!element) return
+    const measure = () =>
+      setScrollable(element.scrollWidth > element.clientWidth + 1)
+    measure()
+    if (typeof ResizeObserver === "undefined") return
+    const observer = new ResizeObserver(measure)
+    observer.observe(element)
+    if (element.firstElementChild) observer.observe(element.firstElementChild)
+    return () => observer.disconnect()
+  }, [])
+
   return (
     <div
+      ref={container}
       data-slot="table-container"
-      className="relative w-full overflow-x-auto"
+      tabIndex={scrollable ? 0 : undefined}
+      className="relative w-full overflow-x-auto rounded-md outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
     >
       <table
         data-slot="table"

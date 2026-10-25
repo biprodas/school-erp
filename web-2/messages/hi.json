@@ -1,7 +1,6 @@
 {
   "common": {
     "language": "भाषा",
-    "switchLanguage": "भाषा बदलें",
     "languages": {
       "bn": "বাংলা",
       "en": "English",
@@ -11,7 +10,8 @@
     "showPassword": "पासवर्ड दिखाएँ",
     "hidePassword": "पासवर्ड छिपाएँ",
     "signOut": "साइन आउट",
-    "backToSchool": "स्कूल होम"
+    "backToSchool": "स्कूल होम",
+    "toggleTheme": "हल्की या गहरी थीम बदलें"
   },
   "schoolHome": {
     "signIn": "साइन इन",
@@ -254,7 +254,8 @@
     "invalidTitle": "यह साइन-अप लिंक काम नहीं कर रहा",
     "invalidBody": "यह पहले इस्तेमाल हो चुका है या इसकी अवधि समाप्त हो गई है। फिर से शुरू करें; इसमें बस एक मिनट लगता है।",
     "startAgain": "फिर से शुरू करें",
-    "footer": "{brand} · बांग्लादेश के लिए स्कूल प्रबंधन"
+    "footer": "{brand} · बांग्लादेश के लिए स्कूल प्रबंधन",
+    "phonePlaceholder": "01XXXXXXXXX"
   },
   "findSchool": {
     "metaTitle": "अपना स्कूल खोजें",
@@ -425,7 +426,8 @@
       "googleUnlinked": "Google हटा दिया गया।",
       "googlePasswordRequired": "पहले एक पासवर्ड सेट करें, ताकि Google के बिना भी साइन इन कर सकें।",
       "googleLinkedNotice": "आपका Google खाता जुड़ गया है।"
-    }
+    },
+    "mainMenu": "मुख्य मेनू"
   },
   "dashboard": {
     "loadFailed": "डैशबोर्ड का यह हिस्सा लोड नहीं हो सका।",
@@ -715,6 +717,23 @@
       "noNotices": "अभी कोई सूचना नहीं।",
       "pinned": "पिन की गई",
       "unread": "(अपठित)"
-    }
+    },
+    "childOption": "{name} · {placement}"
+  },
+  "ui": {
+    "close": "बंद करें",
+    "sidebarTitle": "मेनू",
+    "sidebarDescription": "मुख्य मेनू।",
+    "toggleSidebar": "मेनू दिखाएँ या छिपाएँ",
+    "more": "और",
+    "morePages": "और पेज",
+    "previousSlide": "पिछली स्लाइड",
+    "nextSlide": "अगली स्लाइड",
+    "loading": "लोड हो रहा है",
+    "breadcrumb": "स्थान",
+    "pagination": "पेज",
+    "previousPage": "पिछला पेज",
+    "nextPage": "अगला पेज",
+    "closeToast": "संदेश बंद करें"
   }
 }

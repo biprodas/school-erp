@@ -164,3 +164,122 @@ jobs:
       - name: Unit tests
         run: npm test
       - run: npm run build
+      # Turbopack's analyzer, then the compressed first-load JS per route
+      # (in the job summary); fails when a sign-in or portal route is over
+      # budget (scripts/bundle-report.mjs).
+      - name: Bundle report
+        run: npm run analyze
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: web-2-bundle-report
+          path: |
+            web-2/.next/diagnostics/bundle-report.md
+            web-2/.next/diagnostics/route-bundle-stats.json
+          if-no-files-found: ignore
+
+  web-2-e2e:
+    name: Web-2 · end-to-end (Playwright, 360 px and desktop)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+      # Backend (also read by the core seed). The compose Postgres is on
+      # 5433; schema sync and the RLS role setup run on start, as in dev
+      # (NODE_ENV=development is set on the backend steps only).
+      PORT: '3900'
+      DB_HOST: localhost
+      DB_PORT: '5433'
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: school_erp
+      DB_APP_USERNAME: school_erp_app
+      DB_APP_PASSWORD: school_erp_app
+      DB_SYNC: 'true'
+      JWT_SECRET: ci-only-jwt-secret-not-used-anywhere-else-e2e
+      REDIS_URL: redis://localhost:6379
+      S3_ENDPOINT: http://localhost:9000
+      S3_REGION: us-east-1
+      S3_BUCKET: school-erp
+      S3_ACCESS_KEY: minioadmin
+      S3_SECRET_KEY: minioadmin
+      S3_FORCE_PATH_STYLE: 'true'
+      MAIL_HOST: localhost
+      MAIL_PORT: '1025'
+      MAIL_SECURE: 'false'
+      APP_URL: http://localhost:3000
+      ROOT_DOMAIN: lvh.me
+      HEALTH_DISK_PATH: /
+      # Every test signs up its own school from the same address.
+      RATE_LIMIT_ENABLED: 'false'
+      # No PDFs in these suites.
+      PUPPETEER_SKIP_DOWNLOAD: 'true'
+      # Web-2 (NEXT_PUBLIC_* are inlined at build time).
+      API_URL: http://localhost:3900
+      SESSION_SECRET: ci-only-session-secret-not-used-anywhere-else
+      NEXT_PUBLIC_ROOT_DOMAIN: lvh.me
+      NEXT_PUBLIC_ADMIN_HOST: admin.lvh.me
+      NEXT_PUBLIC_APP_PORT: '3000'
+      # Playwright: `next start` (it sets ALLOW_INSECURE_HTTP for plain
+      # HTTP on lvh.me) and the bundle and time budgets.
+      E2E_PRODUCTION: 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Start Postgres, Redis, MinIO and Mailpit
+        run: |
+          docker compose up -d --wait postgres redis minio mailpit
+          docker compose run --rm minio-init
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            web-2/package-lock.json
+
+      - name: Build and start the backend
+        working-directory: backend
+        env:
+          NODE_ENV: development
+        run: |
+          npm ci
+          npm run build
+          nohup node dist/main > ../backend-e2e.log 2>&1 &
+          for i in $(seq 1 60); do
+            curl -sf http://localhost:3900/api/health > /dev/null && break
+            sleep 2
+          done
+          curl -sf http://localhost:3900/api/health > /dev/null || { tail -100 ../backend-e2e.log; exit 1; }
+
+      - name: Seed the platform super-admin
+        working-directory: backend
+        env:
+          NODE_ENV: development
+        run: npm run db:seed:core
+
+      - name: Build web-2
+        working-directory: web-2
+        run: |
+          npm ci
+          npm run build
+
+      - name: Install Chromium
+        working-directory: web-2
+        run: npx playwright install --with-deps chromium
+
+      - name: Playwright
+        working-directory: web-2
+        run: npm run test:e2e
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: web-2-playwright
+          path: |
+            web-2/playwright-report/
+            web-2/test-results/
+            backend-e2e.log
+          retention-days: 7
+          if-no-files-found: ignore

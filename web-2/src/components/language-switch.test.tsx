@@ -28,28 +28,25 @@ afterEach(() => {
 })
 
 describe("LanguageSwitch", () => {
-  it("shows the current language and offers all three", async () => {
+  it("shows the current language and offers all three", () => {
     renderIn("en")
-    const trigger = screen.getByRole("button", { name: "Switch language" })
-    expect(trigger).toHaveTextContent("English")
-
-    await userEvent.click(trigger)
-
-    const options = await screen.findAllByRole("menuitemradio")
-    expect(options.map((o) => o.textContent)).toEqual([
+    const select = screen.getByRole("combobox", {
+      name: "Language",
+    }) as HTMLSelectElement
+    expect(select.value).toBe("en")
+    expect([...select.options].map((o) => o.textContent)).toEqual([
       "English",
       "বাংলা",
       "हिन्दी",
     ])
+    expect(screen.getByText("English", { selector: "span" })).toBeTruthy()
   })
 
   it("switches to Hindi", async () => {
     renderIn("en")
-    await userEvent.click(
-      screen.getByRole("button", { name: "Switch language" })
-    )
-    await userEvent.click(
-      await screen.findByRole("menuitemradio", { name: "हिन्दी" })
+    await userEvent.selectOptions(
+      screen.getByRole("combobox", { name: "Language" }),
+      "hi"
     )
 
     expect(document.cookie).toContain("locale=hi")
@@ -58,13 +55,9 @@ describe("LanguageSwitch", () => {
 
   it("labels itself in the page's language", () => {
     renderIn("bn")
-    expect(
-      screen.getByRole("button", { name: "ভাষা পরিবর্তন করুন" })
-    ).toHaveTextContent("বাংলা")
+    expect(screen.getByRole("combobox", { name: "ভাষা" })).toBeTruthy()
 
     renderIn("hi")
-    expect(
-      screen.getByRole("button", { name: "भाषा बदलें" })
-    ).toHaveTextContent("हिन्दी")
+    expect(screen.getByRole("combobox", { name: "भाषा" })).toBeTruthy()
   })
 })

@@ -38,13 +38,44 @@ describe("message catalogs", () => {
           messages
         ) as string
     const args = (text: string) =>
-      [...text.matchAll(/{(w+)}/g)].map((m) => m[1]).sort()
+      // `{name}` and ICU arguments (`{count, plural, …}`), once each.
+      [...new Set([...text.matchAll(/\{(\w+)[,}]/g)].map((m) => m[1]))].sort()
     for (const path of keys(en)) {
       expect(args(value(catalogs[locale], path)), path).toEqual(
         args(value(en, path))
       )
     }
   })
+
+  it.each(["bn", "hi"] as const)(
+    "translate every English sentence in %s",
+    (locale) => {
+      // Text that stays Latin on purpose: a language's own name, a school
+      // address (slugs are ASCII), sample input.
+      const latinOnPurpose = new Set([
+        "common.languages.en",
+        "findSchool.addressPlaceholder",
+        "signup.schoolNamePlaceholder",
+        "signup.phonePlaceholder",
+      ])
+      const at = (messages: object, path: string) =>
+        path
+          .split(".")
+          .reduce<unknown>(
+            (node, key) => (node as Record<string, unknown>)[key],
+            messages
+          ) as string
+      const untranslated = keys(en).filter((path) => {
+        const english = at(en, path)
+        return (
+          !latinOnPurpose.has(path) &&
+          at(catalogs[locale], path) === english &&
+          /[A-Za-z]{3,}/.test(english.replace(/\{[^}]*\}/g, ""))
+        )
+      })
+      expect(untranslated).toEqual([])
+    }
+  )
 
   it("have no empty strings", () => {
     const empty = (messages: object) =>

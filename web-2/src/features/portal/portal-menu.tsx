@@ -8,7 +8,7 @@ import { useState } from "react"
 
 import { meQuery } from "~/api/auth"
 import { portalHandoff, portalSchoolsQuery } from "~/api/portal"
-import { Avatar, AvatarFallback } from "~/components/ui/avatar"
+import { InitialsAvatar } from "~/components/initials-avatar"
 import { Button } from "~/components/ui/button"
 import {
   DropdownMenu,
@@ -21,7 +21,6 @@ import {
 } from "~/components/ui/dropdown-menu"
 import { toast } from "~/components/ui/toast"
 import { signOut } from "~/features/auth/sign-out"
-import { initials } from "~/lib/initials"
 import type { SessionUser } from "~/lib/session/types"
 
 /**
@@ -63,11 +62,7 @@ export function PortalMenu({ fallbackUser }: { fallbackUser: SessionUser }) {
           />
         }
       >
-        <Avatar className="size-8">
-          <AvatarFallback className="text-xs font-medium">
-            {initials(name)}
-          </AvatarFallback>
-        </Avatar>
+        <InitialsAvatar name={name} />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-72">
         <DropdownMenuGroup>

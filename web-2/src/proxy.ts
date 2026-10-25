@@ -1,15 +1,18 @@
 import { NextResponse, type NextRequest } from "next/server"
 
 import { appConfig } from "~/config/app-config"
+import { securityConfig } from "~/config/security-config"
 import {
   HOST_HEADERS,
   HOST_KIND_HEADER,
+  NONCE_HEADER,
   REQUEST_ORIGIN_HEADER,
   TENANT_SLUG_HEADER,
 } from "~/lib/host-headers"
 import { urlOnHost } from "~/lib/hosts"
 import { clientInfo } from "~/lib/client-ip"
 import { resolveHost, type ResolvedHost } from "~/lib/resolve-host"
+import { contentSecurityPolicy, createNonce } from "~/lib/security-headers"
 import { SESSION_COOKIES } from "~/lib/session/cookie"
 import {
   ensureFreshSession,
@@ -193,6 +196,13 @@ function rewrite(
   headers.set(REQUEST_ORIGIN_HEADER, target.origin)
   if (target.slug) headers.set(TENANT_SLUG_HEADER, target.slug)
 
+  // A fresh nonce per page: Next.js reads it from the request's CSP and
+  // puts it on its scripts; the root layout passes it to the theme script.
+  const nonce = createNonce()
+  const csp = contentSecurityPolicy(nonce, securityConfig)
+  headers.set(NONCE_HEADER, nonce)
+  headers.set("content-security-policy", csp)
+
   // Pages rendered after a refresh read the new cookie, not the old one.
   const update = session?.update
   if (session && update && update.action !== "keep") {
@@ -207,6 +217,7 @@ function rewrite(
   }
 
   const response = NextResponse.rewrite(url, { request: { headers } })
+  response.headers.set("content-security-policy", csp)
   return session && update
     ? applyCookieUpdate(response, session.scope.realm, update)
     : response

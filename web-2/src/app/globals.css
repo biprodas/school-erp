@@ -69,7 +69,8 @@
   --muted-foreground: oklch(0.47 0.025 160);
   --accent: oklch(0.935 0.014 160);
   --accent-foreground: oklch(0.33 0.055 163);
-  --destructive: oklch(0.577 0.2 27);
+  /* Darker than shadcn's 0.577: text on its 10 % tint passes 4.5:1. */
+  --destructive: oklch(0.53 0.2 27);
   --border: oklch(0.885 0.01 140);
   --input: oklch(0.86 0.012 140);
   --ring: oklch(0.55 0.07 163);

@@ -13,7 +13,7 @@ import {
   type FieldValues,
   type Path,
 } from "react-hook-form"
-import type { z } from "zod"
+import type { $ZodType } from "zod/v4/core"
 
 import { IDLE, type FieldMessage, type FormState } from "~/lib/forms/form-state"
 import { zodResolver } from "~/lib/forms/zod-resolver"
@@ -32,7 +32,7 @@ export function useActionForm<Input extends FieldValues, Output>({
   action,
   defaultValues,
 }: {
-  schema: z.ZodType<Output, Input>
+  schema: $ZodType<Output, Input>
   action: Action
   defaultValues: DefaultValues<Input>
 }) {

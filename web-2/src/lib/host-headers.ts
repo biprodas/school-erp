@@ -9,6 +9,9 @@ export const TENANT_SLUG_HEADER = "x-tenant-slug"
 /** `http://acme.lvh.me:3000`: protocol, host and port the browser used. */
 export const REQUEST_ORIGIN_HEADER = "x-request-origin"
 
+/** The page's CSP nonce (always overwritten, so a client's copy never counts). */
+export const NONCE_HEADER = "x-nonce"
+
 export const HOST_HEADERS = [
   HOST_KIND_HEADER,
   TENANT_SLUG_HEADER,

@@ -1,11 +1,12 @@
-import { z } from "zod"
+import { z } from "zod/mini"
 
 import type { FieldMessage } from "~/lib/forms/form-state"
 
 /**
  * Form schemas for the sign-in pages, shared by the forms (react-hook-form)
  * and the server actions. Messages are keys under `validation` in the
- * message catalogs; the forms translate them.
+ * message catalogs; the forms translate them. `zod/mini` keeps the sign-in
+ * pages light (the full zod API added ~40 KB of compressed JS to them).
  *
  * The rules match the backend DTOs (`backend/src/modules/auth/dto/`): a
  * new password has at least 6 characters (`ActivateDto`,
@@ -19,20 +20,29 @@ const message = (key: FieldMessage) => ({ error: key })
 
 const identifier = z
   .string(message("identifierRequired"))
-  .trim()
-  .min(1, message("identifierRequired"))
-  .max(254, message("identifierTooLong"))
+  .check(
+    z.trim(),
+    z.minLength(1, message("identifierRequired")),
+    z.maxLength(254, message("identifierTooLong"))
+  )
 
 /** A password being typed to sign in: anything non-empty. */
 const currentPassword = z
   .string(message("passwordRequired"))
-  .min(1, message("passwordRequired"))
+  .check(z.minLength(1, message("passwordRequired")))
 
 /** A password being chosen. */
 export const newPassword = z
   .string(message("passwordRequired"))
-  .min(1, message("passwordRequired"))
-  .min(PASSWORD_MIN_LENGTH, message("passwordTooShort"))
+  .check(
+    z.minLength(1, message("passwordRequired")),
+    z.minLength(PASSWORD_MIN_LENGTH, message("passwordTooShort"))
+  )
+
+const passwordsMatch = z.refine<{ password: string; confirmPassword: string }>(
+  (v) => v.password === v.confirmPassword,
+  { path: ["confirmPassword"], ...message("passwordsDontMatch") }
+)
 
 /** New password plus its confirmation, which must match. */
 const passwordPair = z
@@ -40,10 +50,7 @@ const passwordPair = z
     password: newPassword,
     confirmPassword: z.string(message("passwordRequired")),
   })
-  .refine((v) => v.password === v.confirmPassword, {
-    path: ["confirmPassword"],
-    ...message("passwordsDontMatch"),
-  })
+  .check(passwordsMatch)
 
 export const loginSchema = z.object({
   identifier,
@@ -51,11 +58,12 @@ export const loginSchema = z.object({
 })
 
 export const forgotPasswordSchema = z.object({
-  email: z
-    .string(message("emailRequired"))
-    .trim()
-    .min(1, message("emailRequired"))
-    .pipe(z.email(message("emailInvalid"))),
+  email: z.pipe(
+    z
+      .string(message("emailRequired"))
+      .check(z.trim(), z.minLength(1, message("emailRequired"))),
+    z.email(message("emailInvalid"))
+  ),
 })
 
 export const resetPasswordSchema = passwordPair
@@ -72,10 +80,7 @@ export const changePasswordSchema = z
     password: newPassword,
     confirmPassword: z.string(message("passwordRequired")),
   })
-  .refine((v) => v.password === v.confirmPassword, {
-    path: ["confirmPassword"],
-    ...message("passwordsDontMatch"),
-  })
+  .check(passwordsMatch)
 
 export type LoginValues = z.infer<typeof loginSchema>
 export type ForgotPasswordValues = z.infer<typeof forgotPasswordSchema>

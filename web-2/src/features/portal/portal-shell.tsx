@@ -114,7 +114,10 @@ function ChildPicker() {
       >
         {children.data.map((c) => (
           <NativeSelectOption key={c.studentId} value={c.studentId}>
-            {`${childName(c, locale)} · ${placement(c)}`}
+            {t("childOption", {
+              name: childName(c, locale),
+              placement: placement(c),
+            })}
           </NativeSelectOption>
         ))}
       </NativeSelect>

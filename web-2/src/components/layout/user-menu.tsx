@@ -14,8 +14,8 @@ import { useTranslations } from "next-intl"
 import { useState } from "react"
 
 import { meQuery, otherSchoolsQuery, switchSchool } from "~/api/auth"
-import { Avatar, AvatarFallback } from "~/components/ui/avatar"
 import { Badge } from "~/components/ui/badge"
+import { InitialsAvatar } from "~/components/initials-avatar"
 import { Button } from "~/components/ui/button"
 import {
   DropdownMenu,
@@ -31,7 +31,6 @@ import {
 } from "~/components/ui/dropdown-menu"
 import { toast } from "~/components/ui/toast"
 import { signOut } from "~/features/auth/sign-out"
-import { initials } from "~/lib/initials"
 import type { SessionUser } from "~/lib/session/types"
 
 import { useRoleLabel } from "./role-label"
@@ -79,11 +78,7 @@ export function UserMenu({ fallbackUser }: { fallbackUser: SessionUser }) {
           />
         }
       >
-        <Avatar className="size-8">
-          <AvatarFallback className="text-xs font-medium">
-            {initials(name)}
-          </AvatarFallback>
-        </Avatar>
+        <InitialsAvatar name={name} />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-64">
         <DropdownMenuGroup>

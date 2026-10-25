@@ -95,41 +95,43 @@ export function AppSidebar({ fallbackName }: { fallbackName: string }) {
         </div>
       </SidebarHeader>
       <SidebarContent>
-        {me.isPending ? (
-          <SidebarGroup>
-            <SidebarMenu>
-              {Array.from({ length: 6 }, (_, i) => (
-                <SidebarMenuItem key={i}>
-                  <SidebarMenuSkeleton showIcon />
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroup>
-        ) : nav.length === 0 ? (
-          <p className="px-4 py-2 text-sm text-muted-foreground">
-            {ts("noMenusMatch")}
-          </p>
-        ) : (
-          nav.map((category) => (
-            <SidebarGroup key={category.id}>
-              <SidebarGroupLabel>
-                {t(`categories.${category.id}`)}
-              </SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {category.menus.map((menu) => (
-                    <NavMenuItem
-                      key={menu.id}
-                      menu={menu}
-                      active={active}
-                      forceOpen={searching}
-                    />
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
+        <nav aria-label={ts("mainMenu")} className="flex flex-col gap-2">
+          {me.isPending ? (
+            <SidebarGroup>
+              <SidebarMenu>
+                {Array.from({ length: 6 }, (_, i) => (
+                  <SidebarMenuItem key={i}>
+                    <SidebarMenuSkeleton showIcon />
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
             </SidebarGroup>
-          ))
-        )}
+          ) : nav.length === 0 ? (
+            <p className="px-4 py-2 text-sm text-muted-foreground">
+              {ts("noMenusMatch")}
+            </p>
+          ) : (
+            nav.map((category) => (
+              <SidebarGroup key={category.id}>
+                <SidebarGroupLabel>
+                  {t(`categories.${category.id}`)}
+                </SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    {category.menus.map((menu) => (
+                      <NavMenuItem
+                        key={menu.id}
+                        menu={menu}
+                        active={active}
+                        forceOpen={searching}
+                      />
+                    ))}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            ))
+          )}
+        </nav>
       </SidebarContent>
       <SidebarRail />
     </Sidebar>

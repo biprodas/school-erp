@@ -15,7 +15,7 @@ import { isApiError } from "~/lib/api/errors"
 import { backendFetch } from "~/lib/api/server"
 import { requireSchoolSlug } from "~/lib/request-host"
 import { getSession } from "~/lib/session"
-import { isPortalUser } from "~/lib/session/home"
+import { isPortalUser, sessionEndedPath } from "~/lib/session/home"
 
 /**
  * The setup wizard's own layout (no sidebar). The proxy already lets only
@@ -55,7 +55,7 @@ export default async function OnboardingLayout({
 
   const meError = queryClient.getQueryState(authKeys.me)?.error
   if (isApiError(meError) && meError.status === 401) {
-    redirect("/login?next=/onboarding")
+    redirect(sessionEndedPath("/onboarding"))
   }
   // Setup is for those who run it (school admins); the rest wait.
   const me = queryClient.getQueryData<Me>(authKeys.me)

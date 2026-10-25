@@ -1,6 +1,7 @@
 "use client"
 
 import { MoonIcon, SunIcon } from "lucide-react"
+import { useTranslations } from "next-intl"
 import { useTheme } from "next-themes"
 
 import { Button } from "~/components/ui/button"
@@ -11,16 +12,18 @@ import { Button } from "~/components/ui/button"
  */
 export function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme()
+  const t = useTranslations("common")
 
   return (
     <Button
       variant="ghost"
       size="icon"
-      aria-label="Toggle dark mode"
+      aria-label={t("toggleTheme")}
+      title={t("toggleTheme")}
       onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
     >
-      <SunIcon className="hidden dark:block" />
-      <MoonIcon className="dark:hidden" />
+      <SunIcon aria-hidden className="hidden dark:block" />
+      <MoonIcon aria-hidden className="dark:hidden" />
     </Button>
   )
 }

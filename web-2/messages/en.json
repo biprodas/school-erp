@@ -1,7 +1,6 @@
 {
   "common": {
     "language": "Language",
-    "switchLanguage": "Switch language",
     "languages": {
       "bn": "বাংলা",
       "en": "English",
@@ -11,7 +10,8 @@
     "showPassword": "Show password",
     "hidePassword": "Hide password",
     "signOut": "Sign out",
-    "backToSchool": "School home"
+    "backToSchool": "School home",
+    "toggleTheme": "Switch light or dark theme"
   },
   "schoolHome": {
     "signIn": "Sign in",
@@ -254,7 +254,8 @@
     "invalidTitle": "This signup link doesn't work",
     "invalidBody": "It may be used already or expired. Start again; it only takes a minute.",
     "startAgain": "Start again",
-    "footer": "{brand} · School management for Bangladesh"
+    "footer": "{brand} · School management for Bangladesh",
+    "phonePlaceholder": "01XXXXXXXXX"
   },
   "findSchool": {
     "metaTitle": "Find your school",
@@ -425,7 +426,8 @@
       "googleUnlinked": "Google unlinked.",
       "googlePasswordRequired": "Set a password first, so you can still sign in without Google.",
       "googleLinkedNotice": "Your Google account is linked."
-    }
+    },
+    "mainMenu": "Main menu"
   },
   "dashboard": {
     "loadFailed": "This part of the dashboard couldn't load.",
@@ -715,6 +717,23 @@
       "noNotices": "No notices yet.",
       "pinned": "Pinned",
       "unread": "(unread)"
-    }
+    },
+    "childOption": "{name} · {placement}"
+  },
+  "ui": {
+    "close": "Close",
+    "sidebarTitle": "Menu",
+    "sidebarDescription": "The main menu.",
+    "toggleSidebar": "Show or hide the menu",
+    "more": "More",
+    "morePages": "More pages",
+    "previousSlide": "Previous slide",
+    "nextSlide": "Next slide",
+    "loading": "Loading",
+    "breadcrumb": "Breadcrumb",
+    "pagination": "Pages",
+    "previousPage": "Previous page",
+    "nextPage": "Next page",
+    "closeToast": "Close the message"
   }
 }

@@ -1,7 +1,6 @@
 {
   "common": {
     "language": "ভাষা",
-    "switchLanguage": "ভাষা পরিবর্তন করুন",
     "languages": {
       "bn": "বাংলা",
       "en": "English",
@@ -11,7 +10,8 @@
     "showPassword": "পাসওয়ার্ড দেখান",
     "hidePassword": "পাসওয়ার্ড লুকান",
     "signOut": "সাইন আউট",
-    "backToSchool": "স্কুলের হোম"
+    "backToSchool": "স্কুলের হোম",
+    "toggleTheme": "আলো বা গাঢ় থিম বদলান"
   },
   "schoolHome": {
     "signIn": "সাইন ইন",
@@ -254,7 +254,8 @@
     "invalidTitle": "এই সাইনআপ লিংকটি কাজ করছে না",
     "invalidBody": "লিংকটি হয়তো আগেই ব্যবহার হয়েছে বা মেয়াদ শেষ। আবার শুরু করুন; এক মিনিটের বেশি লাগবে না।",
     "startAgain": "আবার শুরু করুন",
-    "footer": "{brand} · বাংলাদেশের জন্য স্কুল ব্যবস্থাপনা"
+    "footer": "{brand} · বাংলাদেশের জন্য স্কুল ব্যবস্থাপনা",
+    "phonePlaceholder": "০১XXXXXXXXX"
   },
   "findSchool": {
     "metaTitle": "আপনার স্কুল খুঁজুন",
@@ -425,7 +426,8 @@
       "googleUnlinked": "Google সরানো হয়েছে।",
       "googlePasswordRequired": "আগে একটি পাসওয়ার্ড দিন, যাতে Google ছাড়াও সাইন ইন করতে পারেন।",
       "googleLinkedNotice": "আপনার Google অ্যাকাউন্ট যুক্ত হয়েছে।"
-    }
+    },
+    "mainMenu": "প্রধান মেনু"
   },
   "dashboard": {
     "loadFailed": "ড্যাশবোর্ডের এই অংশটি লোড হয়নি।",
@@ -715,6 +717,23 @@
       "noNotices": "এখনো কোনো নোটিশ নেই।",
       "pinned": "পিন করা",
       "unread": "(অপঠিত)"
-    }
+    },
+    "childOption": "{name} · {placement}"
+  },
+  "ui": {
+    "close": "বন্ধ করুন",
+    "sidebarTitle": "মেনু",
+    "sidebarDescription": "প্রধান মেনু।",
+    "toggleSidebar": "মেনু দেখান বা লুকান",
+    "more": "আরও",
+    "morePages": "আরও পাতা",
+    "previousSlide": "আগের স্লাইড",
+    "nextSlide": "পরের স্লাইড",
+    "loading": "লোড হচ্ছে",
+    "breadcrumb": "অবস্থান",
+    "pagination": "পাতা",
+    "previousPage": "আগের পাতা",
+    "nextPage": "পরের পাতা",
+    "closeToast": "বার্তাটি বন্ধ করুন"
   }
 }

@@ -1,4 +1,4 @@
-import { z } from "zod"
+import { z } from "zod/mini"
 
 import type { FieldMessage } from "~/lib/forms/form-state"
 import { normalizePhone } from "~/lib/phone"
@@ -22,63 +22,73 @@ export const SIGNUP_PASSWORD_MIN_LENGTH = 8
 
 const message = (key: FieldMessage) => ({ error: key })
 
-const email = z
-  .string(message("emailRequired"))
-  .trim()
-  .min(1, message("emailRequired"))
-  .max(254, message("emailInvalid"))
-  .pipe(z.email(message("emailInvalid")))
+const email = z.pipe(
+  z
+    .string(message("emailRequired"))
+    .check(
+      z.trim(),
+      z.minLength(1, message("emailRequired")),
+      z.maxLength(254, message("emailInvalid"))
+    ),
+  z.email(message("emailInvalid"))
+)
 
 /** A school address (slug), checked the way the backend does. */
-export const slug = z
-  .string(message("slugRequired"))
-  .trim()
-  .toLowerCase()
-  .min(1, message("slugRequired"))
-  .refine(isValidSlug, message("slugInvalid"))
-  .refine((value) => !isReservedSlug(value), message("slugReserved"))
+export const slug = z.string(message("slugRequired")).check(
+  z.trim(),
+  z.toLowerCase(),
+  z.minLength(1, message("slugRequired")),
+  z.refine(isValidSlug, message("slugInvalid")),
+  z.refine((value) => !isReservedSlug(value), message("slugReserved"))
+)
+
+const length = (min: number, max: number, key: FieldMessage) =>
+  z
+    .string(message(key))
+    .check(
+      z.trim(),
+      z.minLength(min, message(key)),
+      z.maxLength(max, message(key))
+    )
 
 export const signupSchema = z
   .object({
-    schoolName: z
-      .string(message("schoolNameLength"))
-      .trim()
-      .min(3, message("schoolNameLength"))
-      .max(100, message("schoolNameLength")),
+    schoolName: length(3, 100, "schoolNameLength"),
     type: z.enum(SCHOOL_TYPES, message("typeRequired")),
     slug,
-    ownerName: z
-      .string(message("ownerNameLength"))
-      .trim()
-      .min(2, message("ownerNameLength"))
-      .max(100, message("ownerNameLength")),
+    ownerName: length(2, 100, "ownerNameLength"),
     email,
-    phone: z
-      .string()
-      .trim()
-      .refine((v) => v === "" || normalizePhone(v) !== null, {
-        ...message("phoneInvalid"),
-      }),
+    phone: z.string().check(
+      z.trim(),
+      z.refine(
+        (v) => v === "" || normalizePhone(v) !== null,
+        message("phoneInvalid")
+      )
+    ),
     password: z.string(),
     /** From "Sign up with Google": the email is verified, no password. */
     googleTicket: z.string(),
   })
-  .superRefine((value, ctx) => {
-    if (value.googleTicket) return
-    if (value.password.length < SIGNUP_PASSWORD_MIN_LENGTH) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["password"],
-        message: value.password ? "signupPasswordTooShort" : "passwordRequired",
-      })
-    } else if (value.password.length > 128) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["password"],
-        message: "passwordTooLong",
-      })
-    }
-  })
+  .check(
+    z.superRefine((value, ctx) => {
+      if (value.googleTicket) return
+      if (value.password.length < SIGNUP_PASSWORD_MIN_LENGTH) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["password"],
+          message: value.password
+            ? "signupPasswordTooShort"
+            : "passwordRequired",
+        })
+      } else if (value.password.length > 128) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["password"],
+          message: "passwordTooLong",
+        })
+      }
+    })
+  )
 
 export const findSchoolSchema = z.object({ email })
 
@@ -88,10 +98,13 @@ export const findSchoolSchema = z.object({ email })
  */
 export const schoolAddressSchema = (rootDomain: string) =>
   z.object({
-    address: z
-      .string(message("slugRequired"))
-      .transform((value) => addressToSlug(value, rootDomain))
-      .pipe(slug),
+    address: z.pipe(
+      z.pipe(
+        z.string(message("slugRequired")),
+        z.transform((value: string) => addressToSlug(value, rootDomain))
+      ),
+      slug
+    ),
   })
 
 export function addressToSlug(value: string, rootDomain: string): string {

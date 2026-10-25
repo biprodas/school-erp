@@ -15,7 +15,7 @@ import { isApiError } from "~/lib/api/errors"
 import { backendFetch } from "~/lib/api/server"
 import { requireSchoolSlug } from "~/lib/request-host"
 import { getSession } from "~/lib/session"
-import { isPortalUser } from "~/lib/session/home"
+import { isPortalUser, sessionEndedPath } from "~/lib/session/home"
 
 /** Set by `SidebarProvider` when the sidebar is opened or collapsed. */
 const SIDEBAR_COOKIE = "sidebar_state"
@@ -52,7 +52,7 @@ export default async function DashboardLayout({
   // The session ended since the proxy read the cookie.
   const meError = queryClient.getQueryState(authKeys.me)?.error
   if (isApiError(meError) && meError.status === 401) {
-    redirect("/login?next=/dashboard")
+    redirect(sessionEndedPath("/dashboard"))
   }
 
   const locale = await getLocale()

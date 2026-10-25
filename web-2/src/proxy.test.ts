@@ -65,6 +65,20 @@ describe("proxy", () => {
     expect(forwarded(response, "x-host-kind")).toBe("admin")
   })
 
+  it("gives every page a CSP with a fresh nonce, and passes the nonce on", async () => {
+    const page = () =>
+      proxy(request("http://lvh.me:3000/", { "x-nonce": "forged" }))
+    const first = await page()
+    const csp = first.headers.get("content-security-policy") ?? ""
+    const nonce = forwarded(first, "x-nonce")
+    expect(nonce).toBeTruthy()
+    expect(nonce).not.toBe("forged")
+    expect(csp).toContain(`'nonce-${nonce}'`)
+    // Next.js reads the nonce from the request's CSP header.
+    expect(forwarded(first, "content-security-policy")).toBe(csp)
+    expect(forwarded(await page(), "x-nonce")).not.toBe(nonce)
+  })
+
   it("rewrites a school host into the school tree with its slug", async () => {
     lookupTenant.mockResolvedValue({
       status: "found",

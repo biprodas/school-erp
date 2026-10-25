@@ -7,7 +7,7 @@ import { useState } from "react"
 import { BrandMark } from "~/components/brand/brand-mark"
 import { LanguageSwitch } from "~/components/language-switch"
 import { ThemeToggle } from "~/components/theme-toggle"
-import { Avatar, AvatarFallback } from "~/components/ui/avatar"
+import { InitialsAvatar } from "~/components/initials-avatar"
 import { Button } from "~/components/ui/button"
 import {
   DropdownMenu,
@@ -20,7 +20,6 @@ import {
 } from "~/components/ui/dropdown-menu"
 import { BRAND } from "~/config/brand-config"
 import { signOut } from "~/features/auth/sign-out"
-import { initials } from "~/lib/initials"
 import type { SessionUser } from "~/lib/session/types"
 
 /**
@@ -79,11 +78,7 @@ function AdminMenu({ user }: { user: SessionUser }) {
           />
         }
       >
-        <Avatar className="size-8">
-          <AvatarFallback className="text-xs font-medium">
-            {initials(name)}
-          </AvatarFallback>
-        </Avatar>
+        <InitialsAvatar name={name} />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-64">
         <DropdownMenuGroup>

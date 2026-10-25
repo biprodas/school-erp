@@ -3,6 +3,8 @@ import path from "node:path"
 import type { NextConfig } from "next"
 
 import { appConfig } from "./src/config/app-config"
+import { securityConfig } from "./src/config/security-config"
+import { staticSecurityHeaders } from "./src/lib/security-headers"
 
 // next-intl finds its request config through the `next-intl/config` alias.
 // Its `createNextIntlPlugin` only sets this alias unless the experimental
@@ -14,6 +16,12 @@ const ROOT_DOMAIN = appConfig.rootDomain
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
+  poweredByHeader: false,
+  // The page CSP needs a nonce per response, so `src/proxy.ts` sets it;
+  // these go on everything, the BFF and files included.
+  headers: async () => [
+    { source: "/:path*", headers: staticSecurityHeaders(securityConfig) },
+  ],
   // `next dev` only serves its scripts and HMR to localhost by default;
   // school and admin hosts are subdomains of the root domain.
   allowedDevOrigins: [ROOT_DOMAIN, `*.${ROOT_DOMAIN}`],

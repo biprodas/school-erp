@@ -267,7 +267,7 @@ export function SignupForm({
                 id="phone"
                 type="tel"
                 autoComplete="tel"
-                placeholder="01XXXXXXXXX"
+                placeholder={t("phonePlaceholder")}
                 {...ariaFor("phone", errors.phone)}
                 {...form.register("phone")}
               />

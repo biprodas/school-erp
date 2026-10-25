@@ -1,18 +1,11 @@
 "use client"
 
-import { LanguagesIcon } from "lucide-react"
+import { ChevronDownIcon, LanguagesIcon } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useLocale, useTranslations } from "next-intl"
 
-import { Button } from "~/components/ui/button"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-} from "~/components/ui/dropdown-menu"
 import { isLocale, LOCALE_COOKIE, LOCALES } from "~/i18n/config"
+import { cn } from "~/lib/utils"
 
 const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365
 
@@ -20,6 +13,11 @@ const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365
  * Picks the language (English, Bangla, Hindi). The choice is a host-only
  * cookie read by `i18n/request.ts`; refreshing re-renders server
  * components in the new language without a full reload.
+ *
+ * A native `<select>` laid over a ghost-button look: phones get their own
+ * picker, keyboards and screen readers get a plain combobox, and the
+ * sign-in pages don't carry a popover library just for this (it was
+ * ~45 KB of compressed JS on every page).
  */
 export function LanguageSwitch({
   compact = false,
@@ -31,38 +29,41 @@ export function LanguageSwitch({
   const t = useTranslations("common")
   const router = useRouter()
 
-  function switchLocale(next: unknown) {
+  function switchLocale(next: string) {
     if (!isLocale(next) || next === locale) return
     document.cookie = `${LOCALE_COOKIE}=${next}; path=/; max-age=${ONE_YEAR_SECONDS}; samesite=lax`
     router.refresh()
   }
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        render={
-          <Button variant="ghost" size="sm" aria-label={t("switchLanguage")} />
-        }
+    <span
+      className={cn(
+        "relative inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium transition-colors",
+        "hover:bg-muted hover:text-foreground has-focus-visible:ring-3 has-focus-visible:ring-ring/50 dark:hover:bg-muted/50",
+        "[&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0"
+      )}
+    >
+      <LanguagesIcon aria-hidden />
+      <span
+        lang={locale}
+        aria-hidden
+        className={compact ? "max-sm:sr-only" : undefined}
       >
-        <LanguagesIcon />
-        <span lang={locale} className={compact ? "max-sm:sr-only" : undefined}>
-          {t(`languages.${locale}`)}
-        </span>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-40">
-        <DropdownMenuRadioGroup value={locale} onValueChange={switchLocale}>
-          {LOCALES.map((option) => (
-            <DropdownMenuRadioItem
-              key={option}
-              value={option}
-              lang={option}
-              closeOnClick
-            >
-              {t(`languages.${option}`)}
-            </DropdownMenuRadioItem>
-          ))}
-        </DropdownMenuRadioGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+        {t(`languages.${locale}`)}
+      </span>
+      <ChevronDownIcon aria-hidden className="text-muted-foreground" />
+      <select
+        aria-label={t("language")}
+        value={locale}
+        onChange={(event) => switchLocale(event.target.value)}
+        className="absolute inset-0 size-full cursor-pointer appearance-none opacity-0"
+      >
+        {LOCALES.map((option) => (
+          <option key={option} value={option} lang={option}>
+            {t(`languages.${option}`)}
+          </option>
+        ))}
+      </select>
+    </span>
   )
 }

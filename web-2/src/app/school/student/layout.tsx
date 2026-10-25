@@ -15,7 +15,7 @@ import { isApiError } from "~/lib/api/errors"
 import { backendFetch } from "~/lib/api/server"
 import { requireSchoolSlug } from "~/lib/request-host"
 import { getSession } from "~/lib/session"
-import { isPortalUser } from "~/lib/session/home"
+import { isPortalUser, sessionEndedPath } from "~/lib/session/home"
 
 /**
  * The guardian and student portal (doc/frontend-implementation-plan.md
@@ -52,7 +52,7 @@ export default async function PortalLayout({
 
   const meError = queryClient.getQueryState(authKeys.me)?.error
   if (isApiError(meError) && meError.status === 401) {
-    redirect("/login?next=/student")
+    redirect(sessionEndedPath("/student"))
   }
   const childrenError = queryClient.getQueryState(portalKeys.children)?.error
   if (

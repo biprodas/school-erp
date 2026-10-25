@@ -104,7 +104,10 @@ This removes the hand-written `apis/` layer and makes DTO drift a type error.
 
 ### 3.8 i18n: next-intl without locale routing
 
-The host already carries the tenant, so URLs are not prefixed with `/bn` or `/en`. The locale comes from the user's preference, then the school default, stored in a cookie and read on the server. Messages live in `messages/bn.json` and `messages/en.json`, with an ESLint check against hard-coded UI strings.
+The host already carries the tenant, so URLs are not prefixed with `/bn` or `/en`. The locale comes from the user's preference, then the school default, stored in a cookie and read on the server. Messages live in `messages/en.json`, `bn.json` and `hi.json`. Two guards keep them complete:
+
+- **ESLint** (`eslint.config.mjs`) refuses text in JSX (`react/jsx-no-literals`, punctuation allowed) and in the attributes people read (`aria-label`, `title`, `placeholder`, `alt`, …) across `src/**/*.tsx`, shadcn `components/ui` included. The marketing landing (English-only by design) and the `/design-system` showcase are exempt.
+- **Vitest** (`i18n/messages.test.ts`) checks that the three catalogs have the same keys and the same `{placeholders}` (ICU arguments included), that nothing is empty, and that Bangla and Hindi values aren't untranslated English copies (a short allowlist covers language names and sample input).
 
 Formatting goes through shared helpers on `Intl`:
 
@@ -112,7 +115,7 @@ Formatting goes through shared helpers on `Intl`:
 - Dates: Asia/Dhaka by default, per-tenant override; Bangabda and Hijri display as optional formatters (PRD 8.6).
 - Names: show the field that matches the active locale, falling back to the other.
 
-Fonts: self-host **Noto Sans Bengali** (or Hind Siliguri) plus a Latin font through `next/font`, subset, with `font-display: swap`.
+Fonts: self-hosted through `next/font` with `font-display: swap`: Hind Siliguri (Latin and Bangla), Hind (Devanagari, for Hindi), Bricolage Grotesque (headings), Noto Sans Bengali and Geist Mono. Every subset gets an `@font-face` with its `unicode-range`, so a file downloads only when the page shows those characters; `subsets` only decides preloading, and only the Latin faces English pages paint with are preloaded. Preloading everything made an English page fetch ~700 KB of fonts it never used (M9).
 
 ### 3.9 PWA and offline
 
@@ -190,7 +193,7 @@ Browser ──/api/*──► Next route handler ──Bearer + x-tenant-id─�
 
 ### 5.1 Session cookie
 
-- One cookie per host, no `Domain` attribute (host-only), `HttpOnly`, `Secure`, `SameSite=Lax`, `Path=/`.
+- One cookie per host, no `Domain` attribute (host-only), `HttpOnly`, `Secure`, `SameSite=Lax`, `Path=/`. `Secure` (with HSTS and `upgrade-insecure-requests`) follows `securityConfig.httpsOnly`: on in production unless `ALLOW_INSECURE_HTTP=true`, which only the end-to-end suite sets to run `next start` over plain HTTP on `lvh.me`.
 - Contents: access token, refresh token, access-token expiry and a minimal user snapshot (id, name, `isAdmin`, `mustChangePassword`), sealed with **jose** (JWE) using a server secret.
 - Tokens never reach browser JavaScript, so an XSS bug cannot exfiltrate them.
 - Platform sessions on `admin.` use a separate cookie name and the platform realm.
@@ -217,17 +220,24 @@ Browser ──/api/*──► Next route handler ──Bearer + x-tenant-id─�
 
 After login, fetch the member's effective permissions once (cached in TanStack Query, refetched on focus so role changes apply on the next request, PRD 6.3). `lib/permissions.ts` exposes `can('fees:collect')` and a `<Can>` component; sidebar items declare required permissions. This is UI gating only; the backend enforces every permission.
 
+### 5.5 Security headers and CSP
+
+- **CSP per page** (`lib/security-headers.ts`, set by `src/proxy.ts` on every rewritten page): `script-src 'self' 'nonce-…' 'strict-dynamic'` with a fresh nonce per response. Next.js reads it from the request's CSP header and adds it to its own scripts; the root layout passes it (`x-nonce`) to the theme script. No `unsafe-eval` in production, no inline scripts without the nonce. Styles allow `'unsafe-inline'` (style attributes: popover positioning, the school color). Images: self, `data:`, `blob:`, `https:` (signed file-store URLs; plain `http:` too in development for the local MinIO). `connect-src 'self'` (the browser only talks to the BFF), `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`, `frame-ancestors 'none'`. Every page renders dynamically, so the nonce always applies.
+- **Static headers** (`next.config.ts`, every response, the BFF and files included): `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`, a `Permissions-Policy` turning off camera, microphone, geolocation, payment and USB, `Cross-Origin-Opener-Policy: same-origin`, HSTS when HTTPS-only; no `X-Powered-By`.
+- **Server-action redirects across hosts**: Next.js renders a server action's `redirect()` target in-process, re-sending the already rewritten headers to its own origin (so the browser's Host is lost). The proxy answers such a request (it carries our `x-host-kind`) with an empty 204, and Next.js navigates on the client instead, through the proxy with the right Host.
+- **Sessions the backend refused**: a server layout that gets 401 sends the user to `/auth/session-ended`, a route handler that deletes the cookie before `/login` (layouts can't), so a session ended elsewhere doesn't loop between `/login` and the home page.
+
 ---
 
 ## 6. UI conventions
 
 - **Mobile first**: design at 360 px, then scale up. Data tables collapse to card lists on small screens; attendance marking is a one-tap list.
 - **Theme**: shadcn CSS variables for light/dark; per-school primary color and logo from school settings, applied as CSS variables at the layout level.
-- **Forms**: one `Form` wrapper over react-hook-form + zod; backend validation errors (400) map back to fields.
-- **Feedback**: sonner toasts for mutations; skeletons for loading; empty states with a next action.
+- **Forms**: one `Form` wrapper over react-hook-form + zod; backend validation errors (400) map back to fields. Schemas the browser loads use `zod/mini` (the full API added ~40 KB to every sign-in page); the resolver takes any zod 4 schema through `zod/v4/core`. Server-only code may use classic zod.
+- **Feedback**: Base UI toasts for mutations; skeletons for loading; empty states with a next action.
 - **Long jobs** (imports, report cards, bulk invoices): enqueue, then poll the jobs API and show progress.
 - **Printing**: PDFs come from the backend (`PdfService`); the frontend only downloads or opens them. Print CSS only for simple on-screen lists.
-- **Accessibility**: Base UI primitives, visible focus, labelled inputs, contrast checked in both themes; axe checks in Playwright.
+- **Accessibility**: Base UI primitives, visible focus, labelled inputs, contrast checked in both themes; axe (WCAG 2.1 A/AA, light and dark) on every page the Playwright suites open. Controls named for a person show decorative initials as CSS content (`InitialsAvatar`), so the visible text never contradicts the accessible name; the language switch is a native `<select>`; tables that scroll sideways take keyboard focus while they overflow.
 
 ---
 
@@ -236,7 +246,8 @@ After login, fetch the member's effective permissions once (cached in TanStack Q
 | Target | How |
 | ------ | --- |
 | FCP < 3 s on 3G (PRD 8.3) | Server components by default, `"use client"` only on interactive leaves; route groups per persona; self-hosted subset fonts; `next/image` for logos and photos |
-| Initial JS for portal routes | Budget ~150 KB gzipped; check with `@next/bundle-analyzer` in CI |
+| Initial JS for sign-in and portal routes | ≤ 320 KB compressed, checked twice in CI: `npm run analyze` (Turbopack's `next analyze --output`, then `scripts/bundle-report.mjs`, a per-route table in the job summary) and the Playwright performance spec in a browser. React DOM and the Next.js router and runtime alone are ~115–125 KB; a page with only the root layout's providers is ~195 KB. Measured in M9: `/login` 264 KB, `/student` 293 KB. The early ~150 KB target can't hold on this stack |
+| Time to interactive on Fast 3G | ≤ 6 s for `/login` and `/student` (Playwright, Chrome's Fast 3G preset, cold cache); measured ~5 s and ~3.5 s |
 | Lists | Server pagination (max 100 rows); virtualize long grids |
 | Data | Prefetch on the server and hydrate TanStack Query; avoid client waterfalls |
 
@@ -257,7 +268,7 @@ After login, fetch the member's effective permissions once (cached in TanStack Q
 | ----- | ---- | ----- |
 | Unit | Vitest | Formatters (money, Bangla numerals, dates), permission helpers, session sealing and refresh logic, `tenant.ts` host resolution |
 | Component | Vitest + Testing Library | Forms, data-entry grid keyboard behavior, `<Can>` gating |
-| E2E | Playwright (against the docker-compose stack) | Login, handoff between hosts, a session from one school rejected on another, attendance marking, mark entry, fee collection and receipt, guardian portal; mobile viewport (360 px) and 3G throttling on portal flows |
+| E2E | Playwright (`web-2/e2e/`, against the docker-compose stack, `next start` in CI) | Signup through onboarding, sign-in by email and phone, lockout, invite activation (Mailpit API), forced password change, teacher vs admin, cookies bound to their school, used handoff codes, sign-out and sign-out everywhere, keyboard-only use, the guardian portal across two schools, the admin console; axe on every page; CSP, headers and no tokens in the browser; Fast 3G budgets. Each test signs up its own school; every page error or CSP violation fails the test. 360 px (Pixel 5) and desktop projects. Later slices add attendance, marks and fees |
 
 ---
 

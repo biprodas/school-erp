@@ -123,3 +123,10 @@ export function adminDestination(next: string | null | undefined): string {
     ? "/"
     : target
 }
+
+/**
+ * Where a server layout sends a user whose session the backend refused
+ * (401): a route handler that deletes the cookie, then `/login`.
+ */
+export const sessionEndedPath = (next: string) =>
+  `/auth/session-ended?next=${encodeURIComponent(next)}`
