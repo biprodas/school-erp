@@ -1,4 +1,4 @@
-import { formatDateTime } from "~/lib/format"
+import { dateOptionsFor, formatDateTime } from "~/lib/format"
 
 /** Keys under `authErrors` in the message catalogs. */
 export type AuthErrorKey =
@@ -100,11 +100,7 @@ export function authErrorMessage(
 ): string {
   const key = authErrorKey(error.code)
   if (key === "accountLocked") {
-    const language = locale === "bn" ? "bn" : "en"
-    const time = formatDateTime(error.lockedUntil, {
-      language,
-      numerals: language,
-    })
+    const time = formatDateTime(error.lockedUntil, dateOptionsFor(locale))
     return t(key, { time: time || "…" })
   }
   return t(key)

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  dateOptionsFor,
   formatDate,
   formatDateTime,
   formatMoney,
@@ -124,5 +125,21 @@ describe("formatDate", () => {
 describe("formatDateTime", () => {
   it("shows the time in the school time zone", () => {
     expect(formatDateTime("2026-10-24T09:05:00Z")).toBe("24/10/2026 3:05 PM")
+  })
+})
+
+describe("dateOptionsFor", () => {
+  it("formats in the page's language", () => {
+    const at = "2026-10-25T04:15:00.000Z"
+    const pattern = { format: "D MMM YYYY" } as const
+    expect(formatDateTime(at, { ...pattern, ...dateOptionsFor("en") })).toBe(
+      "25 Oct 2026 10:15 AM"
+    )
+    expect(formatDateTime(at, { ...pattern, ...dateOptionsFor("hi") })).toBe(
+      "25 अक्टू 2026 10:15 पूर्वाह्न"
+    )
+    expect(
+      formatDateTime(at, { ...pattern, ...dateOptionsFor("bn") })
+    ).toContain("২৫")
   })
 })

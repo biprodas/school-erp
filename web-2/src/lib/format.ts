@@ -1,6 +1,7 @@
 import { TZDate } from "@date-fns/tz"
 import { format as formatWithPattern } from "date-fns"
 import { bn } from "date-fns/locale/bn"
+import { hi } from "date-fns/locale/hi"
 
 /**
  * Numbers, money and dates as people read them (PRD 6.24, 8.6): Bangla or
@@ -20,6 +21,17 @@ export type DateFormat =
 
 export const DEFAULT_TIME_ZONE = "Asia/Dhaka"
 export const DEFAULT_DATE_FORMAT: DateFormat = "DD/MM/YYYY"
+
+/**
+ * Date options for the page's language: Bangla digits and month names in
+ * Bangla, Hindi month names with Western digits in Hindi, else English.
+ */
+export const dateOptionsFor = (
+  locale: string
+): Pick<DateOptions, "language" | "numerals"> =>
+  locale === "bn"
+    ? { language: "bn", numerals: "bn" }
+    : { language: locale === "hi" ? "hi" : "en", numerals: "en" }
 
 const BN_DIGITS = ["০", "১", "২", "৩", "৪", "৫", "৬", "৭", "৮", "৯"]
 
@@ -120,7 +132,7 @@ export interface DateOptions {
   timeZone?: string
   numerals?: Numerals
   /** Language of month names (`D MMM YYYY`) and AM/PM. */
-  language?: "bn" | "en"
+  language?: "bn" | "en" | "hi"
 }
 
 /**
@@ -165,9 +177,11 @@ function toZonedDate(
   return new TZDate(instant, timeZone)
 }
 
+const DATE_LOCALES = { bn, hi, en: undefined }
+
 function render(date: Date, pattern: string, options: DateOptions): string {
   const text = formatWithPattern(date, pattern, {
-    locale: options.language === "bn" ? bn : undefined,
+    locale: DATE_LOCALES[options.language ?? "en"],
   })
   return digits(text, options.numerals ?? "en")
 }

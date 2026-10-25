@@ -4,7 +4,8 @@
     "switchLanguage": "Switch language",
     "languages": {
       "bn": "বাংলা",
-      "en": "English"
+      "en": "English",
+      "hi": "हिन्दी"
     },
     "poweredBy": "School management by {brand}",
     "showPassword": "Show password",

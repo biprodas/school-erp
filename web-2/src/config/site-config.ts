@@ -32,8 +32,8 @@ export const siteConfig = {
    * absolute metadata URLs. School hosts are `<slug>.<rootDomain>`.
    */
   siteUrl: appConfig.appUrl,
-  /** Open Graph locales: English first, Bangla as the alternate. */
+  /** Open Graph locales: English first, Bangla and Hindi as alternates. */
   locale: "en_BD",
-  alternateLocale: "bn_BD",
+  alternateLocale: ["bn_BD", "hi_IN"],
   contactEmail: BRAND.contactEmail,
 } as const

@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import {
   Bricolage_Grotesque,
   Geist_Mono,
+  Hind,
   Hind_Siliguri,
   Noto_Sans_Bengali,
 } from "next/font/google"
@@ -20,6 +21,13 @@ const fontSans = Hind_Siliguri({
   subsets: ["latin", "bengali"],
   weight: ["400", "500", "600", "700"],
   variable: "--font-sans",
+})
+
+// Hind Siliguri's Devanagari sibling, for Hindi (globals.css swaps it in).
+const fontDevanagari = Hind({
+  subsets: ["latin", "devanagari"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-devanagari",
 })
 
 const fontDisplay = Bricolage_Grotesque({
@@ -56,7 +64,7 @@ export const metadata: Metadata = {
     title: siteConfig.title,
     description: siteConfig.description,
     locale: siteConfig.locale,
-    alternateLocale: siteConfig.alternateLocale,
+    alternateLocale: [...siteConfig.alternateLocale],
   },
   twitter: {
     card: "summary",
@@ -81,6 +89,7 @@ export default async function RootLayout({
         fontSans.variable,
         fontDisplay.variable,
         fontBangla.variable,
+        fontDevanagari.variable,
         fontMono.variable
       )}
     >

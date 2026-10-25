@@ -14,7 +14,7 @@ import { ThemeToggle } from "~/components/theme-toggle"
 import { Badge } from "~/components/ui/badge"
 import { buttonVariants } from "~/components/ui/button"
 import { BRAND } from "~/config/brand-config"
-import { formatDate } from "~/lib/format"
+import { dateOptionsFor, formatDate } from "~/lib/format"
 import { requireSchoolSlug } from "~/lib/request-host"
 import { getSession } from "~/lib/session"
 import { homeFor } from "~/lib/session/home"
@@ -96,8 +96,7 @@ export default async function SchoolHomePage() {
                     <p className="mt-1 text-sm text-muted-foreground">
                       {formatDate(notice.publishAt, {
                         format: "D MMM YYYY",
-                        language: locale === "bn" ? "bn" : "en",
-                        numerals: locale === "bn" ? "bn" : "en",
+                        ...dateOptionsFor(locale),
                       })}
                     </p>
                   )}

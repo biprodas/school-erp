@@ -132,7 +132,8 @@
 
 /* Condensed headline face used on marketing pages. */
 @utility font-display {
-  font-family: var(--font-display);
+  /* The body face fills in scripts Bricolage lacks (Bangla, Devanagari). */
+  font-family: var(--font-display), var(--font-sans);
   font-stretch: 75%;
   font-weight: 800;
   letter-spacing: -0.02em;
@@ -148,4 +149,10 @@
   html {
     @apply font-sans;
     }
+}
+
+/* Hindi pages: Hind (Devanagari) in place of Hind Siliguri. Unlayered, so
+   it beats next/font's variable class (layered rules always lose). */
+html:lang(hi) {
+  --font-sans: var(--font-devanagari);
 }

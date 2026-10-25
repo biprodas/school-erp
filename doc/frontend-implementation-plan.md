@@ -276,7 +276,7 @@ Minimal in this slice: layout with a child picker (`GET /portal/children`), a ho
 
 ## 6. Cross-cutting
 
-- **i18n**: `next-intl` without routing. Locale from a `locale` cookie, then the school's `settings/display` locale, then `bn`. `messages/en.json` and `messages/bn.json` hold every string in this slice; no hard-coded UI text.
+- **i18n**: `next-intl` without routing. Three languages: English (the default everywhere), Bangla and Hindi (`i18n/config.ts`). Locale from a `locale` cookie (per host), else English. `messages/en.json`, `bn.json` and `hi.json` hold every string in this slice (a test checks keys and `{placeholders}` match); no hard-coded UI text. The language switch is a menu; Hindi pages use the Hind (Devanagari) font and Hindi month names with Western digits.
 - **Formatting** (`lib/format.ts`): `formatMoney(minorUnits)` (the backend sends `bigint` minor units as strings), `formatNumber`, `formatDate` in the school time zone; unit-tested.
 - **Errors**: `app/school/dashboard/error.tsx` and `not-found.tsx`; `ApiError.code` → message map in `features/auth/errors.ts` and a generic fallback. `PASSWORD_CHANGE_REQUIRED` from any call → `/change-password`.
 - **Security**: no tokens in browser JS or `localStorage`; `safeNext` on every redirect; CSP and security headers in `next.config.ts`; the BFF never forwards the browser's own `Authorization` or `cookie` headers.

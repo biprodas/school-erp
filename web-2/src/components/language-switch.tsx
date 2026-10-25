@@ -5,36 +5,57 @@ import { useRouter } from "next/navigation"
 import { useLocale, useTranslations } from "next-intl"
 
 import { Button } from "~/components/ui/button"
-import { LOCALE_COOKIE, type Locale } from "~/i18n/config"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu"
+import { isLocale, LOCALE_COOKIE, LOCALES } from "~/i18n/config"
 
 const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365
 
 /**
- * Toggles between Bangla and English. The choice is a host-only cookie read
- * by `i18n/request.ts`; refreshing re-renders server components in the new
- * language without a full reload.
+ * Picks the language (English, Bangla, Hindi). The choice is a host-only
+ * cookie read by `i18n/request.ts`; refreshing re-renders server
+ * components in the new language without a full reload.
  */
 export function LanguageSwitch() {
   const locale = useLocale()
   const t = useTranslations("common")
   const router = useRouter()
-  const other: Locale = locale === "bn" ? "en" : "bn"
 
-  function switchLocale() {
-    document.cookie = `${LOCALE_COOKIE}=${other}; path=/; max-age=${ONE_YEAR_SECONDS}; samesite=lax`
+  function switchLocale(next: unknown) {
+    if (!isLocale(next) || next === locale) return
+    document.cookie = `${LOCALE_COOKIE}=${next}; path=/; max-age=${ONE_YEAR_SECONDS}; samesite=lax`
     router.refresh()
   }
 
   return (
-    <Button
-      variant="ghost"
-      size="sm"
-      onClick={switchLocale}
-      aria-label={t("switchLanguage")}
-      lang={other}
-    >
-      <LanguagesIcon />
-      {t(`languages.${other}`)}
-    </Button>
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={
+          <Button variant="ghost" size="sm" aria-label={t("switchLanguage")} />
+        }
+      >
+        <LanguagesIcon />
+        <span lang={locale}>{t(`languages.${locale}`)}</span>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-40">
+        <DropdownMenuRadioGroup value={locale} onValueChange={switchLocale}>
+          {LOCALES.map((option) => (
+            <DropdownMenuRadioItem
+              key={option}
+              value={option}
+              lang={option}
+              closeOnClick
+            >
+              {t(`languages.${option}`)}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
