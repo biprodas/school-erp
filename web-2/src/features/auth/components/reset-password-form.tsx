@@ -33,6 +33,8 @@ export function ResetPasswordForm({
     schema: resetPasswordSchema,
     action,
     defaultValues: { password: "", confirmPassword: "" },
+    // As on sign-in: errors wait for the button, so they can't move it.
+    mode: "onSubmit",
   })
   const passwordError = errorOf("password")
   const confirmError = errorOf("confirmPassword")
@@ -57,6 +59,7 @@ export function ResetPasswordForm({
           <PasswordInput
             id="password"
             autoComplete="new-password"
+            placeholder={t("newPasswordPlaceholder")}
             {...ariaFor("password", passwordError)}
             {...form.register("password")}
           />
@@ -72,6 +75,7 @@ export function ResetPasswordForm({
           <PasswordInput
             id="confirmPassword"
             autoComplete="new-password"
+            placeholder={t("confirmPasswordPlaceholder")}
             {...ariaFor("confirmPassword", confirmError)}
             {...form.register("confirmPassword")}
           />

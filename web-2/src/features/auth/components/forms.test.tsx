@@ -10,15 +10,17 @@ import type { FormState } from "~/lib/forms/form-state"
 import { ActivateForm } from "./activate-form"
 import { ForgotPasswordForm } from "./forgot-password-form"
 import { LoginForm } from "./login-form"
+import { ResetPasswordForm } from "./reset-password-form"
 
 type Action = (s: FormState, f: FormData) => Promise<FormState>
-const { signIn, activate } = vi.hoisted(() => ({
+const { signIn, activate, resetPassword } = vi.hoisted(() => ({
   signIn: vi.fn<Action>(),
   activate: vi.fn<Action>(),
+  resetPassword: vi.fn<Action>(),
 }))
 
 // The real actions are server code; the forms only need their answers.
-vi.mock("../actions", () => ({ signIn, activate }))
+vi.mock("../actions", () => ({ signIn, activate, resetPassword }))
 
 function renderIn(ui: React.ReactNode, locale: "en" | "bn" = "en") {
   return render(
@@ -278,6 +280,49 @@ describe("ForgotPasswordForm", () => {
     expect(screen.getByLabelText("Email")).toHaveAttribute(
       "placeholder",
       "you@example.com"
+    )
+  })
+})
+
+describe("ResetPasswordForm", () => {
+  it("prompts for the new password twice and checks them only on submit", async () => {
+    const action = vi.fn<Action>().mockResolvedValue({ status: "idle" })
+    renderIn(
+      <ResetPasswordForm
+        token="tok"
+        account="ops@example.com"
+        action={action}
+      />
+    )
+    const password = screen.getByLabelText("New password")
+    const confirm = screen.getByLabelText("Confirm password")
+    expect(password).toHaveAttribute("placeholder", "Enter a new password")
+    expect(confirm).toHaveAttribute("placeholder", "Re-enter the new password")
+
+    await userEvent.type(password, "secret1")
+    await userEvent.type(confirm, "secret2")
+    await userEvent.tab()
+    expect(
+      screen.queryByText("The passwords don't match")
+    ).not.toBeInTheDocument()
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Change password" })
+    )
+    expect(
+      await screen.findByText("The passwords don't match")
+    ).toBeInTheDocument()
+    expect(action).not.toHaveBeenCalled()
+  })
+
+  it("shows the Bangla placeholders", () => {
+    renderIn(
+      <ResetPasswordForm token="tok" account={null} action={vi.fn<Action>()} />,
+      "bn"
+    )
+    expect(screen.getByLabelText("নতুন পাসওয়ার্ড")).toHaveAttribute(
+      "placeholder",
+      "নতুন পাসওয়ার্ড লিখুন"
     )
   })
 })

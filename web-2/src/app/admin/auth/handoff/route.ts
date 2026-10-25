@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server"
 
-import { startPlatformSession } from "~/features/admin/server/session"
+import { startPlatformSession } from "~/features/platform/auth/server/session"
 import { backendFetch } from "~/lib/api/server"
 import { getRequestHost } from "~/lib/tenancy/request-host"
 import { adminDestination } from "~/lib/auth/home"

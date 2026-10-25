@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import { getTranslations } from "next-intl/server"
 
-import { platformSignIn } from "~/features/admin/actions"
+import { platformSignIn } from "~/features/platform/auth/actions"
 import { AuthCard } from "~/features/auth/components/auth-card"
 import { queryErrorKey } from "~/features/auth/errors"
 import { LoginForm } from "~/features/auth/components/login-form"

@@ -55,9 +55,17 @@ src/
 └── test/               # Vitest setup and fixtures
 ```
 
+Folders in `app/` are named after the **host** they serve, and folders in `features/` after the **domain**. `site/`, `admin/` and `school/` are the rewrite targets of the host kinds in `lib/tenancy` (`admin.lvh.me/x` is served from `/admin/x`, a path the browser never shows), so they follow the host's name: the admin host keeps `app/admin`, and its features live in `features/platform` because that host serves the platform realm (`resolve-host.ts` maps `admin` to `platform`). Rename an `app/` folder only together with its host kind and the rewrite in `proxy.ts`.
+
 ### Features
 
-A feature is a business domain and mirrors the backend module of the same name (`backend/src/modules/<x>`) where there is one. Current: `academics`, `access` (permissions, `usePermissions`, `<Can>`), `account`, `admin`, `auth`, `dashboard`, `marketing`, `notifications`, `onboarding`, `portal`, `school-site`, `settings`, `shell` (staff sidebar and header), `signup`. Domains such as `students`, `attendance`, `exams`, `fees` get a folder when their screens start, not before.
+A feature is a business domain and mirrors the backend module of the same name (`backend/src/modules/<x>`) where there is one. Current: `academics`, `access` (permissions, `usePermissions`, `<Can>`), `account`, `auth`, `dashboard`, `marketing`, `notifications`, `onboarding`, `platform` (see below), `portal`, `school-site`, `settings`, `shell` (staff sidebar and header), `signup`. Domains such as `students`, `attendance`, `exams`, `fees` get a folder when their screens start, not before.
+
+### Platform and school
+
+The platform console on the admin host has its own group, `features/platform/<domain>/`, each folder laid out like any feature: `auth` (platform sign-in and reset actions, the platform session) and `shell` (the console frame) today, and `organizations`, `users`, `plans`, `audit-logs` as their screens start. "Platform" is the backend's word for this side (`/platform/*`, `PlatformJwtAuthGuard`); "admin" already means a school admin. A domain both sides have (users, audit log, plans) gets one folder per side, because the endpoints, permissions and screens differ.
+
+`features/auth` stays shared: the sign-in forms, schemas, errors and `LinkProblem` hold the behaviour, and each host passes its own server action. What looks different per host goes in its frame (the `(auth)` layout, or a platform card in `features/platform/auth` once one is needed), not in a second copy of the forms.
 
 ```
 features/<domain>/
@@ -77,6 +85,7 @@ API modules export `queryOptions` factories rather than `use*` hooks: a componen
 
 - **`app/` is routing only.** A page reads params and the session, then renders a feature component. UI used by one route only may stay in a `_private` folder next to it (as the design-system page does).
 - **Shared code never imports features or routes.** `components/`, `lib/`, `hooks/`, `config/` and `i18n/` can't import `~/features/*` or `~/app/*`, and features can't import `~/app/*`. ESLint enforces this (`eslint.config.mjs`).
+- **The platform console and the school side stay apart.** School and apex code (`app/school`, `app/site`, every other feature) can't import `~/features/platform/*`; `app/admin` and `features/platform` import only `~/features/platform/*` and `~/features/auth/*`. ESLint enforces this too.
 - **Features import each other directly, by file** (`~/features/academics/api`), never through another feature's `server/` or `actions.ts` from client code. There are no `index.ts` barrels: features mix server-only modules, server actions and client components, and one barrel would drag server code into client bundles.
 - **Tokens stay on the server.** The browser talks only to the BFF (`/api/*`, `lib/api/client.ts`); server components and actions call the backend through `lib/api/server.ts`.
 - **Tenancy comes from the host.** `proxy.ts` resolves the school and passes it in request headers; read it with `getRequestHost()` / `requireSchoolSlug()` (`lib/tenancy/request-host.ts`), never from the URL or the client.

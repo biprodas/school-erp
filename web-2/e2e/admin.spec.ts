@@ -69,4 +69,6 @@ test("a forgotten admin password: the reset pages are open, and the emailed link
   await expect(
     page.getByRole("heading", { name: "This reset link doesn't work" })
   ).toBeVisible()
+  await page.getByRole("link", { name: "Back to sign in" }).click()
+  await expect(page).toHaveURL(adminUrl("/login"))
 })

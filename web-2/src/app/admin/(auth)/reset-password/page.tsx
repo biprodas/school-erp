@@ -1,8 +1,9 @@
 import type { Metadata } from "next"
 import { getTranslations } from "next-intl/server"
 
-import { platformResetPassword } from "~/features/admin/actions"
+import { platformResetPassword } from "~/features/platform/auth/actions"
 import { AuthCard } from "~/features/auth/components/auth-card"
+import { BackToLogin } from "~/features/auth/components/back-to-login"
 import { checkToken } from "~/features/auth/server/check-token"
 import { LinkProblem } from "~/features/auth/components/link-problem"
 import { ResetPasswordForm } from "~/features/auth/components/reset-password-form"
@@ -23,6 +24,7 @@ export default async function AdminResetPasswordPage({
   searchParams: SearchParams
 }) {
   const t = await getTranslations("auth.reset")
+  const tf = await getTranslations("auth.forgot")
   const token = await param(searchParams, "token")
   const reset = await checkToken<{ email: string | null }>(
     "/platform/auth/reset-password",
@@ -35,7 +37,9 @@ export default async function AdminResetPasswordPage({
         title={t("invalidTitle")}
         body={t("invalidBody")}
         action={{ href: "/forgot-password", label: t("requestNew") }}
-      />
+      >
+        <BackToLogin label={tf("backToLogin")} />
+      </LinkProblem>
     )
   }
 
@@ -51,6 +55,7 @@ export default async function AdminResetPasswordPage({
         account={reset.email}
         action={platformResetPassword}
       />
+      <BackToLogin label={tf("backToLogin")} />
     </AuthCard>
   )
 }
