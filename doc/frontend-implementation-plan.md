@@ -299,7 +299,7 @@ Tick a box when the item is implemented and verified locally (against the docker
 | M4 | Signup and find school | M3 | Implemented, not committed |
 | M5 | Staff app shell | M3, B1 | Implemented, not committed |
 | M6 | Home dashboards | M5 | Implemented, not committed |
-| M7 | Onboarding wizard | M5 | Not started |
+| M7 | Onboarding wizard | M5 | Implemented, not committed |
 | M8 | Portal and admin shells | M3 | Not started |
 | M9 | Hardening | M3–M8 | Not started |
 
@@ -617,14 +617,28 @@ Note: the backend caches each dashboard for 60 s, so numbers entered just after 
 
 ### M7. Onboarding wizard
 
-- [ ] `app/school/onboarding/layout.tsx`: its own layout (no sidebar) with a progress bar from `percentage`.
-- [ ] Stepper over `GET /onboarding/checklist`: required steps (`profile`, `session`, `classes`, `curriculum`) and optional ones (`grading`, `fees`, `staff`, `students`), each with its done state.
-- [ ] Template actions from `GET /onboarding/templates`: apply curriculum, grading, fee heads and BD holidays; the checklist is refetched after each.
-- [ ] Minimal forms for profile, session and classes (or links to the feature screens once they exist).
-- [ ] "Finish", enabled by `canComplete`, calls `POST /onboarding/complete`; "Skip for now" calls `POST /onboarding/skip`.
-- [ ] After either, `onboardingCompletedAt` is updated in the session and the user goes to `/dashboard`.
+- [x] `app/school/onboarding/layout.tsx`: its own layout (no sidebar) with a progress bar from `percentage`.
+- [x] Stepper over `GET /onboarding/checklist`: required steps (`profile`, `session`, `classes`, `curriculum`) and optional ones (`grading`, `fees`, `staff`, `students`), each with its done state.
+- [x] Template actions from `GET /onboarding/templates`: apply curriculum, grading, fee heads and BD holidays; the checklist is refetched after each.
+- [x] Minimal forms for profile, session and classes (or links to the feature screens once they exist).
+- [x] "Finish", enabled by `canComplete`, calls `POST /onboarding/complete`; "Skip for now" calls `POST /onboarding/skip`.
+- [x] After either, `onboardingCompletedAt` is updated in the session and the user goes to `/dashboard`.
 
-**Done when:** a new owner works through the required steps and finishes, or skips; either way they land on `/dashboard`, and that school's staff no longer see `/setting-up`.
+Details:
+
+- **Layout** (`features/onboarding/onboarding-shell.tsx`): the school's logo, name and primary color, the progress bar ("60% done"), language, theme and sign-out. The server layout prefetches `/auth/me`, `/settings/display` and the checklist, and sends members without `onboarding:manage` to `/setting-up` (or `/dashboard` once setup is done).
+- **Steps** (`onboarding-wizard.tsx`): an ordered list of disclosure cards, one open at a time (a button with `aria-expanded` and a labelled region). It opens the first required step still to do; saving a form or "Continue" moves to the next step still to do (`features/onboarding/steps.ts`, pure). The backend's step titles and `link`s aren't shown: titles are translated by key, and the links point at staff screens that are closed while setup is open.
+- **Profile**: address, district, phone and email (`PATCH /settings/profile`, prefilled from `GET /settings`), checking the backend's rule first (an address or district, and a phone or email).
+- **Session**: name and dates defaulting to this calendar year in the school's time zone, created as current (`POST /academic-years`). Once there is one, "Add holidays" applies the BD template for the session's year and lists the moon-dependent holidays to add by hand.
+- **Classes and sections**: the classes with their sections in the current session; add a class, add a section per class (the next letter suggested), and "Add section A to the N classes without one" after a template. With no classes yet it points to the curriculum step, whose templates add the usual classes.
+- **Curriculum**: the templates, the school type's first and marked "Suggested" (the type comes from `GET /settings`); applying says what it added. Without a current session it warns that only subjects and classes will be added.
+- **Grading and fee heads**: apply buttons over the templates (the first grading template marked "Recommended", fee heads listed with their frequency). **Staff and students** only say where to do it once setup is finished; the checklist marks them done from real data (an invited member counts).
+- **Finish and skip** are server actions (`features/onboarding/actions.ts`): they call the backend, put `completedAt` in the session cookie and redirect to `/dashboard`; `ONBOARDING_INCOMPLETE` and other failures show in an alert. After completion `/onboarding` stays open to admins (the dashboard banner links there) and shows "Go to dashboard" instead of the buttons.
+- **Staff waiting on `/setting-up`** move on by themselves: the page now runs the "Check again" action every 30 s and when the tab regains focus. Before, their session snapshot kept `onboardingCompletedAt` empty until they clicked it or signed in again.
+- API modules: `api/onboarding.ts` (checklist, templates, apply calls; the checklist query moved here from `api/dashboards.ts`), `api/academics.ts` (current session, classes, sections and their create calls; `NO_CURRENT_SESSION` reads as null), `api/settings.ts` (`schoolSettingsQuery`, `updateProfileSettings`). Setup mutations share `useSetupAction`: it refetches the checklist and the touched lists, toasts the result, and picks messages by error code under `onboarding.errors`. `useSchoolFormat` gained `plain` (digits without grouping, for years).
+- Vitest (274 in all): step order and wrap-around, missing required steps, template order by school type, next section name, default session; the wizard's states (open step, badges, "Still required" and a disabled Finish), profile validation then the PATCH body, a refetched checklist and the next step opening, the session POST, the suggested template first and its apply call, Finish and Skip calling their actions, and the finished state.
+
+**Done when:** a new owner works through the required steps and finishes, or skips; either way they land on `/dashboard`, and that school's staff no longer see `/setting-up`. *Checked with a Playwright script against the docker-compose stack (38 checks) on two schools made through signup. Owner A at 360 px: lands on `/onboarding` (0%, no sidebar, profile open, Finish disabled); profile validation, then saved and on to the session; this year's session created with the right defaults, BD holidays added with the moon-dependent ones listed; "Choose a template" → NCTB first and Suggested, applied; the template's classes listed without sections, then section A added to all; grading and fee heads applied; Finish enabled, no horizontal scroll, the wizard in Bangla; Finish → `/dashboard` with `onboardingCompletedAt` set; `/onboarding` afterwards only links to the dashboard. A teacher invited before that waited on `/setting-up` (`/dashboard` and `/onboarding` sent them back) and moved to `/dashboard` on a focus event, without a click; `/setting-up` then sends them to `/dashboard`. Owner B (a madrasa, 1280 px): the madrasa template first; Skip → `/dashboard` with the finish-setup banner, still open after a reload. No page errors.*
 
 ### M8. Portal and admin shells
 

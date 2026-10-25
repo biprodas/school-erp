@@ -5,7 +5,7 @@ import { RocketIcon } from "lucide-react"
 import Link from "next/link"
 import { useTranslations } from "next-intl"
 
-import { onboardingChecklistQuery } from "~/api/dashboards"
+import { onboardingChecklistQuery } from "~/api/onboarding"
 import { buttonVariants } from "~/components/ui/button"
 import { Progress } from "~/components/ui/progress"
 import { useSchoolFormat } from "~/hooks/use-school-format"

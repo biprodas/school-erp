@@ -35,6 +35,9 @@ export function useSchoolFormat() {
     moneyShort: (minor: number) =>
       formatMoney(minor, { numerals, trimZeroFraction: true }),
     number: (value: number) => formatNumber(value, { numerals }),
+    /** A year or code: digits only, no grouping. */
+    plain: (value: number) =>
+      formatNumber(value, { numerals, grouping: "none" }),
     percent: (value: number) => `${formatNumber(value, { numerals })}%`,
     /** `D MMM YYYY` for headings and lists (month names read better). */
     date: (value: string) =>

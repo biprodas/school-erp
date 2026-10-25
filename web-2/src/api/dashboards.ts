@@ -109,23 +109,10 @@ export interface AccountantDashboard {
   }[]
 }
 
-/** `GET /onboarding/checklist`. */
-export interface OnboardingChecklist {
-  steps: {
-    key: string
-    required: boolean
-    available: boolean
-    done: boolean
-  }[]
-  percentage: number
-  canComplete: boolean
-}
-
 export const dashboardKeys = {
   admin: ["dashboards", "admin"] as const,
   teacher: ["dashboards", "teacher"] as const,
   accountant: ["dashboards", "accountant"] as const,
-  checklist: ["onboarding", "checklist"] as const,
 }
 
 /** The backend caches dashboards for 60 s, so asking sooner gains nothing. */
@@ -152,13 +139,5 @@ export const accountantDashboardQuery = () =>
     queryKey: dashboardKeys.accountant,
     queryFn: ({ signal }) =>
       apiFetch<AccountantDashboard>("/dashboards/accountant", { signal }),
-    staleTime: DASHBOARD_STALE_MS,
-  })
-
-export const onboardingChecklistQuery = () =>
-  queryOptions({
-    queryKey: dashboardKeys.checklist,
-    queryFn: ({ signal }) =>
-      apiFetch<OnboardingChecklist>("/onboarding/checklist", { signal }),
     staleTime: DASHBOARD_STALE_MS,
   })

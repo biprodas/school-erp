@@ -1,5 +1,6 @@
 import { queryOptions } from "@tanstack/react-query"
 
+import type { SchoolType } from "~/api/onboarding"
 import { apiFetch } from "~/lib/api/client"
 import type { DateFormat, Numerals } from "~/lib/format"
 
@@ -23,6 +24,7 @@ export interface DisplaySettings {
 }
 
 export const settingsKeys = {
+  all: ["settings", "all"] as const,
   display: ["settings", "display"] as const,
 }
 
@@ -38,3 +40,43 @@ export const displaySettingsQuery = () =>
 /** The school's name in the viewer's language. */
 export const displayName = (settings: DisplaySettings, locale: string) =>
   (locale === "bn" && settings.nameBn) || settings.name
+
+/** The parts of `GET /settings` (`settings:read`) the app uses so far. */
+export interface SchoolSettings {
+  organization: {
+    id: string
+    name: string
+    slug: string
+    type: SchoolType
+    eiin: string | null
+  }
+  profile: {
+    nameBn: string | null
+    address: {
+      line1: string | null
+      line2: string | null
+      area: string | null
+      district: string | null
+      postCode: string | null
+    }
+    phone: string | null
+    email: string | null
+  }
+}
+
+export const schoolSettingsQuery = () =>
+  queryOptions({
+    queryKey: settingsKeys.all,
+    queryFn: ({ signal }) => apiFetch<SchoolSettings>("/settings", { signal }),
+  })
+
+export interface ProfilePatch {
+  nameBn?: string | null
+  address?: Partial<SchoolSettings["profile"]["address"]>
+  phone?: string | null
+  email?: string | null
+}
+
+/** `PATCH /settings/profile`: only the fields given; `address` merges. */
+export const updateProfileSettings = (body: ProfilePatch) =>
+  apiFetch<unknown>("/settings/profile", { method: "PATCH", body })

@@ -481,5 +481,163 @@
       "progress": "Setup progress",
       "action": "Continue setup"
     }
+  },
+  "onboarding": {
+    "metaTitle": "Set up your school",
+    "shellTitle": "School setup",
+    "progress": "Setup progress",
+    "percentDone": "{percentage}% done",
+    "title": "Set up your school",
+    "description": "A few steps and your school is ready. Required steps come first; you can do the rest now or later.",
+    "loadFailed": "This couldn't load.",
+    "retry": "Try again",
+    "continue": "Continue",
+    "done": "Done",
+    "required": "Required",
+    "optional": "Optional",
+    "steps": {
+      "profile": {
+        "title": "School profile",
+        "summary": "Address and contact details"
+      },
+      "session": {
+        "title": "Academic session",
+        "summary": "The current school year"
+      },
+      "classes": {
+        "title": "Classes and sections",
+        "summary": "Your classes and their sections this session"
+      },
+      "curriculum": {
+        "title": "Subjects for each class",
+        "summary": "Start from a curriculum template"
+      },
+      "grading": {
+        "title": "Grading system",
+        "summary": "How marks become grades"
+      },
+      "fees": {
+        "title": "Fee heads",
+        "summary": "Tuition, exam and other fees"
+      },
+      "staff": {
+        "title": "Add and invite staff",
+        "summary": "Teachers and office staff"
+      },
+      "students": {
+        "title": "Import students",
+        "summary": "Your student list"
+      }
+    },
+    "errors": {
+      "sessionOverlap": "These dates overlap another session.",
+      "dateRange": "The end date must be after the start date.",
+      "sectionTaken": "This class already has a section with that name.",
+      "noSession": "Add the current session first.",
+      "incomplete": "Finish the required steps first.",
+      "network": "Couldn't reach the server. Check your connection and try again.",
+      "duplicate": "That name is already in use.",
+      "invalid": "Some details aren't valid. Check them and try again.",
+      "failed": "Something went wrong. Please try again."
+    },
+    "profile": {
+      "line1": "Address",
+      "district": "District",
+      "phone": "Phone",
+      "email": "Email",
+      "hint": "These appear on receipts, report cards and your school's home page. You can add more in Settings later.",
+      "save": "Save and continue",
+      "saved": "School profile saved",
+      "addressRequired": "Enter an address or a district",
+      "contactRequired": "Enter a phone number or an email",
+      "emailInvalid": "Enter a valid email address"
+    },
+    "session": {
+      "current": "Current session: {name} ({start} – {end})",
+      "currentNoDates": "Current session: {name}",
+      "hint": "Most schools in Bangladesh run January to December. Classes, attendance, exams and fees all belong to a session.",
+      "name": "Name",
+      "startDate": "Starts on",
+      "endDate": "Ends on",
+      "create": "Create session",
+      "created": "Session {name} created",
+      "nameRequired": "Enter a name",
+      "dateRequired": "Choose a date",
+      "endAfterStart": "Choose a date after the start",
+      "holidaysTitle": "Government holidays for {year}",
+      "holidaysBody": "Adds the fixed-date national holidays, so no one is asked to take attendance on them.",
+      "holidaysAction": "Add holidays",
+      "holidaysAdded": "{count, plural, one {{n} holiday added} other {{n} holidays added}}",
+      "holidaysAlready": "These holidays are already in your calendar",
+      "holidaysToConfirm": "Add these by hand once their dates are announced: {names}."
+    },
+    "classes": {
+      "needSession": "Classes get their sections for the current session, so add the session first.",
+      "toSession": "Go to the session step",
+      "templateHint": "No classes yet. A curriculum template adds the usual classes together with their subjects.",
+      "toTemplates": "Choose a template",
+      "listLabel": "Classes in {session}",
+      "addMissing": "{count, plural, one {Add section A to the class without one} other {Add section A to the {n} classes without one}}",
+      "sectionsAdded": "{count, plural, one {{n} section added} other {{n} sections added}}",
+      "section": "Section {name}",
+      "noSections": "No sections yet",
+      "sectionName": "New section for {className}",
+      "sectionPlaceholder": "A",
+      "addSection": "Add section",
+      "className": "Add a class",
+      "classPlaceholder": "Class 6",
+      "addClass": "Add",
+      "classAdded": "{name} added"
+    },
+    "curriculum": {
+      "done": "Your classes have subjects for the current session.",
+      "needSession": "Without a current session, only the subjects and classes are added. Add the session first to give each class its subjects.",
+      "listLabel": "Curriculum templates",
+      "suggested": "Suggested",
+      "contents": "Classes: {classes} · Subjects: {subjects}",
+      "apply": "Use this template",
+      "applied": "Template applied. New classes: {classes}; subjects added to classes: {subjects}.",
+      "alreadyApplied": "Everything in this template is already there",
+      "hint": "Applying a template only adds what is missing; it never changes or removes your own classes and subjects."
+    },
+    "grading": {
+      "done": "A grading system is set up.",
+      "listLabel": "Grading templates",
+      "recommended": "Recommended",
+      "apply": "Use this",
+      "applied": "Grading system added",
+      "alreadyApplied": "This grading system is already there"
+    },
+    "fees": {
+      "done": "Your school has fee heads.",
+      "body": "Adds these common fee heads. You set the amounts for each class later, under Fees.",
+      "listLabel": "Default fee heads",
+      "frequency": {
+        "once": "once",
+        "monthly": "monthly",
+        "yearly": "yearly",
+        "per_exam": "per exam"
+      },
+      "apply": "Add these fee heads",
+      "applied": "Fee heads added"
+    },
+    "staff": {
+      "done": "Staff have been added.",
+      "later": "Once setup is finished, add teachers and office staff and invite them from People → Staff."
+    },
+    "students": {
+      "done": "Students have been added.",
+      "later": "Once setup is finished, add students one by one or import them from Excel under People → Students."
+    },
+    "finish": {
+      "label": "Finish setup",
+      "ready": "The required steps are done. You can finish now and add the rest later.",
+      "missing": "Still required: {steps}. You can also skip for now and come back from the dashboard.",
+      "complete": "Finish setup",
+      "skip": "Skip for now",
+      "skipHint": "Your staff can sign in once you finish or skip. Setup stays available from the dashboard.",
+      "alreadyOpen": "Setup is finished. You can keep working on the remaining steps here at any time.",
+      "toDashboard": "Go to dashboard"
+    }
   }
 }
