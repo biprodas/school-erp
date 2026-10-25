@@ -32,7 +32,7 @@ export default async function AuthLayout({
         <div className="flex w-full max-w-sm flex-col gap-6">
           <a
             href="/"
-            className="flex items-center gap-3 self-center rounded-lg outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+            className="flex items-center gap-3 self-center rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
           >
             <SchoolLogo
               name={name}

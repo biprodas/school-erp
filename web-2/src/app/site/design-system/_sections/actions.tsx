@@ -44,6 +44,8 @@ const BUTTON_VARIANTS = [
   "link",
 ] as const
 const BUTTON_SIZES = ["xs", "sm", "default", "lg"] as const
+// Rendered heights, shared with icon-xs … icon-lg; keep in step with button.tsx.
+const BUTTON_HEIGHTS = { xs: 28, sm: 32, default: 40, lg: 44 } as const
 const ICON_SIZES = ["icon-xs", "icon-sm", "icon", "icon-lg"] as const
 const TOGGLE_SIZES = ["sm", "default", "lg"] as const
 
@@ -77,7 +79,7 @@ export function Actions() {
                   key={size}
                   className="font-mono text-xs text-muted-foreground"
                 >
-                  {size}
+                  {size} · {BUTTON_HEIGHTS[size]}px
                 </code>
               ))}
               {BUTTON_VARIANTS.map((variant) => (
@@ -98,7 +100,7 @@ export function Actions() {
           </Example>
 
           <div className="grid gap-5 md:grid-cols-2">
-            <Example title="Icon sizes · icon-xs, icon-sm, icon, icon-lg">
+            <Example title="Icon sizes · icon-xs 28, icon-sm 32, icon 40, icon-lg 44 px">
               {ICON_SIZES.map((size) => (
                 <Button
                   key={size}

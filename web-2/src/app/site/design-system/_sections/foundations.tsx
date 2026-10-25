@@ -5,6 +5,7 @@ import { ButtonGroup } from "~/components/ui/button-group"
 import { DirectionProvider } from "~/components/ui/direction"
 import { Field, FieldDescription, FieldLabel } from "~/components/ui/field"
 import { Input } from "~/components/ui/input"
+import { NativeSelect, NativeSelectOption } from "~/components/ui/native-select"
 import { cn } from "~/lib/utils"
 import {
   Block,
@@ -134,6 +135,14 @@ const RADII = [
   { name: "rounded-full", className: "rounded-full" },
 ]
 
+// Keep in step with the size variants in components/ui/button.tsx.
+const CONTROL_SIZES = [
+  { size: "xs", px: 28 },
+  { size: "sm", px: 32 },
+  { size: "default", px: 40 },
+  { size: "lg", px: 44 },
+] as const
+
 const TYPE_SCALE = [
   {
     name: "text-xs",
@@ -170,7 +179,7 @@ export function Foundations() {
     <ShowcaseSection
       id="foundations"
       title="Foundations"
-      description="The stock tokens every component is built from: color roles, radius, type, elevation and text direction. Components use these roles, never raw colors, so light and dark stay in step."
+      description="The tokens every component is built from: color roles, radius, control sizes, type, elevation and text direction. Components use these roles, never raw colors, so light and dark stay in step."
     >
       <BlockGrid>
         <Block
@@ -195,7 +204,7 @@ export function Foundations() {
 
         <Block
           name="Radius"
-          when="Derived from one --radius value. Buttons and inputs use lg, cards xl, pills and avatars full."
+          when="Derived from one --radius value (6px). Buttons, inputs and selects use lg (6px), cards and dialogs xl (about 8px), pills and avatars full."
         >
           <Example
             title="rounded-sm … rounded-full"
@@ -217,6 +226,60 @@ export function Foundations() {
                 </code>
               </div>
             ))}
+          </Example>
+        </Block>
+
+        <Block
+          name="Controls"
+          when="Buttons, inputs and selects share one height per size, so they line up in a row: xs 28px, sm 32px, default 40px, lg 44px. Focus turns the border to ring plus a 2px ring at 30%; invalid fields use destructive instead."
+        >
+          <Example
+            title="Heights"
+            frameClassName="flex flex-wrap items-end gap-3"
+          >
+            {CONTROL_SIZES.map((control) => (
+              <div
+                key={control.size}
+                className="flex flex-col items-center gap-2"
+              >
+                <Button size={control.size} variant="outline">
+                  Save
+                </Button>
+                <code className="font-mono text-xs text-muted-foreground">
+                  {control.size} · {control.px}px
+                </code>
+              </div>
+            ))}
+          </Example>
+          <Example
+            title="Default row · input, select and button at 40px"
+            frameClassName="flex flex-wrap items-center gap-3"
+          >
+            <Input
+              aria-label="Student name"
+              placeholder="Student name"
+              className="w-48"
+            />
+            <NativeSelect aria-label="Class" defaultValue="7">
+              <NativeSelectOption value="6">Class 6</NativeSelectOption>
+              <NativeSelectOption value="7">Class 7</NativeSelectOption>
+            </NativeSelect>
+            <Button>Search</Button>
+          </Example>
+          <Example
+            title="Focus and invalid"
+            frameClassName="grid gap-3 sm:grid-cols-2"
+          >
+            <Input
+              aria-label="Focused example"
+              defaultValue="Ayesha Rahman"
+              className="border-ring ring-2 ring-ring/30"
+            />
+            <Input
+              aria-label="Invalid example"
+              aria-invalid
+              defaultValue="01X12"
+            />
           </Example>
         </Block>
 

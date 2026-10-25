@@ -94,7 +94,7 @@ export default function DesignSystemPage() {
               <p className="max-w-2xl text-lg text-muted-foreground">
                 Every component in{" "}
                 <code className="font-mono text-base">src/components/ui</code>,
-                shown with the stock tokens from{" "}
+                shown with the project tokens from{" "}
                 <code className="font-mono text-base">src/app/globals.css</code>
                 . Press <Kbd>D</Kbd> or use the toggle to check dark mode.
               </p>

@@ -79,7 +79,7 @@ function ChildPicker() {
   const locale = useLocale()
   const { children, child, select } = useSelectedChild()
 
-  if (children.isPending) return <Skeleton className="h-9 w-56 rounded-lg" />
+  if (children.isPending) return <Skeleton className="h-10 w-56 rounded-lg" />
   if (!child || !children.data) return null
 
   const placement = (c: typeof child) =>
@@ -108,7 +108,7 @@ function ChildPicker() {
       </label>
       <NativeSelect
         id="child-picker"
-        className="w-full sm:w-80 [&_select]:h-9 [&_select]:font-medium"
+        className="w-full sm:w-80 [&_select]:font-medium"
         value={child.studentId}
         onChange={(event) => select(event.target.value)}
       >
@@ -150,7 +150,7 @@ function TopNav() {
               href={item.href}
               aria-current={item.current ? "page" : undefined}
               className={cn(
-                "flex items-center gap-2 border-b-2 border-transparent px-3 py-2.5 text-sm text-muted-foreground transition-colors outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 [&_svg]:size-4",
+                "flex items-center gap-2 border-b-2 border-transparent px-3 py-2.5 text-sm text-muted-foreground transition-colors outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/30 [&_svg]:size-4",
                 item.current && "border-primary font-medium text-foreground"
               )}
             >
@@ -179,7 +179,7 @@ function BottomNav() {
               href={item.href}
               aria-current={item.current ? "page" : undefined}
               className={cn(
-                "flex min-h-14 flex-col items-center justify-center gap-1 px-1 text-[0.6875rem] leading-tight text-muted-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset [&_svg]:size-5",
+                "flex min-h-14 flex-col items-center justify-center gap-1 px-1 text-[0.6875rem] leading-tight text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:ring-inset [&_svg]:size-5",
                 item.current && "font-medium text-primary"
               )}
             >

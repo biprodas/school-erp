@@ -30,7 +30,7 @@ function Table({ className, ...props }: React.ComponentProps<"table">) {
       ref={container}
       data-slot="table-container"
       tabIndex={scrollable ? 0 : undefined}
-      className="relative w-full overflow-x-auto rounded-md outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+      className="relative w-full overflow-x-auto rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
     >
       <table
         data-slot="table"

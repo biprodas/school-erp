@@ -38,8 +38,8 @@ export function LanguageSwitch({
   return (
     <span
       className={cn(
-        "relative inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium transition-colors",
-        "hover:bg-muted hover:text-foreground has-focus-visible:ring-3 has-focus-visible:ring-ring/50 dark:hover:bg-muted/50",
+        "relative inline-flex h-10 items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium transition-colors",
+        "hover:bg-muted hover:text-foreground has-focus-visible:ring-2 has-focus-visible:ring-ring/30 dark:hover:bg-muted/50",
         "[&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0"
       )}
     >

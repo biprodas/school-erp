@@ -85,7 +85,7 @@
   --chart-5: oklch(0.47 0.025 160);
   /* Single-series bars: inside the dataviz lightness band, C >= 0.10 (validated). */
   --chart-bar: oklch(0.52 0.11 163);
-  --radius: 0.75rem;
+  --radius: 0.375rem;
   --sidebar: oklch(0.985 0.003 106);
   --sidebar-foreground: oklch(0.24 0.035 165);
   --sidebar-primary: oklch(0.39 0.068 163);
