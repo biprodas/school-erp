@@ -12,6 +12,10 @@
       {
         "include": "shared/pdf/templates/**/*.hbs",
         "watchAssets": true
+      },
+      {
+        "include": "i18n/**/*",
+        "watchAssets": true
       }
     ],
     "watchAssets": true,

@@ -66,6 +66,7 @@
     "ioredis": "^5.11.1",
     "joi": "^18.1.2",
     "nestjs-cls": "^7.0.1",
+    "nestjs-i18n": "^10.8.5",
     "nestjs-pino": "^5.3.1",
     "nodemailer": "^10.1.6",
     "passport": "^0.7.0",

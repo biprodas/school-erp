@@ -1,4 +1,5 @@
 import type { TieBreaker } from '~/modules/grading/engine/positions';
+import type { Locale } from '~/shared/locale/locales';
 
 /**
  * The school's settings (PRD 6.24), one typed section each. Stored per
@@ -85,7 +86,7 @@ export interface ProfileSettings {
 }
 
 export interface LocaleSettings {
-  language: 'bn' | 'en';
+  language: Locale;
   dateFormat: DateFormat;
   numerals: 'bn' | 'en';
   /** ISO 4217; money is stored in minor units of it. */

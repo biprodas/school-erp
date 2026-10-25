@@ -11,6 +11,7 @@ import {
 import { IsDateOnly } from '~/common/decorators/is-date-only.decorator';
 import { PaginationQueryDto } from '~/common/dto/pagination-query.dto';
 import { NOTIFICATION_EVENTS } from '~/modules/settings/settings.types';
+import { LOCALES, type Locale } from '~/shared/locale/locales';
 
 export class FilterNotificationDto extends PaginationQueryDto {
   @IsOptional()
@@ -29,8 +30,8 @@ export class SaveTemplateDto {
   channel: 'inApp' | 'email';
 
   @IsDefined()
-  @IsIn(['en', 'bn'])
-  locale: 'en' | 'bn';
+  @IsIn(LOCALES)
+  locale: Locale;
 
   @IsDefined()
   @IsString()

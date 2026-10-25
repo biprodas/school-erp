@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsEmail, IsIn, IsOptional, IsString } from 'class-validator';
+import { LOCALES, type Locale } from '~/shared/locale/locales';
 
 export type TestEmailType = 'activation' | 'password-reset';
 
@@ -27,4 +28,12 @@ export class SendTestEmailDto {
   @IsOptional()
   @IsIn(['activation', 'password-reset'])
   type?: TestEmailType;
+
+  @ApiPropertyOptional({
+    enum: LOCALES,
+    description: "Language of the email (default: the request's, else en)",
+  })
+  @IsOptional()
+  @IsIn(LOCALES)
+  locale?: Locale;
 }

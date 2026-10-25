@@ -61,6 +61,7 @@ import {
 import { DatabaseModule } from './database/database.module';
 import { HealthModule } from '~/shared/health/health.module';
 import { LoggingModule } from '~/shared/logging/logging.module';
+import { AppI18nModule } from '~/shared/locale/i18n.module';
 import { MailModule } from '~/shared/mail/mail.module';
 import { QueueModule } from '~/shared/queue';
 import { StorageModule } from '~/shared/storage/storage.module';
@@ -108,6 +109,7 @@ import { HostsModule } from '~/shared/hosts/app-hosts';
     RequestContextModule,
     DatabaseModule,
     HealthModule,
+    AppI18nModule,
     MailModule,
     HostsModule,
     QueueModule,

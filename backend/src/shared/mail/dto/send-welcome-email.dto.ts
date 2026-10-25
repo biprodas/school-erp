@@ -1,5 +1,12 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsNotEmpty, IsString } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  IsEmail,
+  IsIn,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+} from 'class-validator';
+import { LOCALES, type Locale } from '~/shared/locale/locales';
 
 export class SendWelcomeEmailDto {
   @ApiProperty({
@@ -13,4 +20,12 @@ export class SendWelcomeEmailDto {
   @IsString()
   @IsNotEmpty()
   name: string;
+
+  @ApiPropertyOptional({
+    enum: LOCALES,
+    description: "Language of the email (default: the request's, else en)",
+  })
+  @IsOptional()
+  @IsIn(LOCALES)
+  locale?: Locale;
 }

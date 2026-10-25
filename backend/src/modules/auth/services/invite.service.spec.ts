@@ -51,6 +51,9 @@ describe('InviteService', () => {
       sessions as never,
       { record: jest.fn() } as never,
       mail as unknown as MailService,
+      {
+        getSection: jest.fn().mockResolvedValue({ language: 'hi' }),
+      } as never,
       fakeTenantDataSource(),
       { orgId: 'org-a', orgSlug: 'acme' } as never,
     );
@@ -74,9 +77,9 @@ describe('InviteService', () => {
         type: AuthTokenType.ACTIVATION,
       }),
     );
-    const [to, , rawToken, slug] = mail.sendActivationEmail.mock
+    const [to, , rawToken, slug, locale] = mail.sendActivationEmail.mock
       .calls[0] as string[];
-    expect([to, slug]).toEqual(['rina@school.test', 'acme']);
+    expect([to, slug, locale]).toEqual(['rina@school.test', 'acme', 'hi']);
     expect(rawToken).toMatch(/^[0-9a-f]{64}$/);
     expect(result).toMatchObject({ userId: 'u-1', delivery: 'email' });
   });

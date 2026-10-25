@@ -8,9 +8,10 @@ import {
 } from 'class-validator';
 import { DATE_FORMATS, WEEKDAYS } from '../settings.types';
 import type { DateFormat, Weekday } from '../settings.types';
+import { LOCALES, type Locale } from '~/shared/locale/locales';
 
 export class UpdateLocaleSettingsDto {
-  @IsIn(['bn', 'en']) language?: 'bn' | 'en';
+  @IsIn(LOCALES) language?: Locale;
   @IsIn(DATE_FORMATS) dateFormat?: DateFormat;
   @IsIn(['bn', 'en']) numerals?: 'bn' | 'en';
   @IsISO4217CurrencyCode() currency?: string;

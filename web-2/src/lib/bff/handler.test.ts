@@ -59,7 +59,8 @@ async function request(
 ) {
   const host = init.host ?? "acme.lvh.me:3000"
   const headers: Record<string, string> = { host, ...init.headers }
-  if (init.cookie) headers.cookie = `school_erp_session=${init.cookie}`
+  if (init.cookie)
+    headers.cookie = `school_erp_session=${init.cookie}; locale=hi`
   return new NextRequest(`http://${host}${path}`, {
     method: init.method ?? "GET",
     headers,
@@ -99,6 +100,7 @@ describe("handleBff", () => {
     expect(sent.get("x-tenant-id")).toBe("acme")
     expect(sent.get("cookie")).toBeNull()
     expect(sent.get("accept-language")).toBe("bn")
+    expect(sent.get("x-locale")).toBe("hi")
     expect(sent.get("x-forwarded-for")).toBe("203.0.113.9")
     expect(sent.get("user-agent")).toBe("Mozilla/5.0 (Android 14)")
     expect(sent.get("x-request-id")).toBeTruthy()

@@ -1,3 +1,4 @@
+import { isLocale, LOCALE_COOKIE } from "~/i18n/config"
 import { clientInfo, setClientHeaders } from "~/lib/security/client-ip"
 import type { ResolvedHost } from "~/lib/tenancy/resolve-host"
 import type { Session } from "~/lib/auth/types"
@@ -33,8 +34,9 @@ const PASSED_RESPONSE_HEADERS = [
  * Headers for a call to the backend on behalf of a browser request: the
  * session's bearer token, the school (`x-tenant-id`), the client's address
  * and browser (`x-forwarded-for` with one trustworthy entry, see
- * `lib/security/client-ip.ts`; the backend trusts this server as a proxy) and a
- * request id for the logs.
+ * `lib/security/client-ip.ts`; the backend trusts this server as a proxy), the
+ * viewer's chosen language (`x-locale`, from the `locale` cookie, so emails
+ * the backend sends match it) and a request id for the logs.
  */
 export function backendHeaders(
   incoming: Headers,
@@ -48,6 +50,8 @@ export function backendHeaders(
   }
   if (session) headers.set("authorization", `Bearer ${session.at}`)
   if (host.kind === "school") headers.set("x-tenant-id", host.slug)
+  const locale = cookieValue(incoming.get("cookie"), LOCALE_COOKIE)
+  if (isLocale(locale)) headers.set("x-locale", locale)
 
   setClientHeaders(headers, clientInfo(incoming))
   headers.set("x-forwarded-host", incoming.get("host") ?? host.hostname)
@@ -58,6 +62,15 @@ export function backendHeaders(
     incoming.get("x-request-id") ?? crypto.randomUUID()
   )
   return headers
+}
+
+/** One cookie's value from a `Cookie` header. */
+function cookieValue(header: string | null, name: string): string | undefined {
+  for (const part of header?.split(";") ?? []) {
+    const [key, ...value] = part.trim().split("=")
+    if (key === name) return value.join("=")
+  }
+  return undefined
 }
 
 /** The backend response headers to hand to the browser. */

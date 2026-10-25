@@ -21,7 +21,7 @@ export class MailController {
   @ApiOperation({ summary: 'Send a welcome email' })
   @ResponseMessage('Welcome email dispatched')
   async sendWelcome(@Body() dto: SendWelcomeEmailDto) {
-    await this.mailService.sendWelcomeEmail(dto.email, dto.name);
+    await this.mailService.sendWelcomeEmail(dto.email, dto.name, dto.locale);
 
     return { email: dto.email, name: dto.name };
   }
@@ -36,11 +36,23 @@ export class MailController {
     const type = dto.type ?? 'activation';
 
     if (type === 'password-reset') {
-      await this.mailService.sendPasswordResetEmail(dto.to, name, token);
+      await this.mailService.sendPasswordResetEmail(
+        dto.to,
+        name,
+        token,
+        undefined,
+        dto.locale,
+      );
     } else {
-      await this.mailService.sendActivationEmail(dto.to, name, token, 'demo');
+      await this.mailService.sendActivationEmail(
+        dto.to,
+        name,
+        token,
+        'demo',
+        dto.locale,
+      );
     }
 
-    return { to: dto.to, type };
+    return { to: dto.to, type, locale: dto.locale };
   }
 }

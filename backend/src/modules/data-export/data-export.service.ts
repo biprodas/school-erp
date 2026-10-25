@@ -13,6 +13,7 @@ import { AUDIT_ACTIONS } from '~/modules/audit/audit-actions';
 import { AuditService } from '~/modules/audit/services/audit.service';
 import type { Job } from '~/modules/jobs/entities/job.entity';
 import { JobService } from '~/modules/jobs/services/job.service';
+import { SettingsService } from '~/modules/settings/services/settings.service';
 import { OrgUserService } from '~/modules/users/services/org-user.service';
 import { csvRow } from './csv';
 
@@ -54,6 +55,7 @@ export class DataExportService {
     private readonly mail: MailService,
     private readonly hosts: AppHosts,
     private readonly context: RequestContext,
+    private readonly settings: SettingsService,
     @Inject(TENANT_DATASOURCE) private readonly ds: TenantDataSourceProxy,
   ) {}
 
@@ -174,7 +176,9 @@ export class DataExportService {
       this.hosts.schoolHost(orgSlug),
       `/settings/data-export?job=${jobId}`,
     );
-    await this.mail.sendDataExportReady(me.email, me.name, link);
+    // Sent from a job, which carries no request language.
+    const { language } = await this.settings.getSection('locale');
+    await this.mail.sendDataExportReady(me.email, me.name, link, language);
   }
 
   private async tableCsv(meta: EntityMetadata) {

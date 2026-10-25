@@ -1,0 +1,68 @@
+{
+  "common": {
+    "linkFallback": "If the button doesn't work, copy and paste this URL into your browser:",
+    "open": "Open"
+  },
+  "activation": {
+    "subject": "Activate your account",
+    "greeting": "Hi {name},",
+    "paragraphs": [
+      "Your account has been created. Click the button below to set your password and activate your account. This link is valid for a limited time and can be used only once."
+    ],
+    "button": "Activate account",
+    "footer": "If you didn't expect this email, you can safely ignore it."
+  },
+  "welcome": {
+    "subject": "Welcome to School ERP",
+    "greeting": "Welcome, {name}! 🎉",
+    "paragraphs": [
+      "Your account is all set up and ready to go. We're excited to have you on board. You can now sign in and start exploring everything School ERP has to offer.",
+      "If you have any questions, just reply to this email — we're happy to help."
+    ],
+    "footer": "You're receiving this email because an account was created for you on School ERP."
+  },
+  "emailVerification": {
+    "subject": "Verify your email",
+    "greeting": "Hi {name},",
+    "paragraphs": [
+      "Please confirm your email address to finish setting up your account. Click the button below — this link is valid for a limited time and can be used only once."
+    ],
+    "button": "Verify email",
+    "footer": "If you didn't create an account, you can safely ignore this email."
+  },
+  "passwordReset": {
+    "subject": "Reset your password",
+    "greeting": "Hi {name},",
+    "paragraphs": [
+      "We received a request to reset your password. Click the button below to choose a new one. This link is valid for a limited time and can be used only once."
+    ],
+    "button": "Reset password",
+    "footer": "If you didn't request a password reset, you can safely ignore this email — your password will remain unchanged."
+  },
+  "signupVerification": {
+    "subject": "Confirm your signup for {schoolName}",
+    "greeting": "Hi {name},",
+    "paragraphs": [
+      "Confirm your email address to create <strong>{schoolName}</strong> on School ERP. Your school's address will be <strong>{schoolHost}</strong>. The link is valid for 24 hours and can be used once."
+    ],
+    "button": "Create my school",
+    "footer": "If you didn't sign up a school, you can safely ignore this email. Nothing is created until the link is used."
+  },
+  "findSchool": {
+    "subject": "Your schools on School ERP",
+    "greeting": "Hi {name},",
+    "paragraphs": [
+      "You asked which schools you can sign in to on School ERP. Choose a school to go to its sign-in page."
+    ],
+    "footer": "If you didn't ask for this, you can ignore this email. It only lists schools; nobody can sign in with it."
+  },
+  "dataExport": {
+    "subject": "Your data export is ready",
+    "greeting": "Hi {name},",
+    "paragraphs": [
+      "The full export of your school's data is ready. Open the link below while signed in to download the zip of CSV files. The download link there is short-lived; open the page again for a fresh one."
+    ],
+    "button": "Open the export",
+    "footer": "A school admin asked for this export; it is recorded in the school's audit log."
+  }
+}

@@ -19,6 +19,7 @@ import type {
 } from '~/modules/rbac/system-roles.seed';
 import { AccountRepository } from '~/modules/users/repositories/account.repository';
 import { MemberRepository } from '~/modules/users/repositories/member.repository';
+import { SettingsService } from '~/modules/settings/services/settings.service';
 import { OrgUserService } from '~/modules/users/services/org-user.service';
 import { MailService } from '~/shared/mail/mail.service';
 import { TENANT_DATASOURCE } from '~/tenancy/tenancy.constants';
@@ -113,6 +114,7 @@ export class InviteService {
     private readonly sessions: SessionService,
     private readonly audit: AuditService,
     private readonly mail: MailService,
+    private readonly settings: SettingsService,
     @Inject(TENANT_DATASOURCE) private readonly ds: TenantDataSourceProxy,
     @Inject(REQUEST) private readonly request: RequestWithOrg,
   ) {}
@@ -216,12 +218,20 @@ export class InviteService {
       });
       const email = added.account.email!;
       const slug = this.request.orgSlug!;
+      // Written in the school's language: the inviter's own may not be theirs.
+      const { language } = await this.settings.getSection('locale');
       return {
         userId: added.userId,
         delivery: 'email',
         activationExpiresAt: expiresAt,
         sendMail: () =>
-          this.mail.sendActivationEmail(email, input.name, rawToken, slug),
+          this.mail.sendActivationEmail(
+            email,
+            input.name,
+            rawToken,
+            slug,
+            language,
+          ),
       };
     });
   }

@@ -7,6 +7,7 @@ import { JobHandler, QUEUES } from '~/shared/queue';
 import type { JobContext, JobPayload } from '~/shared/queue';
 import { TenantJobRunner } from '~/tenancy/tenant-job.runner';
 import { Organization } from '~/modules/organizations/entities/organization.entity';
+import { OrgSettingsReader } from '~/modules/settings/services/org-settings.reader';
 import { DeliveryLogRepository } from './repositories/notification.repositories';
 import { EMAIL_DELIVERY_JOB } from './services/notification.service';
 
@@ -21,6 +22,7 @@ export class EmailDeliveryJob {
     private readonly runner: TenantJobRunner,
     private readonly mail: MailService,
     private readonly hosts: AppHosts,
+    private readonly settings: OrgSettingsReader,
     @InjectRepository(Organization)
     private readonly organizations: Repository<Organization>,
   ) {}
@@ -34,6 +36,8 @@ export class EmailDeliveryJob {
       where: { id: payload.orgId! },
     });
     if (!org) return;
+    // The text is already in the school's language; the layout follows it.
+    const locale = (await this.settings.get(org.id)).locale.language;
     await this.runner.run(org.id, async (resolve) => {
       const logs = await resolve(DeliveryLogRepository);
       const log = await logs.findById(payload.data.deliveryLogId);
@@ -46,7 +50,7 @@ export class EmailDeliveryJob {
           log.recipient,
           log.subject,
           log.body ?? '',
-          { link, schoolName: org.name },
+          { link, schoolName: org.name, locale },
         );
         await logs.updateFields(log.id, {
           status: 'sent',

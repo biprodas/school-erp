@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { FileModule } from '~/modules/files/file.module';
 import { JobModule } from '~/modules/jobs/job.module';
 import { Organization } from '~/modules/organizations/entities/organization.entity';
+import { SettingsModule } from '~/modules/settings/settings.module';
 import { UserModule } from '~/modules/users/user.module';
 import { DataExportController } from './data-export.controller';
 import { DataExportJob } from './data-export.job';
@@ -15,6 +16,7 @@ import { DataExportService } from './data-export.service';
     UserModule,
     FileModule,
     JobModule,
+    SettingsModule,
   ],
   controllers: [DataExportController],
   providers: [DataExportService, DataExportJob],

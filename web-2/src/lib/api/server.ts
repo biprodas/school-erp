@@ -1,7 +1,8 @@
 import "server-only"
 
-import { headers } from "next/headers"
+import { cookies, headers } from "next/headers"
 
+import { isLocale, LOCALE_COOKIE } from "~/i18n/config"
 import { clientInfo, setClientHeaders } from "~/lib/security/client-ip"
 import { getRequestHost } from "~/lib/tenancy/request-host"
 import { getSession, type Session } from "~/lib/auth"
@@ -55,6 +56,9 @@ async function send(
   setClientHeaders(requestHeaders, clientInfo(incoming))
   const language = incoming.get("accept-language")
   if (language) requestHeaders.set("accept-language", language)
+  // The viewer's chosen language wins over the browser's on the backend.
+  const locale = (await cookies()).get(LOCALE_COOKIE)?.value
+  if (isLocale(locale)) requestHeaders.set("x-locale", locale)
 
   let payload: BodyInit | undefined
   if (body !== undefined) {
