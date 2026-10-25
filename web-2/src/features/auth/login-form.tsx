@@ -22,11 +22,14 @@ import { loginSchema } from "./schemas"
  */
 export function LoginForm({
   next,
+  identifier = "",
   googleHref,
   pageError,
   notice,
 }: {
   next: string | null
+  /** Prefilled, e.g. from the "Find your school" email's link. */
+  identifier?: string
   /** `/auth/google?next=…`; null hides the button (Google not configured). */
   googleHref: string | null
   pageError: AuthErrorKey | null
@@ -36,7 +39,7 @@ export function LoginForm({
   const { form, state, pending, errorOf, formProps } = useActionForm({
     schema: loginSchema,
     action: signIn,
-    defaultValues: { identifier: "", password: "" },
+    defaultValues: { identifier, password: "" },
   })
   const identifierError = errorOf("identifier")
   const passwordError = errorOf("password")

@@ -45,3 +45,21 @@ const RESERVED = new Set(RESERVED_SLUGS)
 export const isReservedSlug = (slug: string) => RESERVED.has(slug)
 
 export const isValidSlug = (slug: string) => SLUG_PATTERN.test(slug)
+
+export const SLUG_MAX_LENGTH = 40
+
+/**
+ * A slug from a school's name, as the backend's `slugify` makes it:
+ * `Dhaka Ideal School & College` → `dhaka-ideal-school-college`. May still
+ * be too short or reserved; check with `isValidSlug`/`isReservedSlug`.
+ */
+export function slugify(text: string): string {
+  return text
+    .normalize("NFKD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, SLUG_MAX_LENGTH)
+    .replace(/-+$/, "")
+}

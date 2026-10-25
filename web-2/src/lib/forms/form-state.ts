@@ -1,4 +1,4 @@
-import { isApiError, type ApiError } from "~/lib/api/errors"
+import { isApiError } from "~/lib/api/errors"
 
 import type messages from "../../../messages/en.json"
 
@@ -20,6 +20,8 @@ export type FormState =
       fieldErrors?: Partial<Record<string, FieldMessage>>
       /** `lockedUntil` (ISO) for `ACCOUNT_LOCKED`. */
       lockedUntil?: string
+      /** Free alternatives for `SLUG_TAKEN` / `SLUG_RESERVED`. */
+      suggestions?: string[]
     }
 
 export const IDLE: FormState = { status: "idle" }
@@ -30,17 +32,15 @@ export function errorState(error: unknown): FormState {
     console.error("[form] unexpected failure", error)
     return { status: "error", code: "UNKNOWN" }
   }
-  const lockedUntil = lockedUntilOf(error)
+  const { lockedUntil, suggestions } = error.details
   return {
     status: "error",
     code: error.code,
-    ...(lockedUntil && { lockedUntil }),
+    ...(typeof lockedUntil === "string" && { lockedUntil }),
+    ...(Array.isArray(suggestions) && {
+      suggestions: suggestions.filter((s) => typeof s === "string"),
+    }),
   }
-}
-
-function lockedUntilOf(error: ApiError): string | undefined {
-  const value = error.details.lockedUntil
-  return typeof value === "string" ? value : undefined
 }
 
 /** Field errors from a failed zod parse on the server (no JS, or tampering). */

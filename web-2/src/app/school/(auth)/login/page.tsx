@@ -19,6 +19,7 @@ export async function generateMetadata(): Promise<Metadata> {
  * `/login` on a school host. Signed-in users never see it: `src/proxy.ts`
  * sends them home. `?next=` (same-host path) is where they go after
  * signing in; `?error=` comes from the handoff route and Google.
+ * `?identifier=` (from the "Find your school" email) prefills the form.
  */
 export default async function LoginPage({
   searchParams,
@@ -45,6 +46,9 @@ export default async function LoginPage({
     >
       <LoginForm
         next={next}
+        identifier={
+          (await param(searchParams, "identifier"))?.slice(0, 254) ?? ""
+        }
         googleHref={googleHref}
         pageError={queryErrorKey(await param(searchParams, "error"))}
         notice={notice}

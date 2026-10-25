@@ -5,17 +5,13 @@ import { useState } from "react"
 import { Button } from "~/components/ui/button"
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
-import { DEMO_HREF } from "./links"
+import { slugify } from "~/lib/slugs"
+import { DEMO_HREF, SIGNUP_HREF } from "./links"
 import { Container, DisplayHeading } from "./section"
-
-/** "Shapla Model School" -> "shaplamodelschool", the shape of a workspace address. */
-function toSlug(name: string) {
-  return name.toLowerCase().replace(/[^a-z0-9]+/g, "")
-}
 
 export function GetStarted() {
   const [name, setName] = useState("")
-  const slug = toSlug(name) || "yourschool"
+  const slug = slugify(name) || "yourschool"
 
   return (
     <section id="get-started" className="scroll-mt-16 pb-20 sm:pb-24">
@@ -41,11 +37,13 @@ export function GetStarted() {
           </div>
           <form
             className="flex flex-col gap-3 rounded-2xl bg-brand-foreground/8 p-6 ring-1 ring-brand-foreground/10"
-            onSubmit={(event) => event.preventDefault()}
+            action={SIGNUP_HREF}
+            method="get"
           >
             <Label htmlFor="school-name">Your school&apos;s name</Label>
             <Input
               id="school-name"
+              name="schoolName"
               value={name}
               onChange={(event) => setName(event.target.value)}
               placeholder="Shapla Model School"

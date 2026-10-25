@@ -296,7 +296,7 @@ Tick a box when the item is implemented and verified locally (against the docker
 | M1 | Host routing | M0 | Implemented, not committed |
 | M2 | Session layer and BFF | M1 | Implemented, not committed |
 | M3 | School sign-in | M2 | Implemented, not committed |
-| M4 | Signup and find school | M3 | Not started |
+| M4 | Signup and find school | M3 | Implemented, not committed |
 | M5 | Staff app shell | M3, B1 | Not started |
 | M6 | Home dashboards | M5 | Not started |
 | M7 | Onboarding wizard | M5 | Not started |
@@ -509,16 +509,29 @@ Notes:
 
 ### M4. Signup and find school
 
-- [ ] `/signup` form: school name, type, slug, owner name, email, phone, password.
-- [ ] Slug suggested from the school name; an edited slug is checked live (`GET /public/slugs/check`, debounced) and shows why it is taken or reserved.
-- [ ] Submit `POST /public/signup`: `verification_sent` → "Check your email" with resend; `created` → go to `redirectUrl`.
-- [ ] "Sign up with Google" (`intent=signup`): the form continues with the verified email and `googleTicket`, without a password field.
-- [ ] `/signup/verify?token=`: `POST /public/signup/verify`, then go to `redirectUrl` (school `/auth/handoff` → `/onboarding`); clear message for an invalid or used link.
-- [ ] `/find-school` "Enter your email": `POST /public/find-school`, same confirmation always.
-- [ ] `/find-school` "Enter your school's address": `____.<root domain>` input, checked with `GET /public/organizations/by-slug`, redirects to that school's `/login`.
-- [ ] Landing links: `SIGNUP_HREF = "/signup"`, `FIND_SCHOOL_HREF = "/find-school"`; the header's "Sign in" goes to `/find-school`.
+- [x] `/signup` form (`features/signup/signup-form.tsx`): school name, type, slug, owner name, email, phone (optional), password. Rules from `StartSignupDto`: the password needs **8** characters here (6 in the school forms), the phone must pass `normalizePhone` (`lib/phone.ts`, copied from the backend).
+- [x] Slug suggested from the school name; an edited slug is checked live (`GET /public/slugs/check`, debounced) and shows why it is taken or reserved. `slugify` is copied from the backend (`lib/slugs.ts`); invalid and reserved slugs are refused locally without a request. The check goes through the BFF (`api/public/slugs.ts`, TanStack Query, 500 ms debounce, answers kept 30 s) because the backend allows about 10 a minute per address. Taken → alternatives as buttons; a refused submit's suggestions win over a stale live answer.
+- [x] Submit `POST /public/signup`: `verification_sent` → "Check your email" with resend (submits the same form again; "Change details" goes back to it); `created` → go to `redirectUrl`.
+- [x] "Sign up with Google" (`intent=signup`): the form continues with the verified email and `googleTicket`, without a password field. `/signup/google` starts it with the apex as return host; the ticket is decoded on the server only to prefill (the backend verifies it). Both Google routes now share `startGoogle()` in `lib/google.ts`.
+- [x] `/signup/verify?token=`: a "Create my school" button (not on page load: mail scanners open links) → `POST /public/signup/verify`, then `redirectUrl` (school `/auth/handoff` → `/onboarding`); clear message for an invalid or used link. When the address was taken since signup (`SLUG_TAKEN`), it asks for another, with suggestions, and sends it as `slug`.
+- [x] `/find-school` "Enter your email": `POST /public/find-school`, same confirmation always.
+- [x] `/find-school` "Enter your school's address": `____.<root domain>` input, checked with `GET /public/organizations/by-slug` (follows renames), redirects to that school's `/login`. A pasted address (`https://acme.kampasy.com/login`) is cut down to its slug.
+- [x] Landing links: `SIGNUP_HREF = "/signup"`, `FIND_SCHOOL_HREF = "/find-school"`; the header's "Find your school" is the sign-in entry. The landing's "Get started" form now submits to `/signup?schoolName=`, and its address preview uses `slugify` (it showed `shaplamodelschool`, without hyphens).
 
-**Done when:** a new school is created from the apex, the owner verifies through Mailpit and lands signed in on `<slug>.lvh.me:3000/onboarding`; "Find your school" by email sends the list of schools.
+Also done:
+
+- [x] Apex pages share `app/site/(account)/layout.tsx` (logo, language and theme switch, no marketing chrome).
+- [x] `/login?identifier=` prefills the form: the "Find your school" email links there.
+- [x] `FormState` carries `suggestions` for slug refusals; signup codes (`INVALID_SIGNUP_LINK`, `INVALID_GOOGLE_TICKET`, `GOOGLE_EMAIL_MISMATCH`, `GOOGLE_ALREADY_LINKED`) have messages.
+- [x] Backend fix: `POST /public/find-school` answered 500 with BullMQ (`Custom Id cannot contain :` for `find-school:<hash>`; the unit tests use the inline queue, which allows it). The id is now `find-school-<hash>-<minute>`: per minute too, because BullMQ keeps finished jobs and silently drops a new one with the same id, so a second request for the same email would never have been sent.
+- [x] Vitest (215 in all): `slugify`, `normalizePhone`, the signup schema's limits, the address field; the signup form (suggestion from the name until edited, live check and alternatives, nothing asked for reserved slugs, check-your-email and resend, a taken slug on its field, Google prefill without password).
+
+Notes:
+
+- Not tried live: "Sign up with Google" end to end (no Google client configured here; the routes and the ticket prefill are tested in pieces).
+- `GET /api/health` answers 500 on Windows (terminus disk check: `InvalidPathError … should be X:\…: /`). Unrelated to this slice; worth a look before CI on Windows.
+
+**Done when:** a new school is created from the apex, the owner verifies through Mailpit and lands signed in on `<slug>.lvh.me:3000/onboarding`; "Find your school" by email sends the list of schools. *Checked with a Playwright script at 360 px against the docker-compose stack (18 checks): landing form → `/signup` with the name, reserved/taken addresses and alternatives, 8-character password, check-your-email and resend (two emails in Mailpit), verify → signed in on `<slug>.lvh.me:3000/onboarding`, used link, an address taken between signup and verify, find by address (pasted URL) and unknown address, find by email (link to the school's `/login?identifier=`).*
 
 ### M5. Staff app shell
 

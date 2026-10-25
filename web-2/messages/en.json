@@ -53,7 +53,18 @@
     "passwordsDontMatch": "The passwords don't match",
     "emailRequired": "Enter your email",
     "emailInvalid": "Enter a valid email address",
-    "wrongPassword": "Your current password isn't right"
+    "wrongPassword": "Your current password isn't right",
+    "schoolNameLength": "Use 3 to 100 characters",
+    "typeRequired": "Choose the kind of institution",
+    "slugRequired": "Enter an address",
+    "slugInvalid": "Use 3–40 letters, digits or hyphens, starting and ending with a letter or digit",
+    "slugReserved": "This address is reserved. Try another.",
+    "slugTaken": "This address is taken. Try another.",
+    "ownerNameLength": "Use 2 to 100 characters",
+    "phoneInvalid": "Enter a phone number like 01712345678",
+    "signupPasswordTooShort": "Use at least 8 characters",
+    "passwordTooLong": "Use at most 128 characters",
+    "noSchoolAtAddress": "There's no school at this address. Check the spelling."
   },
   "authErrors": {
     "invalidCredentials": "That email or phone number and password don't match an account at this school.",
@@ -74,7 +85,9 @@
     "googleCancelled": "Google sign-in was cancelled.",
     "googleFailed": "Google sign-in didn't work. Please try again.",
     "googleDisabled": "Google sign-in isn't available right now.",
-    "unknown": "Something went wrong. Please try again."
+    "unknown": "Something went wrong. Please try again.",
+    "googleEmailMismatch": "Use the email address you signed in to Google with.",
+    "googleAlreadyLinked": "That Google account is already linked to another account."
   },
   "auth": {
     "login": {
@@ -163,5 +176,72 @@
       "title": "You're signed in",
       "body": "Signed in as {name}. This part of Kampasy is on its way."
     }
+  },
+  "signup": {
+    "metaTitle": "Start your free trial",
+    "title": "Create your school",
+    "description": "30 days of Standard, free, with no card.",
+    "google": "Sign up with Google",
+    "or": "or",
+    "googleVerified": "Google verified {email}. Fill in the rest to create your school.",
+    "schoolSection": "Your school",
+    "schoolName": "School name",
+    "schoolNamePlaceholder": "Shapla Model School",
+    "type": "Kind of institution",
+    "types": {
+      "school": "School",
+      "college": "College",
+      "madrasa": "Madrasa",
+      "coaching": "Coaching centre",
+      "english_medium": "English medium school"
+    },
+    "slugLabel": "School address",
+    "slugHint": "Staff, students and guardians sign in here. You can change it later.",
+    "slug": {
+      "checking": "Checking…",
+      "available": "{host} is free",
+      "taken": "This address is taken.",
+      "reserved": "This address is reserved.",
+      "try": "Try:"
+    },
+    "ownerSection": "About you",
+    "ownerName": "Your name",
+    "email": "Email",
+    "phone": "Mobile number (optional)",
+    "password": "Password",
+    "passwordHint": "At least 8 characters.",
+    "submit": "Create school",
+    "trial": "By creating a school you start a 30-day trial. No payment details needed.",
+    "sentTitle": "Check your email",
+    "sentBody": "We sent a link to {email}. Open it to create your school; it works for 24 hours.",
+    "resend": "Send the email again",
+    "changeDetails": "Change details",
+    "verifyMetaTitle": "Create your school",
+    "verifyTitle": "One more step",
+    "verifyDescription": "Press the button to create your school and sign in.",
+    "createSchool": "Create my school",
+    "newSlugLabel": "Choose another address",
+    "invalidTitle": "This signup link doesn't work",
+    "invalidBody": "It may be used already or expired. Start again; it only takes a minute.",
+    "startAgain": "Start again",
+    "footer": "Kampasy · School management for Bangladesh"
+  },
+  "findSchool": {
+    "metaTitle": "Find your school",
+    "title": "Find your school",
+    "description": "Each school signs in on its own address. Enter it, or let us email it to you.",
+    "addressTitle": "Enter your school's address",
+    "addressDescription": "You'll find it on your invitation or sign-in slip.",
+    "address": "School address",
+    "addressPlaceholder": "yourschool",
+    "addressSubmit": "Continue to sign in",
+    "emailTitle": "Don't know the address?",
+    "emailDescription": "We'll email you a sign-in link for each school you belong to.",
+    "email": "Email",
+    "emailSubmit": "Email me my schools",
+    "sentTitle": "Check your email",
+    "sentBody": "If {email} has an account, we've sent it a link to each of its schools.",
+    "newSchool": "Setting up a new school?",
+    "signup": "Start a free trial"
   }
 }

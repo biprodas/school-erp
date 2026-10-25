@@ -20,6 +20,8 @@ export type AuthErrorKey =
   | "googleCancelled"
   | "googleFailed"
   | "googleDisabled"
+  | "googleEmailMismatch"
+  | "googleAlreadyLinked"
   | "unknown"
 
 type Translate = (key: AuthErrorKey, values?: { time: string }) => string
@@ -66,7 +68,15 @@ export function authErrorKey(code: string): AuthErrorKey {
     // Token links (activation, reset, verification, handoff) answer a
     // plain 400 when they are unknown, used or expired.
     case "BAD_REQUEST":
+    case "INVALID_SIGNUP_LINK":
       return "linkInvalid"
+    // Signup with Google.
+    case "INVALID_GOOGLE_TICKET":
+      return "googleExpired"
+    case "GOOGLE_EMAIL_MISMATCH":
+      return "googleEmailMismatch"
+    case "GOOGLE_ALREADY_LINKED":
+      return "googleAlreadyLinked"
     case "TOO_MANY_REQUESTS":
       return "tooManyAttempts"
     case "NETWORK_ERROR":

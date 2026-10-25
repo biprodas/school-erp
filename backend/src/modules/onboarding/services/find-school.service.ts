@@ -57,8 +57,12 @@ export class FindSchoolService {
       QUEUES.mail,
       FIND_SCHOOL_JOB,
       { orgId: null, actorUserId: null, data: { email: normalized } },
-      // One pending job per address.
-      { jobId: `find-school:${hashToken(normalized)}` },
+      // One job per address and minute (double submits). Per minute because
+      // BullMQ keeps finished jobs and drops a new one with the same id, and
+      // without `:`, which BullMQ refuses in custom ids.
+      {
+        jobId: `find-school-${hashToken(normalized)}-${Math.floor(Date.now() / 60_000)}`,
+      },
     );
   }
 
