@@ -13,7 +13,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "~/components/ui/empty"
-import { pageLabel } from "~/lib/nav"
+import { pageLabel } from "~/features/shell/nav/nav"
 
 type Props = { params: Promise<{ slug: string[] }> }
 

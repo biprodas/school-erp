@@ -14,7 +14,7 @@ const eslintConfig = defineConfig([
   {
     files: ["src/**/*.tsx"],
     ignores: [
-      "src/app/site/_landing/**",
+      "src/features/marketing/**",
       "src/app/site/design-system/**",
       "src/**/*.test.tsx",
     ],
@@ -47,6 +47,49 @@ const eslintConfig = defineConfig([
             "JSXAttribute[name.name=/^(aria-label|aria-description|aria-valuetext|title|placeholder|alt)$/] > Literal[value=/[A-Za-z]/]",
           message:
             "Text people read comes from the message catalogs (useTranslations / getTranslations).",
+        },
+      ],
+    },
+  },
+  // Layers (README "Folder structure"): routes in `app/` compose features;
+  // features build on the shared layers; the shared layers know nothing of
+  // either, so they stay reusable by every feature and host.
+  {
+    files: [
+      "src/components/**",
+      "src/lib/**",
+      "src/hooks/**",
+      "src/config/**",
+      "src/i18n/**",
+    ],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["~/features/*", "~/app/*"],
+              message:
+                "Shared code (components, lib, hooks, config, i18n) must not depend on features or routes. Move the code into the feature, or pass it in.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ["src/features/**"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["~/app/*"],
+              message:
+                "Features must not import from routes. Move the shared piece into the feature or into components/.",
+            },
+          ],
         },
       ],
     },

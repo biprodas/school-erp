@@ -2,10 +2,10 @@ import type { Metadata } from "next"
 import { getTranslations } from "next-intl/server"
 
 import { appConfig } from "~/config/app-config"
-import { AuthCard } from "~/features/auth/auth-card"
-import { LinkProblem } from "~/features/auth/link-problem"
+import { AuthCard } from "~/features/auth/components/auth-card"
+import { LinkProblem } from "~/features/auth/components/link-problem"
 import { param, type SearchParams } from "~/features/auth/search-params"
-import { VerifySignupForm } from "~/features/signup/verify-signup-form"
+import { VerifySignupForm } from "~/features/signup/components/verify-signup-form"
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("signup")

@@ -4,7 +4,7 @@ import type {
   CurriculumTemplate,
   OnboardingChecklist,
   OnboardingStepKey,
-} from "~/api/onboarding"
+} from "~/features/onboarding/api"
 
 import {
   defaultSession,

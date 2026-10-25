@@ -3,16 +3,20 @@ import { NextResponse, type NextRequest } from "next/server"
 import { apiConfig } from "~/config/api-config"
 import { backendUrl, callBackend, readJson } from "~/lib/api/backend"
 import { SESSION_EXPIRED } from "~/lib/api/errors"
-import { clientInfo } from "~/lib/client-ip"
-import { realmOf, resolveHost, type ResolvedHost } from "~/lib/resolve-host"
-import { SESSION_COOKIES } from "~/lib/session/cookie"
+import { clientInfo } from "~/lib/security/client-ip"
+import {
+  realmOf,
+  resolveHost,
+  type ResolvedHost,
+} from "~/lib/tenancy/resolve-host"
+import { SESSION_COOKIES } from "~/lib/auth/cookie"
 import {
   ensureFreshSession,
   type FreshSession,
   type SessionScope,
-} from "~/lib/session/fresh"
-import { applyCookieUpdate } from "~/lib/session/response-cookie"
-import type { Session } from "~/lib/session/types"
+} from "~/lib/auth/fresh"
+import { applyCookieUpdate } from "~/lib/auth/response-cookie"
+import type { Session } from "~/lib/auth/types"
 
 import { backendHeaders, passedHeaders } from "./headers"
 import { isForwardable, passesCsrfCheck } from "./rules"

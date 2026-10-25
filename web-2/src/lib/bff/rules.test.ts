@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import type { ResolvedHost } from "~/lib/resolve-host"
+import type { ResolvedHost } from "~/lib/tenancy/resolve-host"
 
 import { isForwardable, passesCsrfCheck, routeKey } from "./rules"
 

@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import { getTranslations } from "next-intl/server"
 
-import { HomeDashboard } from "~/features/dashboard/home-dashboard"
+import { HomeDashboard } from "~/features/dashboard/components/home-dashboard"
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("nav.labels")

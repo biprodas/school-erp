@@ -1,12 +1,12 @@
 import type { Metadata } from "next"
 import { getTranslations } from "next-intl/server"
 
-import { AuthCard } from "~/features/auth/auth-card"
-import { checkToken } from "~/features/auth/check-token"
-import { LinkProblem } from "~/features/auth/link-problem"
+import { AuthCard } from "~/features/auth/components/auth-card"
+import { checkToken } from "~/features/auth/server/check-token"
+import { LinkProblem } from "~/features/auth/components/link-problem"
 import { param, type SearchParams } from "~/features/auth/search-params"
-import { VerifyEmailForm } from "~/features/auth/verify-email-form"
-import { requireSchoolSlug } from "~/lib/request-host"
+import { VerifyEmailForm } from "~/features/auth/components/verify-email-form"
+import { requireSchoolSlug } from "~/lib/tenancy/request-host"
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("auth.verify")

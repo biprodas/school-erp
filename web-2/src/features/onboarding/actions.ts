@@ -2,12 +2,12 @@
 
 import { redirect } from "next/navigation"
 
-import type { OnboardingChecklist } from "~/api/onboarding"
+import type { OnboardingChecklist } from "~/features/onboarding/api"
 import { isApiError } from "~/lib/api/errors"
 import { backendFetch } from "~/lib/api/server"
 import { errorState, type FormState } from "~/lib/forms/form-state"
-import { requireSchoolSlug } from "~/lib/request-host"
-import { getSession, updateSession } from "~/lib/session"
+import { requireSchoolSlug } from "~/lib/tenancy/request-host"
+import { getSession, updateSession } from "~/lib/auth"
 
 /**
  * "Finish setup" (`POST /onboarding/complete`, every required step done)

@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import { getTranslations } from "next-intl/server"
 
-import { OnboardingWizard } from "~/features/onboarding/onboarding-wizard"
+import { OnboardingWizard } from "~/features/onboarding/components/onboarding-wizard"
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("onboarding")

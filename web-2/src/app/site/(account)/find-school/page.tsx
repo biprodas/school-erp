@@ -12,7 +12,7 @@ import { appConfig } from "~/config/app-config"
 import {
   FindByAddressForm,
   FindByEmailForm,
-} from "~/features/signup/find-school-forms"
+} from "~/features/signup/components/find-school-forms"
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("findSchool")

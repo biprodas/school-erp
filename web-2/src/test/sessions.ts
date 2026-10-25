@@ -1,6 +1,6 @@
-import { seal } from "~/lib/session/seal"
-import type { TokenResponse } from "~/lib/session/tokens"
-import type { Session } from "~/lib/session/types"
+import { seal } from "~/lib/auth/seal"
+import type { TokenResponse } from "~/lib/auth/tokens"
+import type { Session } from "~/lib/auth/types"
 
 export const TEST_SECRET = "test-session-secret-0123456789abcdef"
 

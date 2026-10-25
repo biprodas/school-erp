@@ -1,8 +1,8 @@
 import { getTranslations } from "next-intl/server"
 
 import { BrandMark } from "~/components/brand/brand-mark"
-import { LanguageSwitch } from "~/components/language-switch"
-import { ThemeToggle } from "~/components/theme-toggle"
+import { LanguageSwitch } from "~/components/common/language-switch"
+import { ThemeToggle } from "~/components/common/theme-toggle"
 import { BRAND } from "~/config/brand-config"
 
 /** Sign-in on the admin host: the brand above a centered card. */

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import { normalizePhone } from "~/lib/phone"
-import { slugify } from "~/lib/slugs"
+import { slugify } from "~/lib/tenancy/slugs"
 
 import { addressToSlug, schoolAddressSchema, signupSchema } from "./schemas"
 

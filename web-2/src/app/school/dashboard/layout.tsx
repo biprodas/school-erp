@@ -7,15 +7,19 @@ import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
 import { getLocale } from "next-intl/server"
 
-import { authKeys, type Me } from "~/api/auth"
-import { getSchoolHome, schoolName } from "~/api/public/school-home"
-import { displayName, settingsKeys, type DisplaySettings } from "~/api/settings"
-import { DashboardShell } from "~/components/layout/dashboard-shell"
+import { authKeys, type Me } from "~/features/auth/api"
+import { getSchoolHome, schoolName } from "~/features/school-site/api"
+import {
+  displayName,
+  settingsKeys,
+  type DisplaySettings,
+} from "~/features/settings/api"
+import { DashboardShell } from "~/features/shell/components/dashboard-shell"
 import { isApiError } from "~/lib/api/errors"
 import { backendFetch } from "~/lib/api/server"
-import { requireSchoolSlug } from "~/lib/request-host"
-import { getSession } from "~/lib/session"
-import { isPortalUser, sessionEndedPath } from "~/lib/session/home"
+import { requireSchoolSlug } from "~/lib/tenancy/request-host"
+import { getSession } from "~/lib/auth"
+import { isPortalUser, sessionEndedPath } from "~/lib/auth/home"
 
 /** Set by `SidebarProvider` when the sidebar is opened or collapsed. */
 const SIDEBAR_COOKIE = "sidebar_state"

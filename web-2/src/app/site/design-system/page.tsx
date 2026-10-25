@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 
-import { ThemeToggle } from "~/components/theme-toggle"
+import { ThemeToggle } from "~/components/common/theme-toggle"
 import { Badge } from "~/components/ui/badge"
 import { buttonVariants } from "~/components/ui/button"
 import { Kbd } from "~/components/ui/kbd"

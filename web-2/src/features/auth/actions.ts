@@ -9,10 +9,10 @@ import {
   invalidState,
   type FormState,
 } from "~/lib/forms/form-state"
-import { requireSchoolSlug } from "~/lib/request-host"
-import { clearSession, getSession, setSession } from "~/lib/session"
-import { destinationAfterSignIn, homeFor } from "~/lib/session/home"
-import { withAccessToken, type TokenResponse } from "~/lib/session/tokens"
+import { requireSchoolSlug } from "~/lib/tenancy/request-host"
+import { clearSession, getSession, setSession } from "~/lib/auth"
+import { destinationAfterSignIn, homeFor } from "~/lib/auth/home"
+import { withAccessToken, type TokenResponse } from "~/lib/auth/tokens"
 
 import {
   activateExistingSchema,
@@ -22,7 +22,7 @@ import {
   loginSchema,
   resetPasswordSchema,
 } from "./schemas"
-import { onboardingCompletedAt, startSession } from "./session"
+import { onboardingCompletedAt, startSession } from "./server/session"
 
 // Sign-in steps on a school host (doc/frontend-implementation-plan.md
 // 4.2). Tokens stay on the server: each action calls the backend, keeps

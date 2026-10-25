@@ -10,7 +10,7 @@ import { getTranslations } from "next-intl/server"
 
 import { Badge } from "~/components/ui/badge"
 import { BRAND } from "~/config/brand-config"
-import { getSession } from "~/lib/session"
+import { getSession } from "~/lib/auth"
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("admin")

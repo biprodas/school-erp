@@ -13,14 +13,14 @@ export const apiConfig = {
   },
   /**
    * Reverse proxies in front of this server (`TRUSTED_PROXY_HOPS`); see
-   * `lib/client-ip.ts` for which forwarded address is trusted.
+   * `lib/security/client-ip.ts` for which forwarded address is trusted.
    */
   get trustedProxyHops(): number {
     return serverEnv().TRUSTED_PROXY_HOPS
   },
   /** Unauthenticated `/public/*` calls from server code. */
   publicTimeoutMs: 5_000,
-  /** Host → school lookups in the proxy (`lib/tenant.ts`). */
+  /** Host → school lookups in the proxy (`lib/tenancy/tenant.ts`). */
   tenantLookup: {
     /** How long an answer, "not found" included, is kept. */
     cacheTtlMs: 60_000,

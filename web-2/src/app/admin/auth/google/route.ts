@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server"
 
-import { startGoogle } from "~/lib/google"
-import { safeNext } from "~/lib/safe-next"
+import { startGoogle } from "~/lib/auth/google"
+import { safeNext } from "~/lib/security/safe-next"
 
 /**
  * "Continue with Google" on the admin host. Google comes back through the

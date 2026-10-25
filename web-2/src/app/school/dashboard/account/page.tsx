@@ -1,11 +1,11 @@
 import type { Metadata } from "next"
 import { getTranslations } from "next-intl/server"
 
-import { PageHeader } from "~/components/layout/page-header"
-import { AccountView } from "~/features/account/account-view"
+import { PageHeader } from "~/components/layouts/page-header"
+import { AccountView } from "~/features/account/components/account-view"
 import { queryErrorKey } from "~/features/auth/errors"
 import { param, type SearchParams } from "~/features/auth/search-params"
-import { isGoogleSignInEnabled } from "~/lib/google"
+import { isGoogleSignInEnabled } from "~/lib/auth/google"
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("nav.labels")

@@ -4,7 +4,7 @@ import type { NextConfig } from "next"
 
 import { appConfig } from "./src/config/app-config"
 import { securityConfig } from "./src/config/security-config"
-import { staticSecurityHeaders } from "./src/lib/security-headers"
+import { staticSecurityHeaders } from "./src/lib/security/security-headers"
 
 // next-intl finds its request config through the `next-intl/config` alias.
 // Its `createNextIntlPlugin` only sets this alias unless the experimental

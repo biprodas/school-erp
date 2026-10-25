@@ -41,11 +41,14 @@ export default defineConfig({
     url: baseURL,
     reuseExistingServer: !isCI,
     timeout: 180_000,
-    // The server keeps this environment (API_URL, SESSION_SECRET, …).
+    // The server keeps this environment (API_URL, SESSION_SECRET, …),
+    // except PORT: CI sets it for the backend (:3900), and `next dev` /
+    // `next start` would take it too. The app listens on baseURL's port.
     env: {
       ...(Object.fromEntries(
         Object.entries(process.env).filter(([, v]) => v !== undefined)
       ) as Record<string, string>),
+      PORT: new URL(baseURL).port || "3000",
       ...(production && { ALLOW_INSECURE_HTTP: "true" }),
     },
   },

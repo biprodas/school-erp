@@ -2,12 +2,12 @@ import type { Metadata } from "next"
 import { getTranslations } from "next-intl/server"
 
 import { platformSignIn } from "~/features/admin/actions"
-import { AuthCard } from "~/features/auth/auth-card"
+import { AuthCard } from "~/features/auth/components/auth-card"
 import { queryErrorKey } from "~/features/auth/errors"
-import { LoginForm } from "~/features/auth/login-form"
+import { LoginForm } from "~/features/auth/components/login-form"
 import { param, type SearchParams } from "~/features/auth/search-params"
-import { isGoogleSignInEnabled } from "~/lib/google"
-import { safeNext } from "~/lib/safe-next"
+import { isGoogleSignInEnabled } from "~/lib/auth/google"
+import { safeNext } from "~/lib/security/safe-next"
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("admin.login")
