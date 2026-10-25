@@ -1,6 +1,14 @@
-import { SignedInPlaceholder } from "~/features/auth/signed-in-placeholder"
+import type { Metadata } from "next"
+import { getTranslations } from "next-intl/server"
 
-// Placeholder until the portal shell (M8, doc/frontend-implementation-plan.md).
-export default function Page() {
-  return <SignedInPlaceholder />
+import { ChildHome } from "~/features/portal/child-home"
+
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("portal.nav")
+  return { title: t("home") }
+}
+
+/** The portal home: the selected child's summary (M8). */
+export default function PortalHomePage() {
+  return <ChildHome />
 }

@@ -28,7 +28,39 @@
   },
   "admin": {
     "title": "{brand} admin",
-    "body": "The admin console for the {brand} team is on its way."
+    "login": {
+      "metaTitle": "Sign in",
+      "title": "Sign in",
+      "description": "The platform console, for the team running the service."
+    },
+    "menu": {
+      "label": "Account menu for {name}",
+      "signOut": "Sign out",
+      "signOutEverywhere": "Sign out everywhere"
+    },
+    "home": {
+      "title": "Welcome, {name}",
+      "body": "The {brand} platform console. Its screens arrive in the next slice.",
+      "soon": "Coming soon",
+      "areas": {
+        "schools": {
+          "title": "Schools",
+          "body": "Every school, its plan and status; open a school as support."
+        },
+        "plans": {
+          "title": "Plans",
+          "body": "Plans, their modules and limits."
+        },
+        "users": {
+          "title": "Users",
+          "body": "Accounts across schools and the platform team."
+        },
+        "audit": {
+          "title": "Audit log",
+          "body": "Platform actions and sign-ins."
+        }
+      }
+    }
   },
   "unknownSchool": {
     "title": "We couldn't find this school",
@@ -88,7 +120,8 @@
     "googleDisabled": "Google sign-in isn't available right now.",
     "unknown": "Something went wrong. Please try again.",
     "googleEmailMismatch": "Use the email address you signed in to Google with.",
-    "googleAlreadyLinked": "That Google account is already linked to another account."
+    "googleAlreadyLinked": "That Google account is already linked to another account.",
+    "notPlatformAdmin": "This account can't open the platform console. Sign in with a platform admin account."
   },
   "auth": {
     "login": {
@@ -172,10 +205,6 @@
       "body": "{school}'s administrators are still setting things up. You can start using {brand} as soon as they finish.",
       "checkAgain": "Check again",
       "stillOpen": "Not ready yet. Please check again later."
-    },
-    "signedIn": {
-      "title": "You're signed in",
-      "body": "Signed in as {name}. This part of {brand} is on its way."
     }
   },
   "signup": {
@@ -638,6 +667,54 @@
       "skipHint": "Your staff can sign in once you finish or skip. Setup stays available from the dashboard.",
       "alreadyOpen": "Setup is finished. You can keep working on the remaining steps here at any time.",
       "toDashboard": "Go to dashboard"
+    }
+  },
+  "portal": {
+    "navLabel": "Sections",
+    "nav": {
+      "home": "Home",
+      "attendance": "Attendance",
+      "results": "Results",
+      "fees": "Fees",
+      "notices": "Notices"
+    },
+    "chooseChild": "Choose a child",
+    "placement": "{className}, section {section}",
+    "notEnrolled": "Not enrolled this session",
+    "noChildrenTitle": "No students linked yet",
+    "noChildrenBody": "Your account isn't linked to a student at this school yet. Please ask the school office.",
+    "loadFailed": "This couldn't load.",
+    "retry": "Try again",
+    "comingSoon": "This section is on its way and will appear here once it's ready.",
+    "menu": {
+      "label": "Account menu for {name}",
+      "otherSchools": "Children at other schools",
+      "switchFailed": "Couldn't open that school. Try again.",
+      "changePassword": "Change password",
+      "signOut": "Sign out",
+      "signOutEverywhere": "Sign out everywhere"
+    },
+    "home": {
+      "admissionNumber": "Student ID {number}",
+      "roll": "Roll {roll}",
+      "today": "Today",
+      "notTaken": "Not taken yet",
+      "notTakenHint": "Attendance hasn't been recorded today",
+      "sessionAttendance": "Attendance this session",
+      "noRecords": "No records yet",
+      "daysPresent": "{count, plural, one {Present {present} of {days} day} other {Present {present} of {days} days}}",
+      "dues": "Fees due",
+      "noDues": "Nothing due",
+      "nextDue": "Next: {amount} by {date}",
+      "examsTitle": "Upcoming exams",
+      "examsDescription": "Exams for this class",
+      "noExams": "No exams coming up.",
+      "dateRange": "{start} – {end}",
+      "noticesTitle": "Notices",
+      "noticesDescription": "The latest from the school",
+      "noNotices": "No notices yet.",
+      "pinned": "Pinned",
+      "unread": "(unread)"
     }
   }
 }

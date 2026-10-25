@@ -7,6 +7,7 @@ import { PasswordInput } from "~/components/form/password-input"
 import { SubmitButton } from "~/components/form/submit-button"
 import { useActionForm } from "~/components/form/use-action-form"
 import { buttonVariants } from "~/components/ui/button"
+import type { FormState } from "~/lib/forms/form-state"
 import { FieldSeparator } from "~/components/ui/field"
 import { Input } from "~/components/ui/input"
 
@@ -19,6 +20,8 @@ import { loginSchema } from "./schemas"
 /**
  * One sign-in form for staff, students and guardians: email or phone and
  * password, plus "Continue with Google" when the school's host has it.
+ * The admin host uses it too, with its own action and without the
+ * school-only links.
  */
 export function LoginForm({
   next,
@@ -26,6 +29,8 @@ export function LoginForm({
   googleHref,
   pageError,
   notice,
+  action = signIn,
+  schoolLinks = true,
 }: {
   next: string | null
   /** Prefilled, e.g. from the "Find your school" email's link. */
@@ -34,11 +39,14 @@ export function LoginForm({
   googleHref: string | null
   pageError: AuthErrorKey | null
   notice: string | null
+  action?: (previous: FormState, formData: FormData) => Promise<FormState>
+  /** "Forgot password?" and the note for invited members. */
+  schoolLinks?: boolean
 }) {
   const t = useTranslations("auth.login")
   const { form, state, pending, errorOf, formProps } = useActionForm({
     schema: loginSchema,
-    action: signIn,
+    action,
     defaultValues: { identifier, password: "" },
   })
   const identifierError = errorOf("identifier")
@@ -69,12 +77,14 @@ export function LoginForm({
           label={t("password")}
           error={passwordError}
           action={
-            <a
-              href="/forgot-password"
-              className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-            >
-              {t("forgot")}
-            </a>
+            schoolLinks && (
+              <a
+                href="/forgot-password"
+                className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+              >
+                {t("forgot")}
+              </a>
+            )
           }
         >
           <PasswordInput
@@ -98,7 +108,9 @@ export function LoginForm({
           </a>
         </>
       )}
-      <p className="text-sm text-muted-foreground">{t("invited")}</p>
+      {schoolLinks && (
+        <p className="text-sm text-muted-foreground">{t("invited")}</p>
+      )}
     </>
   )
 }

@@ -94,3 +94,32 @@ export function destinationAfterSignIn(
   }
   return gate(session, target) === null ? target : homeFor(session)
 }
+
+/** Admin-host paths open without a session: sign-in and its handoff. */
+const ADMIN_PUBLIC_PATHS = ["/login", "/auth"]
+
+/**
+ * The admin host's gate: everything but sign-in needs a platform session,
+ * and a signed-in admin on `/login` goes to the console's home.
+ */
+export function adminGate(
+  session: Session | null,
+  path: string
+): string | null {
+  const pathname = new URL(path, "http://gate.invalid").pathname
+  if (!session) {
+    return under(pathname, ADMIN_PUBLIC_PATHS)
+      ? null
+      : `/login?next=${encodeURIComponent(path)}`
+  }
+  return pathname === "/login" ? "/" : null
+}
+
+/** After signing in on the admin host: a same-host `next`, else `/`. */
+export function adminDestination(next: string | null | undefined): string {
+  const target = safeNext(next, "")
+  return !target ||
+    under(new URL(target, "http://gate.invalid").pathname, ADMIN_PUBLIC_PATHS)
+    ? "/"
+    : target
+}

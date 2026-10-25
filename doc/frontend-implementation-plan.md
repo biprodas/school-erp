@@ -300,7 +300,7 @@ Tick a box when the item is implemented and verified locally (against the docker
 | M5 | Staff app shell | M3, B1 | Implemented, not committed |
 | M6 | Home dashboards | M5 | Implemented, not committed |
 | M7 | Onboarding wizard | M5 | Implemented, not committed |
-| M8 | Portal and admin shells | M3 | Not started |
+| M8 | Portal and admin shells | M3 | Implemented, not committed |
 | M9 | Hardening | M3–M8 | Not started |
 
 M1–M3 are the critical path. M4, M5 and M8 can run in parallel once M3 is merged; M6 and M7 once M5 is.
@@ -644,18 +644,35 @@ Details:
 
 Portal (`/student`):
 
-- [ ] Layout with a child picker (`GET /portal/children`); the selected child is kept in the URL.
-- [ ] Home: the child's summary from `GET /portal/children/:id/dashboard`.
-- [ ] Sign-out, and "Other schools" from `GET /portal/schools`, moving with `POST /portal/handoff`.
-- [ ] Mobile-first layout (bottom navigation at 360 px).
+- [x] Layout with a child picker (`GET /portal/children`); the selected child is kept in the URL.
+- [x] Home: the child's summary from `GET /portal/children/:id/dashboard`.
+- [x] Sign-out, and "Other schools" from `GET /portal/schools`, moving with `POST /portal/handoff`.
+- [x] Mobile-first layout (bottom navigation at 360 px).
 
 Admin host:
 
-- [ ] `/login` (platform realm, `POST /platform/auth/login`), session in the `school_erp_admin` cookie.
-- [ ] `/auth/handoff` route handler (`POST /platform/auth/handoff/exchange`) for Google sign-in.
-- [ ] Shell with a placeholder home and sign-out; school hosts never accept the platform cookie.
+- [x] `/login` (platform realm, `POST /platform/auth/login`), session in the `school_erp_admin` cookie.
+- [x] `/auth/handoff` route handler (`POST /platform/auth/handoff/exchange`) for Google sign-in.
+- [x] Shell with a placeholder home and sign-out; school hosts never accept the platform cookie.
 
-**Done when:** a guardian with two children switches between them and, with children at two schools, moves to the other school without signing in again; a super-admin signs in on `admin.lvh.me:3000`.
+Details:
+
+- **Portal layout** (`app/school/student/layout.tsx`, `features/portal/portal-shell.tsx`): prefetches `/auth/me`, `/settings/display` and `/portal/children`. Staff without `portal:access` (403) go to `/dashboard`. The header has the school's logo, name and color, language, theme and the account menu, with the child picker underneath. Sections (Home, Attendance, Results, Fees, Notices) are a bottom bar at phone width and tabs from `sm` up; every link keeps `?child=`. Only Home is built; the rest show "Coming soon" (`student/[...slug]`), and other paths 404.
+- **Child picker**: a native select when there are several children (name, class, section), just the name with one. The choice is `?child=` (`useSelectedChild`, `router.replace`), so it survives reloads and links; an id that isn't one of the user's children falls back to the first (`selectedChild`).
+- **Home** (`child-home.tsx`): the child's name, student ID and roll; tiles for today's attendance (the school's own status label, Bangla when reading Bangla), the session's attendance % ("Present N of M days"), and fees due with the next due date; cards for upcoming exams and the latest notices (pinned, unread in bold). A user with no linked student gets an explanation.
+- **Account menu** (`portal-menu.tsx`): name and contact; "Children at other schools" from `GET /portal/schools`, each school with its children's names, moving with `POST /portal/handoff` (lands on that school's `/student`, signed in); change password, sign out, sign out everywhere.
+- **Admin host**: `/login` reuses the school `LoginForm` with its own action (`features/admin/actions.ts`) and without the school-only links (forgot password, the invite note). `startPlatformSession` stores the session only for platform admins (`user.isAdmin`); for any other account it ends the new backend session again and shows "This account can't open the platform console" (`PLATFORM_ADMIN_REQUIRED`, `?error=not_admin` from Google). `/auth/google` and `/auth/handoff` mirror the school host's routes. The console (`app/admin/(console)`) has a header with brand, language, theme and an account menu (sign out, sign out everywhere), and a placeholder home listing the areas still to come (schools, plans, users, audit).
+- **Admin gate** in the proxy (`adminGate` in `lib/session/home.ts`): without a platform session, only `/login` and `/auth/*` open (others go to `/login?next=`); signed in, `/login` goes to `/`. `adminDestination` keeps a same-host `next` after sign-in.
+- **Fix: server-action redirects across hosts.** Next renders a server action's `redirect()` target in-process, re-sending the action's already rewritten headers to its own origin (`Host: localhost:3000`). The proxy then read that as the marketing host, and the admin's `redirect("/")` after sign-in showed the landing page until a reload. School redirects (`/dashboard`, `/onboarding`) only worked because those paths don't exist in the marketing tree. The proxy now answers any request carrying its own `x-host-kind` header (only that internal fetch does; a forged one gets the same) with an empty 204, so Next falls back to a client navigation that comes back with the right Host.
+- `initials()` moved to `lib/initials.ts` (shared by the three account menus). `SignedInPlaceholder` and its messages are gone: every signed-in home is real now.
+- Vitest (291 in all): admin gate and destination (no open redirect), the proxy's admin gate, the platform/school cookie separation (`[tenant-isolation]`), the empty answer to the in-process redirect fetch; the portal's child selection, active section and `?child=` links; the shell and home with two children (summary, picker options, switching), `?child=`, one child, none, moving to another school (handoff body and redirect), Bangla; the new error code.
+
+Notes:
+
+- The Next.js dev indicator (bottom left, dev only) covers part of the bottom bar's Home item at 360 px; the live script uses the keyboard there.
+- `ThemeToggle`'s hard-coded English aria-label (M5 note) also shows in the portal and the console.
+
+**Done when:** a guardian with two children switches between them and, with children at two schools, moves to the other school without signing in again; a super-admin signs in on `admin.lvh.me:3000`. *Checked with a Playwright script against the docker-compose stack (29 checks) on two schools made through signup and seeded over the API: school A with Rafi (Class 6, present today, ৳1,500 due) and Nusrat (Class 3), school B with Tania (Class 9), one guardian (by phone) at both. Guardian at 360 px: slip password → forced change → `/student`; the picker lists both children, the first by name shown; switching sets `?child=` and the summary, kept across a reload; a school B child in `?child=` falls back; bottom bar at the bottom, no horizontal scroll; Fees keeps the child and says "Coming soon", Home keeps it too; `/dashboard` sends them back to `/student`; Bangla labels and digits; the menu lists school B with Tania, and choosing it lands on school B's `/student` showing Tania, signed in, with school A in its menu. Admin host: a visitor goes to `/login?next=/`; no forgot-password link; a school owner is refused and gets no admin cookie; the seeded super-admin lands on "Welcome, Super Admin" (straight after the action, not only after a reload); the session is the httpOnly `school_erp_admin` cookie and there is no school cookie; `/login` then goes to `/`; the same cookie value under either name on a school host is no session (`/dashboard` → `/login`); sign-out, then `/` asks for sign-in again. No page errors. The M7 script (38 checks) still passes after the proxy change.*
 
 ### M9. Hardening
 

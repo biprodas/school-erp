@@ -31,6 +31,7 @@ describe("authErrorKey", () => {
     expect(authErrorKey("BAD_REQUEST")).toBe("linkInvalid")
     expect(authErrorKey("TOO_MANY_REQUESTS")).toBe("tooManyAttempts")
     expect(authErrorKey("NETWORK_ERROR")).toBe("network")
+    expect(authErrorKey("PLATFORM_ADMIN_REQUIRED")).toBe("notPlatformAdmin")
     expect(authErrorKey("SOMETHING_NEW")).toBe("unknown")
   })
 
@@ -54,6 +55,7 @@ describe("queryErrorKey", () => {
     expect(queryErrorKey("handoff")).toBe("handoff")
     expect(queryErrorKey("google_no_account")).toBe("googleNoAccount")
     expect(queryErrorKey("google_disabled")).toBe("googleDisabled")
+    expect(queryErrorKey("not_admin")).toBe("notPlatformAdmin")
     expect(queryErrorKey("<script>")).toBeNull()
     expect(queryErrorKey("constructor")).toBeNull()
     expect(queryErrorKey(null)).toBeNull()

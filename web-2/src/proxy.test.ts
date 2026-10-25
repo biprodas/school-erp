@@ -58,9 +58,9 @@ describe("proxy", () => {
   })
 
   it("rewrites the admin host into the admin tree", async () => {
-    const response = await proxy(request("http://admin.lvh.me:3000/schools"))
+    const response = await proxy(request("http://admin.lvh.me:3000/login"))
     expect(getRewrittenUrl(response)).toBe(
-      "http://admin.lvh.me:3000/admin/schools"
+      "http://admin.lvh.me:3000/admin/login"
     )
     expect(forwarded(response, "x-host-kind")).toBe("admin")
   })
@@ -165,13 +165,23 @@ describe("proxy", () => {
     const response = await proxy(
       request("http://lvh.me:3000/", {
         "x-tenant-slug": "victim-school",
-        "x-host-kind": "school",
+        "x-request-origin": "http://victim-school.lvh.me:3000",
       })
     )
 
     expect(isRewrite(response)).toBe(true)
     expect(forwarded(response, "x-host-kind")).toBe("site")
     expect(forwarded(response, "x-tenant-slug")).toBeNull()
+    expect(forwarded(response, "x-request-origin")).toBe("http://lvh.me:3000")
+  })
+
+  it("renders nothing for a request that claims a host kind", async () => {
+    // Only Next's in-process redirect fetch carries it legitimately (below).
+    const response = await proxy(
+      request("http://lvh.me:3000/", { "x-host-kind": "school" })
+    )
+    expect(response.status).toBe(204)
+    expect(isRewrite(response)).toBe(false)
   })
 
   it("takes the protocol from X-Forwarded-Proto behind a TLS proxy", async () => {
@@ -313,6 +323,90 @@ describe("proxy sign-in gates", () => {
 
   it("leaves server actions to check for themselves", async () => {
     expect(isRewrite(await visit("/login", {}, "POST"))).toBe(true)
+  })
+})
+
+describe("proxy and server-action redirects", () => {
+  it("answers Next's in-process redirect fetch with nothing, so the client navigates", async () => {
+    // What Next sends after `redirect("/")` in an admin-host action: the
+    // rewritten headers, to its own origin.
+    const response = await proxy(
+      request("http://localhost:3000/", {
+        "x-host-kind": "admin",
+        "x-request-origin": "http://admin.lvh.me:3000",
+      })
+    )
+    expect(response.status).toBe(204)
+    expect(isRewrite(response)).toBe(false)
+    expect(lookupTenant).not.toHaveBeenCalled()
+  })
+})
+
+describe("proxy admin gate", () => {
+  const platform = (overrides: Parameters<typeof sealedSession>[0] = {}) =>
+    sealedSession({
+      realm: "platform",
+      orgId: null,
+      slug: null,
+      user: {
+        id: "admin-1",
+        name: "Super Admin",
+        email: "admin@example.test",
+        phone: null,
+        roles: [],
+        isAdmin: true,
+      },
+      ...overrides,
+    })
+  const visit = (path: string, cookie?: string) =>
+    proxy(
+      new NextRequest(`http://admin.lvh.me:3000${path}`, {
+        headers: { host: "admin.lvh.me:3000", ...(cookie && { cookie }) },
+      })
+    )
+
+  it("sends signed-out visitors to sign in, keeping the path", async () => {
+    expect(getRedirectUrl(await visit("/schools?q=a"))).toBe(
+      "http://admin.lvh.me:3000/login?next=%2Fschools%3Fq%3Da"
+    )
+    expect(isRewrite(await visit("/login"))).toBe(true)
+    expect(isRewrite(await visit("/auth/handoff?code=x"))).toBe(true)
+  })
+
+  it("opens the console with the platform cookie, and sends /login home", async () => {
+    const cookie = `school_erp_admin=${await platform()}`
+    expect(getRewrittenUrl(await visit("/", cookie))).toBe(
+      "http://admin.lvh.me:3000/admin"
+    )
+    expect(getRedirectUrl(await visit("/login", cookie))).toBe(
+      "http://admin.lvh.me:3000/"
+    )
+  })
+
+  it("[tenant-isolation] never takes a school session for a platform one, or the reverse", async () => {
+    // A school cookie on the admin host, even under the admin cookie name.
+    expect(
+      getRedirectUrl(
+        await visit("/", `school_erp_admin=${await sealedSession()}`)
+      )
+    ).toBe("http://admin.lvh.me:3000/login?next=%2F")
+    // The platform cookie on a school host is no session there.
+    lookupTenant.mockResolvedValue({
+      status: "found",
+      slug: "acme",
+      name: "Acme",
+    })
+    const school = await proxy(
+      new NextRequest("http://acme.lvh.me:3000/student", {
+        headers: {
+          host: "acme.lvh.me:3000",
+          cookie: `school_erp_admin=${await platform()}; school_erp_session=${await platform()}`,
+        },
+      })
+    )
+    expect(getRedirectUrl(school)).toBe(
+      "http://acme.lvh.me:3000/login?next=%2Fstudent"
+    )
   })
 })
 

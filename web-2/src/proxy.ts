@@ -19,7 +19,7 @@ import {
   type FreshSession,
   type SessionScope,
 } from "~/lib/session/fresh"
-import { gate } from "~/lib/session/home"
+import { adminGate, gate } from "~/lib/session/home"
 import { applyCookieUpdate } from "~/lib/session/response-cookie"
 
 /**
@@ -40,9 +40,22 @@ import { applyCookieUpdate } from "~/lib/session/response-cookie"
  * token is about to expire, so pages and server actions always render with
  * a working token (server components can't write cookies themselves). On
  * school hosts it then applies the sign-in gates (`lib/session/home.ts`):
- * signed out on a protected page, a forced password change, onboarding.
+ * signed out on a protected page, a forced password change, onboarding;
+ * on the admin host, everything but sign-in needs a platform session.
  */
 export async function proxy(request: NextRequest) {
+  // Next renders a server action's redirect target in-process: it re-sends
+  // the action's request headers, already rewritten by this proxy, to the
+  // server's own origin, so the browser's Host is lost and the page would
+  // come from the wrong host's tree. Such a request still carries the host
+  // headers this proxy set on the first pass, which browsers never send
+  // (one that forges them gets the same answer). Answer it with nothing:
+  // Next then navigates on the client, and that request comes back through
+  // here with the right Host.
+  if (request.headers.has(HOST_KIND_HEADER)) {
+    return new NextResponse(null, { status: 204 })
+  }
+
   // The Host header, not X-Forwarded-Host: a client can set the latter,
   // and our reverse proxy passes Host through unchanged.
   const hostHeader = request.headers.get("host") ?? ""
@@ -75,11 +88,20 @@ export async function proxy(request: NextRequest) {
     }
     case "admin": {
       const scope = { realm: "platform", slug: null } as const
+      const fresh = await freshSession(request, scope)
+      const target = gatedPath(request, fresh, adminGate)
+      if (target) {
+        return applyCookieUpdate(
+          NextResponse.redirect(new URL(target, origin)),
+          scope.realm,
+          fresh.cookie
+        )
+      }
       return rewrite(
         request,
         { kind: "admin", origin },
         `/admin${pathOf(request)}`,
-        { scope, update: (await freshSession(request, scope)).cookie }
+        { scope, update: fresh.cookie }
       )
     }
     case "school": {
@@ -146,10 +168,14 @@ async function freshSession(
  * change, onboarding), or null. Only navigations are redirected: server
  * actions (POST) check the session themselves.
  */
-function gatedPath(request: NextRequest, fresh: FreshSession): string | null {
+function gatedPath(
+  request: NextRequest,
+  fresh: FreshSession,
+  rules: typeof gate = gate
+): string | null {
   if (request.method !== "GET" && request.method !== "HEAD") return null
   const { pathname, search } = request.nextUrl
-  return gate(fresh.session, `${pathname}${search}`)
+  return rules(fresh.session, `${pathname}${search}`)
 }
 
 function rewrite(

@@ -22,6 +22,7 @@ export type AuthErrorKey =
   | "googleDisabled"
   | "googleEmailMismatch"
   | "googleAlreadyLinked"
+  | "notPlatformAdmin"
   | "unknown"
 
 type Translate = (key: AuthErrorKey, values?: { time: string }) => string
@@ -40,6 +41,8 @@ const QUERY_ERRORS: Record<string, AuthErrorKey> = {
   google_failed: "googleFailed",
   google_disabled: "googleDisabled",
   google_already_linked: "googleAlreadyLinked",
+  // The admin host refused a Google sign-in by a non-admin.
+  not_admin: "notPlatformAdmin",
 }
 
 /** The message for a `?error=` value, or null for one we don't know. */
@@ -78,6 +81,8 @@ export function authErrorKey(code: string): AuthErrorKey {
       return "googleEmailMismatch"
     case "GOOGLE_ALREADY_LINKED":
       return "googleAlreadyLinked"
+    case "PLATFORM_ADMIN_REQUIRED":
+      return "notPlatformAdmin"
     case "TOO_MANY_REQUESTS":
       return "tooManyAttempts"
     case "NETWORK_ERROR":

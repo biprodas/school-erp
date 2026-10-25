@@ -2,7 +2,14 @@ import { describe, expect, it } from "vitest"
 
 import { testSession } from "~/test/sessions"
 
-import { destinationAfterSignIn, gate, homeFor, isPortalUser } from "./home"
+import {
+  adminDestination,
+  adminGate,
+  destinationAfterSignIn,
+  gate,
+  homeFor,
+  isPortalUser,
+} from "./home"
 import type { Session } from "./types"
 
 const user = (overrides: Partial<Session["user"]>) =>
@@ -144,4 +151,31 @@ describe("destinationAfterSignIn", () => {
       destinationAfterSignIn({ ...admin, ...open }, "/dashboard/fees")
     ).toBe("/onboarding")
   })
+})
+
+describe("adminGate", () => {
+  const platform = testSession({ realm: "platform", orgId: null, slug: null })
+
+  it("lets only sign-in through without a session", () => {
+    expect(adminGate(null, "/")).toBe("/login?next=%2F")
+    expect(adminGate(null, "/schools?page=2")).toBe(
+      "/login?next=%2Fschools%3Fpage%3D2"
+    )
+    expect(adminGate(null, "/login")).toBeNull()
+    expect(adminGate(null, "/auth/handoff?code=x")).toBeNull()
+  })
+
+  it("sends a signed-in admin from /login to the console", () => {
+    expect(adminGate(platform, "/login")).toBe("/")
+    expect(adminGate(platform, "/schools")).toBeNull()
+  })
+})
+
+it("adminDestination keeps a same-host next, never sign-in itself", () => {
+  expect(adminDestination("/schools?q=a")).toBe("/schools?q=a")
+  expect(adminDestination(null)).toBe("/")
+  expect(adminDestination("/login")).toBe("/")
+  expect(adminDestination("/auth/handoff?code=x")).toBe("/")
+  expect(adminDestination("https://evil.test/")).toBe("/")
+  expect(adminDestination("//evil.test/")).toBe("/")
 })

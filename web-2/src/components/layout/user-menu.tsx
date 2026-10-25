@@ -31,6 +31,7 @@ import {
 } from "~/components/ui/dropdown-menu"
 import { toast } from "~/components/ui/toast"
 import { signOut } from "~/features/auth/sign-out"
+import { initials } from "~/lib/initials"
 import type { SessionUser } from "~/lib/session/types"
 
 import { useRoleLabel } from "./role-label"
@@ -155,12 +156,4 @@ export function UserMenu({ fallbackUser }: { fallbackUser: SessionUser }) {
       </DropdownMenuContent>
     </DropdownMenu>
   )
-}
-
-/** "Rafiq Ahmed" → "RA"; an email or phone → its first character. */
-function initials(name: string) {
-  const words = name.split(/\s+/).filter(Boolean)
-  const letters =
-    words.length > 1 ? words.slice(0, 2).map((w) => w[0]) : [name[0] ?? "?"]
-  return letters.join("").toUpperCase()
 }
