@@ -15,6 +15,7 @@ import { MailService } from '~/shared/mail/mail.service';
 import { AppHosts } from '~/shared/hosts/app-hosts';
 import { User } from '~/modules/users/entities/user.entity';
 import { UserStatus } from '~/modules/users/enums/user-status.enum';
+import { OrganizationType } from '~/modules/organizations/enums/organization-type.enum';
 import { OrganizationService } from '~/modules/organizations/services/organization.service';
 import { SlugService } from '~/modules/organizations/services/slug.service';
 import { PlatformAuthService } from '~/modules/auth/services/platform-auth.service';
@@ -105,7 +106,7 @@ export class SignupService {
 
     const base = {
       schoolName: dto.schoolName.trim(),
-      type: dto.type,
+      type: dto.type ?? OrganizationType.SCHOOL,
       slug: dto.slug,
       ownerName: dto.ownerName.trim(),
       email,

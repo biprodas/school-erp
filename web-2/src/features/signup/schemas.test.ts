@@ -7,22 +7,21 @@ import { addressToSlug, schoolAddressSchema, signupSchema } from "./schemas"
 
 const valid = {
   schoolName: "Shapla Model School",
-  type: "school",
   slug: "shapla-model-school",
-  ownerName: "Rina Akter",
+  ownerName: "John Doe",
   email: "rina@example.com",
-  phone: "",
   password: "long-enough",
   googleTicket: "",
 }
 
+/** The first issue per field, as the form and the action show it. */
 const issues = (value: object) => {
   const result = signupSchema.safeParse(value)
-  return result.success
-    ? {}
-    : Object.fromEntries(
-        result.error.issues.map((i) => [String(i.path[0]), i.message])
-      )
+  const first: Record<string, string> = {}
+  for (const issue of result.success ? [] : result.error.issues) {
+    first[String(issue.path[0])] ??= issue.message
+  }
+  return first
 }
 
 describe("slugify (same as the backend's)", () => {
@@ -55,21 +54,32 @@ describe("signupSchema", () => {
   })
 
   it("follows StartSignupDto's limits", () => {
+    // Each way a name is wrong has its own message.
+    expect(issues({ ...valid, schoolName: " ", ownerName: "" })).toMatchObject({
+      schoolName: "schoolNameRequired",
+      ownerName: "ownerNameRequired",
+    })
     expect(
-      issues({ ...valid, schoolName: "AB", ownerName: "R", type: "zoo" })
+      issues({ ...valid, schoolName: "AB", ownerName: "R" })
     ).toMatchObject({
-      schoolName: "schoolNameLength",
-      ownerName: "ownerNameLength",
-      type: "typeRequired",
+      schoolName: "schoolNameTooShort",
+      ownerName: "ownerNameTooShort",
+    })
+    expect(
+      issues({
+        ...valid,
+        schoolName: "x".repeat(101),
+        ownerName: "x".repeat(101),
+      })
+    ).toMatchObject({
+      schoolName: "schoolNameTooLong",
+      ownerName: "ownerNameTooLong",
     })
     expect(issues({ ...valid, password: "short" })).toEqual({
       password: "signupPasswordTooShort",
     })
     expect(issues({ ...valid, password: "x".repeat(129) })).toEqual({
       password: "passwordTooLong",
-    })
-    expect(issues({ ...valid, phone: "12345" })).toEqual({
-      phone: "phoneInvalid",
     })
   })
 

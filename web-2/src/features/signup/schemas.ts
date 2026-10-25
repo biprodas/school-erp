@@ -1,21 +1,10 @@
 import { z } from "zod/mini"
 
 import type { FieldMessage } from "~/lib/forms/form-state"
-import { normalizePhone } from "~/lib/phone"
 import { isReservedSlug, isValidSlug } from "~/lib/tenancy/slugs"
 
 // Rules from `StartSignupDto` (backend/src/modules/signup/dto/signup.dto.ts)
 // and `FindSchoolDto`. Messages are keys under `validation`.
-
-/** `OrganizationType` in the backend. */
-export const SCHOOL_TYPES = [
-  "school",
-  "college",
-  "madrasa",
-  "coaching",
-  "english_medium",
-] as const
-export type SchoolType = (typeof SCHOOL_TYPES)[number]
 
 /** Signup asks for a longer password than the in-school forms (`MinLength(8)`). */
 export const SIGNUP_PASSWORD_MIN_LENGTH = 8
@@ -42,29 +31,42 @@ export const slug = z.string(message("slugRequired")).check(
   z.refine((value) => !isReservedSlug(value), message("slugReserved"))
 )
 
-const length = (min: number, max: number, key: FieldMessage) =>
+/**
+ * A name between `min` and `max` characters, with its own message for
+ * each way it can be wrong (the first one found is shown).
+ */
+const name = (
+  min: number,
+  max: number,
+  messages: {
+    required: FieldMessage
+    tooShort: FieldMessage
+    tooLong: FieldMessage
+  }
+) =>
   z
-    .string(message(key))
+    .string(message(messages.required))
     .check(
       z.trim(),
-      z.minLength(min, message(key)),
-      z.maxLength(max, message(key))
+      z.minLength(1, message(messages.required)),
+      z.minLength(min, message(messages.tooShort)),
+      z.maxLength(max, message(messages.tooLong))
     )
 
 export const signupSchema = z
   .object({
-    schoolName: length(3, 100, "schoolNameLength"),
-    type: z.enum(SCHOOL_TYPES, message("typeRequired")),
+    schoolName: name(3, 100, {
+      required: "schoolNameRequired",
+      tooShort: "schoolNameTooShort",
+      tooLong: "schoolNameTooLong",
+    }),
     slug,
-    ownerName: length(2, 100, "ownerNameLength"),
+    ownerName: name(2, 100, {
+      required: "ownerNameRequired",
+      tooShort: "ownerNameTooShort",
+      tooLong: "ownerNameTooLong",
+    }),
     email,
-    phone: z.string().check(
-      z.trim(),
-      z.refine(
-        (v) => v === "" || normalizePhone(v) !== null,
-        message("phoneInvalid")
-      )
-    ),
     password: z.string(),
     /** From "Sign up with Google": the email is verified, no password. */
     googleTicket: z.string(),

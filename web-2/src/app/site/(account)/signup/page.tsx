@@ -2,10 +2,10 @@ import type { Metadata } from "next"
 import { getTranslations } from "next-intl/server"
 
 import { appConfig } from "~/config/app-config"
-import { AuthCard } from "~/features/auth/components/auth-card"
 import { queryErrorKey } from "~/features/auth/errors"
 import { param, type SearchParams } from "~/features/auth/search-params"
 import { readGoogleTicket } from "~/features/signup/server/google-ticket"
+import { AccountPanel } from "~/features/signup/components/account-panel"
 import { SignupForm } from "~/features/signup/components/signup-form"
 import { isGoogleSignInEnabled } from "~/lib/auth/google"
 
@@ -30,16 +30,54 @@ export default async function SignupPage({
     !google && (await isGoogleSignInEnabled()) ? "/signup/google" : null
 
   return (
-    <AuthCard title={t("title")} description={t("description")}>
-      <SignupForm
-        rootDomain={appConfig.rootDomain}
-        initialSchoolName={
-          (await param(searchParams, "schoolName"))?.slice(0, 100) ?? ""
-        }
-        google={google}
-        googleHref={googleHref}
-        pageError={queryErrorKey(await param(searchParams, "error"))}
-      />
-    </AuthCard>
+    <>
+      <AccountPanel title={t("title")} description={t("description")}>
+        <SignupForm
+          rootDomain={appConfig.rootDomain}
+          initialSchoolName={
+            (await param(searchParams, "schoolName"))?.slice(0, 100) ?? ""
+          }
+          google={google}
+          googleHref={googleHref}
+          pageError={queryErrorKey(await param(searchParams, "error"))}
+        />
+      </AccountPanel>
+      <p className="text-center text-sm text-balance text-muted-foreground">
+        {t.rich("agree", {
+          terms: (chunks) => <LegalLink href="/terms">{chunks}</LegalLink>,
+          privacy: (chunks) => <LegalLink href="/privacy">{chunks}</LegalLink>,
+        })}
+      </p>
+      {/* Wider screens have this in the header. */}
+      <p className="text-center text-sm text-muted-foreground sm:hidden">
+        {t("haveSchool")}{" "}
+        <a
+          href="/find-school"
+          className="rounded-sm font-medium text-foreground underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/30"
+        >
+          {t("findSchool")}
+        </a>
+      </p>
+    </>
+  )
+}
+
+/** Opens in a new tab, so a half-filled form isn't lost. */
+function LegalLink({
+  href,
+  children,
+}: {
+  href: string
+  children: React.ReactNode
+}) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener"
+      className="rounded-sm text-foreground underline underline-offset-4 outline-none hover:text-primary focus-visible:ring-2 focus-visible:ring-ring/30"
+    >
+      {children}
+    </a>
   )
 }

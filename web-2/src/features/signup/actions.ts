@@ -67,16 +67,14 @@ export async function startSignup(
   await requireSite()
   const parsed = signupSchema.safeParse({
     schoolName: text(formData, "schoolName"),
-    type: text(formData, "type"),
     slug: text(formData, "slug"),
     ownerName: text(formData, "ownerName"),
     email: text(formData, "email"),
-    phone: text(formData, "phone"),
     password: text(formData, "password"),
     googleTicket: text(formData, "googleTicket"),
   })
   if (!parsed.success) return invalidState(parsed.error)
-  const { phone, password, googleTicket, ...rest } = parsed.data
+  const { password, googleTicket, ...rest } = parsed.data
 
   let answer: SignupAnswer
   try {
@@ -85,7 +83,6 @@ export async function startSignup(
       session: null,
       body: {
         ...rest,
-        ...(phone && { phone }),
         ...(googleTicket ? { googleTicket } : { password }),
       },
     })

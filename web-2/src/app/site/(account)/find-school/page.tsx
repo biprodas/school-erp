@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import { getTranslations } from "next-intl/server"
 
 import { appConfig } from "~/config/app-config"
+import { AccountPanel } from "~/features/signup/components/account-panel"
 import { FindByAddressForm } from "~/features/signup/components/find-school-forms"
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -19,11 +20,7 @@ export default async function FindSchoolPage() {
 
   return (
     <>
-      <div className="flex flex-col gap-6 rounded-xl border p-6 sm:p-8">
-        <div className="flex flex-col gap-2">
-          <h1 className="font-display text-3xl font-semibold">{t("title")}</h1>
-          <p className="text-muted-foreground">{t("description")}</p>
-        </div>
+      <AccountPanel title={t("title")} description={t("description")}>
         <div className="flex flex-col gap-4">
           <FindByAddressForm rootDomain={appConfig.rootDomain} />
           <p className="text-center text-sm text-muted-foreground">
@@ -36,7 +33,7 @@ export default async function FindSchoolPage() {
             </a>
           </p>
         </div>
-      </div>
+      </AccountPanel>
       <p className="text-center text-sm text-muted-foreground">
         {t("newSchool")}{" "}
         <a

@@ -2,9 +2,9 @@ import type { Metadata } from "next"
 import { getTranslations } from "next-intl/server"
 
 import { appConfig } from "~/config/app-config"
-import { AuthCard } from "~/features/auth/components/auth-card"
 import { LinkProblem } from "~/features/auth/components/link-problem"
 import { param, type SearchParams } from "~/features/auth/search-params"
+import { AccountPanel } from "~/features/signup/components/account-panel"
 import { VerifySignupForm } from "~/features/signup/components/verify-signup-form"
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -36,8 +36,8 @@ export default async function VerifySignupPage({
   }
 
   return (
-    <AuthCard title={t("verifyTitle")} description={t("verifyDescription")}>
+    <AccountPanel title={t("verifyTitle")} description={t("verifyDescription")}>
       <VerifySignupForm token={token} rootDomain={appConfig.rootDomain} />
-    </AuthCard>
+    </AccountPanel>
   )
 }

@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { render, screen } from "@testing-library/react"
+import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { NextIntlClientProvider } from "next-intl"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
@@ -47,6 +47,9 @@ function renderForm(
 }
 
 const slugInput = () => screen.getByLabelText("School address")
+/** Opens the address field, folded into a line until "Change". */
+const changeSlug = () =>
+  userEvent.click(screen.getByRole("button", { name: "Change" }))
 
 beforeEach(() => {
   startSignup.mockReset()
@@ -59,28 +62,88 @@ afterEach(() => {
 })
 
 async function fillOwner() {
-  await userEvent.type(screen.getByLabelText("Your name"), "Rina Akter")
+  await userEvent.type(screen.getByLabelText("Your name"), "John Doe")
   await userEvent.type(screen.getByLabelText("Email"), "rina@example.com")
   await userEvent.type(screen.getByLabelText("Password"), "long-enough")
 }
 
 describe("SignupForm", () => {
+  it("checks a field once something is typed in it, not when it's only visited", async () => {
+    renderForm()
+    const name = screen.getByLabelText("School name")
+    await userEvent.click(name)
+    await userEvent.click(screen.getByLabelText("Your name"))
+    await userEvent.tab()
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument()
+
+    await userEvent.type(name, "Sh")
+    expect(
+      await screen.findByText("School name needs at least 3 characters")
+    ).toBeInTheDocument()
+    await userEvent.type(name, "a")
+    await waitFor(() =>
+      expect(
+        screen.queryByText("School name needs at least 3 characters")
+      ).not.toBeInTheDocument()
+    )
+    await userEvent.clear(name)
+    expect(
+      await screen.findByText("School name is required")
+    ).toBeInTheDocument()
+    // The other fields were never typed in, so they stay quiet.
+    expect(screen.queryByText("Your name is required")).not.toBeInTheDocument()
+  })
+
   it("suggests the address from the name until it is edited", async () => {
     renderForm({ initialSchoolName: "Shapla School" })
-    expect(slugInput()).toHaveValue("shapla-school")
+    expect(screen.getByText("shapla-school.lvh.me")).toBeInTheDocument()
+    expect(slugInput()).not.toBeVisible()
 
     const name = screen.getByLabelText("School name")
     await userEvent.type(name, " Dhaka")
-    expect(slugInput()).toHaveValue("shapla-school-dhaka")
+    expect(screen.getByText("shapla-school-dhaka.lvh.me")).toBeInTheDocument()
 
+    await changeSlug()
+    expect(slugInput()).toBeVisible()
+    expect(slugInput()).toHaveFocus()
+    expect(slugInput()).toHaveValue("shapla-school-dhaka")
     await userEvent.clear(slugInput())
     await userEvent.type(slugInput(), "shapla")
     await userEvent.type(name, "!")
     expect(slugInput()).toHaveValue("shapla")
   })
 
+  it("says only when the folded address is taken, and offers alternatives", async () => {
+    renderForm({ initialSchoolName: "Shapla School" })
+    await new Promise((r) => setTimeout(r, 700))
+    expect(screen.queryByText(/is free/)).not.toBeInTheDocument()
+
+    const name = screen.getByLabelText("School name")
+    await userEvent.clear(name)
+    await userEvent.type(name, "Taken")
+    expect(
+      await screen.findByText("This address is taken.", {}, { timeout: 2000 })
+    ).toBeInTheDocument()
+    await userEvent.click(screen.getByRole("button", { name: "taken-bd" }))
+    expect(screen.getByText("taken-bd.lvh.me")).toBeInTheDocument()
+    expect(slugInput()).not.toBeVisible()
+  })
+
+  it("folds the address back into its line with Done", async () => {
+    renderForm({ initialSchoolName: "Shapla School" })
+    await changeSlug()
+    await userEvent.clear(slugInput())
+    await userEvent.type(slugInput(), "shapla")
+    await userEvent.click(screen.getByRole("button", { name: "Done" }))
+
+    expect(slugInput()).not.toBeVisible()
+    expect(screen.getByText("shapla.lvh.me")).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Change" })).toHaveFocus()
+  })
+
   it("checks the address live and offers alternatives", async () => {
     renderForm()
+    await changeSlug()
     await userEvent.type(slugInput(), "taken")
 
     expect(
@@ -95,6 +158,7 @@ describe("SignupForm", () => {
 
   it("doesn't ask the backend about addresses the rules refuse", async () => {
     renderForm()
+    await changeSlug()
     await userEvent.type(slugInput(), "admin")
     await new Promise((r) => setTimeout(r, 700))
     expect(fetchMock).not.toHaveBeenCalled()
@@ -112,7 +176,8 @@ describe("SignupForm", () => {
     expect(await screen.findByText("Check your email")).toBeInTheDocument()
     const data = startSignup.mock.calls[0][1]
     expect(data.get("slug")).toBe("shapla-school")
-    expect(data.get("type")).toBe("school")
+    // The kind of institution is asked in onboarding.
+    expect(data.has("type")).toBe(false)
 
     await userEvent.click(
       screen.getByRole("button", { name: "Send the email again" })
@@ -137,6 +202,8 @@ describe("SignupForm", () => {
     expect(
       screen.getByRole("button", { name: "shapla-school-bd" })
     ).toBeInTheDocument()
+    // The refused address opens its field, ready to change.
+    expect(slugInput()).toBeVisible()
   })
 
   it("continues after Google without a password", () => {

@@ -116,9 +116,9 @@ describe("LoginForm", () => {
     await userEvent.click(screen.getByRole("button", { name: "Sign in" }))
 
     expect(
-      await screen.findByText("Enter your email or phone number")
+      await screen.findByText("Email or phone number is required")
     ).toBeInTheDocument()
-    expect(screen.getByText("Enter a password")).toBeInTheDocument()
+    expect(screen.getByText("Password is required")).toBeInTheDocument()
     expect(screen.getByLabelText("Email or phone")).toHaveAttribute(
       "aria-invalid",
       "true"
@@ -132,19 +132,19 @@ describe("LoginForm", () => {
     await userEvent.click(screen.getByLabelText("Email or phone"))
     await userEvent.tab()
     expect(
-      screen.queryByText("Enter your email or phone number")
+      screen.queryByText("Email or phone number is required")
     ).not.toBeInTheDocument()
 
     await userEvent.click(screen.getByRole("button", { name: "Sign in" }))
     expect(
-      await screen.findByText("Enter your email or phone number")
+      await screen.findByText("Email or phone number is required")
     ).toBeInTheDocument()
 
     await userEvent.type(screen.getByLabelText("Email or phone"), "0")
     expect(
-      screen.queryByText("Enter your email or phone number")
+      screen.queryByText("Email or phone number is required")
     ).not.toBeInTheDocument()
-    expect(screen.getByText("Enter a password")).toBeInTheDocument()
+    expect(screen.getByText("Password is required")).toBeInTheDocument()
   })
 
   it("shows an error from the URL, and the Google button when enabled", () => {

@@ -4,6 +4,7 @@ import { In, Like } from 'typeorm';
 import { hashPassword } from '~/common/identity/password';
 import { Organization } from '~/modules/organizations/entities/organization.entity';
 import { OrganizationStatus } from '~/modules/organizations/enums/organization-status.enum';
+import { OrganizationType } from '~/modules/organizations/enums/organization-type.enum';
 import { Membership } from '~/modules/memberships/entities/membership.entity';
 import { MembershipRole } from '~/modules/memberships/enums/membership-role.enum';
 import { MembershipStatus } from '~/modules/memberships/enums/membership-status.enum';
@@ -146,6 +147,18 @@ describe('Self-serve signup (e2e)', () => {
     // The link works once.
     const reused = await verify({ token: tokenSentTo(email('a')) }).expect(400);
     expect(error(reused)).toMatchObject({ code: 'INVALID_SIGNUP_LINK' });
+  });
+
+  it('makes a school when the kind of institution is left out', async () => {
+    const { type: _type, ...body } = form('kind');
+    await start(body).expect(202);
+    const done = data<Completed>(
+      await verify({ token: tokenSentTo(email('kind')) }).expect(200),
+    );
+    const org = await e.rootDs
+      .getRepository(Organization)
+      .findOneByOrFail({ id: done.orgId });
+    expect(org.type).toBe(OrganizationType.SCHOOL);
   });
 
   it('refuses reserved and taken slugs with suggestions', async () => {

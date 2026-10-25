@@ -39,8 +39,15 @@ export interface OnboardingChecklist {
   completedAt: string | null
 }
 
-export type SchoolType =
-  "school" | "college" | "madrasa" | "coaching" | "english_medium"
+/** `OrganizationType` in the backend; chosen in the profile step. */
+export const SCHOOL_TYPES = [
+  "school",
+  "college",
+  "madrasa",
+  "coaching",
+  "english_medium",
+] as const
+export type SchoolType = (typeof SCHOOL_TYPES)[number]
 
 export interface CurriculumTemplate {
   code: string

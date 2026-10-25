@@ -108,7 +108,7 @@ async function signInReady(page: Page) {
   await identifier.fill("x")
   await page.getByRole("button", { name: "Sign in" }).click()
   // Client-side validation (only once hydrated) flags the empty password.
-  await expect(page.getByText("Enter a password")).toBeVisible({
+  await expect(page.getByText("Password is required")).toBeVisible({
     timeout: 30_000,
   })
 }

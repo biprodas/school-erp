@@ -20,9 +20,13 @@ export class StartSignupDto {
   @Length(3, 100)
   schoolName: string;
 
-  @IsDefined()
+  /**
+   * Optional: the web signup leaves it to onboarding's profile step.
+   * Defaults to `school`.
+   */
+  @IsOptional()
   @IsEnum(OrganizationType)
-  type: OrganizationType;
+  type?: OrganizationType;
 
   @IsDefined()
   @IsString()

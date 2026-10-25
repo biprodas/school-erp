@@ -1,6 +1,6 @@
 import { onHost, uniqueId } from "./support/env"
 import { linkFromMail } from "./support/mail"
-import { createSchool, ownerPage, settle, uniquePhone } from "./support/school"
+import { createSchool, ownerPage, settle } from "./support/school"
 import { expect, expectAccessible, test } from "./support/test"
 
 // Section 9: owner signup → onboarding → dashboard, all through the UI.
@@ -16,14 +16,14 @@ test("an owner signs up, verifies by email, sets the school up and lands on the 
   await settle(page)
   await expectAccessible(page)
   await page.locator("#schoolName").fill(`Shapla ${slug}`)
-  await page.locator("#type").selectOption("school")
+  // The address follows the name; "Change" opens it to pick our own.
+  await page.getByRole("button", { name: "Change" }).click()
   await page.locator("#slug").fill(slug)
   await expect(
     page.getByText(`${slug}.`, { exact: false }).first()
   ).toBeVisible()
   await page.locator("#ownerName").fill("Owner Rahman")
   await page.locator("#email").fill(email)
-  await page.locator("#phone").fill(uniquePhone())
   await page.locator("#password").fill("Owner-pass-123")
   await page.getByRole("button", { name: "Create school" }).click()
 

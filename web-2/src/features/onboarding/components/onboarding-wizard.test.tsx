@@ -142,6 +142,7 @@ function backend(state: { checklist: OnboardingChecklist }) {
         },
       },
       "PATCH /api/settings/profile": {},
+      "PATCH /api/settings/organization": {},
       "POST /api/academic-years": {
         id: "y1",
         name: body?.name,
@@ -283,6 +284,38 @@ describe("OnboardingWizard", () => {
       expect(stepButton(/Academic session/).getAttribute("aria-expanded")).toBe(
         "true"
       )
+    )
+  })
+
+  it("asks the kind of institution and saves a change on the organization", async () => {
+    renderWizard()
+    const panel = await screen.findByRole("region", { name: "School profile" })
+    const kind = await within(panel).findByLabelText("Kind of institution")
+    expect(kind).toHaveValue("madrasa")
+
+    await userEvent.selectOptions(kind, "college")
+    await userEvent.type(within(panel).getByLabelText("District"), "Dhaka")
+    await userEvent.type(within(panel).getByLabelText("Phone"), "01712345678")
+    await userEvent.click(
+      within(panel).getByRole("button", { name: "Save and continue" })
+    )
+
+    await waitFor(() =>
+      expect(
+        api.calls
+          .filter((c) => c.method === "PATCH")
+          .map((c) => [c.path, c.body])
+      ).toEqual([
+        ["/api/settings/organization", { type: "college" }],
+        [
+          "/api/settings/profile",
+          {
+            address: { line1: null, district: "Dhaka" },
+            phone: "01712345678",
+            email: null,
+          },
+        ],
+      ])
     )
   })
 

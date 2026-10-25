@@ -3,10 +3,12 @@
 | Field        | Value                                                  |
 | ------------ | ------------------------------------------------------ |
 | Product      | School ERP: multi-tenant school management SaaS       |
-| Version      | 1.5                                                    |
-| Date         | 2026-10-18                                             |
+| Version      | 1.6                                                    |
+| Date         | 2026-10-26                                             |
 | Status       | Draft                                                  |
 | Market focus | Bangladesh first, built so it can go global            |
+
+**Changes in 1.6:** Signup asks only for the school name, its address, and the owner's name, email and password; the kind of institution moves to the setup wizard's profile step, and the owner's phone to Phase 1b (6.2, 7.1).
 
 **Changes in 1.5:** Google sign-in moves into Phase 1a (6.3); Microsoft sign-in is dropped.
 
@@ -225,7 +227,7 @@ The Owner is not a separate role: the owner holds the OWNER membership with scho
 ### 5.2 School lifecycle
 
 ```
-Signup → Email/phone verification → Provisioning (default roles, settings, sample data optional)
+Signup → Email verification → Provisioning (default roles, settings, sample data optional)
       → Setup wizard → Trial (30 days) → Subscription (paid) ⇄ Past-due (grace 14 days)
       → Suspended (read-only, 30 days) → Archived (data export available 90 days) → Deleted
 ```
@@ -291,12 +293,12 @@ Each module lists its purpose, priority (**P0** = MVP must-have, delivered acros
 
 **Features**
 
-- Self-serve signup on the product domain: school name, type (school/college/madrasa/coaching/English-medium), owner name, email, phone, slug. The slug is suggested from the school name, editable, and checked for availability live.
-- Verification by email link in Phase 1a; an SMS OTP for the owner's phone is added in Phase 1b. The school is created only after verification, then the owner is moved to the school's host already signed in and lands on the setup wizard.
+- Self-serve signup on the product domain: school name, slug, owner name, email and password. The slug is suggested from the school name and shown as one line ("Change" to edit), and checked for availability live. The kind of institution (school/college/madrasa/coaching/English-medium) is asked in the setup wizard's profile step, and defaults to school. Signup doesn't ask for a phone; adding one to the account (with an SMS OTP) comes with Phase 1b.
+- Verification by email link. The school is created only after verification, then the owner is moved to the school's host already signed in and lands on the setup wizard.
 - Until the owner completes (or skips) the wizard, school admins are sent to it on sign-in and other users see a "school is being set up" page.
 - **Find your school:** a user enters their email (or, from Phase 1b, their phone) and receives sign-in links for every school where they have an active membership. They can also type the school's address. A public directory search is opt-in per school (P1).
 - A guided setup wizard with a progress checklist. Each step can be skipped and resumed:
-  1. School profile: logo, address, EIIN, contact, principal's signature, currency, time zone, language, week start, weekend days.
+  1. School profile: kind of institution, logo, address, EIIN, contact, principal's signature, currency, time zone, language, week start, weekend days.
   2. Academic session: start and end dates.
   3. Shifts (morning/day), classes, sections for the session, groups (Science/Commerce/Humanities).
   4. Subjects and their class assignment, starting from templates (NCTB curriculum, Cambridge, madrasa).
@@ -847,7 +849,7 @@ These end-to-end flows cut across modules. They drive screen design, API design 
 
 ### 7.1 Onboard a school
 
-1. On the product domain, the owner signs up with the school name, type, email, phone and slug, and verifies by email link (plus an SMS OTP from Phase 1b).
+1. On the product domain, the owner signs up with the school name, slug, their name, email and password, and verifies by email link.
 2. The platform provisions the organization in one transaction: default roles, settings and the owner's admin membership.
 3. The owner is moved to `<slug>.<product-domain>` already signed in and works through the setup wizard (6.2): profile, session, shifts, classes, sections, subjects, grading, fee heads.
 4. The owner adds staff to the staff directory and invites them. Staff activate their accounts from the invite link on the school's host.

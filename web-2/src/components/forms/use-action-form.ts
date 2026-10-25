@@ -37,11 +37,13 @@ export function useActionForm<Input extends FieldValues, Output>({
   action: Action
   defaultValues: DefaultValues<Input>
   /**
-   * When fields are first checked: on leaving them (`onTouched`) or only
-   * once the form is submitted (`onSubmit`). Either way, a field with an
-   * error is checked again as it changes, so the error clears while typing.
+   * When fields are first checked: on leaving them (`onTouched`), as they
+   * are typed in (`onChange`; a field that is only focused and left stays
+   * quiet), or only once the form is submitted (`onSubmit`). Either way, a
+   * field with an error is checked again as it changes, so the error clears
+   * while typing.
    */
-  mode?: "onTouched" | "onSubmit"
+  mode?: "onTouched" | "onChange" | "onSubmit"
 }) {
   // react-hook-form keeps errors in a mutable `formState`; the React
   // Compiler would memoize reads of it and show stale (missing) errors.

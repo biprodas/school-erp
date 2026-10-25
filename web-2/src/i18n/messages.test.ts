@@ -56,8 +56,9 @@ describe("message catalogs", () => {
         "common.languages.en",
         "findSchool.addressPlaceholder",
         "findSchool.emailPlaceholder",
+        "signup.slugPlaceholder",
+        "signup.emailPlaceholder",
         "signup.schoolNamePlaceholder",
-        "signup.phonePlaceholder",
         "auth.login.emailPlaceholder",
         "auth.forgot.emailPlaceholder",
       ])

@@ -4,14 +4,19 @@ import { useQuery } from "@tanstack/react-query"
 import { useTranslations } from "next-intl"
 import { useState, type FormEvent } from "react"
 
+import { SCHOOL_TYPES, type SchoolType } from "~/features/onboarding/api"
 import {
   schoolSettingsQuery,
   settingsKeys,
+  updateOrganizationSettings,
   updateProfileSettings,
+  type ProfilePatch,
   type SchoolSettings,
 } from "~/features/settings/api"
 import { ariaFor, FormField } from "~/components/forms/form-field"
+import { FieldDescription } from "~/components/ui/field"
 import { Input } from "~/components/ui/input"
+import { NativeSelect, NativeSelectOption } from "~/components/ui/native-select"
 import { Skeleton } from "~/components/ui/skeleton"
 
 import { StepActions, StepLoadFailed } from "./step-parts"
@@ -20,8 +25,10 @@ import { useSetupAction } from "../use-setup-action"
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 /**
- * Step 1: where the school is and how to reach it. Done once it has an
- * address line or district, and a phone or email (`OnboardingService`).
+ * Step 1: what kind of institution it is (signup doesn't ask; it orders
+ * the curriculum templates), where it is and how to reach it. Done once
+ * it has an address line or district, and a phone or email
+ * (`OnboardingService`).
  */
 export function ProfileStep({ onContinue }: { onContinue: () => void }) {
   const settings = useQuery(schoolSettingsQuery())
@@ -39,6 +46,7 @@ function ProfileForm({
 }) {
   const t = useTranslations("onboarding.profile")
   const { address, phone, email } = settings.profile
+  const [type, setType] = useState<SchoolType>(settings.organization.type)
   const [values, setValues] = useState({
     line1: address.line1 ?? "",
     district: address.district ?? "",
@@ -48,7 +56,13 @@ function ProfileForm({
   const [errors, setErrors] = useState<Partial<Record<string, string>>>({})
 
   const save = useSetupAction({
-    action: updateProfileSettings,
+    // The kind lives on the organization, the rest in the profile section.
+    action: async (profile: ProfilePatch) => {
+      if (type !== settings.organization.type) {
+        await updateOrganizationSettings({ type })
+      }
+      return updateProfileSettings(profile)
+    },
     invalidate: [settingsKeys.all],
     success: () => t("saved"),
     onSuccess: onContinue,
@@ -81,6 +95,23 @@ function ProfileForm({
   return (
     <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
       <div className="grid gap-4 sm:grid-cols-2">
+        <div className="sm:col-span-2">
+          <FormField id="profile-type" label={t("type")}>
+            <NativeSelect
+              id="profile-type"
+              className="w-full"
+              value={type}
+              onChange={(e) => setType(e.target.value as SchoolType)}
+            >
+              {SCHOOL_TYPES.map((option) => (
+                <NativeSelectOption key={option} value={option}>
+                  {t(`types.${option}`)}
+                </NativeSelectOption>
+              ))}
+            </NativeSelect>
+            <FieldDescription>{t("typeHint")}</FieldDescription>
+          </FormField>
+        </div>
         <FormField id="profile-line1" label={t("line1")} error={errors.line1}>
           <Input
             id="profile-line1"

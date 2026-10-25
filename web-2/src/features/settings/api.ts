@@ -77,6 +77,10 @@ export interface ProfilePatch {
   email?: string | null
 }
 
+/** `PATCH /settings/organization`: the school's own fields on `organizations`. */
+export const updateOrganizationSettings = (body: { type?: SchoolType }) =>
+  apiFetch<unknown>("/settings/organization", { method: "PATCH", body })
+
 /** `PATCH /settings/profile`: only the fields given; `address` merges. */
 export const updateProfileSettings = (body: ProfilePatch) =>
   apiFetch<unknown>("/settings/profile", { method: "PATCH", body })
