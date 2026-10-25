@@ -397,5 +397,89 @@
       "googlePasswordRequired": "Set a password first, so you can still sign in without Google.",
       "googleLinkedNotice": "Your Google account is linked."
     }
+  },
+  "dashboard": {
+    "loadFailed": "This part of the dashboard couldn't load.",
+    "retry": "Try again",
+    "tiles": {
+      "students": "Students",
+      "studentsHint": "Enrolled this session",
+      "attendance": "Attendance today",
+      "registersIn": "{submitted} of {sections} registers in",
+      "noSession": "No current session",
+      "collectedToday": "Collected today",
+      "collectedMonth": "Collected this month",
+      "payments": "{count, plural, =0 {No payments} one {{n} payment} other {{n} payments}}",
+      "dues": "Outstanding dues",
+      "students_count": "{count, plural, =0 {No students} one {{n} student} other {{n} students}}",
+      "staff": "Active staff",
+      "expensesMonth": "Expenses this month"
+    },
+    "buckets": {
+      "current": "Not yet due",
+      "d0to30": "1–30 days late",
+      "d31to60": "31–60 days late",
+      "d61to90": "61–90 days late",
+      "d90plus": "Over 90 days late"
+    },
+    "overview": {
+      "title": "School overview",
+      "description": "Today, {date}",
+      "enrollmentTitle": "Enrollment by class",
+      "enrollmentDescription": "Students enrolled this session",
+      "enrollmentEmpty": "No students are enrolled yet.",
+      "attendanceTitle": "Attendance by class",
+      "attendanceDescription": "Share of students present today",
+      "attendanceEmpty": "No sections this session.",
+      "notTaken": "Not taken",
+      "registersOf": "{submitted} of {sections} registers",
+      "duesTitle": "Dues by age",
+      "duesDescription": "Outstanding fees by how late they are",
+      "duesEmpty": "Nothing is outstanding.",
+      "upcomingTitle": "Next 30 days",
+      "upcomingEmpty": "No holidays or exams in the next 30 days.",
+      "dateRange": "{from} – {to}",
+      "holiday": "Holiday",
+      "exam": "Exam"
+    },
+    "myDay": {
+      "title": "My day",
+      "description": "Today, {date}",
+      "pendingAttendance": "Registers to take",
+      "sectionsToday": "{count, plural, =0 {No sections today} one {Out of {n} section today} other {Out of {n} sections today}}",
+      "pendingMarks": "Mark sheets to fill",
+      "sectionsTitle": "Today's sections",
+      "sectionsEmpty": "You have no sections to take attendance for today.",
+      "sectionName": "{className} · {sectionName}",
+      "status": {
+        "submitted": "Taken",
+        "pending": "Not taken",
+        "holiday": "Holiday"
+      },
+      "takeAttendance": "Take attendance",
+      "marksTitle": "Mark sheets waiting for you",
+      "marksEmpty": "No mark sheets are waiting for you.",
+      "enterMarks": "Enter marks"
+    },
+    "finance": {
+      "title": "Finance",
+      "description": "Today, {date}",
+      "recentTitle": "Recent payments",
+      "recentEmpty": "No payments yet.",
+      "unknownPayer": "Unknown payer",
+      "reversed": "Reversed",
+      "channels": {
+        "cash": "Cash",
+        "cheque": "Cheque",
+        "card": "Card",
+        "bank_slip": "Bank slip"
+      }
+    },
+    "onboarding": {
+      "title": "Finish setting up your school",
+      "body": "{percentage}% done. A few steps are left before everything works.",
+      "progress": "Setup progress",
+      "action": "Continue setup"
+    }
   }
 }

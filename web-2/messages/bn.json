@@ -397,5 +397,89 @@
       "googlePasswordRequired": "আগে একটি পাসওয়ার্ড দিন, যাতে Google ছাড়াও সাইন ইন করতে পারেন।",
       "googleLinkedNotice": "আপনার Google অ্যাকাউন্ট যুক্ত হয়েছে।"
     }
+  },
+  "dashboard": {
+    "loadFailed": "ড্যাশবোর্ডের এই অংশটি লোড হয়নি।",
+    "retry": "আবার চেষ্টা করুন",
+    "tiles": {
+      "students": "শিক্ষার্থী",
+      "studentsHint": "এই শিক্ষাবর্ষে ভর্তি",
+      "attendance": "আজকের হাজিরা",
+      "registersIn": "{sections}টির মধ্যে {submitted}টি খাতা জমা",
+      "noSession": "চলতি শিক্ষাবর্ষ নেই",
+      "collectedToday": "আজ আদায়",
+      "collectedMonth": "এ মাসে আদায়",
+      "payments": "{count, plural, =0 {কোনো পেমেন্ট নেই} other {{n}টি পেমেন্ট}}",
+      "dues": "বকেয়া",
+      "students_count": "{count, plural, =0 {কোনো শিক্ষার্থী নেই} other {{n} জন শিক্ষার্থী}}",
+      "staff": "সক্রিয় কর্মী",
+      "expensesMonth": "এ মাসের খরচ"
+    },
+    "buckets": {
+      "current": "এখনো সময় আছে",
+      "d0to30": "১–৩০ দিন দেরি",
+      "d31to60": "৩১–৬০ দিন দেরি",
+      "d61to90": "৬১–৯০ দিন দেরি",
+      "d90plus": "৯০ দিনের বেশি দেরি"
+    },
+    "overview": {
+      "title": "স্কুলের সারসংক্ষেপ",
+      "description": "আজ, {date}",
+      "enrollmentTitle": "শ্রেণিভিত্তিক ভর্তি",
+      "enrollmentDescription": "এই শিক্ষাবর্ষে ভর্তি শিক্ষার্থী",
+      "enrollmentEmpty": "এখনো কোনো শিক্ষার্থী ভর্তি হয়নি।",
+      "attendanceTitle": "শ্রেণিভিত্তিক হাজিরা",
+      "attendanceDescription": "আজ উপস্থিত শিক্ষার্থীর হার",
+      "attendanceEmpty": "এই শিক্ষাবর্ষে কোনো শাখা নেই।",
+      "notTaken": "নেওয়া হয়নি",
+      "registersOf": "{sections}টির মধ্যে {submitted}টি খাতা",
+      "duesTitle": "বকেয়ার বয়স",
+      "duesDescription": "কত দিন দেরি, সে অনুযায়ী বকেয়া ফি",
+      "duesEmpty": "কোনো বকেয়া নেই।",
+      "upcomingTitle": "আগামী ৩০ দিন",
+      "upcomingEmpty": "আগামী ৩০ দিনে কোনো ছুটি বা পরীক্ষা নেই।",
+      "dateRange": "{from} – {to}",
+      "holiday": "ছুটি",
+      "exam": "পরীক্ষা"
+    },
+    "myDay": {
+      "title": "আমার দিন",
+      "description": "আজ, {date}",
+      "pendingAttendance": "যে খাতাগুলো বাকি",
+      "sectionsToday": "{count, plural, =0 {আজ কোনো শাখা নেই} other {আজ {n}টি শাখার মধ্যে}}",
+      "pendingMarks": "যে নম্বরপত্র বাকি",
+      "sectionsTitle": "আজকের শাখা",
+      "sectionsEmpty": "আজ আপনার হাজিরা নেওয়ার কোনো শাখা নেই।",
+      "sectionName": "{className} · {sectionName}",
+      "status": {
+        "submitted": "নেওয়া হয়েছে",
+        "pending": "নেওয়া হয়নি",
+        "holiday": "ছুটি"
+      },
+      "takeAttendance": "হাজিরা নিন",
+      "marksTitle": "আপনার অপেক্ষায় থাকা নম্বরপত্র",
+      "marksEmpty": "কোনো নম্বরপত্র আপনার অপেক্ষায় নেই।",
+      "enterMarks": "নম্বর দিন"
+    },
+    "finance": {
+      "title": "হিসাব",
+      "description": "আজ, {date}",
+      "recentTitle": "সাম্প্রতিক পেমেন্ট",
+      "recentEmpty": "এখনো কোনো পেমেন্ট নেই।",
+      "unknownPayer": "অজানা পরিশোধকারী",
+      "reversed": "ফেরত নেওয়া",
+      "channels": {
+        "cash": "নগদ",
+        "cheque": "চেক",
+        "card": "কার্ড",
+        "bank_slip": "ব্যাংক স্লিপ"
+      }
+    },
+    "onboarding": {
+      "title": "স্কুলের সেটআপ শেষ করুন",
+      "body": "{percentage}% শেষ। সবকিছু চালু হতে আর কয়েকটি ধাপ বাকি।",
+      "progress": "সেটআপের অগ্রগতি",
+      "action": "সেটআপ চালিয়ে যান"
+    }
   }
 }

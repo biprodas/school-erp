@@ -25,6 +25,7 @@
     --color-chart-3: var(--chart-3);
     --color-chart-2: var(--chart-2);
     --color-chart-1: var(--chart-1);
+    --color-chart-bar: var(--chart-bar);
     --color-ring: var(--ring);
     --color-input: var(--input);
     --color-border: var(--border);
@@ -81,6 +82,8 @@
     --chart-3: oklch(0.8 0.135 75);
     --chart-4: oklch(0.6 0.06 163);
     --chart-5: oklch(0.47 0.025 160);
+    /* Single-series bars: inside the dataviz lightness band, C >= 0.10 (validated). */
+    --chart-bar: oklch(0.52 0.11 163);
     --radius: 0.75rem;
     --sidebar: oklch(0.985 0.003 106);
     --sidebar-foreground: oklch(0.24 0.035 165);
@@ -120,6 +123,7 @@
     --chart-3: oklch(0.8 0.135 75);
     --chart-4: oklch(0.6 0.06 163);
     --chart-5: oklch(0.72 0.02 150);
+    --chart-bar: oklch(0.62 0.11 163);
     --sidebar: oklch(0.225 0.016 170);
     --sidebar-foreground: oklch(0.95 0.008 120);
     --sidebar-primary: oklch(0.74 0.1 163);

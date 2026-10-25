@@ -298,7 +298,7 @@ Tick a box when the item is implemented and verified locally (against the docker
 | M3 | School sign-in | M2 | Implemented, not committed |
 | M4 | Signup and find school | M3 | Implemented, not committed |
 | M5 | Staff app shell | M3, B1 | Implemented, not committed |
-| M6 | Home dashboards | M5 | Not started |
+| M6 | Home dashboards | M5 | Implemented, not committed |
 | M7 | Onboarding wizard | M5 | Not started |
 | M8 | Portal and admin shells | M3 | Not started |
 | M9 | Hardening | M3–M8 | Not started |
@@ -589,18 +589,31 @@ Notes:
 
 ### M6. Home dashboards
 
-- [ ] `api/dashboards.ts`: `useAdminDashboard`, `useTeacherDashboard`, `useAccountantDashboard`, each enabled only when `can()` allows it, `staleTime` 60 s, with types matching `DashboardService`.
-- [ ] `features/dashboard/stat-tile.tsx` and chart wrappers on `components/ui/chart.tsx`, following the `dataviz` guidance and the design tokens.
-- [ ] **School overview** (`dashboard_admin:read`): enrollment total and by class, attendance today (school %, by class, registers submitted vs sections), collection today and month to date, dues totals, active staff, upcoming holidays and exams.
-- [ ] **My day** (`dashboard_teacher:read`): today's sections with register status and a "Take attendance" link, pending attendance count, pending mark sheets with links.
-- [ ] **Finance** (`dashboard_accountant:read`): collection today and month to date, dues, expenses month to date, recent payments.
-- [ ] Onboarding banner for admins while the checklist is below 100 % (`GET /onboarding/checklist`), linking to `/onboarding`.
-- [ ] Empty state for users with none of the dashboard keys: welcome text and links to the menus they can open.
-- [ ] Each group has its own skeleton and its own error state with retry; one failing doesn't affect the others.
-- [ ] Money and numbers through `lib/format.ts`; dates in the school time zone.
-- [ ] At 360 px tiles stack in one column and charts fall back to lists.
+- [x] `api/dashboards.ts`: `useAdminDashboard`, `useTeacherDashboard`, `useAccountantDashboard`, each enabled only when `can()` allows it, `staleTime` 60 s, with types matching `DashboardService`.
+- [x] `features/dashboard/stat-tile.tsx` and chart wrappers on `components/ui/chart.tsx`, following the `dataviz` guidance and the design tokens.
+- [x] **School overview** (`dashboard_admin:read`): enrollment total and by class, attendance today (school %, by class, registers submitted vs sections), collection today and month to date, dues totals, active staff, upcoming holidays and exams.
+- [x] **My day** (`dashboard_teacher:read`): today's sections with register status and a "Take attendance" link, pending attendance count, pending mark sheets with links.
+- [x] **Finance** (`dashboard_accountant:read`): collection today and month to date, dues, expenses month to date, recent payments.
+- [x] Onboarding banner for admins while the checklist is below 100 % (`GET /onboarding/checklist`), linking to `/onboarding`.
+- [x] Empty state for users with none of the dashboard keys: welcome text and links to the menus they can open.
+- [x] Each group has its own skeleton and its own error state with retry; one failing doesn't affect the others.
+- [x] Money and numbers through `lib/format.ts`; dates in the school time zone.
+- [x] At 360 px tiles stack in one column and charts fall back to lists.
 
-**Done when:** on a seeded school, the admin, teacher and accountant each see their groups with real numbers; a principal who is also an accountant sees both; with one dashboard endpoint failing, the others still render.
+Deviations and details:
+
+- **Query options instead of `use*` hooks**, as in the rest of `src/api/`: `adminDashboardQuery`, `teacherDashboardQuery`, `accountantDashboardQuery`, `onboardingChecklistQuery`. Gating happens by mounting: `homeGroups(permissions)` decides which groups render, and a group that isn't rendered never asks (tested).
+- **No Recharts.** The two charts (enrollment by class, attendance by class) and dues by age are single-series horizontal bars drawn as HTML lists (`features/dashboard/bar-list.tsx`): one row per category with the value at the bar's tip, so they read the same at 360 px and to screen readers, and need no chart JS. Dataviz specs: one hue for every bar, 10 px bars with a 4 px rounded end, square at the baseline, a muted track, values in text ink. Every value is a direct label, so there is no tooltip layer to gate anything.
+- **New token `--chart-bar`** (`oklch(0.52 0.11 163)` light, `oklch(0.62 0.11 163)` dark): `--chart-1` (the brand green) fails the dataviz lightness band and chroma floor in both modes. The new step keeps the hue and passes every check of `validate_palette.js` against the card surface in both modes.
+- Formatting goes through `hooks/use-school-format.ts`: Bangla digits when the viewer reads Bangla, and the school's time zone and date format from `settings/display`. Tiles drop `.00`; lists keep it.
+- The onboarding banner is shown to members with `onboarding:manage` (school admins) and hides itself when the checklist can't load.
+- Members with no dashboard key get the M5 menu tiles (`menu-tiles.tsx`); `welcome.tsx` is gone.
+- "Take attendance" and "Enter marks" link to `/dashboard/attendance/take?section=` and `/dashboard/exams/marks?sheet=`, which show "Coming soon" until those screens exist.
+- Vitest (259 in all): `homeGroups` per key set, a principal-accountant seeing both groups with formatted numbers, the teacher endpoint never called for them, one endpoint failing while the others render, then retry, teacher links, the banner, menu tiles without dashboard keys, Bangla digits.
+
+Note: the backend caches each dashboard for 60 s, so numbers entered just after a dashboard was first viewed show up within a minute, not immediately.
+
+**Done when:** on a seeded school, the admin, teacher and accountant each see their groups with real numbers; a principal who is also an accountant sees both; with one dashboard endpoint failing, the others still render. *Checked with a Playwright script against the docker-compose stack (25 checks) on a school made through signup and seeded over the API: 2 classes, 3 sections, 7 students, one register taken (2 present, 1 absent), a ৳500 overdue bill with ৳200 paid. Admin: My day, School overview and Finance with 7 students, 66.7% (1 of 3 registers in), Class 7 "Not taken", ৳200 collected, ৳300 due from 1 student (over 90 days), the payment listed. Teacher (class teacher of 6B only): only My day, 6B pending with its "Take attendance" link, no banner. Accountant: only Finance; Bangla digits. Principal + accountant: School overview and Finance. With `/dashboards/admin` answering 500, only the overview showed its error and "Try again" recovered it. No horizontal scroll at 360 px; no page errors.*
 
 ### M7. Onboarding wizard
 

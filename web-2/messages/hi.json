@@ -397,5 +397,89 @@
       "googlePasswordRequired": "पहले एक पासवर्ड सेट करें, ताकि Google के बिना भी साइन इन कर सकें।",
       "googleLinkedNotice": "आपका Google खाता जुड़ गया है।"
     }
+  },
+  "dashboard": {
+    "loadFailed": "डैशबोर्ड का यह हिस्सा लोड नहीं हो सका।",
+    "retry": "फिर से कोशिश करें",
+    "tiles": {
+      "students": "छात्र",
+      "studentsHint": "इस सत्र में नामांकित",
+      "attendance": "आज की उपस्थिति",
+      "registersIn": "{sections} में से {submitted} रजिस्टर जमा",
+      "noSession": "कोई चालू सत्र नहीं",
+      "collectedToday": "आज वसूली",
+      "collectedMonth": "इस महीने वसूली",
+      "payments": "{count, plural, =0 {कोई भुगतान नहीं} one {{n} भुगतान} other {{n} भुगतान}}",
+      "dues": "बकाया",
+      "students_count": "{count, plural, =0 {कोई छात्र नहीं} one {{n} छात्र} other {{n} छात्र}}",
+      "staff": "सक्रिय कर्मचारी",
+      "expensesMonth": "इस महीने का खर्च"
+    },
+    "buckets": {
+      "current": "अभी देय नहीं",
+      "d0to30": "1–30 दिन देर",
+      "d31to60": "31–60 दिन देर",
+      "d61to90": "61–90 दिन देर",
+      "d90plus": "90 दिन से अधिक देर"
+    },
+    "overview": {
+      "title": "स्कूल का सारांश",
+      "description": "आज, {date}",
+      "enrollmentTitle": "कक्षावार नामांकन",
+      "enrollmentDescription": "इस सत्र में नामांकित छात्र",
+      "enrollmentEmpty": "अभी कोई छात्र नामांकित नहीं है।",
+      "attendanceTitle": "कक्षावार उपस्थिति",
+      "attendanceDescription": "आज उपस्थित छात्रों का प्रतिशत",
+      "attendanceEmpty": "इस सत्र में कोई सेक्शन नहीं।",
+      "notTaken": "नहीं ली गई",
+      "registersOf": "{sections} में से {submitted} रजिस्टर",
+      "duesTitle": "बकाया की अवधि",
+      "duesDescription": "कितनी देर हुई, उसके अनुसार बकाया फ़ीस",
+      "duesEmpty": "कुछ भी बकाया नहीं है।",
+      "upcomingTitle": "अगले 30 दिन",
+      "upcomingEmpty": "अगले 30 दिनों में कोई छुट्टी या परीक्षा नहीं।",
+      "dateRange": "{from} – {to}",
+      "holiday": "छुट्टी",
+      "exam": "परीक्षा"
+    },
+    "myDay": {
+      "title": "मेरा दिन",
+      "description": "आज, {date}",
+      "pendingAttendance": "बाकी रजिस्टर",
+      "sectionsToday": "{count, plural, =0 {आज कोई सेक्शन नहीं} one {आज {n} सेक्शन में से} other {आज {n} सेक्शन में से}}",
+      "pendingMarks": "बाकी अंक-पत्र",
+      "sectionsTitle": "आज के सेक्शन",
+      "sectionsEmpty": "आज आपके पास उपस्थिति लेने के लिए कोई सेक्शन नहीं है।",
+      "sectionName": "{className} · {sectionName}",
+      "status": {
+        "submitted": "ली गई",
+        "pending": "नहीं ली गई",
+        "holiday": "छुट्टी"
+      },
+      "takeAttendance": "उपस्थिति लें",
+      "marksTitle": "आपके इंतज़ार में अंक-पत्र",
+      "marksEmpty": "कोई अंक-पत्र आपका इंतज़ार नहीं कर रहा।",
+      "enterMarks": "अंक दर्ज करें"
+    },
+    "finance": {
+      "title": "वित्त",
+      "description": "आज, {date}",
+      "recentTitle": "हाल के भुगतान",
+      "recentEmpty": "अभी कोई भुगतान नहीं।",
+      "unknownPayer": "अज्ञात भुगतानकर्ता",
+      "reversed": "वापस लिया गया",
+      "channels": {
+        "cash": "नकद",
+        "cheque": "चेक",
+        "card": "कार्ड",
+        "bank_slip": "बैंक पर्ची"
+      }
+    },
+    "onboarding": {
+      "title": "अपने स्कूल का सेटअप पूरा करें",
+      "body": "{percentage}% पूरा। सब कुछ चालू होने से पहले कुछ कदम बाकी हैं।",
+      "progress": "सेटअप की प्रगति",
+      "action": "सेटअप जारी रखें"
+    }
   }
 }
