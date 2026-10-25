@@ -39,6 +39,7 @@ const QUERY_ERRORS: Record<string, AuthErrorKey> = {
   google_cancelled: "googleCancelled",
   google_failed: "googleFailed",
   google_disabled: "googleDisabled",
+  google_already_linked: "googleAlreadyLinked",
 }
 
 /** The message for a `?error=` value, or null for one we don't know. */

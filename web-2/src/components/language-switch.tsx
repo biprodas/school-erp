@@ -21,7 +21,12 @@ const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365
  * cookie read by `i18n/request.ts`; refreshing re-renders server
  * components in the new language without a full reload.
  */
-export function LanguageSwitch() {
+export function LanguageSwitch({
+  compact = false,
+}: {
+  /** Only the icon below the `sm` breakpoint (the app header on phones). */
+  compact?: boolean
+}) {
   const locale = useLocale()
   const t = useTranslations("common")
   const router = useRouter()
@@ -40,7 +45,9 @@ export function LanguageSwitch() {
         }
       >
         <LanguagesIcon />
-        <span lang={locale}>{t(`languages.${locale}`)}</span>
+        <span lang={locale} className={compact ? "max-sm:sr-only" : undefined}>
+          {t(`languages.${locale}`)}
+        </span>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-40">
         <DropdownMenuRadioGroup value={locale} onValueChange={switchLocale}>

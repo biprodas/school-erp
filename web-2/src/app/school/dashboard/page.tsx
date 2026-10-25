@@ -1,6 +1,14 @@
-import { SignedInPlaceholder } from "~/features/auth/signed-in-placeholder"
+import type { Metadata } from "next"
+import { getTranslations } from "next-intl/server"
 
-// Placeholder until the staff app shell (M5, doc/frontend-implementation-plan.md).
-export default function Page() {
-  return <SignedInPlaceholder />
+import { Welcome } from "~/features/dashboard/welcome"
+
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("nav.labels")
+  return { title: t("dashboard") }
+}
+
+// The role dashboards replace the welcome in M6.
+export default function DashboardPage() {
+  return <Welcome />
 }

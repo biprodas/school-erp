@@ -297,7 +297,7 @@ Tick a box when the item is implemented and verified locally (against the docker
 | M2 | Session layer and BFF | M1 | Implemented, not committed |
 | M3 | School sign-in | M2 | Implemented, not committed |
 | M4 | Signup and find school | M3 | Implemented, not committed |
-| M5 | Staff app shell | M3, B1 | Not started |
+| M5 | Staff app shell | M3, B1 | Implemented, not committed |
 | M6 | Home dashboards | M5 | Not started |
 | M7 | Onboarding wizard | M5 | Not started |
 | M8 | Portal and admin shells | M3 | Not started |
@@ -537,36 +537,55 @@ Notes:
 
 Layout and data:
 
-- [ ] `app/school/dashboard/layout.tsx`: requires a staff session; prefetches `GET /auth/me` and `GET /settings/display` on the server and hydrates TanStack Query.
-- [ ] `api/auth.ts` hooks: `useMe()` (refetch on focus) and `useDisplaySettings()`.
-- [ ] `lib/permissions.ts`: `can(key)`, `canAny(keys)` and `<Can permission>`; school admins pass everything.
-- [ ] Branding: logo and primary color from `settings/display` as CSS variables on the shell.
+- [x] `app/school/dashboard/layout.tsx`: requires a staff session; prefetches `GET /auth/me` and `GET /settings/display` on the server and hydrates TanStack Query.
+- [x] `api/auth.ts` hooks: `useMe()` (refetch on focus) and `useDisplaySettings()`.
+- [x] `lib/permissions.ts`: `can(key)`, `canAny(keys)` and `<Can permission>`; school admins pass everything.
+- [x] Branding: logo and primary color from `settings/display` as CSS variables on the shell.
 
 Sidebar:
 
-- [ ] `config/nav.ts`: categories → menus → items, each with a label key, icon, href and `permission` (later `module`), covering the MVP areas (Dashboard, Academics, People, Attendance, Exams, Fees, Notices, Administration, Settings).
-- [ ] `components/layout/app-sidebar.tsx` on `components/ui/sidebar.tsx`: filters by `can()`, hides empty menus and categories, highlights the active path.
-- [ ] Collapses to icons on desktop and becomes a sheet at mobile width; the collapsed state is remembered (cookie).
-- [ ] Menu search over labels in the active locale.
+- [x] `config/nav.ts`: categories → menus → items, each with a label key, icon, href and `permission` (later `module`), covering the MVP areas (Dashboard, Academics, People, Attendance, Exams, Fees, Notices, Administration, Settings).
+- [x] `components/layout/app-sidebar.tsx` on `components/ui/sidebar.tsx`: filters by `can()`, hides empty menus and categories, highlights the active path.
+- [x] Collapses to icons on desktop and becomes a sheet at mobile width; the collapsed state is remembered (cookie).
+- [x] Menu search over labels in the active locale.
 
 Header:
 
-- [ ] Breadcrumb from the route segments and nav labels.
-- [ ] Notification bell: `GET /notifications/unread-count` every 60 s; dropdown with the latest from `GET /notifications`; mark one read and "Mark all read".
-- [ ] Language switch and theme toggle.
-- [ ] User menu: name, roles, "Account", "Sign out", "Sign out everywhere".
+- [x] Breadcrumb from the route segments and nav labels.
+- [x] Notification bell: `GET /notifications/unread-count` every 60 s; dropdown with the latest from `GET /notifications`; mark one read and "Mark all read".
+- [x] Language switch and theme toggle.
+- [x] User menu: name, roles, "Account", "Sign out", "Sign out everywhere".
 
 Pages:
 
-- [ ] `dashboard/[...slug]/page.tsx`: "Coming soon" empty state titled from the nav label.
-- [ ] `dashboard/error.tsx` and `dashboard/not-found.tsx`.
-- [ ] `/dashboard/account`: profile summary, change password, active sessions (`GET /auth/sessions`, end one with `DELETE /auth/sessions/:id`), Google link/unlink.
+- [x] `dashboard/[...slug]/page.tsx`: "Coming soon" empty state titled from the nav label.
+- [x] `dashboard/error.tsx` and `dashboard/not-found.tsx`.
+- [x] `/dashboard/account`: profile summary, change password, active sessions (`GET /auth/sessions`, end one with `DELETE /auth/sessions/:id`), Google link/unlink.
 
 Tests:
 
-- [ ] Vitest: nav filtering for an admin, a teacher, an accountant and a member with no keys.
+- [x] Vitest: nav filtering for an admin, a teacher, an accountant and a member with no keys.
 
-**Done when:** a teacher sees only the menus their keys allow and an admin sees all of them; removing a key from a role hides its menu after the window regains focus; the shell works at 360 px; the bell count updates after a notice is published.
+Also done:
+
+- [x] API modules are query-option factories (as in `api/public/slugs.ts`): `api/auth.ts` (`meQuery`, refetched on every focus, not only when stale; sessions, other schools, switch, Google link/unlink), `api/settings.ts`, `api/notifications.ts`. The layout prefetches the same keys with `backendFetch`, and a 401 there sends the user to `/login`.
+- [x] `lib/permissions.ts` also has `allows(requirement)`: one key, any of several, or `adminOnly` (data export, whose endpoint is for school admins). `usePermissions()` is in `hooks/`, `<Can>` in `components/can.tsx`.
+- [x] Nav logic is pure in `lib/nav.ts`: `visibleNav`, `activeHref` (the longest covering link, so `/dashboard/students/new` doesn't also highlight the directory), `navTrail`, `pageLabel`, `searchNav`. Labels are under `nav.labels` / `nav.categories` in en, bn and hi.
+- [x] Branding (`lib/brand-colors.ts`): the primary color sets `--primary`, `--sidebar-primary` and `--ring`, with a white or near-black foreground chosen by contrast; anything but `#rrggbb` is ignored.
+- [x] Collapsed to icons, a menu group opens the sidebar on that menu. On phones the sheet closes once a link is chosen.
+- [x] User menu: system roles get translated names (custom roles keep theirs), "Change password" (`/change-password?next=/dashboard/account`), and the school switcher as a submenu, hidden when `GET /auth/schools` is empty. `signOut({ everywhere })` moved to `features/auth/sign-out.ts`.
+- [x] `/dashboard` is a welcome with a tile per permitted menu until M6.
+- [x] Account: the Google card shows only when Google sign-in is configured or already linked; `?google=linked` / `?google_error=` from the round trip become an alert (`google_already_linked` added to the query errors); `PASSWORD_REQUIRED` on unlink has its own message. Sessions show browser and OS (`features/account/user-agent.ts`); the current one offers "Sign out" instead of "End".
+- [x] `dashboard/[...slug]` 404s for paths that aren't in the sidebar, and `dashboard/not-found.tsx` renders inside the shell (unlike M1's segment, this one is caught).
+- [x] Vitest (252 in all): nav filtering for the four members (system-role keys copied from the seed), admin-only items, a key taken away, active link, trail, search (Bangla labels too), every nav key exists in `permissions.catalog.ts`, permissions, brand colors, user agents.
+
+Notes:
+
+- A phone-invited member isn't active until their first sign-in, so notices sent before that never reach them (backend behaviour).
+- `messages.test.ts` looks for placeholders with `/{(w+)}/` (no backslash), so the placeholder check matches nothing. Worth fixing on its own.
+- `ThemeToggle`'s aria-label is still hard-coded English.
+
+**Done when:** a teacher sees only the menus their keys allow and an admin sees all of them; removing a key from a role hides its menu after the window regains focus; the shell works at 360 px; the bell count updates after a notice is published. *Checked with a Playwright script against the docker-compose stack (26 checks; admin at 1280 px, teacher at 360 px) on a school made through signup: the admin sees all six categories, the teacher only Overview, Academics, People and Communication; coming-soon title, active link, breadcrumb, 404 inside the shell, search, collapsed state kept across a reload, account sessions, Bangla labels; a phone-invited teacher is forced to change the slip password, then lands on the dashboard; no horizontal scroll at 360 px; the bell went from 1 to 2 unread within the 60 s poll, and "Mark all read" cleared it; taking `notices:*` from the teacher role hid Communication after a focus event; no page errors.*
 
 ### M6. Home dashboards
 
