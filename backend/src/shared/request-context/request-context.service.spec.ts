@@ -33,7 +33,12 @@ describe('RequestContext', () => {
       },
       {
         orgId: 'org-1',
-        user: { userId: 'u1', isAdmin: true, sessionId: 's1' },
+        user: {
+          userId: 'u1',
+          isAdmin: true,
+          platformRole: 'support',
+          sessionId: 's1',
+        },
       },
     );
 
@@ -46,6 +51,7 @@ describe('RequestContext', () => {
       orgId: 'org-1',
       userId: 'u1',
       isAdmin: true,
+      platformRole: 'support',
       sessionId: 's1',
       ip: '10.0.0.1',
       userAgent: 'Mozilla',

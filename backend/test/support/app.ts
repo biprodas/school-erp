@@ -10,6 +10,7 @@ import { configureApp } from 'src/app.setup';
 import { MailService } from '~/shared/mail/mail.service';
 import { SessionService } from '~/modules/auth/services/session.service';
 import { UserStatus } from '~/modules/users/enums/user-status.enum';
+import { PlatformRole } from '~/modules/users/enums/platform-role.enum';
 
 /** One email the app tried to send. */
 export interface SentMail {
@@ -58,7 +59,7 @@ export interface E2eApp {
   mail: MailCapture;
   http: () => ReturnType<typeof request>;
   /** A platform access token with a real (revocable) session. */
-  platformToken: (userId: string, isAdmin?: boolean) => Promise<string>;
+  platformToken: (userId: string, role?: PlatformRole) => Promise<string>;
   close: () => Promise<void>;
 }
 
@@ -100,12 +101,12 @@ export async function bootApp(
     jwt,
     mail,
     http: () => request(app.getHttpServer()),
-    platformToken: async (userId, isAdmin = false) => {
+    platformToken: async (userId, role = PlatformRole.USER) => {
       const { sessionId } = await sessions.start(userId, null);
       return jwt.sign({
         sub: userId,
         status: UserStatus.ACTIVE,
-        isAdmin,
+        role,
         sid: sessionId,
       });
     },

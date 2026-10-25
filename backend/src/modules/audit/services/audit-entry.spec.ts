@@ -9,6 +9,7 @@ const ctx = (
   orgId: 'org-1',
   userId: 'u-signed-in',
   isAdmin: false,
+  platformRole: null,
   sessionId: 's-1',
   ip: '203.0.113.7',
   userAgent: 'jest',

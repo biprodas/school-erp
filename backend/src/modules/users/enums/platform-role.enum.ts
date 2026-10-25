@@ -1,6 +1,7 @@
 /**
- * A user's role on the platform (not inside a school). Only
- * {@link PLATFORM_ADMIN_ROLES} grant platform admin access (`users.is_admin`).
+ * A user's role on the platform (not inside a school). It alone decides
+ * what they may do in the platform console: see `PLATFORM_ROLE_PERMISSIONS`
+ * (`~/common/auth/platform-permissions`). `user` is everyone without one.
  */
 export enum PlatformRole {
   SUPER_ADMIN = 'super_admin',
@@ -10,7 +11,7 @@ export enum PlatformRole {
   USER = 'user',
 }
 
-export const PLATFORM_ADMIN_ROLES: readonly PlatformRole[] = [
-  PlatformRole.SUPER_ADMIN,
-  PlatformRole.ADMIN,
-];
+const ROLES = new Set<string>(Object.values(PlatformRole));
+
+export const isPlatformRole = (value: unknown): value is PlatformRole =>
+  typeof value === 'string' && ROLES.has(value);

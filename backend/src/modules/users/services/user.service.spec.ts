@@ -8,6 +8,7 @@ import {
 import { UserService } from './user.service';
 import { User } from '../entities/user.entity';
 import { UserStatus } from '../enums/user-status.enum';
+import { PlatformRole } from '~/modules/users/enums/platform-role.enum';
 import { RequestContextDto } from '~/common/dto/request-context.dto';
 import { SessionService } from '~/modules/auth/services/session.service';
 
@@ -37,7 +38,18 @@ const superAdminCtx = () =>
       id: 'admin-id',
       email: 'admin@test.com',
       status: UserStatus.ACTIVE,
-      isAdmin: true,
+      platformRole: PlatformRole.SUPER_ADMIN,
+    },
+  });
+
+const adminCtx = () =>
+  makeCtx({
+    userId: 'plain-admin-id',
+    user: {
+      id: 'plain-admin-id',
+      email: 'ops@test.com',
+      status: UserStatus.ACTIVE,
+      platformRole: PlatformRole.ADMIN,
     },
   });
 
@@ -48,7 +60,7 @@ const userCtx = (id = 'user-id') =>
       id,
       email: 'user@test.com',
       status: UserStatus.ACTIVE,
-      isAdmin: false,
+      platformRole: PlatformRole.USER,
     },
   });
 
@@ -58,7 +70,7 @@ const makeUser = (overrides: Partial<User> = {}): User =>
     email: 'user@test.com',
     name: 'Test User',
     status: UserStatus.ACTIVE,
-    isAdmin: false,
+    platformRole: PlatformRole.USER,
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,
@@ -83,6 +95,8 @@ describe('UserService', () => {
       create: jest.fn((data: object) => ({ id: 'new-user-id', ...data })),
       save: jest.fn((entity) => Promise.resolve(entity)),
       delete: jest.fn(),
+      // Other active super admins (the last-super-admin check).
+      count: jest.fn().mockResolvedValue(1),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -178,29 +192,78 @@ describe('UserService', () => {
       expect(result.name).toBe('Updated');
     });
 
-    it('Admin can change status and admin flag', async () => {
+    it('Super admin can change status and platform role', async () => {
       userRepo.findOne.mockResolvedValue(makeUser({ id: 'other-user' }));
       userRepo.save.mockImplementation((entity) => Promise.resolve(entity));
 
       const result = await service.update(superAdminCtx(), 'other-user', {
         status: UserStatus.SUSPENDED,
-        isAdmin: true,
+        platformRole: PlatformRole.SUPPORT,
       });
       expect(result.status).toBe(UserStatus.SUSPENDED);
-      expect(result.isAdmin).toBe(true);
+      expect(result.platformRole).toBe(PlatformRole.SUPPORT);
       // A suspended account is signed out everywhere.
       expect(sessions.revokeAllForUser).toHaveBeenCalledWith('other-user');
     });
 
-    it('signs out a super-admin who loses the admin flag, not a renamed user', async () => {
+    it('signs out a user whose role changes, not a renamed one', async () => {
       userRepo.save.mockImplementation((entity) => Promise.resolve(entity));
       userRepo.findOne.mockResolvedValue(makeUser({ id: 'u2' }));
       await service.update(superAdminCtx(), 'u2', { name: 'Renamed' });
       expect(sessions.revokeAllForUser).not.toHaveBeenCalled();
 
-      userRepo.findOne.mockResolvedValue(makeUser({ id: 'u2', isAdmin: true }));
-      await service.update(superAdminCtx(), 'u2', { isAdmin: false });
+      userRepo.findOne.mockResolvedValue(
+        makeUser({ id: 'u2', platformRole: PlatformRole.ADMIN }),
+      );
+      await service.update(superAdminCtx(), 'u2', {
+        platformRole: PlatformRole.SUPPORT,
+      });
       expect(sessions.revokeAllForUser).toHaveBeenCalledWith('u2');
+    });
+
+    it('an admin (not super admin) cannot change roles or edit others', async () => {
+      await expect(
+        service.update(adminCtx(), 'other-user', {
+          platformRole: PlatformRole.SUPER_ADMIN,
+        }),
+      ).rejects.toThrow(ForbiddenException);
+      await expect(
+        service.update(adminCtx(), 'plain-admin-id', {
+          platformRole: PlatformRole.SUPER_ADMIN,
+        }),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('nobody changes their own role or status', async () => {
+      await expect(
+        service.update(superAdminCtx(), 'admin-id', {
+          platformRole: PlatformRole.USER,
+        }),
+      ).rejects.toMatchObject({
+        response: { code: 'CANNOT_CHANGE_OWN_ACCESS' },
+      });
+    });
+
+    it('keeps the last active super admin', async () => {
+      userRepo.count.mockResolvedValue(0);
+      userRepo.findOne.mockResolvedValue(
+        makeUser({ id: 'u3', platformRole: PlatformRole.SUPER_ADMIN }),
+      );
+      await expect(
+        service.update(superAdminCtx(), 'u3', {
+          platformRole: PlatformRole.ADMIN,
+        }),
+      ).rejects.toMatchObject({ response: { code: 'LAST_SUPER_ADMIN' } });
+      await expect(
+        service.update(superAdminCtx(), 'u3', {
+          status: UserStatus.SUSPENDED,
+        }),
+      ).rejects.toThrow(ConflictException);
+      expect(userRepo.save).not.toHaveBeenCalled();
+
+      // A rename isn't a demotion.
+      await service.update(superAdminCtx(), 'u3', { name: 'Still super' });
+      expect(userRepo.save).toHaveBeenCalled();
     });
 
     it('User can update own profile', async () => {
@@ -222,11 +285,13 @@ describe('UserService', () => {
       ).rejects.toThrow(ForbiddenException);
     });
 
-    it('Non-admin cannot change admin flag', async () => {
+    it('Non-admin cannot change platform role', async () => {
       const ctx = userCtx('user-id');
 
       await expect(
-        service.update(ctx, 'user-id', { isAdmin: true }),
+        service.update(ctx, 'user-id', {
+          platformRole: PlatformRole.SUPER_ADMIN,
+        }),
       ).rejects.toThrow(ForbiddenException);
     });
 
@@ -247,6 +312,24 @@ describe('UserService', () => {
 
       await service.remove(superAdminCtx(), 'user-id');
       expect(userRepo.delete).toHaveBeenCalledWith('user-id');
+      expect(sessions.revokeAllForUser).toHaveBeenCalledWith('user-id');
+    });
+
+    it('refuses removing yourself or the last super admin', async () => {
+      await expect(
+        service.remove(superAdminCtx(), 'admin-id'),
+      ).rejects.toMatchObject({
+        response: { code: 'CANNOT_CHANGE_OWN_ACCESS' },
+      });
+
+      userRepo.count.mockResolvedValue(0);
+      userRepo.findOne.mockResolvedValue(
+        makeUser({ id: 'u3', platformRole: PlatformRole.SUPER_ADMIN }),
+      );
+      await expect(service.remove(superAdminCtx(), 'u3')).rejects.toMatchObject(
+        { response: { code: 'LAST_SUPER_ADMIN' } },
+      );
+      expect(userRepo.delete).not.toHaveBeenCalled();
     });
 
     it('throws NotFoundException for non-existent user', async () => {

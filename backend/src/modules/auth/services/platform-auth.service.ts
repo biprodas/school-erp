@@ -9,6 +9,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
+import { platformPermissionsOf } from '~/common/auth/platform-permissions';
 import type { ClientInfo } from '~/common/decorators/client.decorator';
 import { normalizeEmail } from '~/common/identity/identifier';
 import {
@@ -178,6 +179,7 @@ export class PlatformAuthService {
     }
     return Object.assign(user, {
       identities: await this.identities.list(userId),
+      permissions: platformPermissionsOf(user.platformRole),
     });
   }
 
@@ -478,7 +480,7 @@ export class PlatformAuthService {
     const payload: PlatformJwtPayload = {
       sub: user.id,
       status: user.status,
-      isAdmin: user.isAdmin,
+      role: user.platformRole,
       sid: sessionId,
       ...(user.mustChangePassword ? { mcp: true } : {}),
     };
@@ -498,7 +500,8 @@ export class PlatformAuthService {
         phone: user.phone,
         name: user.name,
         status: user.status,
-        isAdmin: user.isAdmin,
+        platformRole: user.platformRole,
+        permissions: platformPermissionsOf(user.platformRole),
       },
     };
   }

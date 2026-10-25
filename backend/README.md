@@ -106,7 +106,7 @@ Platform and public routes (`organizations`, `memberships`, `platform/auth`, `pl
 
 ### Auth and RBAC
 
-- **Platform realm** (`platform-jwt`): super-admin and tenant management. `PlatformAdminGuard` requires `users.is_admin = true`.
+- **Platform realm** (`platform-jwt`): the platform console. A user's `users.platform_role` decides what they may do there, through the code-defined `PLATFORM_ROLE_PERMISSIONS` (`src/common/auth/platform-permissions.ts`): `super_admin` everything, `admin` everything but platform staff, `support` read-only plus resending an owner's activation link, `developer` read-only, `user` no console. Handlers use `@RequirePlatformPermissions(PLATFORM_PERMISSIONS.X)` with `PlatformPermissionsGuard`; services check `platformCan(ctx.user?.platformRole, …)`.
 - **Tenant realm** (`JwtAuthGuard`): everything inside a school. Handlers use `@RequirePermissions(PERMISSIONS.X)` with `PermissionsGuard`.
 - **Permissions** are defined in code in `src/modules/rbac/permissions.catalog.ts`, as `resource:action` keys. Roles are stored per tenant, and system roles are seeded from `system-roles.seed.ts`. Tenant users with `isAdmin` bypass permission checks. Roles have a scope (`school` or `assigned`); `AccessScope` (`src/modules/access-scope/`) tells section- and subject-level endpoints which sections and class subjects a scoped teacher may reach (assignments in effect today).
 - **Settings:** `GET /settings` and `PATCH /settings/<section>` (profile, locale, numbering, portal, results, attendance, fees, notifications, security, organization), stored per school in `org_settings` and read through `SettingsService` with defaults filled in.
@@ -142,9 +142,9 @@ The quickest way in dev is `npm run db:seed:core`, which creates ready-to-use pl
 
 1. Register with `POST /api/platform/auth/register`.
 2. Verify the email from the link in Mailpit (http://localhost:8025).
-3. Promote the account to admin, for example in pgAdmin:
+3. Give the account a platform role, for example in pgAdmin:
    ```sql
-   UPDATE public.users SET is_admin = true WHERE email = 'you@example.com';
+   UPDATE public.users SET platform_role = 'super_admin' WHERE email = 'you@example.com';
    ```
 4. Log in with `POST /api/platform/auth/login` and create an organization through `/api/organizations`.
 5. Tenant APIs are then reachable with an `x-tenant-id: <slug>` header, or through `http://<slug>.lvh.me:3900/api`.
@@ -317,17 +317,16 @@ npm run db:seed:core    # platform user accounts
 
 `core` seeds the platform accounts from `src/database/seeds/data/users.data.ts`:
 
-| Email | Username | Platform role | Platform admin | Password |
-|-------|----------|---------------|----------------|----------|
-| admin@biprodas.dev | sadmin | super_admin | yes | `sadmin@123` |
-| biprodas@biprodas.dev | biprodas | admin | yes | `biprodas@123` |
-| support@biprodas.dev | support | support | no | `support@123` |
-| dev@biprodas.dev | dev | developer | no | `dev@123` |
-| liyana@biprodas.dev | liyana | user | no | `liyana@123` |
-| demo@pitchpool.io | demo | user | no | `demo@123` |
+| Email | Username | Platform role | Console | Password |
+|-------|----------|---------------|---------|----------|
+| admin@biprodas.dev | sadmin | super_admin | everything | `sadmin@123` |
+| biprodas@biprodas.dev | biprodas | admin | all but platform staff | `biprodas@123` |
+| support@biprodas.dev | support | support | read-only, resend owner links | `support@123` |
+| dev@biprodas.dev | dev | developer | read-only | `dev@123` |
+| liyana@biprodas.dev | liyana | user | none | `liyana@123` |
+| demo@pitchpool.io | demo | user | none | `demo@123` |
 
-- **Admin flag:** `users.is_admin` (what `PlatformAdminGuard` checks) is set only for `super_admin` and `admin`.
-- **Re-runs:** the seeder is idempotent and matches users by email. New users are created ACTIVE and email-verified. Existing users get username, name, role and admin flag re-synced but keep their current password.
+- **Re-runs:** the seeder is idempotent and matches users by email. New users are created ACTIVE and email-verified. Existing users get username, name and platform role re-synced but keep their current password.
 - **Transactions:** each seeder runs in one transaction, so a failure leaves nothing half-written.
 
 ### Adding a seeder

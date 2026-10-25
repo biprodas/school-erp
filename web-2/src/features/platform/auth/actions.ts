@@ -28,7 +28,7 @@ const text = (formData: FormData, name: string) => {
 
 /**
  * `POST /platform/auth/login` on the admin host, then into the
- * `school_erp_admin` cookie. Only platform admins get in.
+ * `school_erp_admin` cookie. Only platform staff (a console role) get in.
  */
 export async function platformSignIn(
   _previous: FormState,

@@ -11,8 +11,12 @@ export interface SessionUser {
   phone: string | null
   /** Role names in the school (empty on the platform). */
   roles: string[]
-  /** School admin (tenant) or platform super-admin. */
+  /** School admin (tenant realm; false on the platform). */
   isAdmin: boolean
+  /** Platform realm: the platform role (`support`, `super_admin`, …); null in a school. */
+  platformRole: string | null
+  /** Platform realm: what the role may do in the console (`console:access`, …). */
+  permissions: string[]
 }
 
 /**

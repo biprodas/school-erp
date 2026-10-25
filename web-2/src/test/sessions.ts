@@ -74,6 +74,8 @@ export function testSession(overrides: Partial<Session> = {}): Session {
       phone: "+8801712345678",
       roles: ["teacher"],
       isAdmin: false,
+      platformRole: null,
+      permissions: [],
     },
     mustChangePassword: false,
     onboardingCompletedAt: "2026-10-01T00:00:00.000Z",

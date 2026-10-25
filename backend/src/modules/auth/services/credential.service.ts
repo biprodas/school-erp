@@ -22,7 +22,7 @@ const WITH_PASSWORD = {
   password: true,
   name: true,
   status: true,
-  isAdmin: true,
+  platformRole: true,
   emailVerifiedAt: true,
   mustChangePassword: true,
   failedLoginCount: true,

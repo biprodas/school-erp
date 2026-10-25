@@ -14,6 +14,11 @@ import {
 } from 'typeorm';
 import { RequestContextDto } from '~/common/dto/request-context.dto';
 import {
+  PLATFORM_PERMISSIONS,
+  platformCan,
+  type PlatformPermission,
+} from '~/common/auth/platform-permissions';
+import {
   OwnerActivation,
   OrganizationService,
 } from '~/modules/organizations/services/organization.service';
@@ -40,6 +45,10 @@ function membershipSnapshot(m: Membership) {
   };
 }
 
+/** Whether the caller's platform role holds `permission`. */
+const can = (ctx: RequestContextDto, permission: PlatformPermission) =>
+  platformCan(ctx.user?.platformRole, permission);
+
 @Injectable()
 export class MembershipService {
   constructor(
@@ -58,9 +67,16 @@ export class MembershipService {
     ctx: RequestContextDto,
     dto: CreateMembershipDto,
   ): Promise<{ membership: Membership; ownerActivation?: OwnerActivation }> {
-    await this.assertOwnerOrAdmin(ctx, dto.orgId);
+    await this.assertOwnerOr(
+      ctx,
+      dto.orgId,
+      PLATFORM_PERMISSIONS.ORGANIZATIONS_MANAGE,
+    );
 
-    if (!ctx.user?.isAdmin && dto.role === MembershipRole.OWNER) {
+    if (
+      !can(ctx, PLATFORM_PERMISSIONS.ORGANIZATIONS_MANAGE) &&
+      dto.role === MembershipRole.OWNER
+    ) {
       throw new ForbiddenException('Only admins can create owner memberships');
     }
 
@@ -155,11 +171,12 @@ export class MembershipService {
       throw new NotFoundException('Membership not found');
     }
 
-    if (!ctx.user?.isAdmin) {
-      const isOwnMembership = m.userId === ctx.user?.id;
-      if (!isOwnMembership) {
-        await this.assertOwnerOrAdmin(ctx, m.orgId);
-      }
+    if (m.userId !== ctx.user?.id) {
+      await this.assertOwnerOr(
+        ctx,
+        m.orgId,
+        PLATFORM_PERMISSIONS.ORGANIZATIONS_READ,
+      );
     }
 
     return m;
@@ -175,7 +192,7 @@ export class MembershipService {
     if (userId) reqQuery.userId = userId;
     if (orgId) reqQuery.orgId = orgId;
 
-    if (ctx.user?.isAdmin === true) {
+    if (can(ctx, PLATFORM_PERMISSIONS.ORGANIZATIONS_READ)) {
       return this.membershipRepository.find({
         where: reqQuery,
         order: { createdAt: 'ASC' },
@@ -202,7 +219,11 @@ export class MembershipService {
       throw new NotFoundException('Organization not found');
     }
 
-    await this.assertOwnerOrAdmin(ctx, orgId);
+    await this.assertOwnerOr(
+      ctx,
+      orgId,
+      PLATFORM_PERMISSIONS.ORGANIZATIONS_READ,
+    );
 
     return this.membershipRepository.find({
       where: { orgId },
@@ -214,7 +235,10 @@ export class MembershipService {
     ctx: RequestContextDto,
     userId: string,
   ): Promise<Membership[]> {
-    if (!ctx.user?.isAdmin && userId !== ctx.user?.id) {
+    if (
+      !can(ctx, PLATFORM_PERMISSIONS.ORGANIZATIONS_READ) &&
+      userId !== ctx.user?.id
+    ) {
       throw new ForbiddenException('You can only view your own memberships');
     }
 
@@ -240,9 +264,13 @@ export class MembershipService {
       throw new NotFoundException('Membership not found');
     }
 
-    await this.assertOwnerOrAdmin(ctx, membership.orgId);
+    await this.assertOwnerOr(
+      ctx,
+      membership.orgId,
+      PLATFORM_PERMISSIONS.ORGANIZATIONS_MANAGE,
+    );
 
-    if (!ctx.user?.isAdmin) {
+    if (!can(ctx, PLATFORM_PERMISSIONS.ORGANIZATIONS_MANAGE)) {
       if (membership.role === MembershipRole.OWNER) {
         throw new ForbiddenException('Cannot modify an owner membership');
       }
@@ -298,9 +326,16 @@ export class MembershipService {
       throw new NotFoundException('Membership not found');
     }
 
-    await this.assertOwnerOrAdmin(ctx, membership.orgId);
+    await this.assertOwnerOr(
+      ctx,
+      membership.orgId,
+      PLATFORM_PERMISSIONS.ORGANIZATIONS_MANAGE,
+    );
 
-    if (!ctx.user?.isAdmin && membership.role === MembershipRole.OWNER) {
+    if (
+      !can(ctx, PLATFORM_PERMISSIONS.ORGANIZATIONS_MANAGE) &&
+      membership.role === MembershipRole.OWNER
+    ) {
       throw new ForbiddenException('Cannot remove an owner membership');
     }
 
@@ -349,11 +384,13 @@ export class MembershipService {
     );
   }
 
-  private async assertOwnerOrAdmin(
+  /** The school's owner, or platform staff holding `permission`. */
+  private async assertOwnerOr(
     ctx: RequestContextDto,
     orgId: string,
+    permission: PlatformPermission,
   ): Promise<void> {
-    if (ctx.user?.isAdmin === true) return;
+    if (can(ctx, permission)) return;
 
     const ownership = await this.membershipRepository.findOne({
       where: {

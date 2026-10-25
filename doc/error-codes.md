@@ -75,6 +75,7 @@ Every error response is `{ success: false, statusCode, message, code?, … }`. T
 | ---- | ----------------- |
 | `FOREIGN_KEY_VIOLATION` | A record with the same unique value already exists |
 | `PASSWORD_CHANGE_REQUIRED` | Please change your password to continue. |
+| `PLATFORM_PERMISSION_REQUIRED` | Your platform role does not allow this. |
 | `SLUG_TAKEN` | — |
 | `SOME_CODE` | — |
 | `UNIQUE_VIOLATION` | — |
@@ -379,4 +380,6 @@ Every error response is `{ success: false, statusCode, message, code?, … }`. T
 | ---- | ----------------- |
 | `ADMIN_ONLY` | Only a school admin can change a school admin |
 | `ALREADY_MEMBER` | User is already a member of this organization |
+| `CANNOT_CHANGE_OWN_ACCESS` | You cannot change your own status or platform role |
 | `IDENTIFIER_CONFLICT` | The email and the phone number belong to different accounts |
+| `LAST_SUPER_ADMIN` | The platform needs at least one active super admin |

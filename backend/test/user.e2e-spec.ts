@@ -11,6 +11,7 @@ import { UserService } from '~/modules/users/services/user.service';
 import { User } from '~/modules/users/entities/user.entity';
 import { PlatformJwtStrategy } from '~/modules/auth/strategies/platform-jwt.strategy';
 import { UserStatus } from '~/modules/users/enums/user-status.enum';
+import { PlatformRole } from '~/modules/users/enums/platform-role.enum';
 import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
 import { ResponseEnvelopeInterceptor } from '~/common/interceptors/response-envelope.interceptor';
@@ -27,7 +28,7 @@ const makeUser = (overrides: Partial<User> = {}): User =>
     email: 'user@test.com',
     name: 'Test User',
     status: UserStatus.ACTIVE,
-    isAdmin: false,
+    platformRole: PlatformRole.USER,
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,
@@ -42,7 +43,7 @@ describe('User E2E', () => {
     jwtService.sign({
       sub: ADMIN_ID,
       status: UserStatus.ACTIVE,
-      isAdmin: true,
+      role: PlatformRole.SUPER_ADMIN,
       sid: TEST_SESSION_ID,
     });
 
@@ -50,7 +51,7 @@ describe('User E2E', () => {
     jwtService.sign({
       sub: id,
       status: UserStatus.ACTIVE,
-      isAdmin: false,
+      role: PlatformRole.USER,
       sid: TEST_SESSION_ID,
     });
 

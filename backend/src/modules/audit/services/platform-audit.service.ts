@@ -1,4 +1,8 @@
 import { Injectable } from '@nestjs/common';
+import {
+  PLATFORM_PERMISSIONS,
+  platformCan,
+} from '~/common/auth/platform-permissions';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
 import { RequestContext } from '~/shared/request-context/request-context.service';
@@ -34,10 +38,14 @@ export class PlatformAuditService {
   ): Promise<void> {
     const { orgId, ...rest } = entry;
     const ctx = this.context.current();
-    // Only a signed-in super-admin acts as `platform`; anyone else signed in
-    // to the platform realm (a school user managing their account) is a
-    // `user`. Sign-in flows name their actor, who isn't signed in yet: `user`.
-    const signedInType = ctx.isAdmin
+    // Only signed-in platform staff (a console role) act as `platform`;
+    // anyone else signed in to the platform realm (a school user managing
+    // their account) is a `user`. Sign-in flows name their actor, who isn't
+    // signed in yet: `user`.
+    const signedInType = platformCan(
+      ctx.platformRole,
+      PLATFORM_PERMISSIONS.CONSOLE_ACCESS,
+    )
       ? AuditActorType.PLATFORM
       : AuditActorType.USER;
     const row = auditRow(rest, ctx, signedInType);

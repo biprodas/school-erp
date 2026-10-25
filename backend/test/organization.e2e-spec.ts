@@ -93,13 +93,12 @@ describe('Platform administration (e2e)', () => {
           name: x,
           password: 'not-used',
           status: UserStatus.ACTIVE,
-          isAdmin: x === 'admin',
           platformRole:
             x === 'admin' ? PlatformRole.SUPER_ADMIN : PlatformRole.USER,
         }),
       ),
     );
-    adminToken = await e.platformToken(admin.id, true);
+    adminToken = await e.platformToken(admin.id, PlatformRole.SUPER_ADMIN);
     userToken = await e.platformToken(regular.id);
   });
 
@@ -309,5 +308,101 @@ describe('Platform administration (e2e)', () => {
       },
     });
     expect(audit.actorUserId).toBe(admin.id);
+  });
+  it('[platform-roles] gives support and developers a read-only console, and admins all but staff', async () => {
+    const staff = e.rootDs.getRepository(User);
+    const [support, developer, plainAdmin, owner] = await staff.save(
+      (
+        [
+          ['support', PlatformRole.SUPPORT],
+          ['developer', PlatformRole.DEVELOPER],
+          ['plain-admin', PlatformRole.ADMIN],
+          ['owner', PlatformRole.USER],
+        ] as const
+      ).map(([x, platformRole]) =>
+        staff.create({
+          email: `orgs-role-${x}-${runId}@e2e.test`,
+          name: x,
+          password: 'not-used',
+          status: UserStatus.ACTIVE,
+          platformRole,
+        }),
+      ),
+    );
+    try {
+      const org = await createSchool({
+        name: `E2E Roles ${runId}`,
+        slug: `e2e-roles-${runId}`,
+        ownerUserId: owner.id,
+      });
+      const as = async (user: User, role: PlatformRole) => {
+        const token = await e.platformToken(user.id, role);
+        return (method: 'get' | 'post' | 'patch', url: string, body = {}) =>
+          e
+            .http()
+            [method](url)
+            .set('Authorization', `Bearer ${token}`)
+            .send(body);
+      };
+      const asSupport = await as(support, PlatformRole.SUPPORT);
+      const asDeveloper = await as(developer, PlatformRole.DEVELOPER);
+      const asPlainAdmin = await as(plainAdmin, PlatformRole.ADMIN);
+
+      for (const call of [asSupport, asDeveloper]) {
+        // The directory (paginated), any school, plans and the audit log.
+        const list = await call('get', `/api/organizations?q=${runId}`).expect(
+          200,
+        );
+        expect((list.body as { meta?: object }).meta).toBeDefined();
+        await call('get', `/api/organizations/${org.id}`).expect(200);
+        await call('get', '/api/platform/plans').expect(200);
+        await call('get', '/api/platform/audit-logs').expect(200);
+        // Nothing that changes a school or platform staff.
+        const refused = await call(
+          'patch',
+          `/api/organizations/${org.id}/plan`,
+          {
+            planCode: 'free',
+          },
+        ).expect(403);
+        expect(error(refused)).toMatchObject({
+          code: 'PLATFORM_PERMISSION_REQUIRED',
+        });
+        await call('get', '/api/platform/users').expect(403);
+      }
+
+      // Support resends the owner's link but never sees the token;
+      // developers can't send it; a super admin gets the token.
+      const resent = await asSupport(
+        'post',
+        `/api/organizations/${org.id}/owner/activation-link`,
+      ).expect(201);
+      expect(data<object>(resent)).toEqual({ orgSlug: org.slug });
+      await asDeveloper(
+        'post',
+        `/api/organizations/${org.id}/owner/activation-link`,
+      ).expect(403);
+      const issued = await asAdmin()
+        .post(`/api/organizations/${org.id}/owner/activation-link`)
+        .expect(201);
+      expect(data<{ token: string }>(issued).token).toEqual(expect.any(String));
+
+      // An admin runs schools and sees staff, but can't add or promote any.
+      await asPlainAdmin('patch', `/api/organizations/${org.id}/plan`, {
+        planCode: 'free',
+      }).expect(200);
+      await asPlainAdmin('get', '/api/platform/users').expect(200);
+      await asPlainAdmin('post', '/api/platform/users', {
+        name: 'Sneaky',
+        email: `orgs-sneaky-${runId}@e2e.test`,
+        password: 'secret123',
+        platformRole: PlatformRole.SUPER_ADMIN,
+      }).expect(403);
+      await asPlainAdmin('patch', `/api/platform/users/${plainAdmin.id}`, {
+        platformRole: PlatformRole.SUPER_ADMIN,
+      }).expect(403);
+    } finally {
+      await staff.delete([support.id, developer.id, plainAdmin.id, owner.id]);
+    }
   });
 });

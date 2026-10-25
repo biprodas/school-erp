@@ -101,7 +101,6 @@ describe('Memberships (e2e)', () => {
           name: x,
           password: 'not-used',
           status: UserStatus.ACTIVE,
-          isAdmin: x === 'admin',
           platformRole:
             x === 'admin' ? PlatformRole.SUPER_ADMIN : PlatformRole.USER,
         }),
@@ -124,7 +123,7 @@ describe('Memberships (e2e)', () => {
         status: MembershipStatus.ACTIVE,
       },
     ]);
-    tokens.admin = await e.platformToken(admin.id, true);
+    tokens.admin = await e.platformToken(admin.id, PlatformRole.SUPER_ADMIN);
     tokens.owner = await e.platformToken(owner.id);
     tokens.member = await e.platformToken(member.id);
   });

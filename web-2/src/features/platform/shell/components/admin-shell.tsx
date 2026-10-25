@@ -55,11 +55,15 @@ export function AdminShell({
   )
 }
 
+/** The console roles with a label (`admin.menu.roles`). */
+const PLATFORM_ROLES = ["super_admin", "admin", "support", "developer"] as const
+
 function AdminMenu({ user }: { user: SessionUser }) {
   const t = useTranslations("admin.menu")
   const [signingOut, setSigningOut] = useState(false)
   const name = user.name ?? user.email ?? user.phone ?? ""
   const contact = user.email ?? user.phone
+  const role = PLATFORM_ROLES.find((r) => r === user.platformRole)
 
   function leave(everywhere: boolean) {
     setSigningOut(true)
@@ -87,6 +91,11 @@ function AdminMenu({ user }: { user: SessionUser }) {
             {contact && contact !== name && (
               <span className="truncate text-xs font-normal text-muted-foreground">
                 {contact}
+              </span>
+            )}
+            {role && (
+              <span className="truncate text-xs font-normal text-muted-foreground">
+                {t("role", { role: t(`roles.${role}`) })}
               </span>
             )}
           </DropdownMenuLabel>

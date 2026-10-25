@@ -3,6 +3,7 @@ import type { Request } from 'express';
 import { CLS_REQ, ClsService } from 'nestjs-cls';
 import { clientInfoOf } from '~/common/decorators/client.decorator';
 import { Key } from '~/common/enums/keys.enum';
+import type { PlatformRole } from '~/modules/users/enums/platform-role.enum';
 import type { RequestWithOrg } from '~/tenancy/tenant.middleware';
 
 /** Who is acting and from where, for the current request or job. */
@@ -10,6 +11,8 @@ export interface RequestContextSnapshot {
   orgId: string | null;
   userId: string | null;
   isAdmin: boolean;
+  /** Platform tokens only: the signed-in platform user's role. */
+  platformRole: PlatformRole | null;
   sessionId: string | null;
   ip: string | null;
   userAgent: string | null;
@@ -20,6 +23,7 @@ const EMPTY: RequestContextSnapshot = {
   orgId: null,
   userId: null,
   isAdmin: false,
+  platformRole: null,
   sessionId: null,
   ip: null,
   userAgent: null,
@@ -53,6 +57,7 @@ export class RequestContext {
       orgId: (req as RequestWithOrg).orgId ?? null,
       userId: req.user?.userId ?? null,
       isAdmin: req.user?.isAdmin === true,
+      platformRole: req.user?.platformRole ?? null,
       sessionId: req.user?.sessionId ?? null,
       ip: client?.ip ?? null,
       userAgent: client?.userAgent ?? null,

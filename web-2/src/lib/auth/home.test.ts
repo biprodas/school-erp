@@ -154,7 +154,17 @@ describe("destinationAfterSignIn", () => {
 })
 
 describe("adminGate", () => {
-  const platform = testSession({ realm: "platform", orgId: null, slug: null })
+  const platform = testSession({
+    realm: "platform",
+    orgId: null,
+    slug: null,
+    user: {
+      ...testSession().user,
+      roles: [],
+      platformRole: "support",
+      permissions: ["console:access", "organizations:read"],
+    },
+  })
 
   it("lets only sign-in and password reset through without a session", () => {
     expect(adminGate(null, "/")).toBe("/login?next=%2F")
@@ -167,9 +177,18 @@ describe("adminGate", () => {
     expect(adminGate(null, "/reset-password?token=x")).toBeNull()
   })
 
-  it("sends a signed-in admin from /login to the console", () => {
+  it("sends signed-in platform staff from /login to the console", () => {
     expect(adminGate(platform, "/login")).toBe("/")
     expect(adminGate(platform, "/schools")).toBeNull()
+  })
+
+  it("treats a session without console access as none", () => {
+    const noConsole = {
+      ...platform,
+      user: { ...platform.user, platformRole: "user", permissions: [] },
+    }
+    expect(adminGate(noConsole, "/login")).toBeNull()
+    expect(adminGate(noConsole, "/schools")).toBe("/login?next=%2Fschools")
   })
 })
 

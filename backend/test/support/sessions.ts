@@ -2,12 +2,16 @@ import { SessionService } from '~/modules/auth/services/session.service';
 
 /**
  * For controller-level e2e specs that mock the database: every session is
- * active. Specs that exercise sessions for real boot AppModule and create
- * them with `SessionService.start()`.
+ * active, and ending them (a blocked or removed account) does nothing.
+ * Specs that exercise sessions for real boot AppModule and create them with
+ * `SessionService.start()`.
  */
 export const ACTIVE_SESSIONS = {
   provide: SessionService,
-  useValue: { isActive: () => Promise.resolve(true) },
+  useValue: {
+    isActive: () => Promise.resolve(true),
+    revokeAllForUser: () => Promise.resolve(),
+  },
 };
 
 /** `sid` claim for tokens signed directly by a spec. */

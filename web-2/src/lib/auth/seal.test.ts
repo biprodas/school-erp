@@ -102,13 +102,24 @@ describe("fromTokenResponse", () => {
 
   it("handles the platform shape (no organization, no roles)", () => {
     const body = tokenResponse({ organization: undefined })
-    body.user = { ...body.user, roles: undefined, isAdmin: true }
+    body.user = {
+      ...body.user,
+      roles: undefined,
+      isAdmin: undefined,
+      platformRole: "support",
+      permissions: ["console:access", "organizations:read"],
+    }
 
     expect(fromTokenResponse(body, "platform")).toMatchObject({
       realm: "platform",
       orgId: null,
       slug: null,
-      user: { roles: [], isAdmin: true },
+      user: {
+        roles: [],
+        isAdmin: false,
+        platformRole: "support",
+        permissions: ["console:access", "organizations:read"],
+      },
       onboardingCompletedAt: null,
     })
   })

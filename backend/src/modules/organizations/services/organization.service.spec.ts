@@ -26,6 +26,7 @@ import { MembershipRole } from '~/modules/memberships/enums/membership-role.enum
 import { DemoteOldOwnerTo } from '../dto/transfer-ownership.dto';
 import { UserService } from '~/modules/users/services/user.service';
 import { UserStatus } from '~/modules/users/enums/user-status.enum';
+import { PlatformRole } from '~/modules/users/enums/platform-role.enum';
 import { UserRole } from '~/modules/rbac/entities/user-role.entity';
 import { RbacSeederService } from '~/modules/rbac/services/rbac-seeder.service';
 import { OrgSettingsSeeder } from '~/modules/settings/services/org-settings.seeder';
@@ -58,7 +59,7 @@ const superAdminCtx = () =>
       id: 'admin-id',
       email: 'admin@test.com',
       status: UserStatus.ACTIVE,
-      isAdmin: true,
+      platformRole: PlatformRole.SUPER_ADMIN,
     },
   });
 
@@ -69,7 +70,7 @@ const userCtx = (id = 'user-id') =>
       id,
       email: 'user@test.com',
       status: UserStatus.ACTIVE,
-      isAdmin: false,
+      platformRole: PlatformRole.USER,
     },
   });
 

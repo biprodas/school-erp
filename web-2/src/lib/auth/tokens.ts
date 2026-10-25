@@ -18,6 +18,9 @@ export interface TokenResponse {
     name: string | null
     roles?: string[]
     isAdmin?: boolean
+    /** Platform realm only. */
+    platformRole?: string
+    permissions?: string[]
   }
   /** Tenant realm only. */
   organization?: { id: string; slug: string }
@@ -65,6 +68,8 @@ export function fromTokenResponse(
       phone: body.user.phone,
       roles: body.user.roles ?? [],
       isAdmin: body.user.isAdmin === true,
+      platformRole: body.user.platformRole ?? null,
+      permissions: body.user.permissions ?? [],
     },
     mustChangePassword: body.mustChangePassword === true,
     onboardingCompletedAt: previous?.onboardingCompletedAt ?? null,

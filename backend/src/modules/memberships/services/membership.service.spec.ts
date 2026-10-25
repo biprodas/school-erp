@@ -14,6 +14,7 @@ import { OrganizationService } from '~/modules/organizations/services/organizati
 import { UserService } from '~/modules/users/services/user.service';
 import { OwnerProvisioningService } from '~/modules/auth/services/owner-provisioning.service';
 import { UserStatus } from '~/modules/users/enums/user-status.enum';
+import { PlatformRole } from '~/modules/users/enums/platform-role.enum';
 import { RequestContextDto } from '~/common/dto/request-context.dto';
 import { UserRole } from '~/modules/rbac/entities/user-role.entity';
 
@@ -43,7 +44,7 @@ const superAdminCtx = () =>
       id: 'admin-id',
       email: 'admin@test.com',
       status: UserStatus.ACTIVE,
-      isAdmin: true,
+      platformRole: PlatformRole.SUPER_ADMIN,
     },
   });
 
@@ -54,7 +55,7 @@ const userCtx = (id = 'user-id') =>
       id,
       email: 'user@test.com',
       status: UserStatus.ACTIVE,
-      isAdmin: false,
+      platformRole: PlatformRole.USER,
     },
   });
 

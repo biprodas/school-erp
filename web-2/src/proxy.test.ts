@@ -368,7 +368,9 @@ describe("proxy admin gate", () => {
         email: "admin@example.test",
         phone: null,
         roles: [],
-        isAdmin: true,
+        isAdmin: false,
+        platformRole: "super_admin",
+        permissions: ["console:access"],
       },
       ...overrides,
     })
@@ -394,6 +396,26 @@ describe("proxy admin gate", () => {
     )
     expect(getRedirectUrl(await visit("/login", cookie))).toBe(
       "http://admin.lvh.me:3000/"
+    )
+  })
+
+  it("treats a platform session without console access as none, so /login stays open", async () => {
+    // E.g. a cookie from before platform roles, which carries no permissions.
+    const cookie = `school_erp_admin=${await platform({
+      user: {
+        id: "old-1",
+        name: "Old",
+        email: "old@example.test",
+        phone: null,
+        roles: [],
+        isAdmin: false,
+        platformRole: null,
+        permissions: [],
+      },
+    })}`
+    expect(isRewrite(await visit("/login", cookie))).toBe(true)
+    expect(getRedirectUrl(await visit("/", cookie))).toBe(
+      "http://admin.lvh.me:3000/login?next=%2F"
     )
   })
 

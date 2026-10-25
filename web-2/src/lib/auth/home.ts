@@ -107,15 +107,29 @@ const ADMIN_PUBLIC_PATHS = [
 ]
 
 /**
- * The admin host's gate: everything but sign-in needs a platform session,
- * and a signed-in admin on `/login` goes to the console's home.
+ * The backend's platform permission to open the console
+ * (`backend/src/common/auth/platform-permissions.ts`); the platform role
+ * decides who holds it: super admins, admins, support and developers.
+ */
+export const CONSOLE_ACCESS = "console:access"
+
+/** Whether a platform session's user may open the console. */
+export const canOpenConsole = (user: SessionUser): boolean =>
+  // Cookies from before platform roles carry no permissions.
+  (user.permissions ?? []).includes(CONSOLE_ACCESS)
+
+/**
+ * The admin host's gate: everything but sign-in needs a platform session
+ * that may open the console, and such a session on `/login` goes to the
+ * console's home. A session without console access counts as none, so
+ * `/login` stays reachable to sign in again.
  */
 export function adminGate(
   session: Session | null,
   path: string
 ): string | null {
   const pathname = new URL(path, "http://gate.invalid").pathname
-  if (!session) {
+  if (!session || !canOpenConsole(session.user)) {
     return under(pathname, ADMIN_PUBLIC_PATHS)
       ? null
       : `/login?next=${encodeURIComponent(path)}`

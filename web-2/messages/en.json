@@ -41,8 +41,15 @@
     },
     "menu": {
       "label": "Account menu for {name}",
+      "role": "Role: {role}",
       "signOut": "Sign out",
-      "signOutEverywhere": "Sign out everywhere"
+      "signOutEverywhere": "Sign out everywhere",
+      "roles": {
+        "super_admin": "Super admin",
+        "admin": "Admin",
+        "support": "Support",
+        "developer": "Developer"
+      }
     },
     "home": {
       "title": "Welcome, {name}",
@@ -127,7 +134,7 @@
     "unknown": "Something went wrong. Please try again.",
     "googleEmailMismatch": "Use the email address you signed in to Google with.",
     "googleAlreadyLinked": "That Google account is already linked to another account.",
-    "notPlatformAdmin": "This account can't open the platform console. Sign in with a platform admin account."
+    "notPlatformAdmin": "This account doesn't have access to the platform console. Ask a super admin to give it a platform role."
   },
   "auth": {
     "login": {

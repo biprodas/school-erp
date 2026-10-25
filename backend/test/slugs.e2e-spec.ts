@@ -60,7 +60,6 @@ describe('School slugs (e2e)', () => {
           name: x,
           password: 'not-used',
           status: UserStatus.ACTIVE,
-          isAdmin: x === 'super',
           platformRole:
             x === 'super' ? PlatformRole.SUPER_ADMIN : PlatformRole.USER,
         }),
@@ -149,7 +148,10 @@ describe('School slugs (e2e)', () => {
       await e.http().get(`/api/public/slugs/check?slug=${old}`).expect(200),
     );
     expect(check.reason).toBe('taken');
-    const superToken = await e.platformToken(superAdmin.id, true);
+    const superToken = await e.platformToken(
+      superAdmin.id,
+      PlatformRole.SUPER_ADMIN,
+    );
     const claim = await e
       .http()
       .post('/api/organizations')

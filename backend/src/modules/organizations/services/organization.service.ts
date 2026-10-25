@@ -56,6 +56,11 @@ import {
   SetLimitsDto,
 } from '../dto/platform-organization.dto';
 import { RequestContextDto } from '~/common/dto/request-context.dto';
+import {
+  PLATFORM_PERMISSIONS,
+  platformCan,
+  type PlatformPermission,
+} from '~/common/auth/platform-permissions';
 import { PlatformAuditService } from '~/modules/audit/services/platform-audit.service';
 import { AUDIT_ACTIONS, type AuditAction } from '~/modules/audit/audit-actions';
 
@@ -69,6 +74,10 @@ export interface OwnerActivation {
   token: string;
   orgSlug: string;
 }
+
+/** Whether the caller's platform role holds `permission`. */
+const can = (ctx: RequestContextDto, permission: PlatformPermission) =>
+  platformCan(ctx.user?.platformRole, permission);
 
 export interface CreateOrganizationResult {
   organization: Organization;
@@ -144,10 +153,9 @@ export class OrganizationService {
     dto: CreateOrganizationDto,
   ): Promise<CreateOrganizationResult> {
     const { user } = ctx;
-    const isAdmin = user?.isAdmin === true;
 
     let owner: User | undefined;
-    if (isAdmin) {
+    if (can(ctx, PLATFORM_PERMISSIONS.ORGANIZATIONS_MANAGE)) {
       if (dto.ownerUserId) {
         // Validate up-front so we never fail half-way through.
         owner = await this.userService.findById(ctx, dto.ownerUserId);
@@ -290,9 +298,9 @@ export class OrganizationService {
     orgId: string,
     dto: TransferOwnershipDto,
   ): Promise<{ membership: Membership; ownerActivation?: OwnerActivation }> {
-    if (!ctx.user?.isAdmin) {
+    if (!can(ctx, PLATFORM_PERMISSIONS.ORGANIZATIONS_MANAGE)) {
       throw new ForbiddenException(
-        'Only admins can transfer organization ownership',
+        'Only platform admins can transfer organization ownership',
       );
     }
 
@@ -407,12 +415,13 @@ export class OrganizationService {
    * Mints a fresh token — the original raw token is unrecoverable (only its
    * hash is stored) — so this always issues a new one. Useful when the
    * original link expired or was lost. Allowed for the organization's own
-   * OWNER or a platform admin.
+   * OWNER and platform staff with `organizations:support`; the token comes
+   * back only to the owner and staff who can manage schools.
    */
   async reissueOwnerActivation(
     ctx: RequestContextDto,
     orgId: string,
-  ): Promise<OwnerActivation> {
+  ): Promise<{ orgSlug: string; token?: string }> {
     const organization = await this.organizationRepository.findOne({
       where: { id: orgId },
     });
@@ -420,7 +429,10 @@ export class OrganizationService {
       throw new NotFoundException('Organization not found');
     }
 
-    if (!ctx.user?.isAdmin) {
+    // Support may resend the email; only managers and the owner see the
+    // token, which would let its holder set the owner's password.
+    const showToken = can(ctx, PLATFORM_PERMISSIONS.ORGANIZATIONS_MANAGE);
+    if (!showToken && !can(ctx, PLATFORM_PERMISSIONS.ORGANIZATIONS_SUPPORT)) {
       await this.assertOwner(ctx, orgId, 'issue activation links');
     }
 
@@ -444,18 +456,21 @@ export class OrganizationService {
       organization.slug,
       token,
     );
-    return { token, orgSlug: organization.slug };
+    const isOwner = ownerMembership.userId === ctx.user?.id;
+    return showToken || isOwner
+      ? { token, orgSlug: organization.slug }
+      : { orgSlug: organization.slug };
   }
 
   /**
-   * Super-admins get the school directory (filtered, paginated); anyone
+   * Platform staff with `organizations:read` get the school directory (filtered, paginated); anyone
    * else the schools they belong to.
    */
   async getAllOrganizations(
     ctx: RequestContextDto,
     filter: FilterOrganizationDto = {},
   ): Promise<Organization[] | Paginated<DirectoryEntry>> {
-    if (!ctx.user?.isAdmin) {
+    if (!can(ctx, PLATFORM_PERMISSIONS.ORGANIZATIONS_READ)) {
       return this.getOrganizationsByUser(ctx, ctx.user?.id ?? '');
     }
     return this.findDirectory(filter);
@@ -787,8 +802,8 @@ export class OrganizationService {
   }
 
   /**
-   * Returns an organization only if the requester is an admin or has any
-   * membership in it.
+   * Returns an organization only if the requester may read every school
+   * (`organizations:read`) or has a membership in it.
    */
   async findByIdForUser(
     ctx: RequestContextDto,
@@ -798,7 +813,7 @@ export class OrganizationService {
     if (!organization) {
       throw new NotFoundException('Organization not found');
     }
-    if (ctx.user?.isAdmin === true) return organization;
+    if (can(ctx, PLATFORM_PERMISSIONS.ORGANIZATIONS_READ)) return organization;
 
     const membership = await this.membershipRepository.findOne({
       where: { orgId: id, userId: ctx.user?.id ?? '' },
@@ -819,7 +834,7 @@ export class OrganizationService {
       throw new NotFoundException('Organization not found');
     }
 
-    if (!ctx.user?.isAdmin) {
+    if (!can(ctx, PLATFORM_PERMISSIONS.ORGANIZATIONS_MANAGE)) {
       // Status (active/suspended) is a platform decision; owners must not
       // be able to lift a suspension themselves.
       if (dto.status !== undefined && dto.status !== organization.status) {

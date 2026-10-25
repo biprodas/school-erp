@@ -1,5 +1,4 @@
 import {
-  IsBoolean,
   IsDefined,
   IsEmail,
   IsEnum,
@@ -8,6 +7,7 @@ import {
   IsString,
   MinLength,
 } from 'class-validator';
+import { PlatformRole } from '../enums/platform-role.enum';
 import { UserStatus } from '../enums/user-status.enum';
 
 export class CreateUserDto {
@@ -30,7 +30,8 @@ export class CreateUserDto {
   @IsEnum(UserStatus)
   status?: UserStatus;
 
+  /** What they may do in the platform console; `user` (none) by default. */
   @IsOptional()
-  @IsBoolean()
-  isAdmin?: boolean;
+  @IsEnum(PlatformRole)
+  platformRole?: PlatformRole;
 }

@@ -14,7 +14,12 @@ import {
 import { ReqContext } from '~/common/decorators/request-context.decorator';
 import { RequestContextDto } from '~/common/dto/request-context.dto';
 import { PlatformJwtAuthGuard } from '~/common/guards/platform-jwt-auth.guard';
-import { PlatformAdminGuard } from '~/common/guards/platform-admin.guard';
+import { PlatformPermissionsGuard } from '~/common/guards/platform-permissions.guard';
+import { RequirePlatformPermissions } from '~/common/decorators/require-platform-permissions.decorator';
+import {
+  PLATFORM_PERMISSIONS,
+  platformCan,
+} from '~/common/auth/platform-permissions';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { FilterUserDto } from '../dto/filter-user.dto';
@@ -25,12 +30,12 @@ import { ResponseMessage } from '~/common/decorators/response.decorators';
 @ApiTags('Platform / Users')
 @ApiBearerAuth('platform-jwt')
 @Controller('platform/users')
-@UseGuards(PlatformJwtAuthGuard)
+@UseGuards(PlatformJwtAuthGuard, PlatformPermissionsGuard)
 export class PlatformUserController {
   constructor(private readonly userService: UserService) {}
 
   @Get()
-  @UseGuards(PlatformAdminGuard)
+  @RequirePlatformPermissions(PLATFORM_PERMISSIONS.PLATFORM_USERS_READ)
   @ResponseMessage('List of users')
   findAll(
     @ReqContext() ctx: RequestContextDto,
@@ -40,7 +45,7 @@ export class PlatformUserController {
   }
 
   @Post()
-  @UseGuards(PlatformAdminGuard)
+  @RequirePlatformPermissions(PLATFORM_PERMISSIONS.PLATFORM_USERS_MANAGE)
   @ResponseMessage('User created')
   create(
     @ReqContext() ctx: RequestContextDto,
@@ -55,7 +60,11 @@ export class PlatformUserController {
     @ReqContext() ctx: RequestContextDto,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    if (!ctx.user?.isAdmin && ctx.user?.id !== id) {
+    const canRead = platformCan(
+      ctx.user?.platformRole,
+      PLATFORM_PERMISSIONS.PLATFORM_USERS_READ,
+    );
+    if (!canRead && ctx.user?.id !== id) {
       throw new ForbiddenException('Access denied');
     }
     return this.userService.findById(ctx, id);
@@ -72,7 +81,7 @@ export class PlatformUserController {
   }
 
   @Delete(':id')
-  @UseGuards(PlatformAdminGuard)
+  @RequirePlatformPermissions(PLATFORM_PERMISSIONS.PLATFORM_USERS_MANAGE)
   @ResponseMessage('User deleted')
   async remove(
     @ReqContext() ctx: RequestContextDto,

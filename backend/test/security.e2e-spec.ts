@@ -6,6 +6,7 @@ import { OrganizationType } from '~/modules/organizations/enums/organization-typ
 import { OrganizationService } from '~/modules/organizations/services/organization.service';
 import { User } from '~/modules/users/entities/user.entity';
 import { UserStatus } from '~/modules/users/enums/user-status.enum';
+import { PlatformRole } from '~/modules/users/enums/platform-role.enum';
 import { SessionService } from '~/modules/auth/services/session.service';
 import { bootApp, data, error, type E2eApp } from './support/app';
 import { MemoryStorage, withMemoryStorage } from './support/storage';
@@ -232,7 +233,10 @@ describe('Security hardening [tenant-isolation] (e2e)', () => {
   });
 
   it('keeps platform and school tokens in their own realm', async () => {
-    const platform = await e.platformToken(schools.a.ownerId, true);
+    const platform = await e.platformToken(
+      schools.a.ownerId,
+      PlatformRole.SUPER_ADMIN,
+    );
     await e
       .http()
       .get('/api/students')

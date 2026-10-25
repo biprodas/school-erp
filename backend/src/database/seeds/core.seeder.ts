@@ -1,7 +1,6 @@
 import * as bcrypt from 'bcrypt';
 import { DataSource } from 'typeorm';
 import { User } from '~/modules/users/entities/user.entity';
-import { PLATFORM_ADMIN_ROLES } from '~/modules/users/enums/platform-role.enum';
 import { UserStatus } from '~/modules/users/enums/user-status.enum';
 import { SEED_USERS } from './data/users.data';
 
@@ -9,15 +8,14 @@ import { SEED_USERS } from './data/users.data';
  * Core seed: platform user accounts.
  *
  * Idempotent, keyed by email. A new user is created ACTIVE and verified with
- * the seed password. An existing user gets username, name, role and admin
- * flag synced, and keeps its current password.
+ * the seed password. An existing user gets username, name and platform role
+ * synced, and keeps its current password.
  */
 export async function seedCore(ds: DataSource): Promise<void> {
   await ds.transaction(async (manager) => {
     const repo = manager.getRepository(User);
 
     for (const seed of SEED_USERS) {
-      const isAdmin = PLATFORM_ADMIN_ROLES.includes(seed.role);
       const existing = await repo.findOne({
         where: { email: seed.email },
         withDeleted: true,
@@ -28,7 +26,6 @@ export async function seedCore(ds: DataSource): Promise<void> {
           username: seed.username,
           name: seed.name,
           platformRole: seed.role,
-          isAdmin,
         });
         console.log(`  updated  ${seed.email} (${seed.role})`);
         continue;
@@ -41,7 +38,6 @@ export async function seedCore(ds: DataSource): Promise<void> {
           name: seed.name,
           password: await bcrypt.hash(seed.password, 10),
           platformRole: seed.role,
-          isAdmin,
           status: UserStatus.ACTIVE,
           emailVerifiedAt: new Date(),
         }),

@@ -1,4 +1,5 @@
 import { EntityManager, Repository } from 'typeorm';
+import { PlatformRole } from '~/modules/users/enums/platform-role.enum';
 import { RequestContext } from '~/shared/request-context/request-context.service';
 import { AUDIT_ACTIONS } from '../audit-actions';
 import { PlatformAuditLog } from '../entities/platform-audit-log.entity';
@@ -9,11 +10,11 @@ describe('PlatformAuditService', () => {
   let service: PlatformAuditService;
   let repo: { create: jest.Mock; save: jest.Mock; findAndCount: jest.Mock };
   let userId: string | null;
-  let isAdmin: boolean;
+  let platformRole: PlatformRole | null;
 
   beforeEach(() => {
     userId = 'super-1';
-    isAdmin = true;
+    platformRole = PlatformRole.SUPER_ADMIN;
     repo = {
       create: jest.fn((v: object) => v),
       save: jest.fn(),
@@ -23,7 +24,8 @@ describe('PlatformAuditService', () => {
       current: () => ({
         orgId: null,
         userId,
-        isAdmin,
+        isAdmin: false,
+        platformRole,
         sessionId: null,
         ip: '192.0.2.1',
         userAgent: 'jest',
@@ -54,9 +56,18 @@ describe('PlatformAuditService', () => {
     );
   });
 
+  it('records any console role (support too) as platform', async () => {
+    platformRole = PlatformRole.SUPPORT;
+    await service.record({ action: AUDIT_ACTIONS.LOGOUT });
+
+    expect(repo.save).toHaveBeenCalledWith(
+      expect.objectContaining({ actorType: AuditActorType.PLATFORM }),
+    );
+  });
+
   it('records another signed-in platform user as a user', async () => {
     userId = 'member-1';
-    isAdmin = false;
+    platformRole = PlatformRole.USER;
     await service.record({ action: AUDIT_ACTIONS.LOGOUT });
 
     expect(repo.save).toHaveBeenCalledWith(
@@ -69,7 +80,7 @@ describe('PlatformAuditService', () => {
 
   it('records a sign-in flow actor (nobody signed in) as a user', async () => {
     userId = null;
-    isAdmin = false;
+    platformRole = null;
     await service.record({ action: AUDIT_ACTIONS.LOGIN, actorUserId: 'u-2' });
 
     expect(repo.save).toHaveBeenCalledWith(
@@ -82,7 +93,7 @@ describe('PlatformAuditService', () => {
 
   it('records work without an actor as the system', async () => {
     userId = null;
-    isAdmin = false;
+    platformRole = null;
     await service.record({ action: AUDIT_ACTIONS.ORGANIZATION_UPDATED });
 
     expect(repo.save).toHaveBeenCalledWith(
