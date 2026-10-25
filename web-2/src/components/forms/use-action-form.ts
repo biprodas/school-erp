@@ -31,10 +31,17 @@ export function useActionForm<Input extends FieldValues, Output>({
   schema,
   action,
   defaultValues,
+  mode = "onTouched",
 }: {
   schema: $ZodType<Output, Input>
   action: Action
   defaultValues: DefaultValues<Input>
+  /**
+   * When fields are first checked: on leaving them (`onTouched`) or only
+   * once the form is submitted (`onSubmit`). Either way, a field with an
+   * error is checked again as it changes, so the error clears while typing.
+   */
+  mode?: "onTouched" | "onSubmit"
 }) {
   // react-hook-form keeps errors in a mutable `formState`; the React
   // Compiler would memoize reads of it and show stale (missing) errors.
@@ -43,7 +50,7 @@ export function useActionForm<Input extends FieldValues, Output>({
   const form = useForm<Input, unknown, Output>({
     resolver: zodResolver(schema),
     defaultValues,
-    mode: "onTouched",
+    mode,
   })
   const tv = useTranslations("validation")
 

@@ -57,6 +57,8 @@ describe("message catalogs", () => {
         "findSchool.addressPlaceholder",
         "signup.schoolNamePlaceholder",
         "signup.phonePlaceholder",
+        "auth.login.emailPlaceholder",
+        "auth.forgot.emailPlaceholder",
       ])
       const at = (messages: object, path: string) =>
         path

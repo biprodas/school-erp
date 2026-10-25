@@ -95,8 +95,16 @@ export function destinationAfterSignIn(
   return gate(session, target) === null ? target : homeFor(session)
 }
 
-/** Admin-host paths open without a session: sign-in and its handoff. */
-const ADMIN_PUBLIC_PATHS = ["/login", "/auth"]
+/**
+ * Admin-host paths open without a session: sign-in, its handoff and the
+ * forgotten-password pages.
+ */
+const ADMIN_PUBLIC_PATHS = [
+  "/login",
+  "/auth",
+  "/forgot-password",
+  "/reset-password",
+]
 
 /**
  * The admin host's gate: everything but sign-in needs a platform session,

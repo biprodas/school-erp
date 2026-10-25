@@ -43,7 +43,7 @@ export function AdminShell({
           <span className="min-w-0 flex-1 truncate font-semibold">
             {t("title", { brand: BRAND.name })}
           </span>
-          <LanguageSwitch compact />
+          <LanguageSwitch />
           <ThemeToggle />
           <AdminMenu user={user} />
         </div>

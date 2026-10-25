@@ -11,7 +11,10 @@
     "hidePassword": "Hide password",
     "signOut": "Sign out",
     "backToSchool": "School home",
-    "toggleTheme": "Switch light or dark theme"
+    "toggleTheme": "Switch light or dark theme",
+    "theme": "Theme",
+    "themeLight": "Light",
+    "themeDark": "Dark"
   },
   "schoolHome": {
     "signIn": "Sign in",
@@ -31,7 +34,10 @@
     "login": {
       "metaTitle": "Sign in",
       "title": "Sign in",
-      "description": "The platform console, for the team running the service."
+      "description": "The platform console, for the team running the service.",
+      "help": "Need help?",
+      "contact": "Contact us",
+      "schoolNote": "Looking for your school? Sign in at your school's own web address."
     },
     "menu": {
       "label": "Account menu for {name}",
@@ -130,7 +136,10 @@
       "description": "For staff, students and guardians of {school}.",
       "identifier": "Email or phone",
       "identifierPlaceholder": "you@example.com or 01XXXXXXXXX",
+      "email": "Email",
+      "emailPlaceholder": "you@example.com",
       "password": "Password",
+      "passwordPlaceholder": "Enter your password",
       "forgot": "Forgot password?",
       "submit": "Sign in",
       "or": "or",
@@ -159,9 +168,13 @@
       "title": "Reset your password",
       "description": "Enter your account's email. We'll send you a link to choose a new password.",
       "email": "Email",
+      "emailPlaceholder": "you@example.com",
       "submit": "Send reset link",
       "sentTitle": "Check your email",
       "sentBody": "If {email} belongs to an account at this school, a link to reset the password is on its way.",
+      "sentBodyAdmin": "If {email} belongs to a platform account, a link to reset the password is on its way.",
+      "sentHint": "No email after a few minutes? Check your spam folder, or send the link again.",
+      "sendAgain": "Send again",
       "phoneOnly": "Sign in with a phone number? Ask your school office to reset your password.",
       "backToLogin": "Back to sign in"
     },

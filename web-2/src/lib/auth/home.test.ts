@@ -156,13 +156,15 @@ describe("destinationAfterSignIn", () => {
 describe("adminGate", () => {
   const platform = testSession({ realm: "platform", orgId: null, slug: null })
 
-  it("lets only sign-in through without a session", () => {
+  it("lets only sign-in and password reset through without a session", () => {
     expect(adminGate(null, "/")).toBe("/login?next=%2F")
     expect(adminGate(null, "/schools?page=2")).toBe(
       "/login?next=%2Fschools%3Fpage%3D2"
     )
     expect(adminGate(null, "/login")).toBeNull()
     expect(adminGate(null, "/auth/handoff?code=x")).toBeNull()
+    expect(adminGate(null, "/forgot-password")).toBeNull()
+    expect(adminGate(null, "/reset-password?token=x")).toBeNull()
   })
 
   it("sends a signed-in admin from /login to the console", () => {
@@ -176,6 +178,7 @@ it("adminDestination keeps a same-host next, never sign-in itself", () => {
   expect(adminDestination(null)).toBe("/")
   expect(adminDestination("/login")).toBe("/")
   expect(adminDestination("/auth/handoff?code=x")).toBe("/")
+  expect(adminDestination("/reset-password?token=x")).toBe("/")
   expect(adminDestination("https://evil.test/")).toBe("/")
   expect(adminDestination("//evil.test/")).toBe("/")
 })

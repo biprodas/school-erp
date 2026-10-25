@@ -17,13 +17,13 @@ export function AuthCard({
   children: React.ReactNode
 }) {
   return (
-    <Card className="[--card-spacing:--spacing(6)]">
-      <CardHeader>
+    <Card className="shadow-sm [--card-spacing:--spacing(6)] sm:[--card-spacing:--spacing(9)]">
+      <CardHeader className="gap-1.5">
         <CardTitle>
-          <h1 className="font-display text-2xl font-semibold">{title}</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
         </CardTitle>
         {description && (
-          <CardDescription className="text-base">{description}</CardDescription>
+          <CardDescription className="text-sm">{description}</CardDescription>
         )}
       </CardHeader>
       <CardContent className="flex flex-col gap-6">{children}</CardContent>

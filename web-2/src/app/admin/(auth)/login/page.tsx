@@ -24,21 +24,33 @@ export default async function AdminLoginPage({
   searchParams: SearchParams
 }) {
   const t = await getTranslations("admin.login")
+  const tl = await getTranslations("auth.login")
   const next = safeNext(await param(searchParams, "next"), "") || null
+  const notice =
+    (await param(searchParams, "notice")) === "password-reset"
+      ? tl("passwordReset")
+      : null
   const googleHref = (await isGoogleSignInEnabled())
     ? `/auth/google${next ? `?next=${encodeURIComponent(next)}` : ""}`
     : null
 
   return (
-    <AuthCard title={t("title")} description={t("description")}>
-      <LoginForm
-        next={next}
-        googleHref={googleHref}
-        pageError={queryErrorKey(await param(searchParams, "error"))}
-        notice={null}
-        action={platformSignIn}
-        schoolLinks={false}
-      />
-    </AuthCard>
+    <div className="flex flex-col gap-5">
+      <AuthCard title={t("title")} description={t("description")}>
+        <LoginForm
+          next={next}
+          googleHref={googleHref}
+          pageError={queryErrorKey(await param(searchParams, "error"))}
+          notice={notice}
+          action={platformSignIn}
+          schoolLinks={false}
+          emailOnly
+        />
+      </AuthCard>
+      {/* School staff land here by mistake; their sign-in is on the school's host. */}
+      <p className="text-center text-sm text-balance text-muted-foreground">
+        {t("schoolNote")}
+      </p>
+    </div>
   )
 }

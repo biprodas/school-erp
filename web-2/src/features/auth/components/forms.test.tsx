@@ -8,6 +8,7 @@ import en from "../../../../messages/en.json"
 import type { FormState } from "~/lib/forms/form-state"
 
 import { ActivateForm } from "./activate-form"
+import { ForgotPasswordForm } from "./forgot-password-form"
 import { LoginForm } from "./login-form"
 
 type Action = (s: FormState, f: FormData) => Promise<FormState>
@@ -123,6 +124,27 @@ describe("LoginForm", () => {
     expect(signIn).not.toHaveBeenCalled()
   })
 
+  it("waits for Sign in before showing field errors, then clears them while typing", async () => {
+    renderIn(loginForm())
+
+    await userEvent.click(screen.getByLabelText("Email or phone"))
+    await userEvent.tab()
+    expect(
+      screen.queryByText("Enter your email or phone number")
+    ).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }))
+    expect(
+      await screen.findByText("Enter your email or phone number")
+    ).toBeInTheDocument()
+
+    await userEvent.type(screen.getByLabelText("Email or phone"), "0")
+    expect(
+      screen.queryByText("Enter your email or phone number")
+    ).not.toBeInTheDocument()
+    expect(screen.getByText("Enter a password")).toBeInTheDocument()
+  })
+
   it("shows an error from the URL, and the Google button when enabled", () => {
     renderIn(loginForm({ pageError: "handoff", googleHref: "/auth/google" }))
 
@@ -212,5 +234,70 @@ describe("ActivateForm", () => {
       "don't match an account"
     )
     expect(activate.mock.calls[0][1].get("mode")).toBe("existing")
+  })
+})
+
+describe("ForgotPasswordForm", () => {
+  it("on the admin host, sends through its action without naming a school", async () => {
+    const action = vi.fn<Action>().mockResolvedValue({
+      status: "success",
+      email: "ops@example.com",
+    })
+    renderIn(<ForgotPasswordForm action={action} host="admin" />)
+    expect(screen.queryByText(/school office/)).not.toBeInTheDocument()
+
+    await userEvent.type(screen.getByLabelText("Email"), "ops@example.com")
+    await userEvent.click(
+      screen.getByRole("button", { name: "Send reset link" })
+    )
+
+    expect(
+      await screen.findByText(
+        "If ops@example.com belongs to a platform account, a link to reset the password is on its way."
+      )
+    ).toBeInTheDocument()
+    expect(action).toHaveBeenCalledOnce()
+  })
+
+  it("starts over with an empty form on Send again", async () => {
+    const action = vi.fn<Action>().mockResolvedValue({
+      status: "success",
+      email: "ops@example.com",
+    })
+    renderIn(<ForgotPasswordForm action={action} host="admin" />)
+    await userEvent.type(screen.getByLabelText("Email"), "ops@example.com")
+    await userEvent.click(
+      screen.getByRole("button", { name: "Send reset link" })
+    )
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Send again" })
+    )
+
+    expect(screen.getByLabelText("Email")).toHaveValue("")
+    expect(screen.getByLabelText("Email")).toHaveAttribute(
+      "placeholder",
+      "you@example.com"
+    )
+  })
+})
+
+describe("LoginForm on the admin host", () => {
+  it("asks for an email only, and refuses a phone number", async () => {
+    const action = vi.fn<Action>()
+    renderIn(loginForm({ action, emailOnly: true, schoolLinks: false }))
+
+    const field = screen.getByLabelText("Email")
+    expect(field).toHaveAttribute("type", "email")
+    expect(field).toHaveAttribute("placeholder", "you@example.com")
+
+    await userEvent.type(field, "01712345678")
+    await userEvent.type(screen.getByLabelText("Password"), "secret")
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }))
+
+    expect(
+      await screen.findByText("Enter a valid email address")
+    ).toBeInTheDocument()
+    expect(action).not.toHaveBeenCalled()
   })
 })

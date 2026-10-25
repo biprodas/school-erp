@@ -52,19 +52,28 @@ const passwordPair = z
   })
   .check(passwordsMatch)
 
+const email = z.pipe(
+  z
+    .string(message("emailRequired"))
+    .check(z.trim(), z.minLength(1, message("emailRequired"))),
+  z.email(message("emailInvalid"))
+)
+
 export const loginSchema = z.object({
   identifier,
   password: currentPassword,
 })
 
-export const forgotPasswordSchema = z.object({
-  email: z.pipe(
-    z
-      .string(message("emailRequired"))
-      .check(z.trim(), z.minLength(1, message("emailRequired"))),
-    z.email(message("emailInvalid"))
-  ),
+/**
+ * Sign-in on the admin host: platform admins sign in with their email
+ * only. The field keeps the name `identifier`, as the backend expects.
+ */
+export const platformLoginSchema = z.object({
+  identifier: email,
+  password: currentPassword,
 })
+
+export const forgotPasswordSchema = z.object({ email })
 
 export const resetPasswordSchema = passwordPair
 

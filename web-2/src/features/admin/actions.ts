@@ -2,7 +2,13 @@
 
 import { redirect } from "next/navigation"
 
-import { loginSchema } from "~/features/auth/schemas"
+import {
+  forgotPasswordSchema,
+  platformLoginSchema,
+  resetPasswordSchema,
+} from "~/features/auth/schemas"
+import { clearSession } from "~/lib/auth"
+import { isApiError } from "~/lib/api/errors"
 import { backendFetch } from "~/lib/api/server"
 import {
   errorState,
@@ -31,7 +37,7 @@ export async function platformSignIn(
   if ((await getRequestHost()).kind !== "admin") {
     return { status: "error", code: "UNKNOWN" }
   }
-  const parsed = loginSchema.safeParse({
+  const parsed = platformLoginSchema.safeParse({
     identifier: text(formData, "identifier"),
     password: text(formData, "password"),
   })
@@ -50,4 +56,68 @@ export async function platformSignIn(
     return errorState(error)
   }
   redirect(adminDestination(text(formData, "next")))
+}
+
+/**
+ * `POST /platform/auth/forgot-password` on the admin host. Like the school
+ * form, any refusal but throttling reads as "sent", so the page never says
+ * whether the email has an account.
+ */
+export async function platformRequestPasswordReset(
+  _previous: FormState,
+  formData: FormData
+): Promise<FormState> {
+  if ((await getRequestHost()).kind !== "admin") {
+    return { status: "error", code: "UNKNOWN" }
+  }
+  const parsed = forgotPasswordSchema.safeParse({
+    email: text(formData, "email"),
+  })
+  if (!parsed.success) return invalidState(parsed.error)
+
+  try {
+    await backendFetch("/platform/auth/forgot-password", {
+      method: "POST",
+      body: parsed.data,
+      session: null,
+    })
+  } catch (error) {
+    const silent =
+      isApiError(error) &&
+      error.status >= 400 &&
+      error.status < 500 &&
+      error.status !== 429
+    if (!silent) return errorState(error)
+  }
+  return { status: "success", email: parsed.data.email }
+}
+
+/**
+ * `POST /platform/auth/reset-password`. The backend ends every session of
+ * the account, so the admin cookie goes too; the admin signs in again.
+ */
+export async function platformResetPassword(
+  _previous: FormState,
+  formData: FormData
+): Promise<FormState> {
+  if ((await getRequestHost()).kind !== "admin") {
+    return { status: "error", code: "UNKNOWN" }
+  }
+  const parsed = resetPasswordSchema.safeParse({
+    password: text(formData, "password"),
+    confirmPassword: text(formData, "confirmPassword"),
+  })
+  if (!parsed.success) return invalidState(parsed.error)
+
+  try {
+    await backendFetch("/platform/auth/reset-password", {
+      method: "POST",
+      body: { token: text(formData, "token"), password: parsed.data.password },
+      session: null,
+    })
+  } catch (error) {
+    return errorState(error)
+  }
+  await clearSession()
+  redirect("/login?notice=password-reset")
 }

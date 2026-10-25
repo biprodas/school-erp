@@ -56,7 +56,7 @@ export function OnboardingShell({
               {t("shellTitle")}
             </span>
           </div>
-          <LanguageSwitch compact />
+          <LanguageSwitch />
           <ThemeToggle />
           <Button
             variant="ghost"

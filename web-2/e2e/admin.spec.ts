@@ -1,4 +1,4 @@
-import { adminUrl, E2E } from "./support/env"
+import { adminUrl, E2E, onHost } from "./support/env"
 import { createSchool, settle } from "./support/school"
 import { expect, expectAccessible, test } from "./support/test"
 
@@ -9,7 +9,7 @@ async function signInHere(
   email: string,
   password: string
 ) {
-  await page.getByLabel("Email or phone").fill(email)
+  await page.getByLabel("Email", { exact: true }).fill(email)
   await page.getByLabel("Password", { exact: true }).fill(password)
   await page.getByRole("button", { name: "Sign in" }).click()
 }
@@ -22,7 +22,10 @@ test("a school account is refused; the super-admin signs in and out", async ({
   await expect(page).toHaveURL(adminUrl("/login?next=%2F"))
   await settle(page)
   await expectAccessible(page)
-  await expect(page.getByText("Forgot password?")).toHaveCount(0)
+  await expect(
+    page.getByRole("link", { name: "Forgot password?" })
+  ).toHaveAttribute("href", "/forgot-password")
+  await expect(page.getByText("Looking for your school?")).toBeVisible()
 
   await signInHere(page, school.owner.email, school.owner.password)
   await expect(page.getByText(/can't open the platform console/)).toBeVisible()
@@ -45,4 +48,25 @@ test("a school account is refused; the super-admin signs in and out", async ({
   await page.waitForURL(adminUrl("/login"))
   await page.goto(adminUrl("/"))
   await expect(page).toHaveURL(/\/login/)
+})
+
+test("a forgotten admin password: the reset pages are open, and the emailed link reaches the admin host", async ({
+  page,
+}) => {
+  await page.goto(adminUrl("/forgot-password"))
+  await expect(
+    page.getByRole("heading", { name: "Reset your password" })
+  ).toBeVisible()
+  await settle(page)
+  await expectAccessible(page)
+  await page.getByLabel("Email").fill("nobody@example.com")
+  await page.getByRole("button", { name: "Send reset link" }).click()
+  await expect(page.getByText(/belongs to a platform account/)).toBeVisible()
+
+  // The platform reset email links to the apex; it forwards to the admin host.
+  await page.goto(onHost(null, "/reset-password?token=not-a-token"))
+  await expect(page).toHaveURL(adminUrl("/reset-password?token=not-a-token"))
+  await expect(
+    page.getByRole("heading", { name: "This reset link doesn't work" })
+  ).toBeVisible()
 })

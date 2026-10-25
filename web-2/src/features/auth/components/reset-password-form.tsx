@@ -8,23 +8,30 @@ import { SubmitButton } from "~/components/forms/submit-button"
 import { useActionForm } from "~/components/forms/use-action-form"
 import { FieldDescription } from "~/components/ui/field"
 
+import type { FormState } from "~/lib/forms/form-state"
+
 import { resetPassword } from "../actions"
 import { FormAlert } from "./form-alert"
 import { resetPasswordSchema } from "../schemas"
 
-/** A new password for the account of a reset link; then back to sign in. */
+/**
+ * A new password for the account of a reset link; then back to sign in.
+ * The admin host passes its own action.
+ */
 export function ResetPasswordForm({
   token,
   account,
+  action = resetPassword,
 }: {
   token: string
   account: string | null
+  action?: (previous: FormState, formData: FormData) => Promise<FormState>
 }) {
   const t = useTranslations("auth.reset")
   const ta = useTranslations("auth.activate")
   const { form, state, pending, errorOf, formProps } = useActionForm({
     schema: resetPasswordSchema,
-    action: resetPassword,
+    action,
     defaultValues: { password: "", confirmPassword: "" },
   })
   const passwordError = errorOf("password")

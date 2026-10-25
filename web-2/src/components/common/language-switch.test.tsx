@@ -39,7 +39,7 @@ describe("LanguageSwitch", () => {
       "বাংলা",
       "हिन्दी",
     ])
-    expect(screen.getByText("English", { selector: "span" })).toBeTruthy()
+    expect(select.selectedOptions[0]?.textContent).toBe("English")
   })
 
   it("switches to Hindi", async () => {

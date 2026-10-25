@@ -15,13 +15,14 @@ import { signIn } from "../actions"
 import type { AuthErrorKey } from "../errors"
 import { FormAlert } from "./form-alert"
 import { GoogleIcon } from "./google-icon"
-import { loginSchema } from "../schemas"
+import { loginSchema, platformLoginSchema } from "../schemas"
 
 /**
  * One sign-in form for staff, students and guardians: email or phone and
  * password, plus "Continue with Google" when the school's host has it.
- * The admin host uses it too, with its own action and without the
- * school-only links.
+ * The admin host uses it too, with its own action, email only and without
+ * the note for invited members. Both hosts have their own
+ * `/forgot-password`.
  */
 export function LoginForm({
   next,
@@ -31,6 +32,7 @@ export function LoginForm({
   notice,
   action = signIn,
   schoolLinks = true,
+  emailOnly = false,
 }: {
   next: string | null
   /** Prefilled, e.g. from the "Find your school" email's link. */
@@ -40,14 +42,19 @@ export function LoginForm({
   pageError: AuthErrorKey | null
   notice: string | null
   action?: (previous: FormState, formData: FormData) => Promise<FormState>
-  /** "Forgot password?" and the note for invited members. */
+  /** The note for invited members. */
   schoolLinks?: boolean
+  /** Email, no phone number (platform admins on the admin host). */
+  emailOnly?: boolean
 }) {
   const t = useTranslations("auth.login")
   const { form, state, pending, errorOf, formProps } = useActionForm({
-    schema: loginSchema,
+    schema: emailOnly ? platformLoginSchema : loginSchema,
     action,
     defaultValues: { identifier, password: "" },
+    // Errors wait for "Sign in": checking on blur would show one while the
+    // pointer is on its way to the button and push the button down.
+    mode: "onSubmit",
   })
   const identifierError = errorOf("identifier")
   const passwordError = errorOf("password")
@@ -59,15 +66,18 @@ export function LoginForm({
         {next && <input type="hidden" name="next" value={next} />}
         <FormField
           id="identifier"
-          label={t("identifier")}
+          label={t(emailOnly ? "email" : "identifier")}
           error={identifierError}
         >
           <Input
             id="identifier"
+            type={emailOnly ? "email" : "text"}
             autoComplete="username"
             autoCapitalize="none"
             spellCheck={false}
-            placeholder={t("identifierPlaceholder")}
+            placeholder={t(
+              emailOnly ? "emailPlaceholder" : "identifierPlaceholder"
+            )}
             {...ariaFor("identifier", identifierError)}
             {...form.register("identifier")}
           />
@@ -77,19 +87,18 @@ export function LoginForm({
           label={t("password")}
           error={passwordError}
           action={
-            schoolLinks && (
-              <a
-                href="/forgot-password"
-                className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-              >
-                {t("forgot")}
-              </a>
-            )
+            <a
+              href="/forgot-password"
+              className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+            >
+              {t("forgot")}
+            </a>
           }
         >
           <PasswordInput
             id="password"
             autoComplete="current-password"
+            placeholder={t("passwordPlaceholder")}
             {...ariaFor("password", passwordError)}
             {...form.register("password")}
           />

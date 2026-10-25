@@ -20,7 +20,11 @@ export function FormField({
   children: React.ReactNode
 }) {
   return (
-    <Field data-invalid={error ? true : undefined}>
+    // The border and the message carry the error; the label keeps its color.
+    <Field
+      data-invalid={error ? true : undefined}
+      className="data-[invalid=true]:text-foreground"
+    >
       <div className="flex items-center justify-between gap-2">
         <FieldLabel htmlFor={id}>{label}</FieldLabel>
         {action}
