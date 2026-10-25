@@ -1,3 +1,5 @@
+import { apiConfig } from "~/config/api-config"
+
 import { unwrap } from "./api/envelope"
 import type { HostInfo } from "./hosts"
 
@@ -16,8 +18,7 @@ export class TenantLookupError extends Error {
   }
 }
 
-const TTL_MS = 60_000
-const TIMEOUT_MS = 3_000
+const { cacheTtlMs: TTL_MS, timeoutMs: TIMEOUT_MS } = apiConfig.tenantLookup
 
 const cache = new Map<string, { value: TenantLookup; expiresAt: number }>()
 const inFlight = new Map<string, Promise<TenantLookup>>()

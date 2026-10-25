@@ -7,12 +7,13 @@ import {
   schoolName,
   type SchoolHome,
 } from "~/api/public/school-home"
-import { KampasyMark } from "~/components/brand/kampasy-mark"
+import { BrandMark } from "~/components/brand/brand-mark"
 import { LanguageSwitch } from "~/components/language-switch"
 import { SchoolLogo } from "~/components/school-logo"
 import { ThemeToggle } from "~/components/theme-toggle"
 import { Badge } from "~/components/ui/badge"
 import { buttonVariants } from "~/components/ui/button"
+import { BRAND } from "~/config/brand-config"
 import { formatDate } from "~/lib/format"
 import { requireSchoolSlug } from "~/lib/request-host"
 import { getSession } from "~/lib/session"
@@ -112,8 +113,8 @@ export default async function SchoolHomePage() {
         <Contact home={home} labels={t} />
       </main>
       <footer className="flex items-center justify-center gap-2 pb-6 text-sm text-muted-foreground">
-        <KampasyMark className="size-4" />
-        {tc("poweredBy")}
+        <BrandMark className="size-4" />
+        {tc("poweredBy", { brand: BRAND.name })}
       </footer>
     </div>
   )

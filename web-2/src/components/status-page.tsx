@@ -1,4 +1,4 @@
-import { KampasyMark } from "~/components/brand/kampasy-mark"
+import { BrandMark } from "~/components/brand/brand-mark"
 import {
   Empty,
   EmptyContent,
@@ -7,6 +7,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "~/components/ui/empty"
+import { BRAND } from "~/config/brand-config"
 
 /** A full-screen message (unknown school, backend down, …). */
 export function StatusPage({
@@ -40,8 +41,8 @@ export function StatusPage({
         {children && <EmptyContent>{children}</EmptyContent>}
       </Empty>
       <p className="flex items-center gap-2 text-sm text-muted-foreground">
-        <KampasyMark className="size-4" />
-        Kampasy
+        <BrandMark className="size-4" />
+        {BRAND.name}
       </p>
     </main>
   )

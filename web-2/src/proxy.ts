@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server"
 
+import { appConfig } from "~/config/app-config"
 import {
   HOST_HEADERS,
   HOST_KIND_HEADER,
@@ -8,7 +9,6 @@ import {
 } from "~/lib/host-headers"
 import { urlOnHost } from "~/lib/hosts"
 import { clientInfo } from "~/lib/client-ip"
-import { publicEnv } from "~/lib/public-env"
 import { resolveHost, type ResolvedHost } from "~/lib/resolve-host"
 import { SESSION_COOKIES } from "~/lib/session/cookie"
 import {
@@ -67,7 +67,7 @@ export async function proxy(request: NextRequest) {
       return rewrite(request, { kind: "unknown", origin }, "/unknown-school")
     case "moved": {
       const { pathname, search } = request.nextUrl
-      const target = `${host.slug}.${publicEnv.rootDomain}`
+      const target = `${host.slug}.${appConfig.rootDomain}`
       return NextResponse.redirect(
         urlOnHost(origin, target, `${pathname}${search}`),
         301

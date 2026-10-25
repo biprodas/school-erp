@@ -1,11 +1,9 @@
 import "server-only"
 
-import { serverEnv } from "~/lib/env"
+import { apiConfig } from "~/config/api-config"
 
 import { unwrap } from "./envelope"
 import { networkError } from "./errors"
-
-const TIMEOUT_MS = 5_000
 
 /**
  * Calls an unauthenticated backend endpoint (`/public/*`) from the server
@@ -16,13 +14,13 @@ export async function fetchPublic<T>(
   path: string,
   init: RequestInit = {}
 ): Promise<T> {
-  const url = new URL(`/api${path}`, serverEnv().API_URL)
+  const url = new URL(`/api${path}`, apiConfig.apiUrl)
   let response: Response
   try {
     response = await fetch(url, {
       ...init,
       headers: { accept: "application/json", ...init.headers },
-      signal: init.signal ?? AbortSignal.timeout(TIMEOUT_MS),
+      signal: init.signal ?? AbortSignal.timeout(apiConfig.publicTimeoutMs),
     })
   } catch (cause) {
     throw networkError(cause)

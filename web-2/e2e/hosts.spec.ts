@@ -11,7 +11,7 @@ const onHost = (subdomain: string, path = "/") =>
 test("the admin host serves the admin app", async ({ page }) => {
   const response = await page.goto(onHost("admin"))
   expect(response?.status()).toBe(200)
-  await expect(page.getByText("Kampasy admin")).toBeVisible()
+  await expect(page.getByText("School ERP admin")).toBeVisible()
 })
 
 test("a reserved subdomain is not a school", async ({ page }) => {

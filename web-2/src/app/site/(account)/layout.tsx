@@ -2,6 +2,7 @@ import { getTranslations } from "next-intl/server"
 
 import { LanguageSwitch } from "~/components/language-switch"
 import { ThemeToggle } from "~/components/theme-toggle"
+import { BRAND } from "~/config/brand-config"
 
 import { Logo } from "../_landing/logo"
 
@@ -26,7 +27,7 @@ export default async function AccountLayout({
         <div className="flex w-full max-w-lg flex-col gap-6">{children}</div>
       </main>
       <footer className="pb-6 text-center text-sm text-muted-foreground">
-        {t("footer")}
+        {t("footer", { brand: BRAND.name })}
       </footer>
     </div>
   )

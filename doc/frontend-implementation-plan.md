@@ -161,7 +161,7 @@ Primary-domain redirect (subdomain â†’ custom domain) is left for the Settings â
 
 ### 4.1 Cookie
 
-- Name `kampasy_session` on school hosts, `kampasy_admin` on the admin host. Host-only (no `Domain`), `HttpOnly`, `Secure` outside dev, `SameSite=Lax`, `Path=/`, `Max-Age` = `refresh_expires_at`.
+- Name `school_erp_session` on school hosts, `school_erp_admin` on the admin host. Host-only (no `Domain`), `HttpOnly`, `Secure` outside dev, `SameSite=Lax`, `Path=/`, `Max-Age` = `refresh_expires_at`.
 - Payload, sealed with `jose` `EncryptJWT` (`dir` + `A256GCM`, key from `SESSION_SECRET`): `{ at, rt, atExp, realm: 'tenant' | 'platform', orgId, slug, user: { id, name, email, phone, roles, isAdmin }, mustChangePassword, onboardingCompletedAt }`. Keep it under 4 KB; it holds no permission list (that comes from the query in 5.2).
 - `lib/session/` exposes `getSession()` (server components, route handlers, proxy), `setSession(res, tokens)`, `clearSession(res)`, and `updateSession(patch)`.
 - The cookie is also bound to the org: `getSession()` ignores a cookie whose `slug`/`orgId` doesn't match the host's tenant. The backend refuses it anyway (`JwtStrategy`).
@@ -336,7 +336,7 @@ Packages and config:
 - [x] Scripts: `test` (Vitest), `test:watch`, `test:e2e` (Playwright), `format:check`; `typecheck` exists.
 - [x] `vitest.config.ts` (jsdom, `~` alias, `server-only` stubbed, setup with jest-dom matchers); `playwright.config.ts` with a 360 px and a desktop project, `baseURL` `lvh.me:3000` (`E2E_BASE_URL` overrides).
 - [x] `web-2/.env.example`: `API_URL`, `SESSION_SECRET`, `NEXT_PUBLIC_ROOT_DOMAIN`, `NEXT_PUBLIC_ADMIN_HOST`, `NEXT_PUBLIC_APP_PORT` (`.gitignore` lets it through).
-- [x] `lib/env.ts`: zod-validated server env, read on first use (so `next build` needs none), `server-only`; public values in `lib/public-env.ts`.
+- [x] `lib/env.ts`: zod-validated server env, read on first use (so `next build` needs none), `server-only`; public values in `lib/public-env.ts`. *(Since moved into `src/config/`, see section 8.)*
 
 Shared code:
 
@@ -413,7 +413,7 @@ Notes:
 Session:
 
 - [x] `lib/session/seal.ts`: `seal()` / `unseal()` with `jose` (`dir` + `A256GCM`, key from `SESSION_SECRET` through HKDF-SHA256); expires with the refresh token; a tampered, foreign-secret, expired or old-shape value reads as no session.
-- [x] `lib/session/cookie.ts`: `kampasy_session` (tenant) and `kampasy_admin` (platform); host-only, `HttpOnly`, `Secure` in production, `SameSite=Lax`, `Path=/`, `Max-Age` = refresh-token lifetime.
+- [x] `lib/session/cookie.ts`: `school_erp_session` (tenant) and `school_erp_admin` (platform); host-only, `HttpOnly`, `Secure` in production, `SameSite=Lax`, `Path=/`, `Max-Age` = refresh-token lifetime.
 - [x] `lib/session/index.ts` (server components, actions): `getSession()`, `setSession()`, `updateSession(patch)`, `clearSession()`. `lib/session/fresh.ts`: `readSession()` treats a cookie of another realm or school as none.
 - [x] `lib/session/tokens.ts`: `fromTokenResponse()` (`sid` and `exp` decoded from the access token; keeps `onboardingCompletedAt`), `withAccessToken()` for change-password's access-only answer. A realistic sealed session is well under 3.5 KB (tested).
 
@@ -605,7 +605,7 @@ Portal (`/student`):
 
 Admin host:
 
-- [ ] `/login` (platform realm, `POST /platform/auth/login`), session in the `kampasy_admin` cookie.
+- [ ] `/login` (platform realm, `POST /platform/auth/login`), session in the `school_erp_admin` cookie.
 - [ ] `/auth/handoff` route handler (`POST /platform/auth/handoff/exchange`) for Google sign-in.
 - [ ] Shell with a placeholder home and sign-out; school hosts never accept the platform cookie.
 
@@ -630,6 +630,7 @@ Admin host:
 - **Hand-written API layer now, generator later.** Before the feature screens, generate the client from `/api/docs` with orval and with hey-api, compare, and migrate `src/api/` to the winner (`frontend-architecture.md` 11).
 - **Server actions for credential forms, route handlers for redirects and the BFF.** Tokens never leave the server.
 - **Permission-based gating, not role names.** The old frontend gated by role name (`example-menu-frontend.md`); custom roles make that wrong, so every menu item and widget declares a permission key from `permissions.catalog.ts`.
+- **Brand in one place** (`web-2/src/config/brand-config.ts`): "School ERP" for now, "Kampasy" kept for later. It sets the name (UI text takes it as `{brand}` in the message catalogs; `BrandMark` and the Apple icon follow it), the contact email (`contact@biprodas.dev`) and the session cookie prefix (`school_erp_session`, `school_erp_admin`). `app/icon.svg` is swapped by hand (both favicons are in `components/brand/`). The CSRF header value and the session key's HKDF label keep the internal `kampasy` name. Site metadata (title, title template, description, tagline, keywords, Open Graph locales, `siteUrl` from `NEXT_PUBLIC_SITE_URL`) is in `web-2/src/config/site-config.ts`, read by the root layout and the landing footer. All settings live in `web-2/src/config/` and nothing else reads `process.env`: `app-config.ts` (root domain, admin host, port, `appUrl`, production flag; also read by `next.config.ts`), `api-config.ts` (server-only: `API_URL`, `TRUSTED_PROXY_HOPS`, timeouts, tenant-lookup cache, BFF body limit), `auth-config.ts` (server-only: `SESSION_SECRET`, cookie names, secure cookies, refresh margin and grace, Google probe timing), `brand-config.ts`, `site-config.ts`, and `env.ts` (the zod check of server variables, used only by the config files).
 - **Base UI toast** instead of sonner (already wired in the root layout).
 - **Separate CI job** for `web-2` (lint, typecheck, build, Vitest), added to `.github/workflows/ci.yml` in M0; Playwright joins in M9 against the docker-compose stack.
 

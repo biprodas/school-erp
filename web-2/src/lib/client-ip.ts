@@ -1,3 +1,5 @@
+import { apiConfig } from "~/config/api-config"
+
 /**
  * The browser's address, for the backend's audit rows, session list and
  * rate limits.
@@ -7,7 +9,8 @@
  * client itself reaches us unchanged. Each trusted reverse proxy in front
  * of Next appends the address it saw, so the client is the entry
  * `hops` from the end (`TRUSTED_PROXY_HOPS`, default 1: one proxy, such as
- * Caddy, or none in development, where Next's own value is the last).
+ * Caddy, or none in development, where Next's own value is the last; set
+ * in `config/api-config.ts`).
  * Entries further left are whatever the client claimed and are ignored.
  *
  * Without any reverse proxy, a client that sends the header can still
@@ -15,7 +18,7 @@
  */
 export function clientIp(
   headers: Headers,
-  hops = trustedProxyHops()
+  hops = apiConfig.trustedProxyHops
 ): string | null {
   const entries = (headers.get("x-forwarded-for") ?? "")
     .split(",")
@@ -23,11 +26,6 @@ export function clientIp(
     .filter(Boolean)
   if (!entries.length) return null
   return entries[Math.max(0, entries.length - Math.max(1, hops))]
-}
-
-function trustedProxyHops(): number {
-  const value = Number(process.env.TRUSTED_PROXY_HOPS ?? 1)
-  return Number.isInteger(value) && value >= 1 ? value : 1
 }
 
 /** Who is calling, as the backend should record it. */

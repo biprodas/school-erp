@@ -1,6 +1,7 @@
 import Link from "next/link"
 
-import { KampasyMark } from "~/components/brand/kampasy-mark"
+import { BrandMark } from "~/components/brand/brand-mark"
+import { BRAND } from "~/config/brand-config"
 import { cn } from "~/lib/utils"
 
 export function Logo({ className }: { className?: string }) {
@@ -12,8 +13,8 @@ export function Logo({ className }: { className?: string }) {
         className
       )}
     >
-      <KampasyMark />
-      Kampasy
+      <BrandMark />
+      {BRAND.name}
     </Link>
   )
 }

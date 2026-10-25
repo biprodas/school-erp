@@ -8,11 +8,11 @@ import {
   CardHeader,
   CardTitle,
 } from "~/components/ui/card"
+import { appConfig } from "~/config/app-config"
 import {
   FindByAddressForm,
   FindByEmailForm,
 } from "~/features/signup/find-school-forms"
-import { publicEnv } from "~/lib/public-env"
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("findSchool")
@@ -33,7 +33,7 @@ export default async function FindSchoolPage() {
         <p className="text-muted-foreground">{t("description")}</p>
       </div>
       <Panel title={t("addressTitle")} description={t("addressDescription")}>
-        <FindByAddressForm rootDomain={publicEnv.rootDomain} />
+        <FindByAddressForm rootDomain={appConfig.rootDomain} />
       </Panel>
       <Panel title={t("emailTitle")} description={t("emailDescription")}>
         <FindByEmailForm />

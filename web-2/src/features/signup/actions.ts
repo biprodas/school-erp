@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation"
 
+import { appConfig } from "~/config/app-config"
 import { isApiError } from "~/lib/api/errors"
 import { backendFetch } from "~/lib/api/server"
 import {
@@ -11,7 +12,6 @@ import {
   type FormState,
 } from "~/lib/forms/form-state"
 import { urlOnHost } from "~/lib/hosts"
-import { publicEnv } from "~/lib/public-env"
 import { getRequestHost } from "~/lib/request-host"
 
 import {
@@ -174,7 +174,7 @@ export async function goToSchool(
   formData: FormData
 ): Promise<FormState> {
   await requireSite()
-  const parsed = schoolAddressSchema(publicEnv.rootDomain).safeParse({
+  const parsed = schoolAddressSchema(appConfig.rootDomain).safeParse({
     address: text(formData, "address"),
   })
   if (!parsed.success) return invalidState(parsed.error)
@@ -197,6 +197,6 @@ export async function goToSchool(
   }
   const { origin } = await getRequestHost()
   redirect(
-    urlOnHost(origin, `${school.slug}.${publicEnv.rootDomain}`, "/login")
+    urlOnHost(origin, `${school.slug}.${appConfig.rootDomain}`, "/login")
   )
 }

@@ -1,11 +1,11 @@
 import type { Metadata } from "next"
 import { getTranslations } from "next-intl/server"
 
+import { appConfig } from "~/config/app-config"
 import { AuthCard } from "~/features/auth/auth-card"
 import { LinkProblem } from "~/features/auth/link-problem"
 import { param, type SearchParams } from "~/features/auth/search-params"
 import { VerifySignupForm } from "~/features/signup/verify-signup-form"
-import { publicEnv } from "~/lib/public-env"
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("signup")
@@ -37,7 +37,7 @@ export default async function VerifySignupPage({
 
   return (
     <AuthCard title={t("verifyTitle")} description={t("verifyDescription")}>
-      <VerifySignupForm token={token} rootDomain={publicEnv.rootDomain} />
+      <VerifySignupForm token={token} rootDomain={appConfig.rootDomain} />
     </AuthCard>
   )
 }

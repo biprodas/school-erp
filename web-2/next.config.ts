@@ -2,13 +2,15 @@ import path from "node:path"
 
 import type { NextConfig } from "next"
 
+import { appConfig } from "./src/config/app-config"
+
 // next-intl finds its request config through the `next-intl/config` alias.
 // Its `createNextIntlPlugin` only sets this alias unless the experimental
 // message extraction is on, but it loads `@swc/core` (a native addon) just
 // to be imported, so the alias is set here instead.
 const I18N_REQUEST_CONFIG = "./src/i18n/request.ts"
 
-const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "lvh.me"
+const ROOT_DOMAIN = appConfig.rootDomain
 
 const nextConfig: NextConfig = {
   reactCompiler: true,

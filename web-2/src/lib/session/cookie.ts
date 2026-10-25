@@ -1,10 +1,12 @@
+import { authConfig } from "~/config/auth-config"
+
 import type { Realm, Session } from "./types"
 
-/** One cookie per realm; school hosts and the admin host never share one. */
-export const SESSION_COOKIES: Record<Realm, string> = {
-  tenant: "kampasy_session",
-  platform: "kampasy_admin",
-}
+/**
+ * One cookie per realm; school hosts and the admin host never share one.
+ * Names are in `config/auth-config.ts`.
+ */
+export const SESSION_COOKIES: Record<Realm, string> = authConfig.cookies
 
 export interface SessionCookieOptions {
   httpOnly: true
@@ -25,7 +27,7 @@ export function sessionCookieOptions(
 ): SessionCookieOptions {
   return {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: authConfig.secureCookies,
     sameSite: "lax",
     path: "/",
     maxAge: Math.max(0, session.rtExp - Math.floor(now / 1000)),
@@ -35,7 +37,7 @@ export function sessionCookieOptions(
 /** Options that delete the cookie. */
 export const expiredCookieOptions = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
+  secure: authConfig.secureCookies,
   sameSite: "lax",
   path: "/",
   maxAge: 0,

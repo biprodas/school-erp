@@ -1,13 +1,13 @@
 import type { Metadata } from "next"
 import { getTranslations } from "next-intl/server"
 
+import { appConfig } from "~/config/app-config"
 import { AuthCard } from "~/features/auth/auth-card"
 import { queryErrorKey } from "~/features/auth/errors"
 import { param, type SearchParams } from "~/features/auth/search-params"
 import { readGoogleTicket } from "~/features/signup/google-ticket"
 import { SignupForm } from "~/features/signup/signup-form"
 import { isGoogleSignInEnabled } from "~/lib/google"
-import { publicEnv } from "~/lib/public-env"
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("signup")
@@ -32,7 +32,7 @@ export default async function SignupPage({
   return (
     <AuthCard title={t("title")} description={t("description")}>
       <SignupForm
-        rootDomain={publicEnv.rootDomain}
+        rootDomain={appConfig.rootDomain}
         initialSchoolName={
           (await param(searchParams, "schoolName"))?.slice(0, 100) ?? ""
         }

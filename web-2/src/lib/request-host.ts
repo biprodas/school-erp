@@ -3,13 +3,14 @@ import "server-only"
 import { headers } from "next/headers"
 import { notFound } from "next/navigation"
 
+import { appConfig } from "~/config/app-config"
+
 import {
   HOST_KIND_HEADER,
   REQUEST_ORIGIN_HEADER,
   TENANT_SLUG_HEADER,
 } from "./host-headers"
 import { urlOnHost } from "./hosts"
-import { publicEnv } from "./public-env"
 
 export type RequestHostKind = "site" | "admin" | "school" | "unknown"
 
@@ -31,7 +32,7 @@ export async function getRequestHost(): Promise<RequestHost> {
         ? kind
         : "unknown",
     slug: h.get(TENANT_SLUG_HEADER),
-    origin: h.get(REQUEST_ORIGIN_HEADER) ?? `http://${publicEnv.rootDomain}`,
+    origin: h.get(REQUEST_ORIGIN_HEADER) ?? `http://${appConfig.rootDomain}`,
   }
 }
 
@@ -45,5 +46,5 @@ export async function requireSchoolSlug(): Promise<string> {
 /** An absolute URL on the marketing site, e.g. `/find-school`. */
 export async function siteUrl(path = "/"): Promise<string> {
   const { origin } = await getRequestHost()
-  return urlOnHost(origin, publicEnv.rootDomain, path)
+  return urlOnHost(origin, appConfig.rootDomain, path)
 }

@@ -59,7 +59,7 @@ async function request(
 ) {
   const host = init.host ?? "acme.lvh.me:3000"
   const headers: Record<string, string> = { host, ...init.headers }
-  if (init.cookie) headers.cookie = `kampasy_session=${init.cookie}`
+  if (init.cookie) headers.cookie = `school_erp_session=${init.cookie}`
   return new NextRequest(`http://${host}${path}`, {
     method: init.method ?? "GET",
     headers,
@@ -182,7 +182,9 @@ describe("handleBff", () => {
       `Bearer ${renewed.access_token}`
     )
 
-    const cookie = /kampasy_session=([^;]+)/.exec(responseCookie(response))?.[1]
+    const cookie = /school_erp_session=([^;]+)/.exec(
+      responseCookie(response)
+    )?.[1]
     const stored = await unseal(cookie, TEST_SECRET)
     expect(stored?.rt).toBe("n".repeat(64))
     expect(responseCookie(response)).toMatch(/HttpOnly/i)
@@ -210,7 +212,7 @@ describe("handleBff", () => {
       "/auth/refresh",
       "/auth/me",
     ])
-    expect(responseCookie(response)).toContain("kampasy_session=")
+    expect(responseCookie(response)).toContain("school_erp_session=")
   })
 
   it("replays a buffered JSON body on the retry", async () => {
@@ -257,7 +259,7 @@ describe("handleBff", () => {
     await expect(response.json()).resolves.toMatchObject({
       code: "SESSION_EXPIRED",
     })
-    expect(responseCookie(response)).toMatch(/kampasy_session=;.*Max-Age=0/i)
+    expect(responseCookie(response)).toMatch(/school_erp_session=;.*Max-Age=0/i)
   })
 
   it("ends a revoked session without trying to refresh", async () => {

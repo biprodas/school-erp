@@ -3,6 +3,7 @@ import { redirect } from "next/navigation"
 import { getTranslations } from "next-intl/server"
 
 import { StatusPage } from "~/components/status-page"
+import { BRAND } from "~/config/brand-config"
 import { requireSchoolSlug } from "~/lib/request-host"
 import { getSession } from "~/lib/session"
 
@@ -25,6 +26,7 @@ export async function SignedInPlaceholder() {
       title={t("title")}
       description={t("body", {
         name: user.name ?? user.email ?? user.phone ?? "",
+        brand: BRAND.name,
       })}
     >
       <SignOutButton />

@@ -1,8 +1,8 @@
-import { serverEnv } from "./env"
 import { classifyHost } from "./hosts"
-import { publicEnv } from "./public-env"
 import type { Realm } from "./session/types"
 import { lookupTenant } from "./tenant"
+import { apiConfig } from "~/config/api-config"
+import { appConfig } from "~/config/app-config"
 
 /** What a request's host is, with the school looked up where needed. */
 export type ResolvedHost =
@@ -20,10 +20,10 @@ export type ResolvedHost =
  * for pages and by the BFF for `/api/*`, which the proxy doesn't see.
  */
 export async function resolveHost(host: string): Promise<ResolvedHost> {
-  const info = classifyHost(host, publicEnv)
+  const info = classifyHost(host, appConfig)
   if (info.kind !== "school" && info.kind !== "custom") return info
 
-  const tenant = await lookupTenant(info, { apiUrl: serverEnv().API_URL })
+  const tenant = await lookupTenant(info, { apiUrl: apiConfig.apiUrl })
   switch (tenant.status) {
     case "found":
       return { kind: "school", hostname: info.hostname, slug: tenant.slug }

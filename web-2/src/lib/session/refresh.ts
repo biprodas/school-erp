@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto"
 
+import { authConfig } from "~/config/auth-config"
 import { backendUrl, callBackend, readJson } from "~/lib/api/backend"
 import { unwrap } from "~/lib/api/envelope"
 import { setClientHeaders, type ClientInfo } from "~/lib/client-ip"
@@ -8,7 +9,7 @@ import { fromTokenResponse, type TokenResponse } from "./tokens"
 import type { Realm, Session } from "./types"
 
 /** Refresh this long before the access token expires. */
-export const REFRESH_MARGIN_SECONDS = 60
+export const REFRESH_MARGIN_SECONDS = authConfig.refreshMarginSeconds
 
 /**
  * How long a rotated refresh token still maps to its replacement. A tab
@@ -16,7 +17,7 @@ export const REFRESH_MARGIN_SECONDS = 60
  * rotated it; sending the old token to the backend again would look like
  * token theft and end the whole sign-in (`REFRESH_TOKEN_REUSED`).
  */
-const GRACE_MS = 30_000
+const GRACE_MS = authConfig.refreshGraceMs
 
 const REFRESH_PATHS: Record<Realm, string> = {
   tenant: "/auth/refresh",

@@ -1,4 +1,4 @@
-import { serverEnv } from "~/lib/env"
+import { apiConfig } from "~/config/api-config"
 
 import { networkError } from "./errors"
 
@@ -6,7 +6,7 @@ import { networkError } from "./errors"
 export function backendUrl(path: string, search = ""): URL {
   const url = new URL(
     `/api${path.startsWith("/") ? path : `/${path}`}`,
-    serverEnv().API_URL
+    apiConfig.apiUrl
   )
   url.search = search
   return url

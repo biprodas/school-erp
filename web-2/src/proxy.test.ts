@@ -189,7 +189,7 @@ describe("proxy session refresh", () => {
   const acme = { status: "found", slug: "acme", name: "Acme" } as const
   const page = (cookie: string) =>
     request("http://acme.lvh.me:3000/dashboard", {
-      cookie: `locale=bn; kampasy_session=${cookie}`,
+      cookie: `locale=bn; school_erp_session=${cookie}`,
     })
   const nowSeconds = () => Math.floor(Date.now() / 1000)
 
@@ -221,13 +221,13 @@ describe("proxy session refresh", () => {
 
     // The browser gets the new cookie…
     const setCookie = response.headers.get("set-cookie") ?? ""
-    const value = /kampasy_session=([^;]+)/.exec(setCookie)?.[1]
+    const value = /school_erp_session=([^;]+)/.exec(setCookie)?.[1]
     await expect(unseal(value, TEST_SECRET)).resolves.toMatchObject({
       rt: "n".repeat(64),
     })
     // …and the page rendering after the proxy reads it already.
     const pageCookie = forwarded(response, "cookie") ?? ""
-    expect(pageCookie).toContain(`kampasy_session=${value}`)
+    expect(pageCookie).toContain(`school_erp_session=${value}`)
     expect(pageCookie).toContain("locale=bn")
   })
 
@@ -243,7 +243,7 @@ describe("proxy session refresh", () => {
     )
 
     expect(response.headers.get("set-cookie")).toMatch(
-      /kampasy_session=;.*Max-Age=0/i
+      /school_erp_session=;.*Max-Age=0/i
     )
     // Signed out now, so the protected page sends them to sign in.
     expect(getRedirectUrl(response)).toBe(
@@ -257,7 +257,7 @@ describe("proxy session refresh", () => {
 
     const response = await proxy(
       request("http://lvh.me:3000/", {
-        cookie: `kampasy_session=${await sealedSession({ atExp: nowSeconds() - 5 })}`,
+        cookie: `school_erp_session=${await sealedSession({ atExp: nowSeconds() - 5 })}`,
       })
     )
 
@@ -276,7 +276,7 @@ describe("proxy sign-in gates", () => {
     lookupTenant.mockResolvedValue(acme)
     const headers: Record<string, string> = { host: "acme.lvh.me:3000" }
     if (session) {
-      headers.cookie = `kampasy_session=${await sealedSession(session)}`
+      headers.cookie = `school_erp_session=${await sealedSession(session)}`
     }
     return proxy(
       new NextRequest(`http://acme.lvh.me:3000${path}`, { method, headers })

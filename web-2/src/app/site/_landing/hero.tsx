@@ -2,6 +2,7 @@ import { ArrowRightIcon, CheckIcon } from "lucide-react"
 
 import { Badge } from "~/components/ui/badge"
 import { buttonVariants } from "~/components/ui/button"
+import { BRAND } from "~/config/brand-config"
 import { cn } from "~/lib/utils"
 import { AttendanceDemo } from "./attendance-demo"
 import { DEMO_HREF, SIGNUP_HREF } from "./links"
@@ -80,7 +81,10 @@ export function Hero() {
         </Container>
       </section>
 
-      <section aria-label="Kampasy in numbers" className="border-b bg-card">
+      <section
+        aria-label={`${BRAND.name} in numbers`}
+        className="border-b bg-card"
+      >
         <Container>
           <dl className="grid grid-cols-2 lg:grid-cols-4">
             {STATS.map((stat) => (

@@ -209,15 +209,15 @@ describe("ensureFreshSession", () => {
 
 describe("replaceCookie", () => {
   it("replaces or removes one cookie and keeps the others", () => {
-    const header = "locale=bn; kampasy_session=old; theme=dark"
-    expect(replaceCookie(header, "kampasy_session", "new")).toBe(
-      "locale=bn; theme=dark; kampasy_session=new"
+    const header = "locale=bn; school_erp_session=old; theme=dark"
+    expect(replaceCookie(header, "school_erp_session", "new")).toBe(
+      "locale=bn; theme=dark; school_erp_session=new"
     )
-    expect(replaceCookie(header, "kampasy_session", null)).toBe(
+    expect(replaceCookie(header, "school_erp_session", null)).toBe(
       "locale=bn; theme=dark"
     )
-    expect(replaceCookie(null, "kampasy_session", "v")).toBe(
-      "kampasy_session=v"
+    expect(replaceCookie(null, "school_erp_session", "v")).toBe(
+      "school_erp_session=v"
     )
   })
 })

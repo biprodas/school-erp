@@ -6,7 +6,7 @@
       "bn": "বাংলা",
       "en": "English"
     },
-    "poweredBy": "School management by Kampasy",
+    "poweredBy": "School management by {brand}",
     "showPassword": "Show password",
     "hidePassword": "Hide password",
     "signOut": "Sign out",
@@ -26,8 +26,8 @@
     "address": "Address"
   },
   "admin": {
-    "title": "Kampasy admin",
-    "body": "The admin console for the Kampasy team is on its way."
+    "title": "{brand} admin",
+    "body": "The admin console for the {brand} team is on its way."
   },
   "unknownSchool": {
     "title": "We couldn't find this school",
@@ -168,13 +168,13 @@
     "settingUp": {
       "metaTitle": "Setting up",
       "title": "Your school is being set up",
-      "body": "{school}'s administrators are still setting things up. You can start using Kampasy as soon as they finish.",
+      "body": "{school}'s administrators are still setting things up. You can start using {brand} as soon as they finish.",
       "checkAgain": "Check again",
       "stillOpen": "Not ready yet. Please check again later."
     },
     "signedIn": {
       "title": "You're signed in",
-      "body": "Signed in as {name}. This part of Kampasy is on its way."
+      "body": "Signed in as {name}. This part of {brand} is on its way."
     }
   },
   "signup": {
@@ -224,7 +224,7 @@
     "invalidTitle": "This signup link doesn't work",
     "invalidBody": "It may be used already or expired. Start again; it only takes a minute.",
     "startAgain": "Start again",
-    "footer": "Kampasy · School management for Bangladesh"
+    "footer": "{brand} · School management for Bangladesh"
   },
   "findSchool": {
     "metaTitle": "Find your school",

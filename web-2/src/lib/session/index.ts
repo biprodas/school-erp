@@ -2,7 +2,7 @@ import "server-only"
 
 import { cookies } from "next/headers"
 
-import { serverEnv } from "~/lib/env"
+import { authConfig } from "~/config/auth-config"
 import { getRequestHost } from "~/lib/request-host"
 
 import {
@@ -38,7 +38,7 @@ export async function getSession(): Promise<Session | null> {
 
 /** Stores a session (server actions and route handlers only). */
 export async function setSession(session: Session): Promise<void> {
-  const value = await seal(session, serverEnv().SESSION_SECRET)
+  const value = await seal(session, authConfig.sessionSecret)
   ;(await cookies()).set(
     SESSION_COOKIES[session.realm],
     value,

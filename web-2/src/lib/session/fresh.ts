@@ -1,5 +1,5 @@
+import { authConfig } from "~/config/auth-config"
 import type { ClientInfo } from "~/lib/client-ip"
-import { serverEnv } from "~/lib/env"
 
 import {
   needsRefresh,
@@ -37,7 +37,7 @@ export async function readSession(
   scope: SessionScope
 ): Promise<Session | null> {
   if (!value) return null
-  const session = await unseal(value, serverEnv().SESSION_SECRET)
+  const session = await unseal(value, authConfig.sessionSecret)
   if (!session || session.realm !== scope.realm) return null
   if (scope.realm === "tenant" && session.slug !== scope.slug) return null
   return session
@@ -73,7 +73,7 @@ export async function ensureFreshSession(
   }
   if (!next) return { session: null, cookie: { action: "clear" } }
 
-  const sealed = await seal(next, serverEnv().SESSION_SECRET)
+  const sealed = await seal(next, authConfig.sessionSecret)
   return {
     session: next,
     cookie: { action: "set", value: sealed, session: next },

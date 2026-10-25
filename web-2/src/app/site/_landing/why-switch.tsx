@@ -1,6 +1,7 @@
 import { CheckIcon, XIcon } from "lucide-react"
 
 import { Card } from "~/components/ui/card"
+import { BRAND } from "~/config/brand-config"
 import { Container, Section, SectionIntro } from "./section"
 
 const ROWS = [
@@ -38,7 +39,7 @@ export function WhySwitch() {
           title="Registers and spreadsheets cost more than they seem"
         >
           Most of a school office&apos;s week goes on copying, adding up and
-          chasing. That work is what Kampasy takes over.
+          chasing. That work is what {BRAND.name} takes over.
         </SectionIntro>
         <Card className="grid gap-0 py-0 md:grid-cols-2">
           <div>
@@ -57,7 +58,7 @@ export function WhySwitch() {
           </div>
           <div className="border-t bg-secondary/60 md:border-t-0 md:border-l">
             <p className="border-b px-6 py-4 text-sm font-semibold">
-              With Kampasy
+              With {BRAND.name}
             </p>
             <ul>
               {ROWS.map((row) => (

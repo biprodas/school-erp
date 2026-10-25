@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server"
 
+import { apiConfig } from "~/config/api-config"
 import { backendUrl, callBackend, readJson } from "~/lib/api/backend"
 import { SESSION_EXPIRED } from "~/lib/api/errors"
 import { clientInfo } from "~/lib/client-ip"
@@ -15,9 +16,6 @@ import type { Session } from "~/lib/session/types"
 
 import { backendHeaders, passedHeaders } from "./headers"
 import { isForwardable, passesCsrfCheck } from "./rules"
-
-/** Bodies up to this size are buffered, so a 401 can be retried after a refresh. */
-const MAX_BUFFERED_BODY = 1_000_000
 
 /** 401 codes that mean "this access token no longer works". */
 const TOKEN_REJECTED = "UNAUTHORIZED"
@@ -154,7 +152,7 @@ async function readBody(request: NextRequest): Promise<{
   if (
     !type.startsWith("multipart/") &&
     Number.isFinite(length) &&
-    length <= MAX_BUFFERED_BODY
+    length <= apiConfig.bffMaxBufferedBody
   ) {
     return {
       value: await request.arrayBuffer(),

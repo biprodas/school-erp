@@ -2,14 +2,14 @@ import "server-only"
 
 import { NextResponse } from "next/server"
 
+import { authConfig } from "~/config/auth-config"
 import { backendUrl, callBackend, readJson } from "~/lib/api/backend"
 import { clientInfo, setClientHeaders } from "~/lib/client-ip"
 import { getRequestHost } from "~/lib/request-host"
 
-/** How long the answer is kept; Google is turned on or off by deployment. */
-const TTL_MS = 5 * 60_000
-/** After a failed check, ask again sooner. */
-const RETRY_MS = 30_000
+// How long the answer is kept (Google is turned on or off by deployment),
+// and how soon to ask again after a failed check.
+const { ttlMs: TTL_MS, retryMs: RETRY_MS } = authConfig.googleProbe
 
 let cached: { enabled: boolean; until: number } | undefined
 
@@ -24,7 +24,7 @@ export async function isGoogleSignInEnabled(now = Date.now()) {
   if (cached && cached.until > now) return cached.enabled
 
   let enabled = false
-  let ttl = RETRY_MS
+  let ttl: number = RETRY_MS
   try {
     const response = await callBackend(backendUrl("/oauth/google/start"), {
       method: "GET",

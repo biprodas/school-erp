@@ -5,6 +5,7 @@ import { useState } from "react"
 import { Button } from "~/components/ui/button"
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
+import { brandDomain } from "~/config/brand-config"
 import { slugify } from "~/lib/slugs"
 import { DEMO_HREF, SIGNUP_HREF } from "./links"
 import { Container, DisplayHeading } from "./section"
@@ -53,7 +54,7 @@ export function GetStarted() {
             <p className="text-sm text-brand-foreground/75">
               Your address will be{" "}
               <span className="font-semibold text-brand-foreground">
-                {slug}.kampasy.com
+                {slug}.{brandDomain}
               </span>
             </p>
             <Button

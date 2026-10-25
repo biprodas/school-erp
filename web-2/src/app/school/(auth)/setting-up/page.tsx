@@ -4,6 +4,7 @@ import { getLocale, getTranslations } from "next-intl/server"
 import { getSchoolHome, schoolName } from "~/api/public/school-home"
 import { AuthCard } from "~/features/auth/auth-card"
 import { SettingUpActions } from "~/features/auth/setting-up-actions"
+import { BRAND } from "~/config/brand-config"
 import { requireSchoolSlug } from "~/lib/request-host"
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -22,7 +23,10 @@ export default async function SettingUpPage() {
   return (
     <AuthCard
       title={t("title")}
-      description={t("body", { school: schoolName(home, await getLocale()) })}
+      description={t("body", {
+        school: schoolName(home, await getLocale()),
+        brand: BRAND.name,
+      })}
     >
       <SettingUpActions />
     </AuthCard>

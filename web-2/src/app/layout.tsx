@@ -12,6 +12,7 @@ import "./globals.css"
 import { QueryProvider } from "~/components/query-provider"
 import { ThemeProvider } from "~/components/theme-provider"
 import { Toaster } from "~/components/ui/toast"
+import { siteConfig } from "~/config/site-config"
 import { cn } from "~/lib/utils"
 
 // Hind Siliguri covers Latin and Bangla, so mixed-language copy shares one face.
@@ -38,13 +39,30 @@ const fontMono = Geist_Mono({
   variable: "--font-mono",
 })
 
+// No `openGraph.url` here: school hosts inherit this, and their pages
+// aren't the marketing site.
 export const metadata: Metadata = {
+  metadataBase: new URL(siteConfig.siteUrl),
+  applicationName: siteConfig.name,
   title: {
-    default: "Kampasy, school management for Bangladesh",
-    template: "%s | Kampasy",
+    default: siteConfig.title,
+    template: siteConfig.titleTemplate,
   },
-  description:
-    "Attendance, results, fees and notices on one mobile-first platform, in Bangla and English.",
+  description: siteConfig.description,
+  keywords: [...siteConfig.keywords],
+  openGraph: {
+    type: "website",
+    siteName: siteConfig.name,
+    title: siteConfig.title,
+    description: siteConfig.description,
+    locale: siteConfig.locale,
+    alternateLocale: siteConfig.alternateLocale,
+  },
+  twitter: {
+    card: "summary",
+    title: siteConfig.title,
+    description: siteConfig.description,
+  },
 }
 
 export default async function RootLayout({

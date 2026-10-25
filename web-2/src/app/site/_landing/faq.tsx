@@ -4,6 +4,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "~/components/ui/accordion"
+import { brandDomain } from "~/config/brand-config"
 import { CONTACT_EMAIL } from "./links"
 import { Container, Section, SectionIntro } from "./section"
 
@@ -64,7 +65,7 @@ const GROUPS = [
       },
       {
         q: "Can we use our own domain?",
-        a: "Every school gets an address like yourschool.kampasy.com. On Standard and Premium you can also use your own, like erp.yourschool.edu.bd.",
+        a: `Every school gets an address like yourschool.${brandDomain}. On Standard and Premium you can also use your own, like erp.yourschool.edu.bd.`,
       },
       {
         q: "Who can see what?",

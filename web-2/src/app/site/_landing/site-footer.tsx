@@ -1,6 +1,8 @@
 import Link from "next/link"
 
 import { Separator } from "~/components/ui/separator"
+import { BRAND } from "~/config/brand-config"
+import { siteConfig } from "~/config/site-config"
 import {
   CONTACT_EMAIL,
   DEMO_HREF,
@@ -38,7 +40,7 @@ export function SiteFooter() {
         <div className="flex flex-col gap-4">
           <Logo />
           <p className="max-w-xs text-sm leading-relaxed text-brand-foreground/75">
-            School management for Bangladesh, in Bangla and English.
+            {siteConfig.tagline}
           </p>
         </div>
         {COLUMNS.map((column) => (
@@ -79,7 +81,7 @@ export function SiteFooter() {
       </Container>
       <Separator className="bg-brand-foreground/10" />
       <Container className="py-6 text-sm text-brand-foreground/60">
-        © {new Date().getFullYear()} Kampasy
+        © {new Date().getFullYear()} {BRAND.name}
       </Container>
     </footer>
   )

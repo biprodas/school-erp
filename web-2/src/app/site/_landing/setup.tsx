@@ -7,13 +7,14 @@ import {
   ShieldCheckIcon,
 } from "lucide-react"
 
+import { BRAND, brandDomain } from "~/config/brand-config"
 import { cn } from "~/lib/utils"
 import { Container, DisplayHeading, Section, SectionIntro } from "./section"
 
 const STEPS = [
   {
     title: "Sign up",
-    body: "Your school's name, your email and an address like shapla.kampasy.com. No sales call.",
+    body: `Your school's name, your email and an address like shapla.${brandDomain}. No sales call.`,
   },
   {
     title: "Set up your year",
@@ -98,10 +99,11 @@ export function Setup() {
               Every school gets a workspace of its own
             </DisplayHeading>
             <p className="text-lg leading-relaxed text-muted-foreground">
-              Kampasy serves many schools from one platform, but each works as
-              if it had its own software: its own address, its own data, and its
-              own classes, grading, fee heads and roles. Standard and Premium
-              schools can use their own domain, like erp.yourschool.edu.bd.
+              {BRAND.name} serves many schools from one platform, but each works
+              as if it had its own software: its own address, its own data, and
+              its own classes, grading, fee heads and roles. Standard and
+              Premium schools can use their own domain, like
+              erp.yourschool.edu.bd.
             </p>
             <p className="text-lg leading-relaxed text-muted-foreground">
               A teacher who works at two schools, or a guardian with children at
@@ -127,7 +129,7 @@ export function Setup() {
                     <span className="font-medium text-foreground">
                       {school.slug}
                     </span>
-                    .kampasy.com
+                    .{brandDomain}
                   </p>
                 </div>
               </li>
