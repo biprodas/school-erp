@@ -144,36 +144,34 @@ One Next.js app serves every host. `src/proxy.ts` resolves the host and rewrites
 5. Onboarding gate: while `onboarding_completed_at` is null, school admins go to `/onboarding` and other users see the "being set up" page.
 6. Rewrite to the internal route group and pass the resolved tenant downstream in a request header.
 
-Folder layout (`frontend/src/`):
+Folder layout (`web-2/src/`; `web-2/README.md` has the full tree, the feature convention and the import rules):
 
 ```
-app/
-  (marketing)/            # apex
-  (platform)/             # admin host
-  (school)/
-    page.tsx              # public school home
-    login/  activate/  onboarding/
-    dashboard/            # staff, role-gated sidebar
+app/                      # routing only
+  site/                   # apex: landing, signup, find-school
+  admin/                  # admin host
+  school/                 # every school host
+    (auth)/  onboarding/
+    dashboard/            # staff, permission-gated sidebar
     student/              # student and guardian portal
     auth/handoff/route.ts
   api/[...path]/route.ts  # BFF proxy (section 5)
-  api/session/            # login, logout, refresh route handlers
-api/
-  generated/              # orval output (committed)
-  fetcher.ts              # envelope unwrap, ApiError
+  api/session/logout/
+features/<domain>/        # api.ts, actions.ts, schemas.ts, use-*.ts, components/, server/
+                          # e.g. auth, access (<Can>), shell (sidebar), students, fees, …
 components/
-  ui/                     # shadcn
-  data-table/  form/  layout/
-features/<domain>/        # attendance, exams, fees, students, … (components, hooks, schemas)
+  ui/  brand/  forms/  layouts/  providers/  common/  data-table/ (with the first list)
 lib/
-  session/                # cookie sealing, refresh, server helpers
-  tenant.ts               # host → tenant resolution (shared with proxy.ts)
-  permissions.ts          # can(), <Can> for UI gating
+  api/                    # fetch clients (browser → BFF, server → backend), envelope, ApiError
+  auth/                   # session cookie sealing, refresh, gates (server-only)
+  bff/  tenancy/  security/  forms/
   format.ts               # money, dates, numerals
-stores/                   # zustand stores
-i18n/  messages/
+api/generated/            # orval/hey-api output (committed), once the generator is chosen
+hooks/  config/  i18n/  ../messages/
 proxy.ts
 ```
+
+The internal trees are real segments, not route groups: route groups don't change URLs, so two of them can't both own `/login` (`frontend-implementation-plan.md` 2.1). Shared code (`components/`, `lib/`, `hooks/`) never imports features or routes (enforced by ESLint).
 
 Route groups per persona keep bundles small: a guardian on 3G never downloads the staff dashboard code.
 
@@ -218,11 +216,11 @@ Browser ──/api/*──► Next route handler ──Bearer + x-tenant-id─�
 
 ### 5.4 Permissions in the UI
 
-After login, fetch the member's effective permissions once (cached in TanStack Query, refetched on focus so role changes apply on the next request, PRD 6.3). `lib/permissions.ts` exposes `can('fees:collect')` and a `<Can>` component; sidebar items declare required permissions. This is UI gating only; the backend enforces every permission.
+After login, fetch the member's effective permissions once (cached in TanStack Query, refetched on focus so role changes apply on the next request, PRD 6.3). `features/access` exposes `allows(permissions, { permission: 'fees:collect' })`, `usePermissions()` and a `<Can>` component; sidebar items declare required permissions. This is UI gating only; the backend enforces every permission.
 
 ### 5.5 Security headers and CSP
 
-- **CSP per page** (`lib/security-headers.ts`, set by `src/proxy.ts` on every rewritten page): `script-src 'self' 'nonce-…' 'strict-dynamic'` with a fresh nonce per response. Next.js reads it from the request's CSP header and adds it to its own scripts; the root layout passes it (`x-nonce`) to the theme script. No `unsafe-eval` in production, no inline scripts without the nonce. Styles allow `'unsafe-inline'` (style attributes: popover positioning, the school color). Images: self, `data:`, `blob:`, `https:` (signed file-store URLs; plain `http:` too in development for the local MinIO). `connect-src 'self'` (the browser only talks to the BFF), `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`, `frame-ancestors 'none'`. Every page renders dynamically, so the nonce always applies.
+- **CSP per page** (`lib/security/security-headers.ts`, set by `src/proxy.ts` on every rewritten page): `script-src 'self' 'nonce-…' 'strict-dynamic'` with a fresh nonce per response. Next.js reads it from the request's CSP header and adds it to its own scripts; the root layout passes it (`x-nonce`) to the theme script. No `unsafe-eval` in production, no inline scripts without the nonce. Styles allow `'unsafe-inline'` (style attributes: popover positioning, the school color). Images: self, `data:`, `blob:`, `https:` (signed file-store URLs; plain `http:` too in development for the local MinIO). `connect-src 'self'` (the browser only talks to the BFF), `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`, `frame-ancestors 'none'`. Every page renders dynamically, so the nonce always applies.
 - **Static headers** (`next.config.ts`, every response, the BFF and files included): `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`, a `Permissions-Policy` turning off camera, microphone, geolocation, payment and USB, `Cross-Origin-Opener-Policy: same-origin`, HSTS when HTTPS-only; no `X-Powered-By`.
 - **Server-action redirects across hosts**: Next.js renders a server action's `redirect()` target in-process, re-sending the already rewritten headers to its own origin (so the browser's Host is lost). The proxy answers such a request (it carries our `x-host-kind`) with an empty 204, and Next.js navigates on the client instead, through the proxy with the right Host.
 - **Sessions the backend refused**: a server layout that gets 401 sends the user to `/auth/session-ended`, a route handler that deletes the cookie before `/login` (layouts can't), so a session ended elsewhere doesn't loop between `/login` and the home page.

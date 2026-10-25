@@ -51,6 +51,49 @@ const eslintConfig = defineConfig([
       ],
     },
   },
+  // Layers (README "Folder structure"): routes in `app/` compose features;
+  // features build on the shared layers; the shared layers know nothing of
+  // either, so they stay reusable by every feature and host.
+  {
+    files: [
+      "src/components/**",
+      "src/lib/**",
+      "src/hooks/**",
+      "src/config/**",
+      "src/i18n/**",
+    ],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["~/features/*", "~/app/*"],
+              message:
+                "Shared code (components, lib, hooks, config, i18n) must not depend on features or routes. Move the code into the feature, or pass it in.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ["src/features/**"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["~/app/*"],
+              message:
+                "Features must not import from routes. Move the shared piece into the feature or into components/.",
+            },
+          ],
+        },
+      ],
+    },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:

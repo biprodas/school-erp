@@ -33,7 +33,7 @@ const PASSED_RESPONSE_HEADERS = [
  * Headers for a call to the backend on behalf of a browser request: the
  * session's bearer token, the school (`x-tenant-id`), the client's address
  * and browser (`x-forwarded-for` with one trustworthy entry, see
- * `lib/client-ip.ts`; the backend trusts this server as a proxy) and a
+ * `lib/security/client-ip.ts`; the backend trusts this server as a proxy) and a
  * request id for the logs.
  */
 export function backendHeaders(

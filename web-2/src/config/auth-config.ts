@@ -30,6 +30,6 @@ export const authConfig = {
    * request that left with the old cookie doesn't trip reuse detection.
    */
   refreshGraceMs: 30_000,
-  /** How long "is Google sign-in on?" is kept (`lib/google.ts`). */
+  /** How long "is Google sign-in on?" is kept (`lib/auth/google.ts`). */
   googleProbe: { ttlMs: 5 * 60_000, retryMs: 30_000 },
 } as const

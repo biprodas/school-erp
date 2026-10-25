@@ -65,6 +65,8 @@ Route groups don't change URLs, so two groups can't both own `/login`. Each host
 
 ### 2.2 Folder layout
 
+> **Superseded (2026-10-25).** After M9 the tree was reorganized by domain: `src/api/<x>.ts` moved to `features/<x>/api.ts`, `lib/` was split into `auth/` (was `lib/session`), `tenancy/`, `security/`, and the staff shell and permissions became `features/shell` and `features/access`. The current layout and its rules are in `web-2/README.md`. Paths in the milestone checklists below are as they were when each milestone shipped.
+
 ```
 src/
   proxy.ts                         # host → tree rewrite, auth and onboarding gates

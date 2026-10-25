@@ -45,7 +45,7 @@ import { applyCookieUpdate } from "~/lib/auth/response-cookie"
  * On school and admin hosts it also refreshes the session when its access
  * token is about to expire, so pages and server actions always render with
  * a working token (server components can't write cookies themselves). On
- * school hosts it then applies the sign-in gates (`lib/session/home.ts`):
+ * school hosts it then applies the sign-in gates (`lib/auth/home.ts`):
  * signed out on a protected page, a forced password change, onboarding;
  * on the admin host, everything but sign-in needs a platform session.
  */
