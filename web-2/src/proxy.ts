@@ -13,10 +13,13 @@ import { resolveHost, type ResolvedHost } from "~/lib/resolve-host"
 import { SESSION_COOKIES } from "~/lib/session/cookie"
 import {
   ensureFreshSession,
+  readSession,
   replaceCookie,
   type CookieUpdate,
+  type FreshSession,
   type SessionScope,
 } from "~/lib/session/fresh"
+import { gate } from "~/lib/session/home"
 import { applyCookieUpdate } from "~/lib/session/response-cookie"
 
 /**
@@ -35,7 +38,9 @@ import { applyCookieUpdate } from "~/lib/session/response-cookie"
  *
  * On school and admin hosts it also refreshes the session when its access
  * token is about to expire, so pages and server actions always render with
- * a working token (server components can't write cookies themselves).
+ * a working token (server components can't write cookies themselves). On
+ * school hosts it then applies the sign-in gates (`lib/session/home.ts`):
+ * signed out on a protected page, a forced password change, onboarding.
  */
 export async function proxy(request: NextRequest) {
   // The Host header, not X-Forwarded-Host: a client can set the latter,
@@ -74,21 +79,27 @@ export async function proxy(request: NextRequest) {
         request,
         { kind: "admin", origin },
         `/admin${pathOf(request)}`,
-        {
-          scope,
-          update: await freshCookie(request, scope),
-        }
+        { scope, update: (await freshSession(request, scope)).cookie }
       )
     }
     case "school": {
       // Where a school's subdomain will redirect to its primary custom
       // domain (doc/domains-and-routing.md 7.5), once Settings → Domain ships.
       const scope = { realm: "tenant", slug: host.slug } as const
+      const fresh = await freshSession(request, scope)
+      const target = gatedPath(request, fresh)
+      if (target) {
+        return applyCookieUpdate(
+          NextResponse.redirect(new URL(target, origin)),
+          scope.realm,
+          fresh.cookie
+        )
+      }
       return rewrite(
         request,
         { kind: "school", origin, slug: host.slug },
         `/school${pathOf(request)}`,
-        { scope, update: await freshCookie(request, scope) }
+        { scope, update: fresh.cookie }
       )
     }
   }
@@ -113,22 +124,32 @@ function forwardedProto(request: NextRequest) {
   return proto ? `${proto}:` : request.nextUrl.protocol
 }
 
-/** The session cookie after an early refresh, if one was due. */
-async function freshCookie(
+/** The session, after an early refresh if one was due. */
+async function freshSession(
   request: NextRequest,
   scope: SessionScope
-): Promise<CookieUpdate> {
+): Promise<FreshSession> {
   const value = request.cookies.get(SESSION_COOKIES[scope.realm])?.value
-  if (!value) return { action: "keep" }
   try {
-    const { cookie } = await ensureFreshSession(value, scope, {
+    return await ensureFreshSession(value, scope, {
       client: clientInfo(request.headers),
     })
-    return cookie
   } catch (error) {
     console.error("[proxy] session refresh failed", error)
-    return { action: "keep" }
+    const session = await readSession(value, scope).catch(() => null)
+    return { session, cookie: { action: "keep" } }
   }
+}
+
+/**
+ * Where a page request has to go instead (sign-in, a forced password
+ * change, onboarding), or null. Only navigations are redirected: server
+ * actions (POST) check the session themselves.
+ */
+function gatedPath(request: NextRequest, fresh: FreshSession): string | null {
+  if (request.method !== "GET" && request.method !== "HEAD") return null
+  const { pathname, search } = request.nextUrl
+  return gate(fresh.session, `${pathname}${search}`)
 }
 
 function rewrite(

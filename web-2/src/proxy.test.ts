@@ -245,7 +245,10 @@ describe("proxy session refresh", () => {
     expect(response.headers.get("set-cookie")).toMatch(
       /kampasy_session=;.*Max-Age=0/i
     )
-    expect(forwarded(response, "cookie")).toBe("locale=bn")
+    // Signed out now, so the protected page sends them to sign in.
+    expect(getRedirectUrl(response)).toBe(
+      "http://acme.lvh.me:3000/login?next=%2Fdashboard"
+    )
   })
 
   it("never reads a school session on the marketing site", async () => {
@@ -260,6 +263,56 @@ describe("proxy session refresh", () => {
 
     expect(fetchMock).not.toHaveBeenCalled()
     expect(response.headers.get("set-cookie")).toBeNull()
+  })
+})
+
+describe("proxy sign-in gates", () => {
+  const acme = { status: "found", slug: "acme", name: "Acme" } as const
+  const visit = async (
+    path: string,
+    session?: Parameters<typeof sealedSession>[0],
+    method = "GET"
+  ) => {
+    lookupTenant.mockResolvedValue(acme)
+    const headers: Record<string, string> = { host: "acme.lvh.me:3000" }
+    if (session) {
+      headers.cookie = `kampasy_session=${await sealedSession(session)}`
+    }
+    return proxy(
+      new NextRequest(`http://acme.lvh.me:3000${path}`, { method, headers })
+    )
+  }
+
+  it("sends signed-out visitors of protected pages to sign in, keeping the path", async () => {
+    const response = await visit("/dashboard/students?page=2")
+    expect(getRedirectUrl(response)).toBe(
+      "http://acme.lvh.me:3000/login?next=%2Fdashboard%2Fstudents%3Fpage%3D2"
+    )
+  })
+
+  it("lets signed-out visitors open public pages", async () => {
+    for (const path of ["/", "/login", "/activate?token=x"]) {
+      expect(isRewrite(await visit(path))).toBe(true)
+    }
+  })
+
+  it("keeps a user with a temporary password on /change-password", async () => {
+    const forced = { mustChangePassword: true }
+    expect(getRedirectUrl(await visit("/dashboard", forced))).toBe(
+      "http://acme.lvh.me:3000/change-password"
+    )
+    expect(isRewrite(await visit("/change-password", forced))).toBe(true)
+    expect(isRewrite(await visit("/auth/handoff?code=x", forced))).toBe(true)
+  })
+
+  it("sends signed-in users from /login to their home", async () => {
+    expect(getRedirectUrl(await visit("/login", {}))).toBe(
+      "http://acme.lvh.me:3000/dashboard"
+    )
+  })
+
+  it("leaves server actions to check for themselves", async () => {
+    expect(isRewrite(await visit("/login", {}, "POST"))).toBe(true)
   })
 })
 

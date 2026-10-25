@@ -6,12 +6,24 @@
       "bn": "বাংলা",
       "en": "English"
     },
-    "poweredBy": "School management by Kampasy"
+    "poweredBy": "School management by Kampasy",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "signOut": "Sign out",
+    "backToSchool": "School home"
   },
   "schoolHome": {
     "signIn": "Sign in",
     "signInHint": "Staff, students and guardians sign in here.",
-    "logoAlt": "{school} logo"
+    "logoAlt": "{school} logo",
+    "goToDashboard": "Go to your dashboard",
+    "notices": "Notices",
+    "pinned": "Pinned",
+    "contact": "Contact",
+    "phone": "Phone",
+    "email": "Email",
+    "website": "Website",
+    "address": "Address"
   },
   "admin": {
     "title": "Kampasy admin",
@@ -32,5 +44,124 @@
     "title": "Page not found",
     "body": "The link may be old, or the page has moved.",
     "home": "Go to the home page"
+  },
+  "validation": {
+    "identifierRequired": "Enter your email or phone number",
+    "identifierTooLong": "That's too long for an email or phone number",
+    "passwordRequired": "Enter a password",
+    "passwordTooShort": "Use at least 6 characters",
+    "passwordsDontMatch": "The passwords don't match",
+    "emailRequired": "Enter your email",
+    "emailInvalid": "Enter a valid email address",
+    "wrongPassword": "Your current password isn't right"
+  },
+  "authErrors": {
+    "invalidCredentials": "That email or phone number and password don't match an account at this school.",
+    "accountLocked": "Too many wrong passwords. You can try again after {time}.",
+    "accountPending": "This account isn't verified yet. Use the link in your invitation or verification email.",
+    "accountBlocked": "This account can't sign in. Contact your school office.",
+    "membershipPending": "Your invitation hasn't been accepted yet. Open the activation link in your invitation email.",
+    "accessEnded": "You no longer have access to this school. Contact your school office.",
+    "sessionEnded": "Your session has ended. Please sign in again.",
+    "passwordChangeRequired": "Please change your password to continue.",
+    "linkInvalid": "This link is invalid, already used or expired.",
+    "tooManyAttempts": "Too many attempts. Wait a minute and try again.",
+    "network": "We can't reach the server right now. Check your connection and try again.",
+    "handoff": "That sign-in link has expired or was already used. Please sign in here.",
+    "googleNoAccount": "There's no account at this school for that Google account. Sign in with your email or phone instead.",
+    "googleEmailUnverified": "Google hasn't verified that email address, so we can't use it to sign you in.",
+    "googleExpired": "Google sign-in took too long. Please try again.",
+    "googleCancelled": "Google sign-in was cancelled.",
+    "googleFailed": "Google sign-in didn't work. Please try again.",
+    "googleDisabled": "Google sign-in isn't available right now.",
+    "unknown": "Something went wrong. Please try again."
+  },
+  "auth": {
+    "login": {
+      "metaTitle": "Sign in",
+      "title": "Sign in",
+      "description": "For staff, students and guardians of {school}.",
+      "identifier": "Email or phone",
+      "identifierPlaceholder": "you@example.com or 01XXXXXXXXX",
+      "password": "Password",
+      "forgot": "Forgot password?",
+      "submit": "Sign in",
+      "or": "or",
+      "google": "Continue with Google",
+      "passwordReset": "Your password has been changed. Sign in with the new one.",
+      "invited": "Got an invitation? Open the link in the email to set up your account."
+    },
+    "activate": {
+      "metaTitle": "Activate your account",
+      "title": "Set up your account",
+      "description": "Welcome, {name}. Choose a password for {account}.",
+      "existingTitle": "Join {school}",
+      "existingDescription": "{account} already has a password. Enter it to accept the invitation.",
+      "password": "Password",
+      "newPassword": "New password",
+      "confirmPassword": "Confirm password",
+      "passwordHint": "At least 6 characters.",
+      "submit": "Activate and sign in",
+      "existingSubmit": "Accept and sign in",
+      "invalidTitle": "This invitation link doesn't work",
+      "invalidBody": "It may be used already or expired. Ask your school to send a new invitation.",
+      "signIn": "Go to sign in"
+    },
+    "forgot": {
+      "metaTitle": "Forgot password",
+      "title": "Reset your password",
+      "description": "Enter your account's email. We'll send you a link to choose a new password.",
+      "email": "Email",
+      "submit": "Send reset link",
+      "sentTitle": "Check your email",
+      "sentBody": "If {email} belongs to an account at this school, a link to reset the password is on its way.",
+      "phoneOnly": "Sign in with a phone number? Ask your school office to reset your password.",
+      "backToLogin": "Back to sign in"
+    },
+    "reset": {
+      "metaTitle": "Choose a new password",
+      "title": "Choose a new password",
+      "description": "For {account}. You'll be signed out on every device.",
+      "newPassword": "New password",
+      "confirmPassword": "Confirm password",
+      "submit": "Change password",
+      "invalidTitle": "This reset link doesn't work",
+      "invalidBody": "It may be used already or expired. Ask for a new one.",
+      "requestNew": "Send a new link"
+    },
+    "verify": {
+      "metaTitle": "Verify your email",
+      "title": "Verify your email",
+      "description": "Confirm that {email} is your email address.",
+      "submit": "Verify email",
+      "doneTitle": "Email verified",
+      "doneBody": "{email} is verified. Thank you.",
+      "invalidTitle": "This verification link doesn't work",
+      "invalidBody": "It may be used already or expired. Sign in to ask for a new one.",
+      "continue": "Continue"
+    },
+    "changePassword": {
+      "metaTitle": "Change password",
+      "title": "Change your password",
+      "forcedDescription": "Your password was set by someone else. Choose your own to continue.",
+      "description": "You'll stay signed in here; your other devices are signed out.",
+      "currentPassword": "Current password",
+      "forcedCurrentPassword": "Password you were given",
+      "newPassword": "New password",
+      "confirmPassword": "Confirm new password",
+      "submit": "Change password",
+      "cancel": "Cancel"
+    },
+    "settingUp": {
+      "metaTitle": "Setting up",
+      "title": "Your school is being set up",
+      "body": "{school}'s administrators are still setting things up. You can start using Kampasy as soon as they finish.",
+      "checkAgain": "Check again",
+      "stillOpen": "Not ready yet. Please check again later."
+    },
+    "signedIn": {
+      "title": "You're signed in",
+      "body": "Signed in as {name}. This part of Kampasy is on its way."
+    }
   }
 }

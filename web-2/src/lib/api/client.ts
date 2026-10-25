@@ -1,5 +1,9 @@
 import { unwrap, unwrapPage, type Page } from "./envelope"
-import { networkError, SESSION_EXPIRED } from "./errors"
+import {
+  networkError,
+  PASSWORD_CHANGE_REQUIRED,
+  SESSION_EXPIRED,
+} from "./errors"
 
 /**
  * Header the BFF (`app/api/[...path]`) requires on mutating requests, as a
@@ -76,13 +80,13 @@ async function send(
     .get("content-type")
     ?.includes("application/json")
   const parsed = isJson ? await response.json().catch(() => null) : null
-  if (isSessionExpired(response.status, parsed)) signInAgain()
+  const code = (parsed as { code?: unknown } | null)?.code
+  if (response.status === 401 && code === SESSION_EXPIRED) signInAgain()
+  if (response.status === 403 && code === PASSWORD_CHANGE_REQUIRED) {
+    changePasswordFirst()
+  }
   return { status: response.status, body: parsed }
 }
-
-const isSessionExpired = (status: number, body: unknown) =>
-  status === 401 &&
-  (body as { code?: unknown } | null)?.code === SESSION_EXPIRED
 
 /**
  * The BFF ended the session (refresh token expired or revoked): go to the
@@ -98,6 +102,17 @@ function signInAgain() {
   window.location.assign(
     `/login?next=${encodeURIComponent(`${pathname}${search}`)}`
   )
+}
+
+/**
+ * The account has a temporary password (set by an admin after this page
+ * loaded): nothing else opens until it is changed. The call still rejects.
+ */
+function changePasswordFirst() {
+  if (typeof window === "undefined") return
+  if (window.location.pathname === "/change-password") return
+  // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+  window.location.assign("/change-password")
 }
 
 /**

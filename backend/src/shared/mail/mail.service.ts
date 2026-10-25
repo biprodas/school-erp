@@ -23,7 +23,8 @@ export class MailService {
     token: string,
     tenantSlug: string,
   ): Promise<void> {
-    const link = `${this.appUrl}/activate?token=${token}&tenant=${tenantSlug}`;
+    // On the school's own host, where the activate page and its session live.
+    const link = this.buildLink(`/activate?token=${token}`, tenantSlug);
     await this.send(
       to,
       'Activate your account · অ্যাকাউন্ট চালু করুন',

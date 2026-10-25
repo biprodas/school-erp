@@ -20,6 +20,12 @@ export const NETWORK_ERROR = "NETWORK_ERROR"
 export const SESSION_EXPIRED = "SESSION_EXPIRED"
 
 /**
+ * `code` of the backend's 403 for an account with a temporary password:
+ * only changing it (and signing out) is allowed.
+ */
+export const PASSWORD_CHANGE_REQUIRED = "PASSWORD_CHANGE_REQUIRED"
+
+/**
  * A failed API call. `code` is the backend's machine-readable code (see
  * `doc/error-codes.md`), which the UI maps to Bangla or English text;
  * `message` is the backend's English fallback. Extra fields the backend

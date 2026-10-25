@@ -295,7 +295,7 @@ Tick a box when the item is implemented and verified locally (against the docker
 | M0 | Foundations | — | Implemented, not committed (CI not yet run) |
 | M1 | Host routing | M0 | Implemented, not committed |
 | M2 | Session layer and BFF | M1 | Implemented, not committed |
-| M3 | School sign-in | M2 | Not started |
+| M3 | School sign-in | M2 | Implemented, not committed |
 | M4 | Signup and find school | M3 | Not started |
 | M5 | Staff app shell | M3, B1 | Not started |
 | M6 | Home dashboards | M5 | Not started |
@@ -458,38 +458,54 @@ Notes:
 
 Layout and shared parts:
 
-- [ ] `app/school/(auth)/layout.tsx`: centered card, school logo and name, language and theme switch, link to the school home.
-- [ ] `features/auth/schemas.ts`: zod schemas for the identifier, password rules matching the backend DTOs, and confirm-password match.
-- [ ] `features/auth/errors.ts`: en/bn message per code: `INVALID_CREDENTIALS`, `ACCOUNT_LOCKED` (with the unlock time), `ACCOUNT_PENDING`, `MEMBERSHIP_PENDING`, `SESSION_REVOKED`, `PASSWORD_CHANGE_REQUIRED`, invalid or expired token, `handoff`, `google_no_account`, and a fallback.
-- [ ] `components/form/`: react-hook-form glue on `components/ui/field.tsx`, password input with show/hide, submit button with pending state; field errors from the server mapped onto fields.
-- [ ] `lib/session/home.ts`: home for the user (section 4.5), combined with `safeNext`.
+- [x] `app/school/(auth)/layout.tsx`: centered card, school logo and name, language and theme switch, link to the school home.
+- [x] `features/auth/schemas.ts`: zod schemas for the identifier, password rules matching the backend DTOs, and confirm-password match.
+- [x] `features/auth/errors.ts`: en/bn message per code: `INVALID_CREDENTIALS`, `ACCOUNT_LOCKED` (with the unlock time), `ACCOUNT_PENDING`, `MEMBERSHIP_PENDING`, `SESSION_REVOKED`, `PASSWORD_CHANGE_REQUIRED`, invalid or expired token, `handoff`, `google_no_account`, and a fallback.
+- [x] `components/form/`: react-hook-form glue on `components/ui/field.tsx`, password input with show/hide, submit button with pending state; field errors from the server mapped onto fields. `useActionForm` checks the zod schema in the browser, then posts the `FormData` to the server action through `useActionState` (the form still posts without JavaScript). Form state and field-message keys are in `lib/forms/form-state.ts`.
+- [x] `lib/session/home.ts`: home for the user (section 4.5), combined with `safeNext`.
 
 Pages and handlers:
 
-- [ ] `/login`: email-or-phone + password server action, message per error code, "Forgot password" link, keeps `next`.
-- [ ] "Continue with Google" on `/login`: links to `/oauth/google/start?return=<host>&next=<next>&intent=signin`; hidden when Google is disabled (checked on the server, cached).
-- [ ] `/auth/handoff` route handler: redeem `code` (`POST /auth/handoff`), set the session, 303 to the safe `next` or home; any failure → `/login?error=handoff`.
-- [ ] `/activate?token=`: check the token; set-password form, or "enter your existing password" when `hasPassword`; signed in on success; clear message for an invalid or used link.
-- [ ] `/forgot-password`: email form, same confirmation whatever the result.
-- [ ] `/reset-password?token=`: check the token, new password + confirm, then `/login` with a toast.
-- [ ] `/verify-email?token=`: check and verify, show the result.
-- [ ] `/change-password`: forced and voluntary modes; on success `mustChangePassword` is cleared in the session.
-- [ ] `/setting-up`: "Your school is being set up", with a sign-out button.
-- [ ] School home `/`: public notices and contact from `GET /public/organizations/:slug/home`; "Sign in" button, or "Go to dashboard" when signed in.
+- [x] `/login`: email-or-phone + password server action, message per error code, "Forgot password" link, keeps `next`.
+- [x] "Continue with Google" on `/login`: links to `/auth/google?next=`, a route handler that calls `/oauth/google/start` with this host as `return` (the browser can't choose another) and follows the redirect. Hidden when Google is disabled (`lib/google.ts`: probes `start` without a return host, 404 `GOOGLE_SIGNIN_DISABLED` vs 400 `INVALID_RETURN_HOST`, so no OAuth state is created; cached 5 min).
+- [x] `/auth/handoff` route handler: redeem `code` (`POST /auth/handoff`), set the session, 303 to the safe `next` or home; any failure → `/login?error=handoff`.
+- [x] `/activate?token=`: check the token; set-password form, or "enter your existing password" when `hasPassword`; signed in on success; clear message for an invalid or used link.
+- [x] `/forgot-password`: email form, same confirmation whatever the result.
+- [x] `/reset-password?token=`: check the token, new password + confirm, then `/login?notice=password-reset`, which shows a success alert (not a toast: it also works without JavaScript and stays readable). The backend ends every session, so the local cookie is cleared too.
+- [x] `/verify-email?token=`: check the token, then verify with a button (verifying on page load would let mail scanners use the link up), show the result.
+- [x] `/change-password`: forced and voluntary modes; on success `mustChangePassword` is cleared in the session.
+- [x] `/setting-up`: "Your school is being set up", with a sign-out button and "Check again" (rereads `GET /auth/me` and updates the session snapshot, since nothing else tells this session that onboarding finished).
+- [x] School home `/`: public notices and contact from `GET /public/organizations/:slug/home`; "Sign in" button, or "Go to dashboard" when signed in.
 
 Gates in `src/proxy.ts`:
 
-- [ ] No session on `/dashboard`, `/student`, `/onboarding`, `/change-password`, `/setting-up` → `/login?next=…`.
-- [ ] `mustChangePassword` → only `/change-password` and sign-out allowed.
-- [ ] Onboarding open: admins → `/onboarding`, other staff → `/setting-up`; portal users unaffected.
-- [ ] Signed in on `/login` → home for the user.
-- [ ] `PASSWORD_CHANGE_REQUIRED` from any BFF call → `/change-password`.
+- [x] No session on `/dashboard`, `/student`, `/onboarding`, `/change-password`, `/setting-up` → `/login?next=…`.
+- [x] `mustChangePassword` → only `/change-password` and sign-out allowed.
+- [x] Onboarding open: admins → `/onboarding`, other staff → `/setting-up`; portal users unaffected (and kept out of `/dashboard`, `/onboarding`, `/setting-up`: they go to `/student`).
+- [x] Signed in on `/login` → home for the user.
+- [x] `PASSWORD_CHANGE_REQUIRED` from any BFF call → `/change-password`.
 
 Tests:
 
-- [ ] Component: the login form shows the right message per error code; the activate form renders both branches.
+- [x] Component: the login form shows the right message per error code; the activate form renders both branches.
 
-**Done when:** these work by hand against seeded data: the owner signs in with email and with phone; five wrong passwords show the lockout time; an invited teacher activates from the Mailpit email and lands on `/dashboard`; a guardian with a slip password is forced to change it, then lands on `/student`; the forgot/reset password round trip works; a reused handoff code ends on `/login?error=handoff`.
+Also done:
+
+- [x] Gates are one pure function, `gate(session, path)` in `lib/session/home.ts`, used by the proxy and by `destinationAfterSignIn` (a `next` the gate would bounce is replaced by home). Only GET/HEAD are redirected; server actions check the session themselves.
+- [x] Sign-in reads `GET /auth/me` once for `onboardingCompletedAt` (the token response doesn't carry it).
+- [x] Placeholder `/dashboard`, `/student` and `/onboarding` pages ("You're signed in" + sign out) so sign-in lands somewhere until M5, M7 and M8.
+- [x] `features/auth/sign-out-button.tsx` (`POST /api/session/logout`, then a full load of `/login`).
+- [x] Backend: the activation email linked to `APP_URL` (the apex) with `&tenant=`; it now uses the school's host like the reset and verification emails (`MailService.sendActivationEmail`).
+- [x] Vitest (201 in all): gates and homes, error-code mapping and the lockout time (en/bn), login form message per code, client validation, Bangla, Google button; activate form both branches; proxy gate redirects.
+
+Notes:
+
+- **React Compiler and react-hook-form**: the compiler memoizes reads of RHF's mutable `formState`, so field errors never showed in the app (Vitest, without the compiler, passed). `useActionForm` opts out with `"use no memo"`. Any other component that reads `formState` needs the same.
+- Testing Library didn't unmount between tests (no Vitest globals); `src/test/setup.ts` now runs `cleanup` after each.
+- The backend throttles sign-in to 5 requests a minute per school and address (`AUTH_THROTTLE`); the sixth shows "Too many attempts".
+- The signed-in `/` keeps the public page with a "Go to your dashboard" button (section 10's open question).
+
+**Done when:** these work by hand against seeded data: the owner signs in with email and with phone; five wrong passwords show the lockout time; an invited teacher activates from the Mailpit email and lands on `/dashboard`; a guardian with a slip password is forced to change it, then lands on `/student`; the forgot/reset password round trip works; a reused handoff code ends on `/login?error=handoff`. *All checked with a Playwright script against the docker-compose stack and a school made through signup (25 checks, 360 px), plus: signup handoff → `/onboarding`, sign-out, `next` kept, forced change refuses a wrong current password, a guardian is kept out of `/dashboard`, a used activation link explains itself, school A's cookie is no session on school B.*
 
 ### M4. Signup and find school
 
