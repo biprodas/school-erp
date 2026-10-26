@@ -570,6 +570,12 @@
     "done": "Done",
     "required": "Required",
     "optional": "Optional",
+    "stepsLabel": "Setup steps",
+    "stepOf": "Step {n} of {total}",
+    "back": "Back",
+    "skipStep": "Skip this step",
+    "stepsDone": "{done} of {total} done",
+    "requiredDone": "Required steps: {done} of {total} done",
     "steps": {
       "profile": {
         "title": "School profile",
@@ -610,6 +616,7 @@
       "sectionTaken": "This class already has a section with that name.",
       "noSession": "Add the current session first.",
       "incomplete": "Finish the required steps first.",
+      "inUse": "It's still in use (for example, students are enrolled), so it can't be removed.",
       "network": "Couldn't reach the server. Check your connection and try again.",
       "duplicate": "That name is already in use.",
       "invalid": "Some details aren't valid. Check them and try again.",
@@ -671,7 +678,15 @@
       "className": "Add a class",
       "classPlaceholder": "Class 6",
       "addClass": "Add",
-      "classAdded": "{name} added"
+      "classAdded": "{name} added",
+      "removeSection": "Remove section {name} of {className}",
+      "sectionRemoved": "Section {name} removed",
+      "removeClass": "Remove {name}",
+      "removeClassTitle": "Remove {name}?",
+      "removeClassBody": "Its sections and the subjects set for it are removed too. A class with enrolled students can't be removed.",
+      "cancel": "Cancel",
+      "confirmRemove": "Remove class",
+      "classRemoved": "{name} removed"
     },
     "curriculum": {
       "done": "Your classes have subjects for the current session.",
@@ -685,25 +700,69 @@
       "hint": "Applying a template only adds what is missing; it never changes or removes your own classes and subjects."
     },
     "grading": {
-      "done": "A grading system is set up.",
+      "empty": "No grading system yet. Pick one below; the first one you add becomes your school's default.",
+      "yours": "{count, plural, one {Your grading system} other {Your grading systems}}",
+      "defaultHint": "Exams are graded with the default system, unless a class is given its own later under Exams → Grading.",
+      "default": "Default",
+      "makeDefault": "Make default",
+      "madeDefault": "{name} is now the default",
+      "remove": "Remove {name}",
+      "removed": "{name} removed",
+      "choose": "Choose a grading system",
+      "addAnother": "Add another from a template",
       "listLabel": "Grading templates",
       "recommended": "Recommended",
+      "showScale": "Show grades",
+      "hideScale": "Hide grades",
       "apply": "Use this",
-      "applied": "Grading system added",
-      "alreadyApplied": "This grading system is already there"
+      "added": "Added",
+      "applied": "{name} added",
+      "appliedDefault": "{name} added and set as the default",
+      "alreadyApplied": "This grading system is already there",
+      "scaleLabel": "Grades in {name}",
+      "range": "{min}–{max}%",
+      "point": "Point {point}",
+      "kinds": {
+        "gpa": "GPA out of {scale}",
+        "letter": "Letter grades",
+        "percentage": "Percentage and division"
+      }
     },
     "fees": {
-      "done": "Your school has fee heads.",
-      "body": "Adds these common fee heads. You set the amounts for each class later, under Fees.",
-      "listLabel": "Default fee heads",
+      "commonTitle": "Common fee heads",
+      "commonBody": "The fees most schools charge. Adds only the ones you don't have yet.",
+      "commonLabel": "Common fee heads",
+      "addAll": "{count, plural, one {Add this fee head} other {Add all {n}}}",
+      "addMissing": "{count, plural, one {Add the missing one} other {Add the {n} missing}}",
+      "allAdded": "All added",
+      "added": "added",
+      "applied": "{count, plural, one {{n} fee head added} other {{n} fee heads added}}",
+      "alreadyApplied": "You have all of these already",
+      "yours": "{count, plural, one {Your fee head} other {Your fee heads}}",
+      "amountsLater": "These are only the kinds of fees. You set the amount for each class later, under Fees.",
+      "empty": "No fee heads yet. Add the common ones above, or your own below.",
+      "listLabel": "Your fee heads",
+      "remove": "Remove {name}",
+      "removed": "{name} removed",
+      "addOwn": "Add your own",
+      "name": "Fee head name",
+      "namePlaceholder": "Computer Fee",
+      "frequencyLabel": "How often it is billed",
+      "add": "Add",
+      "headAdded": "{name} added",
+      "duplicate": "You already have a fee head with this name.",
       "frequency": {
         "once": "once",
         "monthly": "monthly",
         "yearly": "yearly",
         "per_exam": "per exam"
       },
-      "apply": "Add these fee heads",
-      "applied": "Fee heads added"
+      "billed": {
+        "monthly": "Monthly",
+        "quarterly": "Quarterly",
+        "yearly": "Yearly",
+        "one_time": "One time"
+      }
     },
     "staff": {
       "done": "Staff have been added.",

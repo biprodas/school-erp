@@ -6,8 +6,6 @@ import { useTranslations } from "next-intl"
 import { academicKeys, currentSessionQuery } from "~/features/academics/api"
 import {
   applyCurriculumTemplate,
-  applyFeeHeadsTemplate,
-  applyGradingTemplate,
   onboardingTemplatesQuery,
   type OnboardingTemplates,
 } from "~/features/onboarding/api"
@@ -20,13 +18,13 @@ import { useSchoolFormat } from "~/features/settings/use-school-format"
 
 import type { StepProps } from "./classes-step"
 import { sortTemplates } from "../steps"
-import { ContinueButton, StepLoadFailed, StepNote } from "./step-parts"
+import { StepLoadFailed, StepNote } from "./step-parts"
 import { useSetupAction } from "../use-setup-action"
 
 type TemplateStepProps = StepProps & { done: boolean }
 
 /** The templates, or a skeleton / retry while they load. */
-function WithTemplates({
+export function WithTemplates({
   children,
 }: {
   children: (templates: OnboardingTemplates) => React.ReactNode
@@ -85,7 +83,7 @@ function TemplateCard({
  * also adds the template's classes; class subjects go into the current
  * session, so without one only subjects and classes are added.
  */
-export function CurriculumStep({ done, onContinue }: TemplateStepProps) {
+export function CurriculumStep({ done }: TemplateStepProps) {
   const t = useTranslations("onboarding.curriculum")
   const f = useSchoolFormat()
   const settings = useQuery(schoolSettingsQuery())
@@ -137,81 +135,6 @@ export function CurriculumStep({ done, onContinue }: TemplateStepProps) {
         )}
       </WithTemplates>
       <p className="text-sm text-muted-foreground">{t("hint")}</p>
-      {done && <ContinueButton onContinue={onContinue} />}
-    </div>
-  )
-}
-
-/** Step 5 (optional): a grading system; the first one becomes the default. */
-export function GradingStep({ done, onContinue }: TemplateStepProps) {
-  const t = useTranslations("onboarding.grading")
-  const apply = useSetupAction({
-    action: applyGradingTemplate,
-    success: ({ created }) => (created ? t("applied") : t("alreadyApplied")),
-  })
-
-  return (
-    <div className="flex flex-col gap-4">
-      {done && <StepNote>{t("done")}</StepNote>}
-      <WithTemplates>
-        {(templates) => (
-          <ul className="flex flex-col gap-2" aria-label={t("listLabel")}>
-            {templates.grading.map((template, index) => (
-              <TemplateCard
-                key={template.code}
-                name={template.name}
-                description={template.description}
-                badge={index === 0 ? t("recommended") : undefined}
-                action={t("apply")}
-                pending={apply.isPending && apply.variables === template.code}
-                onApply={() => apply.mutate(template.code)}
-              />
-            ))}
-          </ul>
-        )}
-      </WithTemplates>
-      <ContinueButton onContinue={onContinue} />
-    </div>
-  )
-}
-
-/** Step 6 (optional): the usual fee heads. */
-export function FeesStep({ done, onContinue }: TemplateStepProps) {
-  const t = useTranslations("onboarding.fees")
-  const apply = useSetupAction({
-    action: applyFeeHeadsTemplate,
-    success: () => t("applied"),
-  })
-
-  return (
-    <div className="flex flex-col gap-4">
-      {done && <StepNote>{t("done")}</StepNote>}
-      <WithTemplates>
-        {(templates) => (
-          <div className="flex flex-col gap-3">
-            <p className="text-sm text-muted-foreground">{t("body")}</p>
-            <ul className="flex flex-wrap gap-1.5" aria-label={t("listLabel")}>
-              {templates.feeHeads.items.map((head) => (
-                <li key={head.name}>
-                  <Badge variant="secondary">
-                    {head.name} · {t(`frequency.${head.frequency}`)}
-                  </Badge>
-                </li>
-              ))}
-            </ul>
-            <Button
-              variant="outline"
-              className="self-start"
-              disabled={apply.isPending}
-              onClick={() => apply.mutate(undefined)}
-            >
-              {apply.isPending && <Spinner />}
-              {t("apply")}
-            </Button>
-          </div>
-        )}
-      </WithTemplates>
-      <ContinueButton onContinue={onContinue} />
     </div>
   )
 }
@@ -223,7 +146,6 @@ export function FeesStep({ done, onContinue }: TemplateStepProps) {
 export function LaterStep({
   step,
   done,
-  onContinue,
 }: TemplateStepProps & { step: "staff" | "students" }) {
   const t = useTranslations(`onboarding.${step}`)
   return (
@@ -231,7 +153,6 @@ export function LaterStep({
       <StepNote tone={done ? "done" : "info"}>
         {done ? t("done") : t("later")}
       </StepNote>
-      <ContinueButton onContinue={onContinue} />
     </div>
   )
 }

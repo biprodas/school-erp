@@ -102,3 +102,11 @@ export const createSection = (body: {
   classId: string
   name: string
 }) => apiFetch<Section>("/sections", { method: "POST", body })
+
+/** Also removes its sections and class subjects; refused while in use. */
+export const deleteClass = (id: string) =>
+  apiFetch<void>(`/classes/${id}`, { method: "DELETE" })
+
+/** Refused (409) while students are enrolled in it. */
+export const deleteSection = (id: string) =>
+  apiFetch<void>(`/sections/${id}`, { method: "DELETE" })

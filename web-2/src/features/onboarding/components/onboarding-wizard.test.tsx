@@ -5,7 +5,10 @@ import { NextIntlClientProvider } from "next-intl"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import en from "../../../../messages/en.json"
+import type { SchoolClass, Section } from "~/features/academics/api"
 import type {
+  FeeHead,
+  GradingSystem,
   OnboardingChecklist,
   OnboardingStepKey,
   OnboardingTemplates,
@@ -67,6 +70,11 @@ const checklist = (
   completedAt,
 })
 
+const BANDS = [
+  { letter: "A+", minPercent: 80, maxPercent: 100, point: 5, isFail: false },
+  { letter: "F", minPercent: 0, maxPercent: 32, point: 0, isFail: true },
+]
+
 const TEMPLATES: OnboardingTemplates = {
   curriculum: [
     {
@@ -95,9 +103,23 @@ const TEMPLATES: OnboardingTemplates = {
       description: "SSC/HSC scale",
       kind: "gpa",
       scale: 5,
+      bands: BANDS,
+    },
+    {
+      code: "gpa-4",
+      name: "GPA 4.0",
+      description: "Four-point scale",
+      kind: "gpa",
+      scale: 4,
+      bands: BANDS.map((b) => ({ ...b, point: Math.min(b.point, 4) })),
     },
   ],
-  feeHeads: { items: [{ name: "Tuition Fee", frequency: "monthly" }] },
+  feeHeads: {
+    items: [
+      { name: "Admission Fee", frequency: "once" },
+      { name: "Tuition Fee", frequency: "monthly" },
+    ],
+  },
   holidays: { code: "bd", fixed: [], movable: [] },
 }
 
@@ -107,8 +129,16 @@ interface Call {
   body: unknown
 }
 
+interface State {
+  checklist: OnboardingChecklist
+  /** A current session with these classes and sections, if any. */
+  academics?: { classes: SchoolClass[]; sections: Section[] }
+  gradingSystems?: GradingSystem[]
+  feeHeads?: FeeHead[]
+}
+
 /** A backend by path; `state.checklist` is what the checklist answers. */
-function backend(state: { checklist: OnboardingChecklist }) {
+function backend(state: State) {
   const calls: Call[] = []
   const fetch = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
     const url = new URL(String(input), "http://x.test")
@@ -165,6 +195,98 @@ function backend(state: { checklist: OnboardingChecklist }) {
       },
     }
     const key = `${method} ${url.pathname}`
+    const grading = /^\/api\/onboarding\/templates\/grading\/(.+)\/apply$/.exec(
+      url.pathname
+    )
+    const heads = (state.feeHeads ??= [])
+    const feeHead = (name: string, frequency: FeeHead["frequency"]) => {
+      const head: FeeHead = {
+        id: `h${heads.length + 1}`,
+        name,
+        nameBn: null,
+        frequency,
+        isActive: true,
+        sortOrder: heads.length,
+      }
+      heads.push(head)
+      return head
+    }
+    if (key === "GET /api/fee-heads") {
+      return reply(200, { success: true, data: heads })
+    }
+    if (key === "POST /api/fee-heads") {
+      const head = feeHead(body.name, body.frequency)
+      return reply(200, { success: true, data: head })
+    }
+    if (key === "POST /api/onboarding/templates/fee-heads/apply") {
+      const missing = TEMPLATES.feeHeads.items.filter(
+        (item) => !heads.some((h) => h.name === item.name)
+      )
+      for (const item of missing) {
+        feeHead(
+          item.name,
+          item.frequency === "monthly" ? "monthly" : "one_time"
+        )
+      }
+      return reply(200, {
+        success: true,
+        data: { created: missing.length, skipped: 0 },
+      })
+    }
+    if (method === "DELETE" && url.pathname.startsWith("/api/fee-heads/")) {
+      const id = url.pathname.split("/").pop()
+      state.feeHeads = heads.filter((h) => h.id !== id)
+      return reply(200, { success: true, data: null })
+    }
+    if (key === "GET /api/grading-systems") {
+      return reply(200, { success: true, data: state.gradingSystems ?? [] })
+    }
+    if (method === "POST" && grading) {
+      const template = TEMPLATES.grading.find((g) => g.code === grading[1])!
+      const systems = (state.gradingSystems ??= [])
+      const gradingSystem: GradingSystem = {
+        id: `g-${template.code}`,
+        name: template.name,
+        kind: template.kind,
+        templateCode: template.code,
+        isDefault: systems.length === 0,
+        items: template.bands.map((b, i) => ({
+          ...b,
+          id: `b${i}`,
+          sortOrder: i,
+        })),
+      }
+      systems.push(gradingSystem)
+      return reply(200, {
+        success: true,
+        data: { gradingSystem, created: true },
+      })
+    }
+    const academics = state.academics
+    if (academics) {
+      const page = (items: unknown[]) =>
+        reply(200, {
+          success: true,
+          data: items,
+          meta: { page: 1, limit: 100, total: items.length, totalPages: 1 },
+        })
+      if (key === "GET /api/academic-years/current") {
+        return reply(200, { success: true, data: SESSION })
+      }
+      if (key === "GET /api/classes") return page(academics.classes)
+      if (key === "GET /api/sections") return page(academics.sections)
+      const [, kind, id] =
+        url.pathname.match(/^\/api\/(classes|sections)\/(.+)$/) ?? []
+      if (method === "DELETE" && kind === "sections") {
+        academics.sections = academics.sections.filter((s) => s.id !== id)
+        return reply(200, { success: true, data: null })
+      }
+      if (method === "DELETE" && kind === "classes") {
+        academics.classes = academics.classes.filter((c) => c.id !== id)
+        academics.sections = academics.sections.filter((s) => s.classId !== id)
+        return reply(200, { success: true, data: null })
+      }
+    }
     if (key === "GET /api/academic-years/current") {
       return reply(404, {
         success: false,
@@ -204,7 +326,30 @@ function renderWizard() {
 
 const stepButton = (name: RegExp) => screen.getByRole("button", { name })
 
-let state: { checklist: OnboardingChecklist }
+const SESSION = {
+  id: "y1",
+  name: "2026",
+  startDate: "2026-01-01",
+  endDate: "2026-12-31",
+  isCurrent: true,
+}
+const schoolClass = (id: string, name: string): SchoolClass => ({
+  id,
+  name,
+  code: null,
+  level: null,
+  isActive: true,
+})
+const section = (id: string, classId: string, name: string): Section => ({
+  id,
+  academicYearId: "y1",
+  classId,
+  name,
+  capacity: null,
+  isActive: true,
+})
+
+let state: State
 let api: ReturnType<typeof backend>
 
 beforeEach(() => {
@@ -226,10 +371,13 @@ describe("OnboardingWizard", () => {
     const profile = await screen.findByRole("button", {
       name: /School profile/,
     })
-    expect(profile.getAttribute("aria-expanded")).toBe("false")
+    expect(profile.getAttribute("aria-current")).toBeNull()
     expect(within(profile).getByText("Done")).toBeTruthy()
     const session = stepButton(/Academic session/)
-    expect(session.getAttribute("aria-expanded")).toBe("true")
+    expect(session.getAttribute("aria-current")).toBe("step")
+    expect(
+      screen.getByRole("region", { name: "Academic session" })
+    ).toBeTruthy()
     expect(within(session).getByText("Required")).toBeTruthy()
     expect(within(stepButton(/Fee heads/)).getByText("Optional")).toBeTruthy()
 
@@ -281,8 +429,8 @@ describe("OnboardingWizard", () => {
     await waitFor(() => expect(checklistReads()).toBeGreaterThan(before))
     // On to the next step to do.
     await waitFor(() =>
-      expect(stepButton(/Academic session/).getAttribute("aria-expanded")).toBe(
-        "true"
+      expect(stepButton(/Academic session/).getAttribute("aria-current")).toBe(
+        "step"
       )
     )
   })
@@ -341,6 +489,126 @@ describe("OnboardingWizard", () => {
     )
   })
 
+  it("removes a section, and a class after confirming", async () => {
+    state.checklist = checklist(["profile", "session"])
+    state.academics = {
+      classes: [schoolClass("c6", "Class 6"), schoolClass("c7", "Class 7")],
+      sections: [section("s1", "c6", "A"), section("s2", "c6", "B")],
+    }
+    renderWizard()
+    const panel = await screen.findByRole("region", {
+      name: "Classes and sections",
+    })
+
+    await userEvent.click(
+      await within(panel).findByRole("button", {
+        name: "Remove section B of Class 6",
+      })
+    )
+    await waitFor(() =>
+      expect(within(panel).queryByText("Section B")).toBeNull()
+    )
+    expect(
+      api.calls.some(
+        (c) => c.method === "DELETE" && c.path === "/api/sections/s2"
+      )
+    ).toBe(true)
+
+    await userEvent.click(
+      within(panel).getByRole("button", { name: "Remove Class 7" })
+    )
+    const dialog = await screen.findByRole("alertdialog")
+    expect(within(dialog).getByText("Remove Class 7?")).toBeTruthy()
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Remove class" })
+    )
+    await waitFor(() => expect(within(panel).queryByText("Class 7")).toBeNull())
+    expect(
+      api.calls.some(
+        (c) => c.method === "DELETE" && c.path === "/api/classes/c7"
+      )
+    ).toBe(true)
+  })
+
+  it("shows the grading system a template added, as the default, with its grades", async () => {
+    state.checklist = checklist(REQUIRED)
+    renderWizard()
+    const panel = await screen.findByRole("region", { name: "Grading system" })
+    expect(await within(panel).findByText(/No grading system yet/)).toBeTruthy()
+
+    await userEvent.click(
+      await within(panel).findByRole("button", {
+        name: "Use this: Bangladesh GPA 5.0",
+      })
+    )
+
+    const scale = await within(panel).findByRole("list", {
+      name: "Grades in Bangladesh GPA 5.0",
+    })
+    expect(within(scale).getByText("80–100%")).toBeTruthy()
+    expect(within(panel).getByText("Default")).toBeTruthy()
+    expect(within(panel).getByText("GPA out of 5")).toBeTruthy()
+    // Added already: no button for it, only for the other one.
+    expect(
+      within(panel).queryByRole("button", {
+        name: "Use this: Bangladesh GPA 5.0",
+      })
+    ).toBeNull()
+    expect(
+      within(panel).getByRole("button", { name: "Use this: GPA 4.0" })
+    ).toBeTruthy()
+  })
+
+  it("adds the missing common fee heads and the school's own, and removes one", async () => {
+    state.checklist = checklist(REQUIRED)
+    state.feeHeads = []
+    renderWizard()
+    await userEvent.click(
+      await screen.findByRole("button", { name: /Fee heads/ })
+    )
+    const panel = await screen.findByRole("region", { name: "Fee heads" })
+    expect(await within(panel).findByText(/No fee heads yet/)).toBeTruthy()
+
+    await userEvent.click(
+      await within(panel).findByRole("button", { name: "Add all 2" })
+    )
+    const list = await within(panel).findByRole("list", {
+      name: "Your fee heads",
+    })
+    expect(within(list).getByText("Tuition Fee")).toBeTruthy()
+    expect(within(list).getByText("Monthly")).toBeTruthy()
+    expect(within(panel).getByText("All added")).toBeTruthy()
+
+    await userEvent.type(
+      within(panel).getByLabelText("Fee head name"),
+      "Computer Fee"
+    )
+    await userEvent.selectOptions(
+      within(panel).getByLabelText("How often it is billed"),
+      "yearly"
+    )
+    await userEvent.click(within(panel).getByRole("button", { name: "Add" }))
+    await waitFor(() =>
+      expect(
+        api.calls.find(
+          (c) => c.method === "POST" && c.path === "/api/fee-heads"
+        )?.body
+      ).toEqual({ name: "Computer Fee", frequency: "yearly" })
+    )
+    expect(await within(list).findByText("Computer Fee")).toBeTruthy()
+
+    await userEvent.click(
+      within(list).getByRole("button", { name: "Remove Tuition Fee" })
+    )
+    await waitFor(() =>
+      expect(within(list).queryByText("Tuition Fee")).toBeNull()
+    )
+    // Missing again from the common set.
+    expect(
+      within(panel).getByRole("button", { name: "Add the missing one" })
+    ).toBeTruthy()
+  })
+
   it("suggests the school type's curriculum first and applies it", async () => {
     state.checklist = checklist(["profile", "session", "classes"])
     renderWizard()
@@ -365,6 +633,30 @@ describe("OnboardingWizard", () => {
             c.path === "/api/onboarding/templates/curriculum/alia-madrasa/apply"
         )
       ).toBe(true)
+    )
+  })
+
+  it("skips an optional step and goes back from the step's footer", async () => {
+    state.checklist = checklist(REQUIRED)
+    renderWizard()
+    const grading = await screen.findByRole("region", {
+      name: "Grading system",
+    })
+    expect(within(grading).getByText(/Step 5 of 8/)).toBeTruthy()
+
+    await userEvent.click(
+      within(grading).getByRole("button", { name: "Skip this step" })
+    )
+    expect(stepButton(/Fee heads/).getAttribute("aria-current")).toBe("step")
+
+    await userEvent.click(
+      within(screen.getByRole("region", { name: "Fee heads" })).getByRole(
+        "button",
+        { name: "Back" }
+      )
+    )
+    expect(stepButton(/Grading system/).getAttribute("aria-current")).toBe(
+      "step"
     )
   })
 

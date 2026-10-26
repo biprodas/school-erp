@@ -61,12 +61,35 @@ export interface CurriculumTemplate {
   groups: string[]
 }
 
+/** One band of a grade scale, by percentage of full marks. */
+export interface GradeBand {
+  letter: string
+  minPercent: number
+  maxPercent: number
+  point: number
+  isFail: boolean
+}
+
+export type GradingKind = "gpa" | "letter" | "percentage"
+
 export interface GradingTemplate {
   code: string
   name: string
   description: string
-  kind: "gpa" | "letter" | "percentage"
+  kind: GradingKind
   scale: number
+  bands: GradeBand[]
+}
+
+/** `GET /grading-systems`: one of the school's systems, with its scale. */
+export interface GradingSystem {
+  id: string
+  name: string
+  kind: GradingKind
+  templateCode: string | null
+  /** Used by classes without their own system. */
+  isDefault: boolean
+  items: (GradeBand & { id: string; sortOrder: number })[]
 }
 
 export type HolidayTemplateType = "public" | "school" | "religious"
@@ -118,6 +141,8 @@ export interface HolidayApplyResult {
 export const onboardingKeys = {
   checklist: ["onboarding", "checklist"] as const,
   templates: ["onboarding", "templates"] as const,
+  gradingSystems: ["grading", "systems"] as const,
+  feeHeads: ["fees", "heads"] as const,
 }
 
 export const onboardingChecklistQuery = () =>
@@ -146,17 +171,20 @@ export const applyCurriculumTemplate = (code: string) =>
 
 /** Creates the grading system once; the first becomes the default. */
 export const applyGradingTemplate = (code: string) =>
-  apiFetch<{ created: boolean }>(
+  apiFetch<{ gradingSystem: GradingSystem; created: boolean }>(
     `/onboarding/templates/grading/${encodeURIComponent(code)}/apply`,
     { method: "POST", body: {} }
   )
 
 /** Adds the default fee heads the school doesn't have yet. */
 export const applyFeeHeadsTemplate = () =>
-  apiFetch<unknown>("/onboarding/templates/fee-heads/apply", {
-    method: "POST",
-    body: {},
-  })
+  apiFetch<{ created: number; skipped: number }>(
+    "/onboarding/templates/fee-heads/apply",
+    {
+      method: "POST",
+      body: {},
+    }
+  )
 
 /** Bangladesh's fixed-date holidays for `year` (default: this year). */
 export const applyBdHolidays = (year?: number) =>
@@ -164,3 +192,57 @@ export const applyBdHolidays = (year?: number) =>
     method: "POST",
     body: year ? { year } : {},
   })
+
+/** `FeeFrequency` in the backend: how often a fee head is billed. */
+export const FEE_FREQUENCIES = [
+  "monthly",
+  "quarterly",
+  "yearly",
+  "one_time",
+] as const
+export type FeeFrequency = (typeof FEE_FREQUENCIES)[number]
+
+/** `GET /fee-heads`: a kind of fee; amounts per class come later. */
+export interface FeeHead {
+  id: string
+  name: string
+  nameBn: string | null
+  frequency: FeeFrequency
+  isActive: boolean
+  sortOrder: number
+}
+
+export const feeHeadsQuery = () =>
+  queryOptions({
+    queryKey: onboardingKeys.feeHeads,
+    queryFn: ({ signal }) => apiFetch<FeeHead[]>("/fee-heads", { signal }),
+  })
+
+export const createFeeHead = (body: {
+  name: string
+  frequency: FeeFrequency
+}) => apiFetch<FeeHead>("/fee-heads", { method: "POST", body })
+
+/** Refused (409) once invoices use it. */
+export const deleteFeeHead = (id: string) =>
+  apiFetch<void>(`/fee-heads/${id}`, { method: "DELETE" })
+
+/** The school's grading systems, default first. */
+export const gradingSystemsQuery = () =>
+  queryOptions({
+    queryKey: onboardingKeys.gradingSystems,
+    queryFn: async ({ signal }) =>
+      (await apiFetch<GradingSystem[]>("/grading-systems", { signal })).sort(
+        (a, b) => Number(b.isDefault) - Number(a.isDefault)
+      ),
+  })
+
+export const makeDefaultGradingSystem = (id: string) =>
+  apiFetch<GradingSystem>(`/grading-systems/${id}`, {
+    method: "PATCH",
+    body: { isDefault: true },
+  })
+
+/** Refused (409) while a class uses it. */
+export const deleteGradingSystem = (id: string) =>
+  apiFetch<void>(`/grading-systems/${id}`, { method: "DELETE" })

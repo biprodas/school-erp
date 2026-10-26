@@ -1,7 +1,7 @@
 "use client"
 
 import { useQuery } from "@tanstack/react-query"
-import { PlusIcon } from "lucide-react"
+import { PlusIcon, Trash2Icon, XIcon } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { useState, type FormEvent } from "react"
 
@@ -11,12 +11,23 @@ import {
   createClass,
   createSection,
   currentSessionQuery,
+  deleteClass,
+  deleteSection,
   sectionsQuery,
   type AcademicYear,
   type SchoolClass,
   type Section,
 } from "~/features/academics/api"
 import type { OnboardingStepKey } from "~/features/onboarding/api"
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "~/components/ui/alert-dialog"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Input } from "~/components/ui/input"
@@ -26,11 +37,10 @@ import { Spinner } from "~/components/ui/spinner"
 import { useSchoolFormat } from "~/features/settings/use-school-format"
 
 import { nextSectionName } from "../steps"
-import { ContinueButton, StepLoadFailed, StepNote } from "./step-parts"
+import { StepLoadFailed, StepNote } from "./step-parts"
 import { useSetupAction } from "../use-setup-action"
 
 export interface StepProps {
-  onContinue: () => void
   onGoTo: (key: OnboardingStepKey) => void
 }
 
@@ -38,11 +48,7 @@ export interface StepProps {
  * Step 3: classes (permanent) and their sections in the current session.
  * Done once there is a class and the session has a section.
  */
-export function ClassesStep({
-  done,
-  onContinue,
-  onGoTo,
-}: StepProps & { done: boolean }) {
+export function ClassesStep({ onGoTo }: StepProps & { done: boolean }) {
   const t = useTranslations("onboarding.classes")
   const session = useQuery(currentSessionQuery())
 
@@ -62,22 +68,10 @@ export function ClassesStep({
       </div>
     )
   }
-  return (
-    <ClassList
-      session={session.data}
-      done={done}
-      onContinue={onContinue}
-      onGoTo={onGoTo}
-    />
-  )
+  return <ClassList session={session.data} onGoTo={onGoTo} />
 }
 
-function ClassList({
-  session,
-  done,
-  onContinue,
-  onGoTo,
-}: StepProps & { session: AcademicYear; done: boolean }) {
+function ClassList({ session, onGoTo }: StepProps & { session: AcademicYear }) {
   const t = useTranslations("onboarding.classes")
   const f = useSchoolFormat()
   const classes = useQuery(classesQuery())
@@ -164,7 +158,6 @@ function ClassList({
       )}
 
       <AddClassForm />
-      {done && <ContinueButton onContinue={onContinue} />}
     </div>
   )
 }
@@ -201,13 +194,19 @@ function ClassRow({
   return (
     <li className="flex flex-col gap-2 p-3 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex min-w-0 flex-col gap-1">
-        <span className="font-medium">{schoolClass.name}</span>
+        <span className="flex items-center gap-1">
+          <span className="font-medium">{schoolClass.name}</span>
+          <RemoveClassButton schoolClass={schoolClass} sessionId={sessionId} />
+        </span>
         <span className="flex flex-wrap gap-1">
           {sections.length ? (
             sections.map((s) => (
-              <Badge key={s.id} variant="secondary">
-                {t("section", { name: s.name })}
-              </Badge>
+              <SectionBadge
+                key={s.id}
+                section={s}
+                className={schoolClass.name}
+                sessionId={sessionId}
+              />
             ))
           ) : (
             <span className="text-sm text-muted-foreground">
@@ -239,6 +238,108 @@ function ClassRow({
         </Button>
       </form>
     </li>
+  )
+}
+
+/** A section, with a button that removes it (refused once in use). */
+function SectionBadge({
+  section,
+  className,
+  sessionId,
+}: {
+  section: Section
+  className: string
+  sessionId: string
+}) {
+  const t = useTranslations("onboarding.classes")
+  const remove = useSetupAction({
+    action: () => deleteSection(section.id),
+    invalidate: [academicKeys.sections(sessionId)],
+    success: () => t("sectionRemoved", { name: section.name }),
+  })
+
+  return (
+    <Badge variant="secondary" className="h-6 gap-1 pr-1">
+      {t("section", { name: section.name })}
+      <button
+        type="button"
+        aria-label={t("removeSection", { name: section.name, className })}
+        title={t("removeSection", { name: section.name, className })}
+        disabled={remove.isPending}
+        onClick={() => remove.mutate(undefined)}
+        className="flex size-4 items-center justify-center rounded-full text-muted-foreground/70 transition-colors outline-none hover:bg-destructive/10 hover:text-destructive focus-visible:ring-2 focus-visible:ring-ring/40 disabled:opacity-50"
+      >
+        {remove.isPending ? (
+          <Spinner className="size-2.5" />
+        ) : (
+          <XIcon aria-hidden className="size-2.5" strokeWidth={2.5} />
+        )}
+      </button>
+    </Badge>
+  )
+}
+
+/**
+ * Removes a class after a confirmation: its sections and class subjects
+ * go with it (the backend cascades), and one with students is refused.
+ */
+function RemoveClassButton({
+  schoolClass,
+  sessionId,
+}: {
+  schoolClass: SchoolClass
+  sessionId: string
+}) {
+  const t = useTranslations("onboarding.classes")
+  const [open, setOpen] = useState(false)
+  const remove = useSetupAction({
+    action: () => deleteClass(schoolClass.id),
+    invalidate: [academicKeys.classes, academicKeys.sections(sessionId)],
+    success: () => t("classRemoved", { name: schoolClass.name }),
+    onSuccess: () => setOpen(false),
+  })
+
+  return (
+    <>
+      <Button
+        variant="ghost"
+        size="icon-xs"
+        aria-label={t("removeClass", { name: schoolClass.name })}
+        title={t("removeClass", { name: schoolClass.name })}
+        className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+        onClick={() => setOpen(true)}
+      >
+        <Trash2Icon aria-hidden />
+      </Button>
+      <AlertDialog
+        open={open}
+        onOpenChange={(next) => !remove.isPending && setOpen(next)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t("removeClassTitle", { name: schoolClass.name })}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("removeClassBody")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={remove.isPending}>
+              {t("cancel")}
+            </AlertDialogCancel>
+            <Button
+              variant="destructive"
+              disabled={remove.isPending}
+              onClick={() => remove.mutate(undefined)}
+            >
+              {remove.isPending ? <Spinner /> : <Trash2Icon aria-hidden />}
+              {t("confirmRemove")}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
 }
 

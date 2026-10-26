@@ -72,13 +72,3 @@ export function StepNote({
     </p>
   )
 }
-
-/** "Continue" to the next step when this one needs no form. */
-export function ContinueButton({ onContinue }: { onContinue: () => void }) {
-  const t = useTranslations("onboarding")
-  return (
-    <Button variant="outline" className="self-start" onClick={onContinue}>
-      {t("continue")}
-    </Button>
-  )
-}

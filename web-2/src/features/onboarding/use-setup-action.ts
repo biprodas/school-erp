@@ -18,6 +18,7 @@ const CODES = {
   SECTION_NAME_TAKEN: "sectionTaken",
   NO_CURRENT_SESSION: "noSession",
   ONBOARDING_INCOMPLETE: "incomplete",
+  FOREIGN_KEY_VIOLATION: "inUse",
   [NETWORK_ERROR]: "network",
 } as const
 

@@ -21,12 +21,7 @@ import { Spinner } from "~/components/ui/spinner"
 import { useSchoolFormat } from "~/features/settings/use-school-format"
 
 import { defaultSession } from "../steps"
-import {
-  ContinueButton,
-  StepActions,
-  StepLoadFailed,
-  StepNote,
-} from "./step-parts"
+import { StepActions, StepLoadFailed, StepNote } from "./step-parts"
 import { useSetupAction } from "../use-setup-action"
 
 /** Today as `YYYY-MM-DD` in the school's time zone. */
@@ -40,24 +35,18 @@ export function schoolToday(timeZone: string | undefined) {
  * Step 2: the current academic session. With one in place, the BD
  * government holidays for its first year can be added too.
  */
-export function SessionStep({ onContinue }: { onContinue: () => void }) {
+export function SessionStep() {
   const session = useQuery(currentSessionQuery())
   if (session.isPending) return <Skeleton className="h-48 rounded-lg" />
   if (session.isError) return <StepLoadFailed retry={session.refetch} />
   return session.data ? (
-    <CurrentSession session={session.data} onContinue={onContinue} />
+    <CurrentSession session={session.data} />
   ) : (
     <SessionForm />
   )
 }
 
-function CurrentSession({
-  session,
-  onContinue,
-}: {
-  session: AcademicYear
-  onContinue: () => void
-}) {
+function CurrentSession({ session }: { session: AcademicYear }) {
   const t = useTranslations("onboarding.session")
   const f = useSchoolFormat()
   return (
@@ -74,7 +63,6 @@ function CurrentSession({
       <HolidaysAction
         year={Number((session.startDate ?? schoolToday(undefined)).slice(0, 4))}
       />
-      <ContinueButton onContinue={onContinue} />
     </div>
   )
 }
