@@ -36,6 +36,13 @@ export interface OnboardingStep {
   done: boolean;
 }
 
+/** `GET /onboarding/progress`: the checklist without titles or links. */
+export interface OnboardingProgress {
+  steps: Pick<OnboardingStep, 'key' | 'required' | 'done'>[];
+  percentage: number;
+  completedAt: Date | null;
+}
+
 export interface OnboardingChecklist {
   steps: OnboardingStep[];
   /** Done steps out of the available ones, 0–100. */
@@ -143,6 +150,22 @@ export class OnboardingService {
         (available.filter((s) => s.done).length / available.length) * 100,
       ),
       canComplete: steps.every((s) => !s.required || s.done),
+      completedAt,
+    };
+  }
+
+  /**
+   * How far setup has got, for staff waiting on it (`/setting-up`): each
+   * available step's key, whether it is required and done, and when setup
+   * ended. Nothing about the school's data beyond that.
+   */
+  async progress(): Promise<OnboardingProgress> {
+    const { steps, percentage, completedAt } = await this.checklist();
+    return {
+      steps: steps
+        .filter((s) => s.available)
+        .map(({ key, required, done }) => ({ key, required, done })),
+      percentage,
       completedAt,
     };
   }

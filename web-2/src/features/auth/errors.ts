@@ -71,9 +71,12 @@ export function authErrorKey(code: string): AuthErrorKey {
       return "sessionEnded"
     case "PASSWORD_CHANGE_REQUIRED":
       return "passwordChangeRequired"
-    // Token links (activation, reset, verification, handoff) answer a
-    // plain 400 when they are unknown, used or expired.
+    // Token links (activation, reset, verification, handoff) answer 400
+    // when they are unknown, used or expired.
     case "BAD_REQUEST":
+    case "LINK_INVALID":
+    case "LINK_USED":
+    case "LINK_EXPIRED":
     case "INVALID_SIGNUP_LINK":
       return "linkInvalid"
     // Signup with Google.

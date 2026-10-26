@@ -20,9 +20,8 @@ import { loginSchema, platformLoginSchema } from "../schemas"
 /**
  * One sign-in form for staff, students and guardians: email or phone and
  * password, plus "Continue with Google" when the school's host has it.
- * The admin host uses it too, with its own action, email only and without
- * the note for invited members. Both hosts have their own
- * `/forgot-password`.
+ * The admin host uses it too, with its own action and email only. Both
+ * hosts have their own `/forgot-password`.
  */
 export function LoginForm({
   next,
@@ -31,7 +30,6 @@ export function LoginForm({
   pageError,
   notice,
   action = signIn,
-  schoolLinks = true,
   emailOnly = false,
 }: {
   next: string | null
@@ -42,8 +40,6 @@ export function LoginForm({
   pageError: AuthErrorKey | null
   notice: string | null
   action?: (previous: FormState, formData: FormData) => Promise<FormState>
-  /** The note for invited members. */
-  schoolLinks?: boolean
   /** Email, no phone number (platform admins on the admin host). */
   emailOnly?: boolean
 }) {
@@ -116,9 +112,6 @@ export function LoginForm({
             {t("google")}
           </a>
         </>
-      )}
-      {schoolLinks && (
-        <p className="text-sm text-muted-foreground">{t("invited")}</p>
       )}
     </>
   )

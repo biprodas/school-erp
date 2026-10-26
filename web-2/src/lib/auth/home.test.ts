@@ -75,6 +75,8 @@ describe("gate", () => {
   it("allows only the password change while one is required", () => {
     expect(gate(forced, "/change-password")).toBeNull()
     expect(gate(forced, "/auth/handoff?code=x")).toBeNull()
+    // An invitation still opens, to offer signing out first.
+    expect(gate(forced, "/activate?token=x")).toBeNull()
     for (const path of [
       "/",
       "/login",

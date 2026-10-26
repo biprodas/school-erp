@@ -47,6 +47,9 @@ Every error response is `{ success: false, statusCode, message, code?, … }`. T
 | `IDENTITY_IN_USE` | This account is already linked to another user |
 | `IDENTITY_NOT_LINKED` | No linked account |
 | `INVALID_CREDENTIALS` | Invalid credentials |
+| `LINK_EXPIRED` | This ${label} link has expired |
+| `LINK_INVALID` | Invalid activation link |
+| `LINK_USED` | This ${label} link was already used |
 | `MEMBERSHIP_PENDING` | Please activate your account using your invitation link. |
 | `PASSWORD_ALREADY_SET` | This person already has their own password |
 | `PASSWORD_REQUIRED` | Set a password before unlinking, so you can still sign in |

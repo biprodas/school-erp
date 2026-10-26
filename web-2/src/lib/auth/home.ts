@@ -55,7 +55,8 @@ export function gate(session: Session | null, path: string): string | null {
   }
 
   if (session.mustChangePassword) {
-    return under(pathname, ["/change-password", "/auth"])
+    // An invitation link still opens: it offers to sign out first.
+    return under(pathname, ["/change-password", "/auth", "/activate"])
       ? null
       : "/change-password"
   }

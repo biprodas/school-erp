@@ -7,7 +7,7 @@ import { queryErrorKey } from "~/features/auth/errors"
 import { LoginForm } from "~/features/auth/components/login-form"
 import { param, type SearchParams } from "~/features/auth/search-params"
 import { isGoogleSignInEnabled } from "~/lib/auth/google"
-import { requireSchoolSlug } from "~/lib/tenancy/request-host"
+import { requireSchoolSlug, siteUrl } from "~/lib/tenancy/request-host"
 import { safeNext } from "~/lib/security/safe-next"
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -20,6 +20,8 @@ export async function generateMetadata(): Promise<Metadata> {
  * sends them home. `?next=` (same-host path) is where they go after
  * signing in; `?error=` comes from the handoff route and Google.
  * `?identifier=` (from the "Find your school" email) prefills the form.
+ * Under the card: where invited people go instead, and a way to another
+ * school for anyone on the wrong one's site.
  */
 export default async function LoginPage({
   searchParams,
@@ -37,22 +39,33 @@ export default async function LoginPage({
     ? `/auth/google${next ? `?next=${encodeURIComponent(next)}` : ""}`
     : null
 
+  const school = schoolName(home, await getLocale())
+  const findSchool = await siteUrl("/find-school")
+  const link =
+    "rounded-sm font-medium text-foreground underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/30"
+
   return (
-    <AuthCard
-      title={t("title")}
-      description={t("description", {
-        school: schoolName(home, await getLocale()),
-      })}
-    >
-      <LoginForm
-        next={next}
-        identifier={
-          (await param(searchParams, "identifier"))?.slice(0, 254) ?? ""
-        }
-        googleHref={googleHref}
-        pageError={queryErrorKey(await param(searchParams, "error"))}
-        notice={notice}
-      />
-    </AuthCard>
+    <>
+      <AuthCard title={t("title")} description={t("description", { school })}>
+        <LoginForm
+          next={next}
+          identifier={
+            (await param(searchParams, "identifier"))?.slice(0, 254) ?? ""
+          }
+          googleHref={googleHref}
+          pageError={queryErrorKey(await param(searchParams, "error"))}
+          notice={notice}
+        />
+      </AuthCard>
+      <div className="flex flex-col gap-1.5 text-center text-sm text-muted-foreground">
+        <p>{t("invited")}</p>
+        <p>
+          {t("otherSchool", { school })}{" "}
+          <a href={findSchool} className={link}>
+            {t("findSchool")}
+          </a>
+        </p>
+      </div>
+    </>
   )
 }

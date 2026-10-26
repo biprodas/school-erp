@@ -85,13 +85,19 @@ export class AuthService {
 
   // --- Activation (provisioned owners / invited members) ------------------
 
-  /** Validate an activation token and return the target user's details. */
+  /**
+   * Check an activation link without using it, and describe the invitation:
+   * who it is for, what they will be in the school (roles, school admin)
+   * and until when the link works. A membership suspended or removed since
+   * the invitation is refused here as activating would refuse it.
+   */
   async verifyActivation(rawToken: string) {
-    const { user } = await this.resolveToken(
+    const { user, record } = await this.resolveToken(
       rawToken,
       AuthTokenType.ACTIVATION,
       'activation',
     );
+    const membership = await this.activatableMembership(user.id);
     return {
       email: user.email,
       phone: user.phone,
@@ -99,6 +105,9 @@ export class AuthService {
       organization: this.organization,
       // True: the account keeps its password, which activation asks for.
       hasPassword: await this.credentials.hasOwnPassword(user.id),
+      isAdmin: membership.isAdmin,
+      roles: await this.getRoleNames(user.id),
+      expiresAt: record.expiresAt,
     };
   }
 
@@ -117,19 +126,7 @@ export class AuthService {
       AuthTokenType.ACTIVATION,
       'activation',
     );
-    const membership = await this.memberRepo.findByUserId(user.id);
-    if (!membership) {
-      throw new BadRequestException('Invalid activation link');
-    }
-    if (
-      membership.status !== MembershipStatus.PENDING &&
-      membership.status !== MembershipStatus.ACTIVE
-    ) {
-      throw new ForbiddenException({
-        message: `Membership is ${membership.status}`,
-        code: `MEMBERSHIP_${membership.status.toUpperCase()}`,
-      });
-    }
+    const membership = await this.activatableMembership(user.id);
 
     const keepsPassword = await this.credentials.hasOwnPassword(user.id);
     if (keepsPassword) {
@@ -427,6 +424,27 @@ export class AuthService {
     };
   }
 
+  /** The invitee's membership here, while it may still be activated. */
+  private async activatableMembership(userId: string): Promise<Membership> {
+    const membership = await this.memberRepo.findByUserId(userId);
+    if (!membership) {
+      throw new BadRequestException({
+        message: 'Invalid activation link',
+        code: 'LINK_INVALID',
+      });
+    }
+    if (
+      membership.status !== MembershipStatus.PENDING &&
+      membership.status !== MembershipStatus.ACTIVE
+    ) {
+      throw new ForbiddenException({
+        message: `Membership is ${membership.status}`,
+        code: `MEMBERSHIP_${membership.status.toUpperCase()}`,
+      });
+    }
+    return membership;
+  }
+
   private async getRoleNames(userId: string): Promise<string[]> {
     const roles = await this.roleService.getUserRoles(userId);
     return roles.map((role) => role.name);
@@ -661,12 +679,32 @@ export class AuthService {
       hashToken(rawToken),
       type,
     );
-    if (!record || record.usedAt || record.expiresAt.getTime() < Date.now()) {
-      throw new BadRequestException(`Invalid or expired ${label} link`);
+    // Which way a link fails is told only to whoever holds it, so the page
+    // can say what to do next (sign in, ask for a new one).
+    if (!record) {
+      throw new BadRequestException({
+        message: `Invalid ${label} link`,
+        code: 'LINK_INVALID',
+      });
+    }
+    if (record.usedAt) {
+      throw new BadRequestException({
+        message: `This ${label} link was already used`,
+        code: 'LINK_USED',
+      });
+    }
+    if (record.expiresAt.getTime() < Date.now()) {
+      throw new BadRequestException({
+        message: `This ${label} link has expired`,
+        code: 'LINK_EXPIRED',
+      });
     }
     const user = await this.accountRepo.findById(record.userId);
     if (!user) {
-      throw new BadRequestException(`Invalid ${label} link`);
+      throw new BadRequestException({
+        message: `Invalid ${label} link`,
+        code: 'LINK_INVALID',
+      });
     }
     return { user, record };
   }

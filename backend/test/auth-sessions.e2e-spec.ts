@@ -8,10 +8,14 @@ import type { App } from 'supertest/types';
 import { DataSource } from 'typeorm';
 import { AppModule } from 'src/app.module';
 import { configureApp } from 'src/app.setup';
+import { AuthTokenType } from '~/common/tokens/auth-token-type.enum';
+import { hashToken } from '~/common/tokens/secure-token.util';
+import { AuthToken } from '~/modules/auth/entities/auth-token.entity';
 import { Membership } from '~/modules/memberships/entities/membership.entity';
 import { MembershipRole } from '~/modules/memberships/enums/membership-role.enum';
 import { MembershipStatus } from '~/modules/memberships/enums/membership-status.enum';
 import { Organization } from '~/modules/organizations/entities/organization.entity';
+import { Role } from '~/modules/rbac/entities/role.entity';
 import { OrganizationStatus } from '~/modules/organizations/enums/organization-status.enum';
 import { ALL_PERMISSIONS } from '~/modules/rbac/permissions.catalog';
 import { User } from '~/modules/users/entities/user.entity';
@@ -284,6 +288,85 @@ describe('Auth sessions (e2e)', () => {
       'PASSWORD_CHANGE_REQUIRED',
     );
     await login(orgA, invitedPhone, 'My-own-pass-9').expect(201);
+  });
+
+  it('describes an invitation link, and says when one is used or expired', async () => {
+    const adminToken = ((await login(orgA, admin.email!)).body as TokenBody)
+      .data.access_token;
+    const role = await rootDs
+      .getRepository(Role)
+      .save({ orgId: orgA.id, name: 'teacher', permissions: [] });
+    const email = `invitee-${runId}@e2e.test`;
+    await http()
+      .post('/api/users/invite')
+      .set('x-tenant-id', orgA.slug)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ name: `Invitee ${runId}`, email, roleIds: [role.id] })
+      .expect(201);
+    const invitee = await rootDs.getRepository(User).findOneByOrFail({ email });
+
+    // Links of our own for the invitee (the emailed one isn't readable here).
+    const tokens = rootDs.getRepository(AuthToken);
+    const link = async (raw: string, expiresAt: Date) => {
+      await tokens.save({
+        userId: invitee.id,
+        orgId: orgA.id,
+        tokenHash: hashToken(raw),
+        type: AuthTokenType.ACTIVATION,
+        expiresAt,
+        usedAt: null,
+      });
+      return raw;
+    };
+    const check = (raw: string) =>
+      http()
+        .get('/api/auth/activate')
+        .query({ token: raw })
+        .set('x-tenant-id', orgA.slug);
+    const codeOf = (res: request.Response) =>
+      (res.body as { code?: string }).code;
+    const week = new Date(Date.now() + 7 * 86_400_000);
+
+    const live = await link(`live-${runId}`, week);
+    const preview = (await check(live).expect(200)).body as {
+      data: {
+        email: string;
+        hasPassword: boolean;
+        isAdmin: boolean;
+        roles: string[];
+        expiresAt: string;
+      };
+    };
+    expect(preview.data).toMatchObject({
+      email,
+      hasPassword: false,
+      isAdmin: false,
+      roles: ['teacher'],
+    });
+    expect(new Date(preview.data.expiresAt).getTime()).toBe(week.getTime());
+
+    expect(codeOf(await check('no-such-link').expect(400))).toBe(
+      'LINK_INVALID',
+    );
+    const old = await link(`old-${runId}`, new Date(Date.now() - 1000));
+    expect(codeOf(await check(old).expect(400))).toBe('LINK_EXPIRED');
+
+    await http()
+      .post('/api/auth/activate')
+      .set('x-tenant-id', orgA.slug)
+      .send({ token: live, password: 'Invitee-pass-1' })
+      .expect(201);
+    expect(codeOf(await check(live).expect(400))).toBe('LINK_USED');
+
+    // Access removed after the invitation: the page says so up front.
+    const other = await link(`other-${runId}`, week);
+    await rootDs
+      .getRepository(Membership)
+      .update(
+        { orgId: orgA.id, userId: invitee.id },
+        { status: MembershipStatus.SUSPENDED },
+      );
+    expect(codeOf(await check(other).expect(403))).toBe('MEMBERSHIP_SUSPENDED');
   });
 
   it('switches to another school of the account with a one-time code', async () => {

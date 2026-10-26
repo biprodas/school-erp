@@ -6,6 +6,9 @@ import { Organization } from '~/modules/organizations/entities/organization.enti
 import { OrganizationType } from '~/modules/organizations/enums/organization-type.enum';
 import { OrganizationService } from '~/modules/organizations/services/organization.service';
 import { User } from '~/modules/users/entities/user.entity';
+import { Membership } from '~/modules/memberships/entities/membership.entity';
+import { MembershipRole } from '~/modules/memberships/enums/membership-role.enum';
+import { MembershipStatus } from '~/modules/memberships/enums/membership-status.enum';
 import { UserStatus } from '~/modules/users/enums/user-status.enum';
 import { SessionService } from '~/modules/auth/services/session.service';
 import { AuditLog } from '~/modules/audit/entities/audit-log.entity';
@@ -118,6 +121,64 @@ describe('Onboarding (e2e)', () => {
       code: 'ONBOARDING_INCOMPLETE',
       missing: ['profile', 'session', 'curriculum', 'classes'],
     });
+  });
+
+  it('shows any staff member how far setup has got, not the checklist', async () => {
+    const users = e.rootDs.getRepository(User);
+    const staff = await users.save(
+      users.create({
+        email: `onb-staff-${runId}@e2e.test`,
+        name: 'Staff',
+        password: 'not-used',
+        status: UserStatus.ACTIVE,
+      }),
+    );
+    await e.rootDs.getRepository(Membership).save({
+      orgId: org.id,
+      userId: staff.id,
+      role: MembershipRole.MEMBER,
+      isAdmin: false,
+      status: MembershipStatus.ACTIVE,
+    });
+    const { sessionId } = await e.app
+      .get(SessionService)
+      .start(staff.id, org.id);
+    const staffToken = e.jwt.sign({
+      sub: staff.id,
+      orgId: org.id,
+      isAdmin: false,
+      sid: sessionId,
+    });
+    const asStaff = (url: string) =>
+      e
+        .http()
+        .get(url)
+        .set('x-tenant-id', org.slug)
+        .set('Authorization', `Bearer ${staffToken}`);
+
+    await asStaff('/api/onboarding/checklist').expect(403);
+    const progress = data<{
+      steps: { key: string; required: boolean; done: boolean }[];
+      percentage: number;
+      completedAt: string | null;
+    }>(await asStaff('/api/onboarding/progress').expect(200));
+    // The same steps as the admins' checklist (this member counts as staff).
+    const full = await checklist();
+    expect(progress.steps.map((s) => s.key)).toEqual(
+      full.steps.map((s) => s.key),
+    );
+    expect(progress.percentage).toBe(full.percentage);
+    expect(Object.keys(progress.steps[0]).sort()).toEqual([
+      'done',
+      'key',
+      'required',
+    ]);
+    expect(progress.completedAt).toBeNull();
+
+    // Not a staff member for the steps that follow.
+    await e.rootDs
+      .getRepository(Membership)
+      .delete({ orgId: org.id, userId: staff.id });
   });
 
   it('applies the NCTB template once, adding only what is missing', async () => {

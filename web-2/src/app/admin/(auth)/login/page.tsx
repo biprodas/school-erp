@@ -43,7 +43,6 @@ export default async function AdminLoginPage({
           pageError={queryErrorKey(await param(searchParams, "error"))}
           notice={notice}
           action={platformSignIn}
-          schoolLinks={false}
           emailOnly
         />
       </AuthCard>

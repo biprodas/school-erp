@@ -43,6 +43,16 @@ export class OnboardingController {
     return this.onboarding.checklist();
   }
 
+  /**
+   * Setup's progress for any member of the school: staff wait on
+   * `/setting-up` until it ends, and see how far it has got.
+   */
+  @Get('progress')
+  @ResponseMessage('Setup progress')
+  progress() {
+    return this.onboarding.progress();
+  }
+
   @Post('complete')
   @HttpCode(200)
   @RequirePermissions(PERMISSIONS.ONBOARDING_MANAGE)

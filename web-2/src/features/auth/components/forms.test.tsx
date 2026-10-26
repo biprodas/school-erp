@@ -208,6 +208,53 @@ describe("ActivateForm", () => {
     expect(data.get("password")).toBe("abcdef")
   })
 
+  it("checks the new password while it is typed", async () => {
+    renderIn(
+      <ActivateForm
+        token="tok"
+        account="rina@example.com"
+        hasPassword={false}
+      />
+    )
+    // Password managers save the new password under the account.
+    expect(screen.getByDisplayValue("rina@example.com")).toHaveAttribute(
+      "autocomplete",
+      "username"
+    )
+
+    const rule = screen.getByText("At least 6 characters.").closest("li")!
+    expect(rule).toHaveTextContent("(not yet)")
+    await userEvent.type(screen.getByLabelText("New password"), "abcdef")
+    expect(rule).toHaveTextContent("(done)")
+
+    expect(screen.queryByText("Passwords match")).not.toBeInTheDocument()
+    await userEvent.type(screen.getByLabelText("Confirm password"), "abc")
+    expect(screen.getByText("Passwords match").closest("li")).toHaveTextContent(
+      "(not yet)"
+    )
+    await userEvent.type(screen.getByLabelText("Confirm password"), "def")
+    expect(screen.getByText("Passwords match").closest("li")).toHaveTextContent(
+      "(done)"
+    )
+  })
+
+  it("waits for the button before showing errors", async () => {
+    renderIn(<ActivateForm token="tok" hasPassword={false} />)
+
+    await userEvent.type(screen.getByLabelText("New password"), "abc")
+    await userEvent.click(screen.getByLabelText("Confirm password"))
+    await userEvent.tab()
+    expect(screen.queryByText("Use at least 6 characters")).toBeNull()
+    expect(screen.queryByText("Password is required")).toBeNull()
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Activate and sign in" })
+    )
+    expect(
+      await screen.findByText("Use at least 6 characters")
+    ).toBeInTheDocument()
+  })
+
   it("rejects a password shorter than the backend allows", async () => {
     renderIn(<ActivateForm token="tok" hasPassword={false} />)
 
@@ -330,7 +377,7 @@ describe("ResetPasswordForm", () => {
 describe("LoginForm on the admin host", () => {
   it("asks for an email only, and refuses a phone number", async () => {
     const action = vi.fn<Action>()
-    renderIn(loginForm({ action, emailOnly: true, schoolLinks: false }))
+    renderIn(loginForm({ action, emailOnly: true }))
 
     const field = screen.getByLabelText("Email")
     expect(field).toHaveAttribute("type", "email")
