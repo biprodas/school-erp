@@ -65,13 +65,15 @@ export class StartSignupDto {
   googleTicket?: string;
 }
 
-export class VerifySignupDto {
+export class PreviewSignupDto {
   @IsDefined()
   @IsString()
   @IsNotEmpty()
   @MaxLength(128)
   token: string;
+}
 
+export class VerifySignupDto extends PreviewSignupDto {
   /** A new address when the requested one was taken in the meantime. */
   @IsOptional()
   @IsString()

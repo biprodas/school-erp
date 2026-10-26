@@ -268,8 +268,25 @@
     "resend": "Send the email again",
     "changeDetails": "Change details",
     "verifyMetaTitle": "Create your school",
-    "verifyTitle": "One more step",
-    "verifyDescription": "Press the button to create your school and sign in.",
+    "verify": {
+      "emailVerified": "Email confirmed",
+      "title": "Review and create your school",
+      "description": "Check the details below, then create your school. Everything except the owner can be changed later in settings.",
+      "school": "School",
+      "slugReady": "Still available",
+      "slugGone": "{host} is no longer available. Pick another address to continue.",
+      "owner": "Owner",
+      "verified": "Verified",
+      "ownerRole": "You'll be the school's admin.",
+      "existingAccount": "{email} already has an account. Use its password to sign in to your new school.",
+      "perks": {
+        "trial": "30-day free trial",
+        "noCard": "No card needed",
+        "signedIn": "Signed in right away",
+        "setupLater": "Set up classes and staff at your pace"
+      },
+      "footer": "This link works until {until}. Something wrong? <again>Start again</again>"
+    },
     "createSchool": "Create my school",
     "newSlugLabel": "Choose another address",
     "invalidTitle": "This signup link doesn't work",

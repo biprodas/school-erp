@@ -17,7 +17,10 @@ import { User } from '~/modules/users/entities/user.entity';
 import { UserStatus } from '~/modules/users/enums/user-status.enum';
 import { OrganizationType } from '~/modules/organizations/enums/organization-type.enum';
 import { OrganizationService } from '~/modules/organizations/services/organization.service';
-import { SlugService } from '~/modules/organizations/services/slug.service';
+import {
+  type SlugCheck,
+  SlugService,
+} from '~/modules/organizations/services/slug.service';
 import { PlatformAuthService } from '~/modules/auth/services/platform-auth.service';
 import { SessionService } from '~/modules/auth/services/session.service';
 import {
@@ -47,6 +50,19 @@ const BLOCKED_STATUSES = new Set<string>([
 export type StartSignupResult =
   | { status: 'verification_sent'; email: string }
   | ({ status: 'created' } & CompletedSignup);
+
+/** What an emailed link will create, shown before it is used. */
+export interface SignupPreview {
+  schoolName: string;
+  slug: string;
+  ownerName: string;
+  email: string;
+  expiresAt: Date;
+  /** Whether the requested address is still free, with alternatives. */
+  slugCheck: SlugCheck;
+  /** The email already has an active account, which keeps its password. */
+  existingAccount: boolean;
+}
 
 export interface CompletedSignup {
   orgId: string;
@@ -149,28 +165,48 @@ export class SignupService {
   }
 
   /**
+   * What an emailed link will create, without using it (mail scanners open
+   * links, so only `verify` uses one up).
+   */
+  async preview(rawToken: string): Promise<SignupPreview> {
+    const request = usable(
+      await this.requests.findOne({
+        where: { tokenHash: hashToken(rawToken) },
+      }),
+    );
+    const [slugCheck, account] = await Promise.all([
+      this.slugs.check(request.slug),
+      this.dataSource.getRepository(User).findOne({
+        where: { email: request.email },
+        select: { id: true, status: true },
+      }),
+    ]);
+    return {
+      schoolName: request.schoolName,
+      slug: request.slug,
+      ownerName: request.ownerName,
+      email: request.email,
+      expiresAt: request.expiresAt,
+      slugCheck,
+      existingAccount: account?.status === UserStatus.ACTIVE,
+    };
+  }
+
+  /**
    * Uses an emailed link. `slug` replaces the requested one (the client
    * offers it when that one was taken in the meantime).
    */
   async verify(rawToken: string, slug?: string): Promise<CompletedSignup> {
     const completed = await this.dataSource.transaction(async (manager) => {
-      const request = await manager
-        .getRepository(SignupRequest)
-        .createQueryBuilder('r')
-        .addSelect('r.passwordHash')
-        .where('r.tokenHash = :hash', { hash: hashToken(rawToken) })
-        .setLock('pessimistic_write')
-        .getOne();
-      if (
-        !request ||
-        request.completedAt ||
-        request.expiresAt.getTime() < Date.now()
-      ) {
-        throw new BadRequestException({
-          message: 'This signup link is invalid or has expired',
-          code: 'INVALID_SIGNUP_LINK',
-        });
-      }
+      const request = usable(
+        await manager
+          .getRepository(SignupRequest)
+          .createQueryBuilder('r')
+          .addSelect('r.passwordHash')
+          .where('r.tokenHash = :hash', { hash: hashToken(rawToken) })
+          .setLock('pessimistic_write')
+          .getOne(),
+      );
       if (slug) request.slug = slug;
       return this.complete(manager, request);
     });
@@ -325,4 +361,19 @@ export class SignupService {
       ),
     };
   }
+}
+
+/** The request behind a link that can still be used, else 400. */
+function usable(request: SignupRequest | null): SignupRequest {
+  if (
+    !request ||
+    request.completedAt ||
+    request.expiresAt.getTime() < Date.now()
+  ) {
+    throw new BadRequestException({
+      message: 'This signup link is invalid or has expired',
+      code: 'INVALID_SIGNUP_LINK',
+    });
+  }
+  return request;
 }

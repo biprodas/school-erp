@@ -24,3 +24,17 @@ export const slugCheckQuery = (slug: string) =>
     staleTime: 30_000,
     retry: false,
   })
+
+/** `POST /public/signup/preview`: what an emailed link will create. */
+export interface SignupPreview {
+  schoolName: string
+  slug: string
+  ownerName: string
+  email: string
+  /** ISO time the link stops working. */
+  expiresAt: string
+  /** Whether the address is still free (someone may have taken it since). */
+  slugCheck: SlugCheck
+  /** The email already has an account; it keeps its password. */
+  existingAccount: boolean
+}

@@ -46,6 +46,8 @@ describe('Self-serve signup (e2e)', () => {
     e.http().post('/api/public/signup').send(body);
   const verify = (body: object) =>
     e.http().post('/api/public/signup/verify').send(body);
+  const previewOf = (body: object) =>
+    e.http().post('/api/public/signup/preview').send(body);
 
   /** The token from the last signup email to `to`. */
   const tokenSentTo = (to: string): string => {
@@ -91,6 +93,21 @@ describe('Self-serve signup (e2e)', () => {
       .get(`/api/public/slugs/check?slug=${slug('a')}`)
       .expect(200);
     expect(data(check)).toMatchObject({ available: true });
+
+    // The link can be previewed any number of times without using it.
+    for (let i = 0; i < 2; i++) {
+      const preview = await previewOf({
+        token: tokenSentTo(email('a')),
+      }).expect(200);
+      expect(data(preview)).toMatchObject({
+        schoolName: `E2E Signup a ${runId}`,
+        slug: slug('a'),
+        ownerName: 'Owner a',
+        email: email('a'),
+        slugCheck: { available: true },
+        existingAccount: false,
+      });
+    }
 
     const res = await verify({ token: tokenSentTo(email('a')) }).expect(200);
     const done = data<Completed>(res);
@@ -147,6 +164,11 @@ describe('Self-serve signup (e2e)', () => {
     // The link works once.
     const reused = await verify({ token: tokenSentTo(email('a')) }).expect(400);
     expect(error(reused)).toMatchObject({ code: 'INVALID_SIGNUP_LINK' });
+    const used = await previewOf({ token: tokenSentTo(email('a')) }).expect(
+      400,
+    );
+    expect(error(used)).toMatchObject({ code: 'INVALID_SIGNUP_LINK' });
+    await previewOf({ token: 'not-a-token' }).expect(400);
   });
 
   it('makes a school when the kind of institution is left out', async () => {
@@ -179,6 +201,14 @@ describe('Self-serve signup (e2e)', () => {
     await start(form('x2', { slug: slug('race') })).expect(202);
 
     await verify({ token: tokenSentTo(email('x2')) }).expect(200);
+    // The preview warns before the button is pressed.
+    const preview = data<{ slugCheck: { available: boolean; reason: string } }>(
+      await previewOf({ token: tokenSentTo(email('x1')) }).expect(200),
+    );
+    expect(preview.slugCheck).toMatchObject({
+      available: false,
+      reason: 'taken',
+    });
     const late = await verify({ token: tokenSentTo(email('x1')) }).expect(409);
     expect(error(late)).toMatchObject({ code: 'SLUG_TAKEN' });
 

@@ -6,7 +6,11 @@ import {
   AUTH_THROTTLE,
   PUBLIC_LOOKUP_THROTTLE,
 } from '~/common/throttling/throttle.constants';
-import { StartSignupDto, VerifySignupDto } from '../dto/signup.dto';
+import {
+  PreviewSignupDto,
+  StartSignupDto,
+  VerifySignupDto,
+} from '../dto/signup.dto';
 import { SignupService } from '../services/signup.service';
 
 /** Self-serve school signup on the product domain (public). */
@@ -27,6 +31,18 @@ export class PublicSignupController {
   @ResponseMessage('Check your email to finish creating your school.')
   start(@Body() dto: StartSignupDto) {
     return this.signup.start(dto);
+  }
+
+  /**
+   * What the emailed link will create (the school, its address and whether
+   * that is still free, the owner), without using it. 400
+   * `INVALID_SIGNUP_LINK` for an unknown, used or expired link.
+   */
+  @Post('preview')
+  @HttpCode(200)
+  @Throttle(PUBLIC_LOOKUP_THROTTLE)
+  preview(@Body() dto: PreviewSignupDto) {
+    return this.signup.preview(dto.token);
   }
 
   /** Uses the emailed link: creates the school and signs the owner in. */
