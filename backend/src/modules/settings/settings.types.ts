@@ -38,12 +38,45 @@ export type DateFormat = (typeof DATE_FORMATS)[number];
 export const SIGNER_ROLES = ['principal', 'exam_controller'] as const;
 export type SignerRole = (typeof SIGNER_ROLES)[number];
 
+/** The images a school uploads for its home page. */
+export const HOME_IMAGES = ['hero', 'principal'] as const;
+export type HomeImage = (typeof HOME_IMAGES)[number];
+
+/** A number the school is proud of ("1,200 students", "98% pass rate"). */
+export interface HomePageFact {
+  value: string;
+  label: string;
+  labelBn: string | null;
+}
+
+/** One "why choose us" card (facilities, clubs, results, …). */
+export interface HomePageHighlight {
+  title: string;
+  titleBn: string | null;
+  body: string | null;
+  bodyBn: string | null;
+}
+
 /** What the public home page (`/` on the school's host) shows (PRD 6.24). */
 export interface HomePageSettings {
-  /** Off: the page shows only the name, logo and the sign-in link. */
+  /** Off: there is no home page; `/` on the school's host goes to sign-in. */
   enabled: boolean;
+  /** One line under the name in the hero. */
+  tagline: string | null;
+  taglineBn: string | null;
+  /** Uploaded through `POST /settings/files/home/hero`. */
+  heroImageFileId: string | null;
   about: string | null;
   aboutBn: string | null;
+  /** Signed with `principalName`. */
+  principalMessage: string | null;
+  principalMessageBn: string | null;
+  /** Uploaded through `POST /settings/files/home/principal`. */
+  principalPhotoFileId: string | null;
+  facts: HomePageFact[];
+  highlights: HomePageHighlight[];
+  /** A banner while admissions are open. */
+  admission: { open: boolean; note: string | null; noteBn: string | null };
   showContact: boolean;
   showAddress: boolean;
   showNotices: boolean;

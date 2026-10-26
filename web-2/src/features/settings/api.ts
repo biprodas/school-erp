@@ -61,10 +61,49 @@ export interface SchoolSettings {
     }
     phone: string | null
     email: string | null
+    establishedYear: number | null
+    principalName: string | null
+    homePage: HomePageSettings
   }
   /** Signed, short-lived URLs. */
-  files?: { logoUrl: string | null }
+  files?: {
+    logoUrl: string | null
+    homeHeroImageUrl?: string | null
+    homePrincipalPhotoUrl?: string | null
+  }
 }
+
+/** `profile.homePage`: what the public home page shows (PRD 6.24). */
+export interface HomePageSettings {
+  enabled: boolean
+  tagline: string | null
+  taglineBn: string | null
+  heroImageFileId: string | null
+  about: string | null
+  aboutBn: string | null
+  principalMessage: string | null
+  principalMessageBn: string | null
+  principalPhotoFileId: string | null
+  facts: { value: string; label: string; labelBn: string | null }[]
+  highlights: {
+    title: string
+    titleBn: string | null
+    body: string | null
+    bodyBn: string | null
+  }[]
+  admission: { open: boolean; note: string | null; noteBn: string | null }
+  showContact: boolean
+  showAddress: boolean
+  showNotices: boolean
+  noticeLimit: number
+}
+
+/** Limits from `HomePageSettingsDto`. */
+export const HOME_PAGE_LIMITS = {
+  facts: 4,
+  highlights: 6,
+  noticeLimit: 50,
+} as const
 
 export const schoolSettingsQuery = () =>
   queryOptions({
@@ -77,6 +116,10 @@ export interface ProfilePatch {
   address?: Partial<SchoolSettings["profile"]["address"]>
   phone?: string | null
   email?: string | null
+  establishedYear?: number | null
+  principalName?: string | null
+  /** Nested objects merge; `facts` and `highlights` replace the list. */
+  homePage?: Partial<HomePageSettings>
 }
 
 /** `PATCH /settings/organization`: the school's own fields on `organizations`. */
@@ -104,3 +147,19 @@ export const uploadLogo = (file: File) => {
 /** `PATCH /settings/profile`: only the fields given; `address` merges. */
 export const updateProfileSettings = (body: ProfilePatch) =>
   apiFetch<unknown>("/settings/profile", { method: "PATCH", body })
+
+/** The images of the public home page. */
+export type HomeImage = "hero" | "principal"
+
+/** PNG, JPEG or WebP, up to 5 MB (`home_image` on the backend). */
+export const HOME_IMAGE_MAX_BYTES = 5 * 1024 * 1024
+
+/** `POST /settings/files/home/:image`: replaces a home page image. */
+export const uploadHomeImage = (image: HomeImage, file: File) => {
+  const body = new FormData()
+  body.append("file", file)
+  return apiFetch<{ fileId: string; url: string }>(
+    `/settings/files/home/${image}`,
+    { method: "POST", body }
+  )
+}

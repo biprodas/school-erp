@@ -27,7 +27,22 @@
     "phone": "Phone",
     "email": "Email",
     "website": "Website",
-    "address": "Address"
+    "address": "Address",
+    "navLabel": "Page sections",
+    "admissionOpen": "Admissions open",
+    "admissionAsk": "Ask the office",
+    "established": "Established {year}",
+    "facts": "At a glance",
+    "about": "About us",
+    "highlights": "Why families choose us",
+    "principalMessage": "Message from the principal",
+    "principalNav": "Principal's message",
+    "principal": "Principal",
+    "principalPhotoAlt": "Photo of {name}",
+    "principalPhotoAltUnnamed": "Photo of the principal",
+    "seeNotices": "See notices",
+    "contactUs": "Contact us",
+    "copyright": "© {year} {school}"
   },
   "admin": {
     "title": "{brand} admin",
@@ -410,6 +425,7 @@
       "auditLog": "Audit log",
       "settings": "Settings",
       "schoolSettings": "School settings",
+      "homePage": "Home page",
       "domains": "Domains",
       "dataExport": "Data export",
       "account": "Account"
@@ -1073,5 +1089,142 @@
     "previousPage": "Previous page",
     "nextPage": "Next page",
     "closeToast": "Close the message"
+  },
+  "settings": {
+    "homePage": {
+      "title": "Home page",
+      "description": "What visitors see at your school's web address, before they sign in.",
+      "loadFailed": "Couldn't load the settings.",
+      "retry": "Try again",
+      "readOnly": "You can see these settings, but only people allowed to change school settings can edit them.",
+      "saved": "Home page saved",
+      "unsaved": "You have unsaved changes.",
+      "upToDate": "All changes saved.",
+      "save": "Save changes",
+      "view": "View home page",
+      "errors": {
+        "required": "Fill this in, or remove the row.",
+        "year": "Enter a year between 1800 and 2100.",
+        "noticeLimit": "Enter a number from 1 to 50.",
+        "check": "Some details need fixing. Check the highlighted fields.",
+        "invalid": "Some details aren't valid. Check them and try again.",
+        "forbidden": "You don't have permission to change school settings.",
+        "network": "Couldn't reach the server. Check your connection and try again.",
+        "failed": "Something went wrong. Please try again."
+      },
+      "visibility": {
+        "enabled": "Show a home page"
+      },
+      "hero": {
+        "title": "Top of the page",
+        "hint": "The first thing visitors see.",
+        "image": "Cover photo",
+        "imageHint": "A wide photo of your campus or students. PNG, JPEG or WebP, up to 5 MB.",
+        "tagline": "Tagline",
+        "taglinePlaceholder": "Learning with discipline, growing with kindness.",
+        "established": "Year founded",
+        "establishedPlaceholder": "1972"
+      },
+      "about": {
+        "title": "About the school",
+        "hint": "A few sentences on who you are.",
+        "about": "About"
+      },
+      "facts": {
+        "title": "Facts and figures",
+        "hint": "Up to 4 numbers you are proud of.",
+        "add": "Add a fact",
+        "remove": "Remove fact {n}",
+        "empty": "No facts yet.",
+        "value": "Number",
+        "valuePlaceholder": "1,200",
+        "label": "What it counts",
+        "labelPlaceholder": "Students"
+      },
+      "highlights": {
+        "title": "Highlights",
+        "hint": "Up to 6 reasons families choose you: facilities, clubs, results.",
+        "add": "Add a highlight",
+        "remove": "Remove highlight {n}",
+        "empty": "No highlights yet.",
+        "itemTitle": "Title",
+        "titlePlaceholder": "Science and ICT labs",
+        "body": "Description"
+      },
+      "principal": {
+        "title": "Principal's message",
+        "hint": "Shown with the principal's name and photo. Leave the message empty to hide this part.",
+        "photo": "Photo",
+        "photoHint": "A portrait. PNG, JPEG or WebP, up to 5 MB.",
+        "name": "Principal's name",
+        "message": "Message"
+      },
+      "admission": {
+        "title": "Admissions",
+        "hint": "A banner at the top of the page while you take admissions.",
+        "open": "Admissions are open",
+        "note": "Banner text",
+        "notePlaceholder": "Admissions for 2027 are open for Class 1 to 9."
+      },
+      "sections": {
+        "title": "Notices and contact",
+        "hint": "These come from elsewhere in the system. Choose which ones the page shows.",
+        "notices": "Public notices",
+        "noticesHint": "Notices published for the public, pinned first.",
+        "noticeLimit": "How many notices",
+        "contact": "Phone, email and website",
+        "contactHint": "From your school profile.",
+        "address": "Address"
+      },
+      "image": {
+        "upload": "Upload",
+        "replace": "Replace",
+        "remove": "Remove",
+        "saved": "Image saved",
+        "removed": "Image removed",
+        "invalid": "Choose a PNG, JPEG or WebP image up to 5 MB.",
+        "uploadLabel": "Upload {image}"
+      },
+      "status": {
+        "on": "Your home page is on",
+        "onHint": "Visitors to <host></host> see it before they sign in.",
+        "off": "Your home page is off",
+        "offHint": "Visitors to <host></host> go straight to the sign-in page. You can still prepare the page here."
+      },
+      "lang": {
+        "label": "Write in",
+        "missing": "{count, plural, one {# text has} other {# texts have}} no Bangla version yet.",
+        "writeBangla": "Write in Bangla",
+        "fallback": "Where you leave Bangla empty, Bangla readers see the English."
+      },
+      "pane": {
+        "label": "Show",
+        "edit": "Edit",
+        "preview": "Preview"
+      },
+      "preview": {
+        "title": "Preview",
+        "hint": "Click a part to edit it.",
+        "edit": "Edit {part}",
+        "editing": "Editing",
+        "off": "Off: visitors see the sign-in page",
+        "noticesNote": "Your latest public notices",
+        "parts": {
+          "admission": "the admissions banner",
+          "hero": "the top of the page",
+          "facts": "the facts and figures",
+          "about": "about the school",
+          "principal": "the principal's message",
+          "more": "notices and contact"
+        },
+        "slots": {
+          "tagline": "Add a tagline",
+          "facts": "Add facts and figures",
+          "about": "Add a few sentences about the school",
+          "principal": "Add a message from the principal",
+          "more": "Notices and contact are hidden"
+        }
+      }
+    }
   }
 }

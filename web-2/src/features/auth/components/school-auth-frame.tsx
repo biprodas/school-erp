@@ -21,25 +21,37 @@ export async function SchoolAuthFrame({
   const home = await getSchoolHome(await requireSchoolSlug())
   const name = schoolName(home, await getLocale())
   const row = "mx-auto flex w-full max-w-6xl items-center px-4 sm:px-6"
+  const school = (
+    <>
+      <SchoolLogo
+        name={name}
+        logoUrl={home.logoUrl}
+        alt=""
+        className="size-9 shrink-0"
+      />
+      <span className="truncate font-display text-lg leading-tight font-semibold">
+        {name}
+      </span>
+    </>
+  )
 
   return (
     <div className="flex min-h-svh flex-col bg-muted/40">
       <header className="border-b bg-background">
         <div className={`${row} h-16 gap-2`}>
-          <a
-            href="/"
-            className="mr-auto flex min-w-0 items-center gap-2.5 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
-          >
-            <SchoolLogo
-              name={name}
-              logoUrl={home.logoUrl}
-              alt=""
-              className="size-9 shrink-0"
-            />
-            <span className="truncate font-display text-lg leading-tight font-semibold">
-              {name}
-            </span>
-          </a>
+          {/* No link when the school has no home page: `/` would come back here. */}
+          {home.enabled ? (
+            <a
+              href="/"
+              className="mr-auto flex min-w-0 items-center gap-2.5 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+            >
+              {school}
+            </a>
+          ) : (
+            <div className="mr-auto flex min-w-0 items-center gap-2.5">
+              {school}
+            </div>
+          )}
           <LanguageSwitch />
           <ThemeSwitch />
         </div>

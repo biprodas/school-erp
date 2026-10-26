@@ -40,10 +40,16 @@ import {
   UpdateSecuritySettingsDto,
 } from '../dto/update-workflow-settings.dto';
 import { SettingsService } from '../services/settings.service';
-import { SIGNER_ROLES, type SignerRole } from '../settings.types';
+import {
+  HOME_IMAGES,
+  SIGNER_ROLES,
+  type HomeImage,
+  type SignerRole,
+} from '../settings.types';
 
 /** `ParseEnumPipe` wants an enum-like object. */
 const SIGNER_ROLE_ENUM = Object.fromEntries(SIGNER_ROLES.map((r) => [r, r]));
+const HOME_IMAGE_ENUM = Object.fromEntries(HOME_IMAGES.map((i) => [i, i]));
 
 const UPLOAD_BODY = {
   schema: {
@@ -199,5 +205,20 @@ export class SettingsController {
     @UploadedFile() file?: Express.Multer.File,
   ) {
     return this.settings.setSignature(role, incoming(file));
+  }
+
+  /** A public home page image: `hero` or the `principal`'s photo. */
+  @Post('files/home/:image')
+  @RequirePermissions(PERMISSIONS.SETTINGS_UPDATE)
+  @Throttle(UPLOAD_THROTTLE)
+  @UseInterceptors(FileUpload('home_image'))
+  @ApiConsumes('multipart/form-data')
+  @ApiBody(UPLOAD_BODY)
+  @ResponseMessage('Home page image updated')
+  uploadHomeImage(
+    @Param('image', new ParseEnumPipe(HOME_IMAGE_ENUM)) image: HomeImage,
+    @UploadedFile() file?: Express.Multer.File,
+  ) {
+    return this.settings.setHomeImage(image, incoming(file));
   }
 }

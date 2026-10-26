@@ -26,6 +26,8 @@ export const FILE_PURPOSES = {
   },
   org_logo: { folder: 'branding', mimes: IMAGES, maxBytes: 2 * MB },
   signature: { folder: 'branding', mimes: IMAGES, maxBytes: 1 * MB },
+  /** The public home page's hero image and principal's photo. */
+  home_image: { folder: 'branding', mimes: IMAGES, maxBytes: 5 * MB },
   attachment: {
     folder: 'attachments',
     mimes: [...IMAGES, MIME.pdf],

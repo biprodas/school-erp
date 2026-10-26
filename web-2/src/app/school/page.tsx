@@ -1,200 +1,155 @@
-import { GlobeIcon, MailIcon, MapPinIcon, PhoneIcon } from "lucide-react"
 import type { Metadata } from "next"
+import { redirect } from "next/navigation"
 import { getLocale, getTranslations } from "next-intl/server"
 
 import {
   getSchoolHome,
+  localized,
   schoolName,
-  type SchoolHome,
 } from "~/features/school-site/api"
-import { BrandMark } from "~/components/brand/brand-mark"
-import { LanguageSwitch } from "~/components/common/language-switch"
-import { SchoolLogo } from "~/components/common/school-logo"
-import { ThemeToggle } from "~/components/common/theme-toggle"
-import { Badge } from "~/components/ui/badge"
-import { buttonVariants } from "~/components/ui/button"
-import { BRAND } from "~/config/brand-config"
-import { dateOptionsFor, formatDate } from "~/lib/format"
-import { requireSchoolSlug } from "~/lib/tenancy/request-host"
+import {
+  HomeAbout,
+  HomeFacts,
+} from "~/features/school-site/components/home-about"
+import {
+  contactRows,
+  HomeContact,
+  HomeFooter,
+} from "~/features/school-site/components/home-contact"
+import {
+  AdmissionBanner,
+  HomeHeader,
+  type HomeNavLink,
+} from "~/features/school-site/components/home-header"
+import { HomeHero } from "~/features/school-site/components/home-hero"
+import { HomeNotices } from "~/features/school-site/components/home-notices"
+import { HomePrincipal } from "~/features/school-site/components/home-principal"
+import { HomeContainer } from "~/features/school-site/components/home-section"
+import { SchoolTheme } from "~/features/school-site/components/school-theme"
 import { getSession } from "~/lib/auth"
 import { homeFor } from "~/lib/auth/home"
+import { toBanglaDigits } from "~/lib/format"
+import { requireSchoolSlug } from "~/lib/tenancy/request-host"
+import { cn } from "~/lib/utils"
 
 export async function generateMetadata(): Promise<Metadata> {
   const home = await getSchoolHome(await requireSchoolSlug())
-  return { title: { absolute: schoolName(home, await getLocale()) } }
+  const locale = await getLocale()
+  return {
+    title: { absolute: schoolName(home, locale) },
+    description:
+      localized(locale, home.tagline, home.taglineBn) ??
+      localized(locale, home.about, home.aboutBn)?.slice(0, 160),
+  }
 }
 
 /**
- * The school's public home page: branding, about, public notices and
- * contact (as far as the school publishes them), and the way in: "Sign
- * in", or "Go to your dashboard" for someone already signed in here.
+ * The school's public home page (PRD 6.24): its name, colors and photo,
+ * then whatever the school publishes through `profile.homePage` (about and
+ * highlights, the principal's message, facts, an admission banner, public
+ * notices, contact), and the way in: "Sign in", or "Go to your dashboard"
+ * for someone already signed in here. Sections the school left empty are
+ * left out, header links included. A school that turned its home page off
+ * has none: visitors go to sign-in, signed-in members to their home.
  */
 export default async function SchoolHomePage() {
   const home = await getSchoolHome(await requireSchoolSlug())
   const session = await getSession()
+  if (!home.enabled) redirect(session ? homeFor(session) : "/login")
   const locale = await getLocale()
   const t = await getTranslations("schoolHome")
-  const tc = await getTranslations("common")
+  const digits = (n: number) =>
+    locale === "bn" ? toBanglaDigits(String(n)) : String(n)
+
   const name = schoolName(home, locale)
-  const about = (locale === "bn" ? home.aboutBn : null) || home.about
+  const about = localized(locale, home.about, home.aboutBn)
+  const highlights = (home.highlights ?? []).map((item) => ({
+    title: localized(locale, item.title, item.titleBn),
+    body: localized(locale, item.body, item.bodyBn),
+  }))
+  const facts = (home.facts ?? []).map((fact) => ({
+    value: fact.value,
+    label: localized(locale, fact.label, fact.labelBn),
+  }))
+  const principalMessage =
+    home.principal &&
+    localized(locale, home.principal.message, home.principal.messageBn)
   const notices = home.notices ?? []
+  const contact = await contactRows(home)
+  const admission = home.admission
+
+  const entry = session
+    ? { href: homeFor(session), label: t("goToDashboard"), hint: null }
+    : { href: "/login", label: t("signIn"), hint: t("signInHint") }
+
+  const links: HomeNavLink[] = [
+    (about || highlights.length > 0) && { id: "about", label: t("about") },
+    principalMessage && { id: "message", label: t("principalNav") },
+    notices.length > 0 && { id: "notices", label: t("notices") },
+    contact.length > 0 && { id: "contact", label: t("contact") },
+  ].filter((link): link is HomeNavLink => !!link)
 
   return (
-    <div className="flex min-h-svh flex-col bg-background">
-      <header className="flex items-center justify-end gap-1 px-4 py-3">
-        <LanguageSwitch />
-        <ThemeToggle />
-      </header>
-      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-10 px-4 pt-6 pb-12 sm:pt-12">
-        <section className="flex flex-col items-center gap-6 text-center">
-          <SchoolLogo
-            name={name}
-            logoUrl={home.logoUrl}
-            alt={t("logoAlt", { school: name })}
-            className="size-20 text-2xl"
-          />
-          <h1 className="font-display text-3xl font-semibold text-balance sm:text-4xl">
-            {name}
-          </h1>
-          {about && (
-            <p className="max-w-prose text-pretty text-muted-foreground">
-              {about}
-            </p>
-          )}
-          {session ? (
-            <a
-              href={homeFor(session)}
-              className={buttonVariants({ size: "lg" })}
-            >
-              {t("goToDashboard")}
-            </a>
-          ) : (
-            <div className="flex flex-col items-center gap-3">
-              <a href="/login" className={buttonVariants({ size: "lg" })}>
-                {t("signIn")}
-              </a>
-              <p className="text-sm text-muted-foreground">{t("signInHint")}</p>
-            </div>
-          )}
-        </section>
-
-        {notices.length > 0 && (
-          <section aria-labelledby="notices" className="flex flex-col gap-4">
-            <h2 id="notices" className="font-display text-xl font-semibold">
-              {t("notices")}
-            </h2>
-            <ul className="flex flex-col gap-3">
-              {notices.map((notice) => (
-                <li key={notice.id} className="rounded-xl border bg-card p-4">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="font-medium">{notice.title}</h3>
-                    {notice.pinned && (
-                      <Badge variant="secondary">{t("pinned")}</Badge>
-                    )}
-                  </div>
-                  {notice.publishAt && (
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      {formatDate(notice.publishAt, {
-                        format: "D MMM YYYY",
-                        ...dateOptionsFor(locale),
-                      })}
-                    </p>
-                  )}
-                  <p className="mt-2 text-sm whitespace-pre-line">
-                    {notice.body}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          </section>
+    <div className="school-home flex min-h-svh flex-col bg-background">
+      <SchoolTheme colors={home.colors} />
+      {admission && (
+        <AdmissionBanner
+          note={localized(locale, admission.note, admission.noteBn)}
+          contactHref={contact.length > 0 ? "#contact" : null}
+        />
+      )}
+      <HomeHeader
+        name={name}
+        logoUrl={home.logoUrl}
+        links={links}
+        entry={entry}
+      />
+      <main className="flex-1">
+        <HomeHero
+          name={name}
+          logoUrl={home.logoUrl}
+          tagline={localized(locale, home.tagline, home.taglineBn)}
+          established={
+            home.establishedYear ? digits(home.establishedYear) : null
+          }
+          imageUrl={home.heroImageUrl ?? null}
+          entry={entry}
+          secondary={
+            notices.length > 0
+              ? { href: "#notices", label: t("seeNotices") }
+              : contact.length > 0
+                ? { href: "#contact", label: t("contactUs") }
+                : null
+          }
+        />
+        {facts.length > 0 && <HomeFacts facts={facts} />}
+        {(about || highlights.length > 0) && (
+          <HomeAbout about={about} highlights={highlights} />
         )}
-
-        <Contact home={home} labels={t} />
+        {home.principal && principalMessage && (
+          <HomePrincipal
+            name={home.principal.name}
+            photoUrl={home.principal.photoUrl}
+            message={principalMessage}
+          />
+        )}
+        {(notices.length > 0 || contact.length > 0) && (
+          <HomeContainer
+            className={cn(
+              "grid gap-16 py-16 sm:py-20",
+              notices.length > 0 &&
+                contact.length > 0 &&
+                "lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]"
+            )}
+          >
+            {notices.length > 0 && <HomeNotices notices={notices} />}
+            {contact.length > 0 && (
+              <HomeContact rows={contact} wide={notices.length === 0} />
+            )}
+          </HomeContainer>
+        )}
       </main>
-      <footer className="flex items-center justify-center gap-2 pb-6 text-sm text-muted-foreground">
-        <BrandMark className="size-4" />
-        {tc("poweredBy", { brand: BRAND.name })}
-      </footer>
+      <HomeFooter name={name} year={digits(new Date().getFullYear())} />
     </div>
-  )
-}
-
-function Contact({
-  home,
-  labels: t,
-}: {
-  home: SchoolHome
-  labels: (key: "contact" | "phone" | "email" | "website" | "address") => string
-}) {
-  const contact = home.contact
-  const address = [
-    home.address?.line1,
-    home.address?.line2,
-    home.address?.area,
-    [home.address?.district, home.address?.postCode].filter(Boolean).join(" "),
-  ].filter(Boolean)
-  if (
-    !contact?.phone &&
-    !contact?.email &&
-    !contact?.website &&
-    !address.length
-  )
-    return null
-
-  const rows = [
-    contact?.phone && {
-      icon: PhoneIcon,
-      label: t("phone"),
-      value: contact.phone,
-      href: `tel:${contact.phone.replace(/\s+/g, "")}`,
-    },
-    contact?.email && {
-      icon: MailIcon,
-      label: t("email"),
-      value: contact.email,
-      href: `mailto:${contact.email}`,
-    },
-    contact?.website && {
-      icon: GlobeIcon,
-      label: t("website"),
-      value: contact.website.replace(/^https?:\/\//, ""),
-      href: /^https?:\/\//.test(contact.website)
-        ? contact.website
-        : `https://${contact.website}`,
-    },
-    address.length > 0 && {
-      icon: MapPinIcon,
-      label: t("address"),
-      value: address.join(", "),
-      href: null,
-    },
-  ].filter((row) => !!row)
-
-  return (
-    <section aria-labelledby="contact" className="flex flex-col gap-4">
-      <h2 id="contact" className="font-display text-xl font-semibold">
-        {t("contact")}
-      </h2>
-      <dl className="flex flex-col gap-3 rounded-xl border bg-card p-4">
-        {rows.map(({ icon: Icon, label, value, href }) => (
-          <div key={label} className="flex items-start gap-3">
-            <Icon
-              className="mt-0.5 size-4 shrink-0 text-muted-foreground"
-              aria-hidden="true"
-            />
-            <dt className="sr-only">{label}</dt>
-            <dd className="min-w-0 text-sm break-words">
-              {href ? (
-                <a href={href} className="underline-offset-4 hover:underline">
-                  {value}
-                </a>
-              ) : (
-                value
-              )}
-            </dd>
-          </div>
-        ))}
-      </dl>
-    </section>
   )
 }

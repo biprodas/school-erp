@@ -11,7 +11,9 @@ import { NoticeService } from '../services/notice.service';
 
 /**
  * The school's public home page data (PRD 6.13 public notices, 6.24): name
- * and branding always; about text, contact, address and public notices as
+ * and branding always (the sign-in pages use them); when `homePage.enabled`,
+ * the rest (hero, about, principal's message, facts, highlights,
+ * admission banner, contact, address and public notices) as
  * `profile.homePage` says. Read as the school (RLS applies) though the
  * route itself is outside the tenant middleware.
  */
@@ -48,10 +50,29 @@ export class PublicHomeController {
       const notices = page.showNotices
         ? await (await resolve(NoticeService)).publicNotices(page.noticeLimit)
         : [];
+      const images = await settings.homePageImages();
       return {
         ...brand,
+        tagline: page.tagline,
+        taglineBn: page.taglineBn,
+        heroImageUrl: images.hero,
+        establishedYear: profile.establishedYear,
         about: page.about,
         aboutBn: page.aboutBn,
+        principal:
+          page.principalMessage || page.principalMessageBn
+            ? {
+                name: profile.principalName,
+                photoUrl: images.principal,
+                message: page.principalMessage,
+                messageBn: page.principalMessageBn,
+              }
+            : null,
+        facts: page.facts,
+        highlights: page.highlights,
+        admission: page.admission.open
+          ? { note: page.admission.note, noteBn: page.admission.noteBn }
+          : null,
         contact: page.showContact
           ? {
               phone: profile.phone,

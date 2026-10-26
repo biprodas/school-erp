@@ -65,6 +65,11 @@ describe("message catalogs", () => {
         // EIIN is the board's own acronym, written in Latin letters.
         "onboarding.profile.eiin",
         "onboarding.finish.details.eiin",
+        // Sample input for the home page's English fields (each has a Bangla twin).
+        "settings.homePage.hero.taglinePlaceholder",
+        "settings.homePage.facts.labelPlaceholder",
+        "settings.homePage.highlights.titlePlaceholder",
+        "settings.homePage.admission.notePlaceholder",
       ])
       const at = (messages: object, path: string) =>
         path

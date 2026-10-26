@@ -14,10 +14,34 @@ export interface SchoolHome {
   logoUrl: string | null
   /** `#rrggbb` brand colors from the school's profile. */
   colors: { primary: string | null; secondary: string | null }
-  /** When false, only the branding fields above are sent. */
+  /**
+   * Off: the school has no home page (`/` goes to sign-in), and only the
+   * branding fields above are sent, for the sign-in pages.
+   */
   enabled: boolean
+  tagline?: string | null
+  taglineBn?: string | null
+  /** Signed, short-lived URL. */
+  heroImageUrl?: string | null
+  establishedYear?: number | null
   about?: string | null
   aboutBn?: string | null
+  /** Set when the school wrote a message. */
+  principal?: {
+    name: string | null
+    photoUrl: string | null
+    message: string | null
+    messageBn: string | null
+  } | null
+  facts?: { value: string; label: string; labelBn: string | null }[]
+  highlights?: {
+    title: string
+    titleBn: string | null
+    body: string | null
+    bodyBn: string | null
+  }[]
+  /** Set while admissions are open. */
+  admission?: { note: string | null; noteBn: string | null } | null
   contact?: {
     phone: string | null
     email: string | null
@@ -57,4 +81,23 @@ export const getSchoolHome = cache(async (slug: string) => {
 
 /** The school's name in the viewer's language, falling back to the other. */
 export const schoolName = (home: SchoolHome, locale: string) =>
-  (locale === "bn" ? home.nameBn : null) || home.name
+  localized(locale, home.name, home.nameBn)
+
+/** The Bangla text in Bangla when the school wrote one, else the English. */
+export function localized(
+  locale: string,
+  en: string,
+  bn: string | null | undefined
+): string
+export function localized(
+  locale: string,
+  en: string | null | undefined,
+  bn: string | null | undefined
+): string | null
+export function localized(
+  locale: string,
+  en: string | null | undefined,
+  bn: string | null | undefined
+) {
+  return (locale === "bn" ? bn : null) || en || bn || null
+}

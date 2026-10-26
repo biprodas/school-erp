@@ -346,6 +346,68 @@ describe('SettingsService', () => {
     });
   });
 
+  describe('home page images', () => {
+    beforeEach(() => {
+      files.upload.mockResolvedValue({ id: 'hero-new' });
+      files.findById.mockResolvedValue({
+        id: 'hero-new',
+        purpose: 'home_image',
+      });
+    });
+
+    it('stores the hero image under homePage and removes the old one', async () => {
+      repo.findCurrentForUpdate.mockResolvedValue({
+        id: 's-1',
+        profile: { homePage: { heroImageFileId: 'hero-old', about: 'Hi' } },
+      });
+
+      const result = await service.setHomeImage('hero', {
+        buffer: Buffer.from(''),
+        originalName: 'hero.jpg',
+      });
+
+      expect(files.upload).toHaveBeenCalledWith(
+        expect.anything(),
+        'home_image',
+      );
+      expect(result).toEqual({
+        fileId: 'hero-new',
+        url: 'https://s3/hero-new',
+      });
+      const [[saved]] = repo.save.mock.calls as [
+        [{ profile: { homePage: Record<string, unknown> } }],
+      ];
+      expect(saved.profile.homePage).toEqual({
+        heroImageFileId: 'hero-new',
+        about: 'Hi',
+      });
+      expect(files.remove).toHaveBeenCalledWith('hero-old');
+    });
+
+    it('refuses a file uploaded for something else', async () => {
+      files.findById.mockResolvedValue({ id: 'sig-1', purpose: 'signature' });
+
+      await expect(
+        service.updateSection('profile', {
+          homePage: { principalPhotoFileId: 'sig-1' },
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it('gives the public page signed URLs, null when unset', async () => {
+      repo.findCurrent.mockResolvedValue({
+        id: 's-1',
+        profile: { homePage: { principalPhotoFileId: 'photo-1' } },
+      });
+
+      await expect(service.homePageImages()).resolves.toEqual({
+        hero: null,
+        principal: 'https://s3/photo-1',
+      });
+    });
+  });
+
   it('serves display settings with a signed logo URL', async () => {
     org.logoFileId = 'logo-1';
 

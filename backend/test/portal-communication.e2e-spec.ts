@@ -370,10 +370,22 @@ describe('Portal, notices and notifications (e2e)', () => {
           .get(`/api/public/organizations/${schools.a.org.slug}/home`)
           .expect(200),
       );
+    expect(await homeNow()).toMatchObject({
+      principal: null,
+      admission: null,
+      facts: [],
+      highlights: [],
+    });
     await admin()
       .patch('/api/settings/profile', {
+        principalName: 'Rahima Begum',
         homePage: {
           about: 'Since 1990',
+          tagline: 'Learning for life',
+          principalMessage: 'Welcome to our school.',
+          facts: [{ value: '1,200', label: 'Students' }],
+          highlights: [{ title: 'Science labs' }],
+          admission: { open: true, note: 'Class 6 to 9' },
           showNotices: false,
           showAddress: false,
         },
@@ -382,6 +394,16 @@ describe('Portal, notices and notifications (e2e)', () => {
     expect(await homeNow()).toMatchObject({
       enabled: true,
       about: 'Since 1990',
+      tagline: 'Learning for life',
+      heroImageUrl: null,
+      principal: {
+        name: 'Rahima Begum',
+        photoUrl: null,
+        message: 'Welcome to our school.',
+      },
+      facts: [{ value: '1,200', label: 'Students' }],
+      highlights: [{ title: 'Science labs' }],
+      admission: { note: 'Class 6 to 9' },
       address: null,
       notices: [],
     });

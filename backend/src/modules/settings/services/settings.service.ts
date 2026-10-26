@@ -23,6 +23,7 @@ import {
   withDefaults,
 } from '../settings.defaults';
 import type {
+  HomeImage,
   OrgSettingsValues,
   SettingsSection,
   SignerRole,
@@ -51,6 +52,8 @@ export interface SettingsView extends OrgSettingsValues {
     logoUrl: string | null;
     principalSignatureUrl: string | null;
     examControllerSignatureUrl: string | null;
+    homeHeroImageUrl: string | null;
+    homePrincipalPhotoUrl: string | null;
   };
 }
 
@@ -59,6 +62,15 @@ const SIGNATURE_FIELD = {
   principal: 'principalSignatureFileId',
   exam_controller: 'examControllerSignatureFileId',
 } as const satisfies Record<SignerRole, keyof OrgSettingsValues['profile']>;
+
+/** The `profile.homePage` field holding each home page image. */
+const HOME_IMAGE_FIELD = {
+  hero: 'heroImageFileId',
+  principal: 'principalPhotoFileId',
+} as const satisfies Record<
+  HomeImage,
+  keyof OrgSettingsValues['profile']['homePage']
+>;
 
 /** What every signed-in member may read: enough to brand and format pages. */
 export interface DisplaySettings {
@@ -150,6 +162,12 @@ export class SettingsService {
         examControllerSignatureUrl: await this.downloadUrl(
           values.profile.examControllerSignatureFileId,
         ),
+        homeHeroImageUrl: await this.downloadUrl(
+          values.profile.homePage.heroImageFileId,
+        ),
+        homePrincipalPhotoUrl: await this.downloadUrl(
+          values.profile.homePage.principalPhotoFileId,
+        ),
       },
     };
   }
@@ -162,6 +180,15 @@ export class SettingsService {
       logoUrl: await this.downloadUrl(org.logoFileId),
       colors: values.profile.colors,
       locale: values.locale,
+    };
+  }
+
+  /** Signed URLs of the public home page's images (null when not set). */
+  async homePageImages(): Promise<Record<HomeImage, string | null>> {
+    const page = (await this.getSection('profile')).homePage;
+    return {
+      hero: await this.downloadUrl(page.heroImageFileId),
+      principal: await this.downloadUrl(page.principalPhotoFileId),
     };
   }
 
@@ -233,6 +260,30 @@ export class SettingsService {
         [field]: stored.id,
       });
       previous = before[field];
+    } catch (err) {
+      await this.removeQuietly(stored.id);
+      throw err;
+    }
+    if (previous && previous !== stored.id) await this.removeQuietly(previous);
+    return {
+      fileId: stored.id,
+      url: await this.files.getDownloadUrl(stored.id),
+    };
+  }
+
+  /** Stores a home page image (hero or principal's photo); the old file goes. */
+  async setHomeImage(
+    image: HomeImage,
+    file: IncomingFile,
+  ): Promise<{ fileId: string; url: string }> {
+    const field = HOME_IMAGE_FIELD[image];
+    const stored = await this.files.upload(file, 'home_image');
+    let previous: string | null;
+    try {
+      const { before } = await this.writeSection('profile', {
+        homePage: { [field]: stored.id },
+      });
+      previous = before.homePage[field];
     } catch (err) {
       await this.removeQuietly(stored.id);
       throw err;
@@ -340,14 +391,26 @@ export class SettingsService {
     value: unknown,
   ): Promise<void> {
     if (section !== 'profile') return;
+    const profile = value as OrgSettingsValues['profile'];
     for (const field of Object.values(SIGNATURE_FIELD)) {
-      const fileId = (value as OrgSettingsValues['profile'])[field];
+      const fileId = profile[field];
       if (!fileId) continue;
       const file = await this.files.findById(fileId).catch(() => null);
       if (file?.purpose !== 'signature') {
         throw new BadRequestException({
           message: `${field} must be an uploaded signature`,
           code: 'INVALID_SIGNATURE_FILE',
+        });
+      }
+    }
+    for (const field of Object.values(HOME_IMAGE_FIELD)) {
+      const fileId = profile.homePage[field];
+      if (!fileId) continue;
+      const file = await this.files.findById(fileId).catch(() => null);
+      if (file?.purpose !== 'home_image') {
+        throw new BadRequestException({
+          message: `homePage.${field} must be an uploaded home page image`,
+          code: 'INVALID_HOME_IMAGE_FILE',
         });
       }
     }

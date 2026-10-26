@@ -339,6 +339,11 @@ export const NAV: NavCategory[] = [
             permission: "settings:read",
           },
           {
+            id: "homePage",
+            href: "/dashboard/settings/home-page",
+            permission: "settings:read",
+          },
+          {
             id: "domains",
             href: "/dashboard/settings/domains",
             permission: "domains:read",

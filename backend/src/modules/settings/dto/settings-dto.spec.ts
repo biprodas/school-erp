@@ -91,6 +91,36 @@ describe('settings DTOs', () => {
     ).toEqual(['events.absent']);
   });
 
+  it('validates the home page lists and admission banner', async () => {
+    expect(
+      await errors(UpdateProfileSettingsDto, {
+        homePage: {
+          tagline: 'Learning for life',
+          facts: [{ value: '1,200', label: 'Students', labelBn: null }],
+          highlights: [{ title: 'Science labs', body: null }],
+          admission: { open: true, note: 'Class 6 to 9' },
+          heroImageFileId: null,
+        },
+      }),
+    ).toEqual([]);
+    expect(
+      await errors(UpdateProfileSettingsDto, {
+        homePage: {
+          facts: [{ label: 'Students' }, 'x'],
+          highlights: Array.from({ length: 7 }, () => ({ title: 'A' })),
+          admission: [],
+          heroImageFileId: 'not-a-uuid',
+        },
+      }),
+    ).toEqual([
+      'homePage.admission',
+      'homePage.facts.0.value',
+      'homePage.facts.1',
+      'homePage.heroImageFileId',
+      'homePage.highlights',
+    ]);
+  });
+
   it('requires exactly one {SEQ} in numbering patterns', async () => {
     expect(
       await errors(UpdateNumberingSettingsDto, { receipt: 'R-{YYYY}-{SEQ:6}' }),

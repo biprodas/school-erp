@@ -1,6 +1,9 @@
 import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
+  IsArray,
   IsBoolean,
+  IsDefined,
   IsEmail,
   IsInt,
   IsObject,
@@ -12,6 +15,7 @@ import {
   Max,
   MaxLength,
   Min,
+  MinLength,
   ValidateNested,
 } from 'class-validator';
 
@@ -39,10 +43,60 @@ export class LetterheadSettingsDto {
   @IsOptional() @IsString() @MaxLength(300) footerText?: string | null;
 }
 
+export class HomePageFactDto {
+  @IsDefined() @IsString() @MinLength(1) @MaxLength(20) value!: string;
+  @IsDefined() @IsString() @MinLength(1) @MaxLength(60) label!: string;
+  @IsOptional() @IsString() @MaxLength(60) labelBn?: string | null;
+}
+
+export class HomePageHighlightDto {
+  @IsDefined() @IsString() @MinLength(1) @MaxLength(80) title!: string;
+  @IsOptional() @IsString() @MaxLength(80) titleBn?: string | null;
+  @IsOptional() @IsString() @MaxLength(400) body?: string | null;
+  @IsOptional() @IsString() @MaxLength(400) bodyBn?: string | null;
+}
+
+export class HomePageAdmissionDto {
+  @IsBoolean() open?: boolean;
+  @IsOptional() @IsString() @MaxLength(300) note?: string | null;
+  @IsOptional() @IsString() @MaxLength(300) noteBn?: string | null;
+}
+
 export class HomePageSettingsDto {
   @IsBoolean() enabled?: boolean;
+  @IsOptional() @IsString() @MaxLength(160) tagline?: string | null;
+  @IsOptional() @IsString() @MaxLength(160) taglineBn?: string | null;
+
+  /** A file from `POST /settings/files/home/hero`, or null. */
+  @IsOptional() @IsUUID() heroImageFileId?: string | null;
+
   @IsOptional() @IsString() @MaxLength(2000) about?: string | null;
   @IsOptional() @IsString() @MaxLength(2000) aboutBn?: string | null;
+  @IsOptional() @IsString() @MaxLength(3000) principalMessage?: string | null;
+  @IsOptional() @IsString() @MaxLength(3000) principalMessageBn?: string | null;
+
+  /** A file from `POST /settings/files/home/principal`, or null. */
+  @IsOptional() @IsUUID() principalPhotoFileId?: string | null;
+
+  /** Replaces the list. */
+  @IsArray()
+  @ArrayMaxSize(4)
+  @ValidateNested({ each: true })
+  @Type(() => HomePageFactDto)
+  facts?: HomePageFactDto[];
+
+  /** Replaces the list. */
+  @IsArray()
+  @ArrayMaxSize(6)
+  @ValidateNested({ each: true })
+  @Type(() => HomePageHighlightDto)
+  highlights?: HomePageHighlightDto[];
+
+  @IsObject()
+  @ValidateNested()
+  @Type(() => HomePageAdmissionDto)
+  admission?: HomePageAdmissionDto;
+
   @IsBoolean() showContact?: boolean;
   @IsBoolean() showAddress?: boolean;
   @IsBoolean() showNotices?: boolean;

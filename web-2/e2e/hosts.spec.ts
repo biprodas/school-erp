@@ -32,5 +32,8 @@ test("a school host shows the school", async ({ page }) => {
   const response = await page.goto(school.url("/"))
   expect(response?.status()).toBe(200)
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible()
-  await expect(page.getByRole("link", { name: "Sign in" })).toBeVisible()
+  // The hero's; wider screens also have one in the header.
+  await expect(
+    page.getByRole("main").getByRole("link", { name: "Sign in" })
+  ).toBeVisible()
 })

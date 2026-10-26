@@ -157,6 +157,7 @@ describe("visibleNav", () => {
       .find((m) => m.id === "settings")
     expect(settings?.items?.map((item) => item.id)).toEqual([
       "schoolSettings",
+      "homePage",
       "domains",
     ])
   })

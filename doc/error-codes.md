@@ -327,6 +327,7 @@ Every error response is `{ success: false, statusCode, message, code?, … }`. T
 
 | Code | Message (English) |
 | ---- | ----------------- |
+| `INVALID_HOME_IMAGE_FILE` | homePage.${field} must be an uploaded home page image |
 | `INVALID_SIGNATURE_FILE` | ${field} must be an uploaded signature |
 
 ## shared
