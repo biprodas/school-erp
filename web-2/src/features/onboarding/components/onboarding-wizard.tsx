@@ -8,13 +8,14 @@ import {
   BookOpenIcon,
   CalendarRangeIcon,
   CheckIcon,
-  GraduationCapIcon,
+  FlagIcon,
   LayersIcon,
   ReceiptIcon,
   SchoolIcon,
   UsersIcon,
   type LucideIcon,
 } from "lucide-react"
+import { useSearchParams } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { useEffect, useId, useRef, useState } from "react"
 
@@ -31,14 +32,15 @@ import { useSchoolFormat } from "~/features/settings/use-school-format"
 import { cn } from "~/lib/utils"
 
 import { ClassesStep } from "./classes-step"
+import { CurriculumStep } from "./curriculum-step"
 import { FeesStep } from "./fees-step"
-import { FinishBar } from "./finish-bar"
+import { FinishCard, FinishPanel, type WizardView } from "./finish-bar"
 import { GradingStep } from "./grading-step"
 import { ProfileStep } from "./profile-step"
 import { SessionStep } from "./session-step"
+import { StaffStep } from "./staff-step"
 import { StepLoadFailed } from "./step-parts"
 import { firstOpenStep, nextOpenStep, visibleSteps } from "../steps"
-import { CurriculumStep, LaterStep } from "./template-steps"
 
 const STEP_ICONS: Record<OnboardingStepKey, LucideIcon> = {
   profile: SchoolIcon,
@@ -48,7 +50,6 @@ const STEP_ICONS: Record<OnboardingStepKey, LucideIcon> = {
   grading: AwardIcon,
   fees: ReceiptIcon,
   staff: UsersIcon,
-  students: GraduationCapIcon,
 }
 
 /**
@@ -89,53 +90,137 @@ export function OnboardingWizard() {
   )
 }
 
+const STEP_PARAM = "step"
+
+/**
+ * `?step=` as the router has it (server render included); outside the
+ * Next router (tests), straight from the address.
+ */
+function stepParam(params: URLSearchParams | null) {
+  if (params) return params.get(STEP_PARAM)
+  return typeof window === "undefined"
+    ? null
+    : new URLSearchParams(window.location.search).get(STEP_PARAM)
+}
+
+/** A `?step=` value the wizard can show, or null. */
+function viewFrom(
+  value: string | null,
+  steps: OnboardingStep[]
+): WizardView | null {
+  if (value === "finish") return "finish"
+  return steps.find((s) => s.key === value)?.key ?? null
+}
+
+/** Below the sticky header: 6rem from the top. */
+const STICKY_OFFSET = 96
+/** Space kept under the column when it is taller than the window. */
+const STICKY_GAP = 24
+
+/**
+ * The `top` for a sticky column that may be taller than the window: the
+ * header offset while it fits, so it stays in view; otherwise negative, so
+ * it scrolls with the page until its bottom is in view and sticks there.
+ * Remeasured when the column or the window changes size.
+ */
+function useStickyTop(ref: React.RefObject<HTMLElement | null>) {
+  const [top, setTop] = useState(STICKY_OFFSET)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const measure = () =>
+      setTop(
+        Math.min(
+          STICKY_OFFSET,
+          window.innerHeight - el.offsetHeight - STICKY_GAP
+        )
+      )
+    measure()
+    // Not everywhere (jsdom): then only the window size is followed.
+    const observer =
+      typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure)
+    observer?.observe(el)
+    window.addEventListener("resize", measure)
+    return () => {
+      observer?.disconnect()
+      window.removeEventListener("resize", measure)
+    }
+  }, [ref])
+  return top
+}
+
 function Wizard({ checklist }: { checklist: OnboardingChecklist }) {
   const queryClient = useQueryClient()
   const steps = visibleSteps(checklist)
-  const [current, setCurrent] = useState<OnboardingStepKey | null>(() =>
-    firstOpenStep(checklist)
+  const searchParams = useSearchParams()
+  // The open step lives in the URL (`?step=grading`) too, so a reload
+  // (or a link) opens the same step; else the first one to do.
+  const [current, setCurrent] = useState<WizardView | null>(
+    () => viewFrom(stepParam(searchParams), steps) ?? firstOpenStep(checklist)
   )
   // Focus follows the step only once someone moves, not on arrival.
   const [moved, setMoved] = useState(false)
-  const finishRef = useRef<HTMLDivElement>(null)
+  const asideRef = useRef<HTMLElement>(null)
+  const stickyTop = useStickyTop(asideRef)
   const index = steps.findIndex((s) => s.key === current)
   const step = steps[index]
 
-  function goTo(key: OnboardingStepKey) {
+  function goTo(view: WizardView) {
     setMoved(true)
-    setCurrent(key)
+    setCurrent(view)
+    // Replaced, not pushed: the steps aren't pages to go back through.
+    const url = new URL(window.location.href)
+    url.searchParams.set(STEP_PARAM, view)
+    window.history.replaceState(null, "", url)
   }
 
   /**
-   * To the next step still to do, by the checklist as it is now; else the
-   * next one in order; after the last, to "Finish setup".
+   * On from a step, by the checklist as it is now (see `nextOpenStep`):
+   * forward to the next step to do, back to a required one still open, or
+   * to the last page, where setup is finished.
    */
   function advance(from: OnboardingStepKey) {
     const latest =
       queryClient.getQueryData<OnboardingChecklist>(onboardingKeys.checklist) ??
       checklist
-    const at = steps.findIndex((s) => s.key === from)
-    const next = nextOpenStep(latest, from) ?? steps[at + 1]?.key
-    if (next && next !== from) goTo(next)
-    else showFinish()
-  }
-
-  function showFinish() {
-    const el = finishRef.current
-    el?.scrollIntoView?.({ behavior: "smooth", block: "center" })
-    el?.querySelector<HTMLButtonElement>("button:not([disabled]), a")?.focus({
-      preventScroll: true,
-    })
+    goTo(nextOpenStep(latest, from) ?? "finish")
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[17rem_minmax(0,1fr)] lg:grid-rows-[auto_1fr] lg:gap-x-8">
-      <StepNav
-        steps={steps}
-        current={current}
-        onSelect={goTo}
-        className="lg:col-start-1 lg:row-start-1"
-      />
+    // One column on phones, held to the screen's width: the step chips
+    // scroll sideways within it instead of widening the page.
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[17rem_minmax(0,1fr)] lg:items-start lg:gap-x-8">
+      {/* Wide screens: the steps and the progress card stay in view while
+          the step scrolls (see `useStickyTop`); the column never scrolls
+          on its own. On the finish page the card steps aside: the page is
+          that card, expanded. Phones: the aside dissolves into the grid
+          (`contents`) so the order is steps, step, card. */}
+      <aside
+        ref={asideRef}
+        style={{ top: stickyTop }}
+        className="max-lg:contents lg:sticky lg:col-start-1 lg:row-start-1 lg:flex lg:flex-col lg:gap-6"
+      >
+        <StepNav
+          steps={steps}
+          current={current}
+          onSelect={goTo}
+          className="max-lg:order-1"
+        />
+        {current !== "finish" && (
+          <div className="max-lg:order-3">
+            <FinishCard checklist={checklist} current={current} onGoTo={goTo} />
+          </div>
+        )}
+      </aside>
+      {current === "finish" && (
+        <FinishPanel
+          checklist={checklist}
+          focusOnMount={moved}
+          onBack={() => goTo(steps[steps.length - 1]!.key)}
+          onGoTo={goTo}
+          className="max-lg:order-2 lg:col-start-2 lg:row-start-1"
+        />
+      )}
       {step && (
         <StepPanel
           key={step.key}
@@ -146,15 +231,9 @@ function Wizard({ checklist }: { checklist: OnboardingChecklist }) {
           onBack={index > 0 ? () => goTo(steps[index - 1]!.key) : null}
           onContinue={() => advance(step.key)}
           onGoTo={goTo}
-          className="lg:col-start-2 lg:row-span-2 lg:row-start-1"
+          className="max-lg:order-2 lg:col-start-2 lg:row-start-1"
         />
       )}
-      <div
-        ref={finishRef}
-        className="lg:col-start-1 lg:row-start-2 lg:self-start"
-      >
-        <FinishBar checklist={checklist} />
-      </div>
     </div>
   )
 }
@@ -170,11 +249,13 @@ function StepNav({
   className,
 }: {
   steps: OnboardingStep[]
-  current: OnboardingStepKey | null
-  onSelect: (key: OnboardingStepKey) => void
+  current: WizardView | null
+  onSelect: (view: WizardView) => void
   className?: string
 }) {
   const t = useTranslations("onboarding")
+  const tf = useTranslations("onboarding.finish")
+  const onFinish = current === "finish"
   const f = useSchoolFormat()
   const done = steps.filter((s) => s.done).length
   const firstOptional = steps.find((s) => !s.required)?.key
@@ -190,7 +271,9 @@ function StepNav({
           })}
         </span>
       </div>
-      <ol className="-mx-4 flex [scrollbar-width:none] gap-2 overflow-x-auto px-4 pb-1 sm:-mx-6 sm:px-6 lg:mx-0 lg:flex-col lg:gap-0.5 lg:overflow-visible lg:p-0">
+      {/* `relative`: the visually hidden status labels position against
+          the scrolling row, not the page (which they would widen). */}
+      <ol className="relative -mx-4 flex [scrollbar-width:none] gap-2 overflow-x-auto px-4 pb-1 sm:-mx-6 sm:px-6 lg:mx-0 lg:flex-col lg:gap-0.5 lg:overflow-visible lg:p-0">
         {steps.map((step, i) => {
           const active = step.key === current
           return (
@@ -209,7 +292,7 @@ function StepNav({
                 onClick={() => onSelect(step.key)}
                 className={cn(
                   "group flex w-full items-center gap-3 rounded-full border bg-card py-1.5 pr-3.5 pl-1.5 text-left text-sm transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/40",
-                  "lg:rounded-lg lg:border-transparent lg:bg-transparent lg:px-3 lg:py-2",
+                  "lg:rounded-lg lg:border-transparent lg:bg-transparent lg:px-3 lg:py-1.5",
                   active
                     ? "border-primary/40 bg-primary/5 lg:bg-card lg:shadow-sm lg:ring-1 lg:ring-border"
                     : "hover:bg-muted lg:hover:bg-card/60"
@@ -246,6 +329,46 @@ function StepNav({
             </li>
           )
         })}
+        {/* The last page, where setup is finished. */}
+        <li className="shrink-0 lg:mt-3 lg:border-t lg:pt-3">
+          <button
+            type="button"
+            aria-current={onFinish ? "step" : undefined}
+            onClick={() => onSelect("finish")}
+            className={cn(
+              "group flex w-full items-center gap-3 rounded-full border bg-card py-1.5 pr-3.5 pl-1.5 text-left text-sm transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/40",
+              "lg:rounded-lg lg:border-transparent lg:bg-transparent lg:px-3 lg:py-1.5",
+              onFinish
+                ? "border-primary/40 bg-primary/5 lg:bg-card lg:shadow-sm lg:ring-1 lg:ring-border"
+                : "hover:bg-muted lg:hover:bg-card/60"
+            )}
+          >
+            <span
+              aria-hidden
+              className={cn(
+                "flex size-7 shrink-0 items-center justify-center rounded-full border transition-colors",
+                onFinish
+                  ? "border-primary text-primary ring-3 ring-primary/15"
+                  : "bg-background text-muted-foreground"
+              )}
+            >
+              <FlagIcon className="size-3.5" />
+            </span>
+            <span className="flex min-w-0 flex-col">
+              <span
+                className={cn(
+                  "truncate whitespace-nowrap lg:whitespace-normal",
+                  onFinish ? "font-medium" : "text-foreground/85"
+                )}
+              >
+                {tf("label")}
+              </span>
+              <span className="sr-only text-xs text-muted-foreground lg:not-sr-only">
+                {tf("lastStep")}
+              </span>
+            </span>
+          </button>
+        </li>
       </ol>
     </nav>
   )
@@ -362,33 +485,38 @@ function StepPanel({
       <div className="p-5 sm:p-6">
         <StepBody step={step} onContinue={onContinue} onGoTo={onGoTo} />
       </div>
-      <div className="mt-auto flex items-center justify-between gap-2 rounded-b-xl border-t bg-muted/30 px-5 py-3 sm:px-6">
-        {onBack ? (
-          <Button variant="ghost" onClick={onBack}>
-            <ArrowLeftIcon />
-            {t("back")}
-          </Button>
-        ) : (
-          <span />
-        )}
-        {step.done ? (
-          // The profile's own form already saves and continues.
-          <Button
-            variant={step.key === "profile" ? "outline" : "default"}
-            onClick={onContinue}
-          >
-            {t("continue")}
-            <ArrowRightIcon />
-          </Button>
-        ) : (
-          !step.required && (
-            <Button variant="outline" onClick={onContinue}>
-              {t("skipStep")}
+      {/* Stays at the bottom of the screen while a long step scrolls;
+          left out when it would be empty (the first step, not done yet:
+          its own form is the way on). */}
+      {(onBack || step.done || !step.required) && (
+        <div className="sticky bottom-0 z-10 mt-auto flex items-center justify-between gap-2 rounded-b-xl border-t bg-card/95 px-5 py-3 backdrop-blur supports-backdrop-filter:bg-card/80 sm:px-6">
+          {onBack ? (
+            <Button variant="ghost" onClick={onBack}>
+              <ArrowLeftIcon />
+              {t("back")}
+            </Button>
+          ) : (
+            <span />
+          )}
+          {step.done ? (
+            // The profile's own form already saves and continues.
+            <Button
+              variant={step.key === "profile" ? "outline" : "default"}
+              onClick={onContinue}
+            >
+              {t("continue")}
               <ArrowRightIcon />
             </Button>
-          )
-        )}
-      </div>
+          ) : (
+            !step.required && (
+              <Button variant="outline" onClick={onContinue}>
+                {number === total ? t("skipToFinish") : t("skipStep")}
+                <ArrowRightIcon />
+              </Button>
+            )
+          )}
+        </div>
+      )}
     </section>
   )
 }
@@ -402,22 +530,20 @@ function StepBody({
   onContinue: () => void
   onGoTo: (key: OnboardingStepKey) => void
 }) {
-  const props = { done: step.done, onGoTo }
   switch (step.key) {
     case "profile":
       return <ProfileStep onContinue={onContinue} />
     case "session":
       return <SessionStep />
     case "classes":
-      return <ClassesStep {...props} />
+      return <ClassesStep onGoTo={onGoTo} />
     case "curriculum":
-      return <CurriculumStep {...props} />
+      return <CurriculumStep />
     case "grading":
       return <GradingStep />
     case "fees":
       return <FeesStep />
     case "staff":
-    case "students":
-      return <LaterStep step={step.key} {...props} />
+      return <StaffStep />
   }
 }

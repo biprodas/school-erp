@@ -61,6 +61,10 @@ describe("message catalogs", () => {
         "signup.schoolNamePlaceholder",
         "auth.login.emailPlaceholder",
         "auth.forgot.emailPlaceholder",
+        "onboarding.profile.emailPlaceholder",
+        // EIIN is the board's own acronym, written in Latin letters.
+        "onboarding.profile.eiin",
+        "onboarding.finish.details.eiin",
       ])
       const at = (messages: object, path: string) =>
         path

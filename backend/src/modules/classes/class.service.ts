@@ -63,8 +63,19 @@ export class ClassService {
     return this.classRepo.save(cls);
   }
 
+  /**
+   * Removes the class with its sections, class subjects and fee
+   * structures (cascaded). Refused while students are enrolled in it: the
+   * enrollments would go with it.
+   */
   async remove(id: string): Promise<void> {
     await this.findById(id);
+    if (await this.classRepo.hasEnrollments(id)) {
+      throw new ConflictException({
+        message: 'Students are enrolled in this class; it cannot be removed',
+        code: 'CLASS_HAS_STUDENTS',
+      });
+    }
     await this.classRepo.deleteById(id);
   }
 }

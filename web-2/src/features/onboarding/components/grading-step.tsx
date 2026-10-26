@@ -1,9 +1,8 @@
 "use client"
 
 import { useQuery } from "@tanstack/react-query"
-import { CheckIcon, ChevronDownIcon, StarIcon, Trash2Icon } from "lucide-react"
+import { CheckIcon, StarIcon, Trash2Icon } from "lucide-react"
 import { useTranslations } from "next-intl"
-import { useId, useState } from "react"
 
 import {
   applyGradingTemplate,
@@ -23,16 +22,17 @@ import { Spinner } from "~/components/ui/spinner"
 import { useSchoolFormat } from "~/features/settings/use-school-format"
 import { cn } from "~/lib/utils"
 
-import { StepLoadFailed, StepNote } from "./step-parts"
+import { StepLoadFailed } from "./step-parts"
 import { WithTemplates } from "./template-steps"
 import { useSetupAction } from "../use-setup-action"
 
 const systemsKey = onboardingKeys.gradingSystems
 
 /**
- * Step 5 (optional): the school's grading systems with their grade scales
- * (which one is the default, and what each grade means), and the
- * templates to add one from. The first one added becomes the default.
+ * Step 5 (optional): the school's grading systems, the default one drawn
+ * as a marks ruler (which marks earn which grade, where the pass mark
+ * is), and the templates to add one from, each with its ruler in small.
+ * The first one added becomes the default.
  */
 export function GradingStep() {
   const t = useTranslations("onboarding.grading")
@@ -42,34 +42,38 @@ export function GradingStep() {
   if (systems.isError) return <StepLoadFailed retry={systems.refetch} />
 
   const applied = new Set(systems.data.map((s) => s.templateCode))
+  const [main, ...others] = systems.data
 
   return (
     <div className="flex flex-col gap-6">
-      {systems.data.length === 0 ? (
-        <StepNote tone="info">{t("empty")}</StepNote>
-      ) : (
-        <section className="flex flex-col gap-3">
-          <div className="flex flex-col gap-0.5">
-            <h3 className="text-sm font-semibold">
-              {t("yours", { count: systems.data.length })}
-            </h3>
-            <p className="text-sm text-muted-foreground">{t("defaultHint")}</p>
+      {main && (
+        <Section
+          title={t("yours", { count: systems.data.length })}
+          hint={t("defaultHint")}
+        >
+          <div className="flex flex-col gap-4">
+            <DefaultSystem system={main} />
+            {others.length > 0 && (
+              <ul className="flex flex-col divide-y rounded-lg border">
+                {others.map((system) => (
+                  <OtherSystem key={system.id} system={system} />
+                ))}
+              </ul>
+            )}
           </div>
-          <ul className="flex flex-col gap-3">
-            {systems.data.map((system) => (
-              <SystemCard key={system.id} system={system} />
-            ))}
-          </ul>
-        </section>
+        </Section>
       )}
 
-      <section className="flex flex-col gap-3">
-        <h3 className="text-sm font-semibold">
-          {systems.data.length ? t("addAnother") : t("choose")}
-        </h3>
+      <Section
+        title={main ? t("addAnother") : t("choose")}
+        hint={main ? t("templatesHint") : t("empty")}
+      >
         <WithTemplates>
           {(templates) => (
-            <ul className="flex flex-col gap-2" aria-label={t("listLabel")}>
+            <ul
+              className="flex flex-col divide-y rounded-lg border"
+              aria-label={t("listLabel")}
+            >
               {templates.grading.map((template, index) => (
                 <TemplateOption
                   key={template.code}
@@ -81,13 +85,65 @@ export function GradingStep() {
             </ul>
           )}
         </WithTemplates>
-      </section>
+      </Section>
     </div>
   )
 }
 
-/** One of the school's systems: name, default or not, and its scale. */
-function SystemCard({ system }: { system: GradingSystem }) {
+/** A heading in the left column on wide screens, ruled off from the last. */
+function Section({
+  title,
+  hint,
+  children,
+}: {
+  title: string
+  hint: string
+  children: React.ReactNode
+}) {
+  return (
+    <section className="border-t pt-6 first:border-t-0 first:pt-0 lg:flex">
+      <div className="mb-3 flex flex-col gap-0.5 lg:mb-0 lg:w-44 lg:shrink-0 lg:pr-6">
+        <h3 className="text-sm font-semibold">{title}</h3>
+        <p className="text-sm text-muted-foreground">{hint}</p>
+      </div>
+      <div className="min-w-0 flex-1">{children}</div>
+    </section>
+  )
+}
+
+const byMarks = (bands: GradeBand[]) =>
+  [...bands].sort((a, b) => b.minPercent - a.minPercent)
+
+/** The default system: its name, what it is, and its full ruler. */
+function DefaultSystem({ system }: { system: GradingSystem }) {
+  const t = useTranslations("onboarding.grading")
+  const bands = byMarks(system.items)
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-0.5">
+        <span className="flex flex-wrap items-center gap-2 font-medium">
+          {system.name}
+          {system.isDefault && (
+            <Badge>
+              <StarIcon aria-hidden />
+              {t("default")}
+            </Badge>
+          )}
+        </span>
+        <KindLabel kind={system.kind} bands={bands} />
+      </div>
+      <GradeScale
+        label={t("scaleLabel", { name: system.name })}
+        kind={system.kind}
+        bands={bands}
+      />
+    </div>
+  )
+}
+
+/** Another of the school's systems: its small ruler, make default, remove. */
+function OtherSystem({ system }: { system: GradingSystem }) {
   const t = useTranslations("onboarding.grading")
   const makeDefault = useSetupAction({
     action: () => makeDefaultGradingSystem(system.id),
@@ -99,61 +155,51 @@ function SystemCard({ system }: { system: GradingSystem }) {
     invalidate: [systemsKey],
     success: () => t("removed", { name: system.name }),
   })
-  const bands = [...system.items].sort((a, b) => a.sortOrder - b.sortOrder)
+  const bands = byMarks(system.items)
   const busy = makeDefault.isPending || remove.isPending
 
   return (
-    <li
-      className={cn(
-        "flex flex-col gap-3 rounded-lg border p-3 sm:p-4",
-        system.isDefault && "border-primary/40 bg-primary/5"
-      )}
-    >
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex min-w-0 flex-col gap-0.5">
-          <span className="flex flex-wrap items-center gap-2 font-medium">
-            {system.name}
-            {system.isDefault && (
-              <Badge>
-                <StarIcon aria-hidden />
-                {t("default")}
-              </Badge>
-            )}
-          </span>
+    <li className="flex flex-col gap-3 p-3 sm:flex-row sm:items-center">
+      <div className="flex min-w-0 flex-1 flex-col gap-2">
+        <span className="flex flex-col">
+          <span className="text-sm font-medium">{system.name}</span>
           <KindLabel kind={system.kind} bands={bands} />
-        </div>
-        {!system.isDefault && (
-          <div className="flex shrink-0 items-center gap-1">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={busy}
-              onClick={() => makeDefault.mutate(undefined)}
-            >
-              {makeDefault.isPending ? <Spinner /> : <StarIcon aria-hidden />}
-              {t("makeDefault")}
-            </Button>
-            {/* The default stays: classes without their own need one. */}
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              aria-label={t("remove", { name: system.name })}
-              title={t("remove", { name: system.name })}
-              disabled={busy}
-              className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-              onClick={() => remove.mutate(undefined)}
-            >
-              {remove.isPending ? <Spinner /> : <Trash2Icon aria-hidden />}
-            </Button>
-          </div>
-        )}
+        </span>
+        <GradeScale
+          label={t("scaleLabel", { name: system.name })}
+          kind={system.kind}
+          bands={bands}
+          compact
+        />
       </div>
-      <GradeScale name={system.name} kind={system.kind} bands={bands} />
+      {/* The default stays: classes without their own need one. */}
+      <div className="flex shrink-0 items-center gap-1">
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={busy}
+          onClick={() => makeDefault.mutate(undefined)}
+        >
+          {makeDefault.isPending ? <Spinner /> : <StarIcon aria-hidden />}
+          {t("makeDefault")}
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label={t("remove", { name: system.name })}
+          title={t("remove", { name: system.name })}
+          disabled={busy}
+          className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+          onClick={() => remove.mutate(undefined)}
+        >
+          {remove.isPending ? <Spinner /> : <Trash2Icon aria-hidden />}
+        </Button>
+      </div>
     </li>
   )
 }
 
-/** A template: what it is, its grades on demand, and "Use this". */
+/** A template: what it is, its small ruler, and "Use this". */
 function TemplateOption({
   template,
   recommended,
@@ -164,8 +210,6 @@ function TemplateOption({
   applied: boolean
 }) {
   const t = useTranslations("onboarding.grading")
-  const [showScale, setShowScale] = useState(false)
-  const scaleId = useId()
   const apply = useSetupAction({
     action: applyGradingTemplate,
     invalidate: [systemsKey],
@@ -178,10 +222,10 @@ function TemplateOption({
   })
 
   return (
-    <li className="flex flex-col gap-3 rounded-lg border p-3">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex min-w-0 flex-col gap-1">
-          <span className="flex flex-wrap items-center gap-2 font-medium">
+    <li className="flex flex-col gap-3 p-3 sm:flex-row sm:items-center">
+      <div className="flex min-w-0 flex-1 flex-col gap-2">
+        <span className="flex flex-col gap-0.5">
+          <span className="flex flex-wrap items-center gap-2 text-sm font-medium">
             {template.name}
             {recommended && (
               <Badge variant="secondary">{t("recommended")}</Badge>
@@ -190,25 +234,18 @@ function TemplateOption({
           <span className="text-sm text-muted-foreground">
             {template.description}
           </span>
-          <button
-            type="button"
-            aria-expanded={showScale}
-            aria-controls={scaleId}
-            onClick={() => setShowScale(!showScale)}
-            className="flex items-center gap-1 self-start rounded-sm text-sm font-medium text-primary outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/40"
-          >
-            {showScale ? t("hideScale") : t("showScale")}
-            <ChevronDownIcon
-              aria-hidden
-              className={cn(
-                "size-4 transition-transform",
-                showScale && "rotate-180"
-              )}
-            />
-          </button>
-        </div>
+        </span>
+        <GradeScale
+          label={t("templateScaleLabel", { name: template.name })}
+          kind={template.kind}
+          bands={byMarks(template.bands)}
+          compact
+        />
+      </div>
+      {/* A fixed column, so the rulers of the list line up. */}
+      <div className="flex shrink-0 sm:w-28 sm:justify-end">
         {applied ? (
-          <Badge variant="secondary" className="h-8 shrink-0 self-start px-3">
+          <Badge variant="secondary" className="h-8 px-3">
             <CheckIcon aria-hidden />
             {t("added")}
           </Badge>
@@ -216,7 +253,6 @@ function TemplateOption({
           <Button
             variant="outline"
             size="sm"
-            className="shrink-0 self-start"
             disabled={apply.isPending}
             aria-label={`${t("apply")}: ${template.name}`}
             onClick={() => apply.mutate(template.code)}
@@ -224,15 +260,6 @@ function TemplateOption({
             {apply.isPending && <Spinner />}
             {t("apply")}
           </Button>
-        )}
-      </div>
-      <div id={scaleId} hidden={!showScale}>
-        {showScale && (
-          <GradeScale
-            name={template.name}
-            kind={template.kind}
-            bands={template.bands}
-          />
         )}
       </div>
     </li>
@@ -253,54 +280,185 @@ function KindLabel({ kind, bands }: { kind: GradingKind; bands: GradeBand[] }) {
   )
 }
 
-/** Each grade with its marks range (and point), failing grades in red. */
+/** A band's share of the 0–100 line (its marks, inclusive). */
+const share = (band: GradeBand) =>
+  Math.max(1, band.maxPercent - band.minPercent + 1)
+
+/**
+ * The grades' own blue (Tailwind's sky-700), apart from the green of the
+ * buttons and steps around the ruler. The same in both themes.
+ */
+const GRADE_BLUE = "oklch(0.5 0.134 242.75)"
+
+/**
+ * A grade's shade: the passing grades from pale to deep blue as they
+ * rise, the failing ones in red; white text on the deep shades.
+ */
+function shade(band: GradeBand, passing: GradeBand[]) {
+  if (band.isFail) {
+    return { style: undefined, className: "bg-destructive/12 text-destructive" }
+  }
+  // `passing` runs from the top grade down.
+  const rank = passing.length - 1 - passing.indexOf(band)
+  const strength =
+    passing.length > 1 ? 0.22 + (0.78 * rank) / (passing.length - 1) : 1
+  return {
+    style: {
+      backgroundColor: `color-mix(in oklab, ${GRADE_BLUE} ${Math.round(strength * 100)}%, transparent)`,
+    },
+    className: strength >= 0.55 ? "text-white" : "text-foreground",
+  }
+}
+
+/**
+ * The grade scale as a marks ruler: bands sized by their marks, from 0 on
+ * the left to 100 on the right, the boundaries numbered underneath and the
+ * pass mark picked out. Phones get tiles (top grade first) instead, as the
+ * bands would be too narrow to label. `compact` is the small ruler: grade
+ * letters only, the marks for screen readers.
+ */
 function GradeScale({
-  name,
+  label,
   kind,
   bands,
+  compact = false,
 }: {
-  name: string
+  /** The list's accessible name. */
+  label: string
   kind: GradingKind
+  /** Top grade first. */
   bands: GradeBand[]
+  compact?: boolean
 }) {
   const t = useTranslations("onboarding.grading")
   const f = useSchoolFormat()
   const showPoints = kind !== "percentage"
+  const passing = bands.filter((b) => !b.isFail)
+  const total = bands.reduce((sum, b) => sum + share(b), 0)
+
+  // Boundaries left to right, at each band's lowest mark, then 100.
+  const ascending = [...bands].reverse()
+  const ticks = ascending.map((band, i) => ({
+    value: band.minPercent,
+    left:
+      (ascending.slice(0, i).reduce((sum, b) => sum + share(b), 0) / total) *
+      100,
+  }))
+  const top = Math.max(...bands.map((b) => b.maxPercent))
+  const passMark = passing.length
+    ? Math.min(...passing.map((b) => b.minPercent))
+    : null
 
   return (
-    <ul
-      aria-label={t("scaleLabel", { name })}
-      className="grid grid-cols-[repeat(auto-fill,minmax(5.5rem,1fr))] gap-1.5"
-    >
-      {bands.map((band) => (
-        <li
-          key={band.letter}
-          className={cn(
-            "flex flex-col items-center gap-0.5 rounded-md border bg-background px-2 py-1.5 text-center",
-            band.isFail && "border-destructive/30 bg-destructive/5"
+    <div className="flex flex-col gap-1.5">
+      <ul
+        aria-label={label}
+        className={cn(
+          compact
+            ? "flex h-6 flex-row-reverse overflow-hidden rounded"
+            : "grid grid-cols-[repeat(auto-fill,minmax(5.5rem,1fr))] gap-1.5 sm:flex sm:h-14 sm:flex-row-reverse sm:gap-0 sm:overflow-hidden sm:rounded-md"
+        )}
+      >
+        {bands.map((band) => {
+          const look = shade(band, passing)
+          const range = t("range", {
+            min: f.number(band.minPercent),
+            max: f.number(band.maxPercent),
+          })
+          return (
+            <li
+              key={band.letter}
+              // Exactly its share of the line, so the boundaries meet the
+              // numbers under the ruler: no grow, no shrink, and separators
+              // drawn as an inset shadow (a border would take up width).
+              // The grid of tiles on phones ignores the flex basis.
+              style={{
+                ...look.style,
+                flex: `0 0 ${(share(band) / total) * 100}%`,
+              }}
+              title={`${band.letter}: ${range}`}
+              className={cn(
+                "flex min-w-0 flex-col items-center justify-center text-center",
+                look.className,
+                compact
+                  ? "text-[11px] font-semibold shadow-[inset_-1px_0_0_var(--card)] first:shadow-none"
+                  : "gap-0.5 rounded-md px-2 py-1.5 sm:rounded-none sm:px-0.5 sm:py-0 sm:shadow-[inset_-1px_0_0_var(--card)] sm:first:shadow-none"
+              )}
+            >
+              <span
+                className={cn(
+                  "truncate",
+                  !compact && "text-sm font-semibold",
+                  // Too thin to read on a phone: the title and the list
+                  // still name it.
+                  compact && share(band) / total < 0.07 && "max-sm:sr-only"
+                )}
+              >
+                {band.letter}
+              </span>
+              <span
+                className={cn(
+                  "text-xs tabular-nums opacity-80",
+                  compact ? "sr-only" : "sm:sr-only"
+                )}
+              >
+                {range}
+              </span>
+              {showPoints && (
+                <span
+                  className={cn(
+                    "text-xs tabular-nums opacity-80",
+                    compact && "sr-only",
+                    !compact && "sm:text-[10px]"
+                  )}
+                >
+                  {t("point", { point: f.number(band.point) })}
+                </span>
+              )}
+            </li>
+          )
+        })}
+      </ul>
+
+      {!compact && (
+        <div aria-hidden className="relative h-9 max-sm:hidden">
+          {[...ticks, { value: top, left: 100 }].map(
+            ({ value, left }, i, all) => {
+              const isPass = value === passMark
+              return (
+                <span
+                  key={`${value}-${i}`}
+                  style={{ left: `${left}%` }}
+                  className={cn(
+                    "absolute top-0 flex flex-col text-[11px] tabular-nums",
+                    i === 0
+                      ? "items-start"
+                      : i === all.length - 1
+                        ? "-translate-x-full items-end"
+                        : "-translate-x-1/2 items-center",
+                    isPass
+                      ? "font-semibold text-foreground"
+                      : "text-muted-foreground"
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "h-1.5 w-px",
+                      isPass ? "h-2.5 bg-foreground" : "bg-border"
+                    )}
+                  />
+                  {f.number(value)}
+                  {isPass && (
+                    <span className="font-normal whitespace-nowrap text-muted-foreground">
+                      {t("passMark")}
+                    </span>
+                  )}
+                </span>
+              )
+            }
           )}
-        >
-          <span
-            className={cn(
-              "text-sm font-semibold",
-              band.isFail && "text-destructive"
-            )}
-          >
-            {band.letter}
-          </span>
-          <span className="text-xs text-muted-foreground tabular-nums">
-            {t("range", {
-              min: f.number(band.minPercent),
-              max: f.number(band.maxPercent),
-            })}
-          </span>
-          {showPoints && (
-            <span className="text-xs text-muted-foreground tabular-nums">
-              {t("point", { point: f.number(band.point) })}
-            </span>
-          )}
-        </li>
-      ))}
-    </ul>
+        </div>
+      )}
+    </div>
   )
 }

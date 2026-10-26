@@ -69,6 +69,12 @@ Every error response is `{ success: false, statusCode, message, code?, … }`. T
 | `ROLLOVER_TARGET_NOT_EMPTY` | The target session already offers subject groups |
 | `SUBJECT_NOT_IN_SECTION` | The subject is not in the section's class and session |
 
+## classes
+
+| Code | Message (English) |
+| ---- | ----------------- |
+| `CLASS_HAS_STUDENTS` | Students are enrolled in this class; it cannot be removed |
+
 ## common
 
 | Code | Message (English) |
@@ -252,6 +258,8 @@ Every error response is `{ success: false, statusCode, message, code?, … }`. T
 
 | Code | Message (English) |
 | ---- | ----------------- |
+| `CURRICULUM_SWITCH_HAS_STUDENTS` | The school has students; its curriculum template can no longer be switched |
+| `CURRICULUM_TEMPLATE_IN_USE` | The school uses the "${inUse}" curriculum template; only one can be applied |
 | `ONBOARDING_INCOMPLETE` | Finish the required setup steps first |
 
 ## organizations

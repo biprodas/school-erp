@@ -12,7 +12,6 @@ import { ClassService } from '~/modules/classes/class.service';
 import { SectionService } from '~/modules/sections/section.service';
 import { ClassSubjectService } from '~/modules/class-curriculum/services/class-subject.service';
 import { EmployeeService } from '~/modules/employees/employee.service';
-import { StudentService } from '~/modules/students/services/student.service';
 import { OrgUserService } from '~/modules/users/services/org-user.service';
 import { OrganizationService } from '~/modules/organizations/services/organization.service';
 
@@ -23,8 +22,7 @@ export type OnboardingStepKey =
   | 'curriculum'
   | 'grading'
   | 'fees'
-  | 'staff'
-  | 'students';
+  | 'staff';
 
 export interface OnboardingStep {
   key: OnboardingStepKey;
@@ -65,17 +63,19 @@ const STEPS: StepDefinition[] = [
     required: true,
     available: true,
   },
+  // The curriculum template comes first: it adds the classes (with their
+  // subjects) that the next step gives sections.
   {
-    key: 'classes',
-    title: 'Classes and sections',
-    link: '/academic/classes',
+    key: 'curriculum',
+    title: 'Classes and subjects',
+    link: '/academic/class-subjects',
     required: true,
     available: true,
   },
   {
-    key: 'curriculum',
-    title: 'Subjects for each class',
-    link: '/academic/class-subjects',
+    key: 'classes',
+    title: 'Sections',
+    link: '/academic/classes',
     required: true,
     available: true,
   },
@@ -97,13 +97,6 @@ const STEPS: StepDefinition[] = [
     key: 'staff',
     title: 'Add and invite staff',
     link: '/hr/employees',
-    required: false,
-    available: true,
-  },
-  {
-    key: 'students',
-    title: 'Import students',
-    link: '/students',
     required: false,
     available: true,
   },
@@ -129,7 +122,6 @@ export class OnboardingService {
     private readonly sections: SectionService,
     private readonly classSubjects: ClassSubjectService,
     private readonly employees: EmployeeService,
-    private readonly students: StudentService,
     private readonly members: OrgUserService,
     private readonly organizations: OrganizationService,
     private readonly grading: GradingService,
@@ -239,9 +231,6 @@ export class OnboardingService {
     // Anyone besides the owner: an employee record or an invited member.
     if (employeeCount > 0 || memberCount > 1) done.add('staff');
 
-    if ((await total(this.students.findFiltered(ONE))) > 0) {
-      done.add('students');
-    }
     if ((await this.grading.findAll()).length > 0) done.add('grading');
     if ((await this.fees.listHeads()).length > 0) done.add('fees');
     return done;

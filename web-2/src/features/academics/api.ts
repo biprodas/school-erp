@@ -35,6 +35,19 @@ export interface Section {
   isActive: boolean
 }
 
+export type ClassSubjectType = "compulsory" | "optional" | "fourth" | "elective"
+
+/** A subject a class offers in a session (`GET /class-subjects`). */
+export interface ClassSubject {
+  id: string
+  classId: string
+  subjectId: string
+  academicYearId: string
+  subjectType: ClassSubjectType
+  subject: { id: string; name: string; code: string | null }
+  subjectGroup?: { id: string; name: string } | null
+}
+
 /** The backend's page size limit; setup lists fit in one page. */
 const ALL = { page: 1, limit: 100 }
 
@@ -43,6 +56,10 @@ export const academicKeys = {
   classes: ["academics", "classes"] as const,
   sections: (academicYearId: string) =>
     ["academics", "sections", { academicYearId }] as const,
+  classSubjects: (academicYearId: string) =>
+    ["academics", "class-subjects", { academicYearId }] as const,
+  holidays: (from: string, to: string) =>
+    ["academics", "holidays", { from, to }] as const,
 }
 
 /** The session marked current, or null when there is none. */
@@ -94,6 +111,51 @@ export interface NewSession {
 export const createSession = (body: NewSession) =>
   apiFetch<AcademicYear>("/academic-years", { method: "POST", body })
 
+/** Name or dates; refused (409) when they overlap another session. */
+export const updateSession = (id: string, body: Partial<NewSession>) =>
+  apiFetch<AcademicYear>(`/academic-years/${id}`, { method: "PATCH", body })
+
+/** A day or run of days without classes (`GET /holidays`). */
+export interface Holiday {
+  id: string
+  name: string
+  nameBn: string | null
+  type: "public" | "school" | "religious"
+  /** `YYYY-MM-DD`, inclusive. */
+  dateFrom: string
+  dateTo: string
+}
+
+export interface HolidayInput {
+  name: string
+  type: Holiday["type"]
+  dateFrom: string
+  /** Inclusive; defaults to `dateFrom`. */
+  dateTo?: string
+}
+
+export const createHoliday = (body: HolidayInput) =>
+  apiFetch<Holiday>("/holidays", { method: "POST", body })
+
+export const updateHoliday = (id: string, body: Partial<HolidayInput>) =>
+  apiFetch<Holiday>(`/holidays/${id}`, { method: "PATCH", body })
+
+export const deleteHoliday = (id: string) =>
+  apiFetch<void>(`/holidays/${id}`, { method: "DELETE" })
+
+/** Holidays touching `from`–`to` (a session has well under 100). */
+export const holidaysQuery = (from: string, to: string) =>
+  queryOptions({
+    queryKey: academicKeys.holidays(from, to),
+    queryFn: async ({ signal }) =>
+      (
+        await apiFetchPage<Holiday>("/holidays", {
+          signal,
+          query: { ...ALL, from, to },
+        })
+      ).items,
+  })
+
 export const createClass = (body: { name: string; level?: number }) =>
   apiFetch<SchoolClass>("/classes", { method: "POST", body })
 
@@ -110,3 +172,26 @@ export const deleteClass = (id: string) =>
 /** Refused (409) while students are enrolled in it. */
 export const deleteSection = (id: string) =>
   apiFetch<void>(`/sections/${id}`, { method: "DELETE" })
+
+/**
+ * Every class subject of a session. A curriculum template gives ten
+ * classes a dozen subjects each, more than one page, so this reads them all.
+ */
+export const classSubjectsQuery = (academicYearId: string) =>
+  queryOptions({
+    queryKey: academicKeys.classSubjects(academicYearId),
+    queryFn: async ({ signal }) => {
+      const items: ClassSubject[] = []
+      for (let page = 1; ; page++) {
+        const result = await apiFetchPage<ClassSubject>("/class-subjects", {
+          signal,
+          query: { page, limit: ALL.limit, academicYearId },
+        })
+        items.push(...result.items)
+        if (page >= result.meta.totalPages) return items
+      }
+    },
+  })
+
+export const deleteClassSubject = (id: string) =>
+  apiFetch<void>(`/class-subjects/${id}`, { method: "DELETE" })

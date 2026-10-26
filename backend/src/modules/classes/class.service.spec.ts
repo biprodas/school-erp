@@ -30,6 +30,7 @@ describe('ClassService', () => {
       ),
       save: jest.fn((entity) => Promise.resolve(entity)),
       deleteById: jest.fn(),
+      hasEnrollments: jest.fn().mockResolvedValue(false),
     };
 
     service = new ClassService(classRepo as unknown as ClassRepository);
@@ -74,6 +75,23 @@ describe('ClassService', () => {
       await expect(service.remove('missing')).rejects.toThrow(
         NotFoundException,
       );
+    });
+
+    it('refuses a class with enrolled students (they would go with it)', async () => {
+      classRepo.findByIdOrFail.mockResolvedValue(makeClass());
+      classRepo.hasEnrollments.mockResolvedValue(true);
+
+      await expect(service.remove('cls-1')).rejects.toMatchObject({
+        response: { code: 'CLASS_HAS_STUDENTS' },
+      });
+      expect(classRepo.deleteById).not.toHaveBeenCalled();
+    });
+
+    it('removes a class nobody is enrolled in', async () => {
+      classRepo.findByIdOrFail.mockResolvedValue(makeClass());
+
+      await service.remove('cls-1');
+      expect(classRepo.deleteById).toHaveBeenCalledWith('cls-1');
     });
   });
 });

@@ -1,4 +1,9 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import type { Paginated } from '~/common/dto/paginated.dto';
 import { MAX_PAGE_SIZE } from '~/common/dto/pagination-query.dto';
 import { TENANT_DATASOURCE } from '~/tenancy/tenancy.constants';
@@ -16,6 +21,8 @@ import { AuditService } from '~/modules/audit/services/audit.service';
 import { AUDIT_ACTIONS } from '~/modules/audit/audit-actions';
 import { AcademicYearService } from '~/modules/academic-years/academic-year.service';
 import { ClassService } from '~/modules/classes/class.service';
+import { StudentService } from '~/modules/students/services/student.service';
+import { OrganizationService } from '~/modules/organizations/services/organization.service';
 import { ClassSubjectType } from '~/modules/class-curriculum/enums/class-subject-type.enum';
 import { SubjectService } from '~/modules/subjects/subject.service';
 import { SubjectGroupService } from '~/modules/subject-groups/services/subject-group.service';
@@ -52,6 +59,38 @@ async function all<T>(
 
 const key = (name: string) => name.trim().toLowerCase();
 
+/** What switching took out of the previous template. */
+export interface RemovedCounts {
+  classes: number;
+  subjects: number;
+  subjectGroups: number;
+  classSubjects: number;
+}
+
+const noneRemoved = (): RemovedCounts => ({
+  classes: 0,
+  subjects: 0,
+  subjectGroups: 0,
+  classSubjects: 0,
+});
+
+export interface SwitchResult extends ApplyResult {
+  /** The template replaced, or null when there was none. */
+  previous: string | null;
+  removed: RemovedCounts;
+}
+
+function findCurriculumTemplate(code: string): CurriculumTemplate {
+  const template = CURRICULUM_TEMPLATES.find((t) => t.code === code);
+  if (!template) {
+    throw new NotFoundException({
+      message: 'Template not found',
+      code: 'TEMPLATE_NOT_FOUND',
+    });
+  }
+  return template;
+}
+
 /**
  * Applies code-defined setup templates (PRD 6.2 step 4): subjects, classes,
  * subject groups and, for the current session, each class's subjects and
@@ -70,12 +109,17 @@ export class CurriculumTemplateService {
     private readonly classSubjects: ClassSubjectService,
     private readonly classSubjectGroups: ClassSubjectGroupService,
     private readonly audit: AuditService,
+    private readonly organizations: OrganizationService,
+    private readonly students: StudentService,
     @Inject(TENANT_DATASOURCE) private readonly ds: TenantDataSourceProxy,
   ) {}
 
-  /** What onboarding can offer. */
-  list() {
+  /** What onboarding can offer, and the curriculum template in use. */
+  async list() {
     return {
+      curriculumInUse: await this.organizations.getCurriculumTemplate(
+        this.ds.orgId,
+      ),
       curriculum: CURRICULUM_TEMPLATES.map((t) => ({
         code: t.code,
         name: t.name,
@@ -100,49 +144,194 @@ export class CurriculumTemplateService {
     code: string,
     academicYearId?: string,
   ): Promise<ApplyResult> {
-    const template = CURRICULUM_TEMPLATES.find((t) => t.code === code);
-    if (!template) {
-      throw new NotFoundException({
-        message: 'Template not found',
-        code: 'TEMPLATE_NOT_FOUND',
+    const template = findCurriculumTemplate(code);
+    await this.assertOnlyTemplate(template.code);
+    const year = await this.yearFor(academicYearId);
+    const applied = await this.ds.runInTransaction(() =>
+      this.addTemplate(template, year?.id ?? null),
+    );
+    await this.organizations.setCurriculumTemplate(
+      this.ds.orgId,
+      template.code,
+    );
+    return applied;
+  }
+
+  /**
+   * Replaces the template in use with `code`, in one transaction: the old
+   * template's classes, subjects and groups that the new one doesn't have
+   * are removed (classes with their sections and fee structures), classes
+   * both have lose the old template's subjects and groups, then the new
+   * template is added. Classes and subjects the school made itself stay.
+   * Refused once the school has students; with no template in use (or the
+   * same one) it is a plain apply.
+   */
+  async switchCurriculum(
+    code: string,
+    academicYearId?: string,
+  ): Promise<SwitchResult> {
+    const template = findCurriculumTemplate(code);
+    const inUse = await this.organizations.getCurriculumTemplate(this.ds.orgId);
+    const previous = CURRICULUM_TEMPLATES.find((t) => t.code === inUse);
+    if (!previous || previous.code === template.code) {
+      return {
+        ...(await this.applyCurriculum(code, academicYearId)),
+        previous: null,
+        removed: noneRemoved(),
+      };
+    }
+    const students = await this.students.findFiltered({ page: 1, limit: 1 });
+    if (students.meta.total > 0) {
+      throw new ConflictException({
+        message:
+          'The school has students; its curriculum template can no longer be switched',
+        code: 'CURRICULUM_SWITCH_HAS_STUDENTS',
       });
     }
-    const year = academicYearId
-      ? await this.academicYears.findById(academicYearId)
-      : await this.academicYears.findCurrent();
+    const year = await this.yearFor(academicYearId);
 
-    return this.ds.runInTransaction(async () => {
-      const result: ApplyResult = {
-        template: template.code,
-        academicYearId: year?.id ?? null,
-        created: {
-          subjects: 0,
-          classes: 0,
-          subjectGroups: 0,
-          groupSubjects: 0,
-          classSubjects: 0,
-          components: 0,
-          classSubjectGroups: 0,
-        },
-      };
-      const subjectIds = await this.ensureSubjects(template, result);
-      const classIds = await this.ensureClasses(template, result);
-      const groupIds = await this.ensureGroups(template, subjectIds, result);
-      if (year) {
-        await this.ensureCurriculum(
-          template,
-          year.id,
-          { subjectIds, classIds, groupIds },
-          result,
-        );
-      }
-      await this.audit.record({
-        action: AUDIT_ACTIONS.TEMPLATE_APPLIED,
-        entityType: 'template',
-        entityId: template.code,
-        after: { ...result.created, academicYearId: result.academicYearId },
+    const switched = await this.ds.runInTransaction(async () => {
+      const removed = await this.removeTemplate(previous, template);
+      const applied = await this.addTemplate(template, year?.id ?? null, {
+        template: previous.code,
+        removed,
       });
-      return result;
+      return { ...applied, previous: previous.code, removed };
+    });
+    await this.organizations.setCurriculumTemplate(
+      this.ds.orgId,
+      template.code,
+    );
+    return switched;
+  }
+
+  private yearFor(academicYearId?: string) {
+    return academicYearId
+      ? this.academicYears.findById(academicYearId)
+      : this.academicYears.findCurrent();
+  }
+
+  /** Adds what the template has and the school doesn't; call in a transaction. */
+  private async addTemplate(
+    template: CurriculumTemplate,
+    academicYearId: string | null,
+    replaced?: { template: string; removed: RemovedCounts },
+  ): Promise<ApplyResult> {
+    const result: ApplyResult = {
+      template: template.code,
+      academicYearId,
+      created: {
+        subjects: 0,
+        classes: 0,
+        subjectGroups: 0,
+        groupSubjects: 0,
+        classSubjects: 0,
+        components: 0,
+        classSubjectGroups: 0,
+      },
+    };
+    const subjectIds = await this.ensureSubjects(template, result);
+    const classIds = await this.ensureClasses(template, result);
+    const groupIds = await this.ensureGroups(template, subjectIds, result);
+    if (academicYearId) {
+      await this.ensureCurriculum(
+        template,
+        academicYearId,
+        { subjectIds, classIds, groupIds },
+        result,
+      );
+    }
+    await this.audit.record({
+      action: AUDIT_ACTIONS.TEMPLATE_APPLIED,
+      entityType: 'template',
+      entityId: template.code,
+      before: replaced,
+      after: { ...result.created, academicYearId },
+    });
+    return result;
+  }
+
+  /**
+   * Takes out what `previous` added that `next` doesn't have, matched like
+   * applying matches (by name, subjects also by code). Call in a
+   * transaction: a row still in use (exam marks, …) fails the whole switch.
+   */
+  private async removeTemplate(
+    previous: CurriculumTemplate,
+    next: CurriculumTemplate,
+  ): Promise<RemovedCounts> {
+    const removed = noneRemoved();
+    const names = (items: { name: string }[]) =>
+      new Set(items.map((i) => key(i.name)));
+    const nextClasses = names(next.classes);
+    const nextSubjects = names(next.subjects);
+    const nextGroups = names(next.groups);
+    const oldClasses = names(previous.classes);
+    const oldSubjects = names(previous.subjects);
+    const oldCodes = new Set(
+      previous.subjects.flatMap((s) => (s.code ? [s.code] : [])),
+    );
+    const oldGroups = names(previous.groups);
+
+    const subjects = (await all((q) => this.subjects.findFiltered(q))).filter(
+      (s) => oldSubjects.has(key(s.name)) || (s.code && oldCodes.has(s.code)),
+    );
+    const subjectIds = new Set(subjects.map((s) => s.id));
+    const groups = (
+      await all((q) => this.subjectGroups.findFiltered(q))
+    ).filter((g) => oldGroups.has(key(g.name)));
+    const groupIds = new Set(groups.map((g) => g.id));
+
+    const classes = (await all((q) => this.classes.findFiltered(q))).filter(
+      (c) => oldClasses.has(key(c.name)),
+    );
+    for (const c of classes) {
+      if (!nextClasses.has(key(c.name))) {
+        await this.classes.remove(c.id);
+        removed.classes++;
+        continue;
+      }
+      // Kept for the new template, which adds its own subjects and groups.
+      const offered = await all((q) =>
+        this.classSubjects.findFiltered({ ...q, classId: c.id }),
+      );
+      for (const cs of offered.filter((x) => subjectIds.has(x.subjectId))) {
+        await this.classSubjects.remove(cs.id);
+        removed.classSubjects++;
+      }
+      const grouped = await all((q) =>
+        this.classSubjectGroups.findFiltered({ ...q, classId: c.id }),
+      );
+      for (const cg of grouped.filter((x) => groupIds.has(x.subjectGroupId))) {
+        await this.classSubjectGroups.remove(cg.id);
+      }
+    }
+    for (const s of subjects) {
+      if (nextSubjects.has(key(s.name))) continue;
+      await this.subjects.remove(s.id);
+      removed.subjects++;
+    }
+    for (const g of groups) {
+      if (nextGroups.has(key(g.name))) continue;
+      await this.subjectGroups.remove(g.id);
+      removed.subjectGroups++;
+    }
+    return removed;
+  }
+
+  /**
+   * A school uses one curriculum template. Another is refused while the
+   * school has classes (switching replaces it instead); with none left, it
+   * may start over with another.
+   */
+  private async assertOnlyTemplate(code: string): Promise<void> {
+    const inUse = await this.organizations.getCurriculumTemplate(this.ds.orgId);
+    if (!inUse || inUse === code) return;
+    const classes = await this.classes.findFiltered({ page: 1, limit: 1 });
+    if (classes.meta.total === 0) return;
+    throw new ConflictException({
+      message: `The school uses the "${inUse}" curriculum template; only one can be applied`,
+      code: 'CURRICULUM_TEMPLATE_IN_USE',
     });
   }
 

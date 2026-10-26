@@ -62,6 +62,8 @@ export interface SchoolSettings {
     phone: string | null
     email: string | null
   }
+  /** Signed, short-lived URLs. */
+  files?: { logoUrl: string | null }
 }
 
 export const schoolSettingsQuery = () =>
@@ -78,8 +80,26 @@ export interface ProfilePatch {
 }
 
 /** `PATCH /settings/organization`: the school's own fields on `organizations`. */
-export const updateOrganizationSettings = (body: { type?: SchoolType }) =>
-  apiFetch<unknown>("/settings/organization", { method: "PATCH", body })
+export const updateOrganizationSettings = (body: {
+  name?: string
+  type?: SchoolType
+  /** Digits only; null clears it. */
+  eiin?: string | null
+}) => apiFetch<unknown>("/settings/organization", { method: "PATCH", body })
+
+/** PNG, JPEG or WebP, up to 2 MB (`org_logo` on the backend). */
+export const LOGO_TYPES = ["image/png", "image/jpeg", "image/webp"]
+export const LOGO_MAX_BYTES = 2 * 1024 * 1024
+
+/** `POST /settings/files/logo`: replaces the school logo. */
+export const uploadLogo = (file: File) => {
+  const body = new FormData()
+  body.append("file", file)
+  return apiFetch<{ fileId: string; url: string }>("/settings/files/logo", {
+    method: "POST",
+    body,
+  })
+}
 
 /** `PATCH /settings/profile`: only the fields given; `address` merges. */
 export const updateProfileSettings = (body: ProfilePatch) =>

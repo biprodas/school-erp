@@ -19,6 +19,10 @@ const CODES = {
   NO_CURRENT_SESSION: "noSession",
   ONBOARDING_INCOMPLETE: "incomplete",
   FOREIGN_KEY_VIOLATION: "inUse",
+  CURRICULUM_TEMPLATE_IN_USE: "curriculumInUse",
+  CURRICULUM_SWITCH_HAS_STUDENTS: "switchHasStudents",
+  CLASS_HAS_STUDENTS: "classHasStudents",
+  HOLIDAY_EXISTS: "holidayExists",
   [NETWORK_ERROR]: "network",
 } as const
 

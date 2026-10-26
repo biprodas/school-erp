@@ -751,6 +751,22 @@ export class OrganizationService {
     );
   }
 
+  async getCurriculumTemplate(orgId: string): Promise<string | null> {
+    const org = await this.organizationRepository.findOne({
+      where: { id: orgId },
+      select: { id: true, curriculumTemplate: true },
+    });
+    return org?.curriculumTemplate ?? null;
+  }
+
+  /** Records the curriculum template a school applied (onboarding). */
+  async setCurriculumTemplate(orgId: string, code: string): Promise<void> {
+    await this.organizationRepository.update(
+      { id: orgId },
+      { curriculumTemplate: code },
+    );
+  }
+
   private async findPlanOrFail(code: string): Promise<Plan> {
     const plan = await this.planRepository.findOne({ where: { code } });
     if (!plan) {

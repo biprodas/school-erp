@@ -300,12 +300,12 @@ Each module lists its purpose, priority (**P0** = MVP must-have, delivered acros
 - A guided setup wizard with a progress checklist. Each step can be skipped and resumed:
   1. School profile: kind of institution, logo, address, EIIN, contact, principal's signature, currency, time zone, language, week start, weekend days.
   2. Academic session: start and end dates.
-  3. Shifts (morning/day), classes, sections for the session, groups (Science/Commerce/Humanities).
-  4. Subjects and their class assignment, starting from templates (NCTB curriculum, Cambridge, madrasa).
+  3. Classes and subjects, starting from one curriculum template (NCTB curriculum, Cambridge, madrasa) that adds the classes, subjects, groups (Science/Commerce/Humanities) and each class's subjects. Choosing another template switches to it (only before students are added).
+  4. Shifts (morning/day) and sections for each class in the session.
   5. Grading system (BD GPA 5.0 default template).
   6. Fee heads and a fee structure template.
   7. Add staff to the staff directory and invite them by email or phone (an invite link, or a printed credential slip until SMS arrives in Phase 1b), or bulk-import them from Excel.
-  8. Import students and guardians by Excel template, with validation preview.
+- Students and guardians are not a wizard step: once classes and sections exist, they are added or imported by Excel template (with validation preview) from People → Students.
 - Optional sample data mode to try the product.
 - In-app guided tours and a help center with Bangla video tutorials.
 

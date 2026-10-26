@@ -80,6 +80,18 @@ export class Organization {
   })
   onboardingCompletedAt: Date | null;
 
+  /**
+   * The curriculum template the school set up from (`nctb`, …). One per
+   * school; another is refused while the school has classes.
+   */
+  @Column({
+    name: 'curriculum_template',
+    type: 'varchar',
+    length: 40,
+    nullable: true,
+  })
+  curriculumTemplate: string | null;
+
   /** Listed in the public "Find your school" directory. */
   @Column({ name: 'listed_in_directory', type: 'boolean', default: false })
   listedInDirectory: boolean;

@@ -116,7 +116,7 @@ describe('Onboarding (e2e)', () => {
     const refused = await school().post('/api/onboarding/complete').expect(409);
     expect(error(refused)).toMatchObject({
       code: 'ONBOARDING_INCOMPLETE',
-      missing: ['profile', 'session', 'classes', 'curriculum'],
+      missing: ['profile', 'session', 'curriculum', 'classes'],
     });
   });
 
@@ -171,6 +171,18 @@ describe('Onboarding (e2e)', () => {
     await school()
       .post('/api/onboarding/templates/curriculum/unknown/apply')
       .expect(404);
+
+    // One curriculum template per school, and the list says which.
+    const templates = data<{ curriculumInUse: string | null }>(
+      await school().get('/api/onboarding/templates').expect(200),
+    );
+    expect(templates.curriculumInUse).toBe('nctb');
+    const other = await school()
+      .post('/api/onboarding/templates/curriculum/cambridge/apply')
+      .expect(409);
+    expect((other.body as { code: string }).code).toBe(
+      'CURRICULUM_TEMPLATE_IN_USE',
+    );
   });
 
   it('computes progress from the data and completes once the required steps are done', async () => {
@@ -186,8 +198,8 @@ describe('Onboarding (e2e)', () => {
       .expect(201);
 
     list = await checklist();
-    expect(done(list)).toEqual(['profile', 'session', 'classes', 'curriculum']);
-    expect(list.percentage).toBe(50); // 4 of the 8 steps
+    expect(done(list)).toEqual(['profile', 'session', 'curriculum', 'classes']);
+    expect(list.percentage).toBe(57); // 4 of the 7 steps
     expect(list.canComplete).toBe(true);
 
     const completed = data<Checklist>(
@@ -239,6 +251,43 @@ describe('Onboarding (e2e)', () => {
     });
     expect(data<{ created: boolean }>(await apply()).created).toBe(false);
     expect(done(await checklist())).toContain('grading');
+  });
+
+  it('switches the curriculum template: the old one goes, the new one comes, own classes stay', async () => {
+    const own = data<{ id: string }>(
+      await school()
+        .post('/api/classes', { name: `Hifz ${runId}` })
+        .expect(201),
+    ).id;
+
+    const switched = data<{
+      previous: string | null;
+      removed: Record<string, number>;
+      created: Record<string, number>;
+    }>(
+      await school()
+        .post('/api/onboarding/templates/curriculum/cambridge/switch')
+        .expect(200),
+    );
+    expect(switched.previous).toBe('nctb');
+    // NCTB's ten classes (Class 6 with its section) and its subjects.
+    expect(switched.removed.classes).toBe(10);
+    expect(switched.removed.subjects).toBeGreaterThan(0);
+    expect(switched.created.classes).toBeGreaterThan(0);
+    expect(switched.created.classSubjects).toBeGreaterThan(0);
+
+    const classes = data<{ id: string; name: string }[]>(
+      await school().get('/api/classes?limit=100').expect(200),
+    );
+    const names = classes.map((c) => c.name);
+    expect(names).toContain('Year 1');
+    expect(names.some((n) => n.startsWith('Class '))).toBe(false);
+    expect(classes.some((c) => c.id === own)).toBe(true);
+    expect(
+      data<{ curriculumInUse: string }>(
+        await school().get('/api/onboarding/templates').expect(200),
+      ).curriculumInUse,
+    ).toBe('cambridge');
   });
 
   it('"Find your school" answers the same for known and unknown emails', async () => {

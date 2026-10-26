@@ -75,6 +75,18 @@ export class OnboardingController {
     return this.templates.applyCurriculum(code, dto.academicYearId);
   }
 
+  /**
+   * Replaces the curriculum template in use with this one: removes what
+   * the old one added (refused once there are students), adds the new.
+   */
+  @Post('templates/curriculum/:code/switch')
+  @HttpCode(200)
+  @RequirePermissions(PERMISSIONS.ONBOARDING_MANAGE)
+  @ResponseMessage('Template switched')
+  switchCurriculum(@Param('code') code: string, @Body() dto: ApplyTemplateDto) {
+    return this.templates.switchCurriculum(code, dto.academicYearId);
+  }
+
   /** Adds the default fee heads the school doesn't have yet (idempotent). */
   @Post('templates/fee-heads/apply')
   @HttpCode(200)
